@@ -1,0 +1,23 @@
+{
+  "schema_version": "ic-evidence-lab.public-claims/v1",
+  "target": "LangChain / LangSmith",
+  "as_of": "2026-08-28T23:59:59Z",
+  "claims": [
+    {"id":"LC-C1","statement":"LangChain announced a $125 million round at a stated $1.25 billion valuation in October 2025.","assertion_type":"company_reported","state":"UNVERIFIED","source_ids":["LC-S1"],"limitation":"Independent confirmation and pre-money versus post-money basis are absent."},
+    {"id":"LC-C2","statement":"The company reported 90 million combined monthly LangChain and LangGraph downloads at the announcement date.","assertion_type":"company_reported","state":"UNVERIFIED","source_ids":["LC-S1"],"limitation":"Package scope, bots, mirrors, transitive installs, and paid conversion are undisclosed."},
+    {"id":"LC-C3","statement":"The company reported use by 35% of the Fortune 500.","assertion_type":"company_reported","state":"UNVERIFIED","source_ids":["LC-S1"],"limitation":"Use, paid-customer status, product mix, and denominator methodology are undisclosed."},
+    {"id":"LC-C4","statement":"The company reported 12x year-over-year commercial trace-volume growth.","assertion_type":"company_reported","state":"UNVERIFIED","source_ids":["LC-S1"],"limitation":"Base volume, period consistency, and economic conversion are undisclosed."},
+    {"id":"LC-C5","statement":"Vendor documentation presents observability, evaluation, and deployment as LangSmith capabilities.","assertion_type":"vendor_documented","state":"UNVERIFIED","source_ids":["LC-S1","LC-S3"],"limitation":"Capability documentation is not adoption, reliability, or outcome evidence."},
+    {"id":"LC-C6","statement":"The captured pricing page listed Plus at $39 per seat per month plus usage and Enterprise at custom pricing.","assertion_type":"vendor_documented","state":"UNVERIFIED","source_ids":["LC-S2"],"limitation":"Mutable pricing expires after 30 days unless recaptured."},
+    {"id":"LC-C7","statement":"Vendor documentation presents cloud, hybrid, and Kubernetes-based self-hosted enterprise deployment modes.","assertion_type":"vendor_documented","state":"UNVERIFIED","source_ids":["LC-S3","LC-S4"],"limitation":"Availability is not evidence of deployment success or operating cost."},
+    {"id":"LC-C8","statement":"Vendor documentation states SOC 2 Type II, HIPAA, and GDPR coverage.","assertion_type":"company_reported","state":"UNVERIFIED","source_ids":["LC-S3","LC-S5"],"limitation":"The current underlying reports, scope, exceptions, and customer configuration are not admitted evidence."},
+    {"id":"LC-C9","statement":"Open-source adoption creates an efficient commercial funnel into LangSmith.","assertion_type":"inference","state":"UNVERIFIED","source_ids":["LC-S1"],"limitation":"Conversion, CAC, attach rate, ACV, and retention are unknown."},
+    {"id":"LC-C10","statement":"Integrated tracing, evaluation, and deployment create durable switching costs.","assertion_type":"inference","state":"UNVERIFIED","source_ids":["LC-S1","LC-S3"],"limitation":"Portability and open-source competitors are material counterhypotheses."},
+    {"id":"LC-C11","statement":"Self-hosting can impose meaningful customer operating complexity.","assertion_type":"inference","state":"UNVERIFIED","source_ids":["LC-S4"],"limitation":"Kubernetes and multiple backing services suggest complexity, but customer cost and support burden require interviews."},
+    {"id":"LC-C12","statement":"The stated round alone supports an attractive investment return.","assertion_type":"investment_judgment","state":"BLOCKED","source_ids":["LC-S1"],"limitation":"Revenue, margins, burn, retention, ownership, preferences, and exit assumptions are absent."}
+  ],
+  "calculations": [
+    {"id":"LC-M1","expression":"125 / 1250","result":"10.00%","state":"ARITHMETIC_ONLY","limitation":"This is a ratio, not dilution or ownership, because valuation basis and terms are unknown."},
+    {"id":"LC-M2","expression":"(12 - 1) * 100","result":"1100.00%","state":"ARITHMETIC_ONLY","limitation":"Equivalent growth arithmetic does not establish commercial significance without a base and consistent period."}
+  ]
+}

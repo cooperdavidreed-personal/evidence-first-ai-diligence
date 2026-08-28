@@ -1,0 +1,18 @@
+{
+  "schema_version": "ic-evidence-lab.public-source-register/v1",
+  "target": "LangChain / LangSmith",
+  "as_of": "2026-08-28T23:59:59Z",
+  "status": "URL_ONLY_UNVERIFIED",
+  "sources": [
+    {"id":"LC-S1","title":"Series B announcement","publisher":"LangChain","url":"https://www.langchain.com/blog/series-b","published_at":"2025-10-20","captured_at":"2026-08-28T18:45:00Z","independence":"company","retained_bytes":false,"redistribution_review":"PENDING"},
+    {"id":"LC-S2","title":"LangSmith plans and pricing","publisher":"LangChain","url":"https://www.langchain.com/pricing","published_at":"UNKNOWN","captured_at":"2026-08-28T18:45:00Z","independence":"company","retained_bytes":false,"redistribution_review":"PENDING","expires_after_days":30},
+    {"id":"LC-S3","title":"LangSmith for Enterprise","publisher":"LangChain Docs","url":"https://docs.langchain.com/langsmith/enterprise","published_at":"UNKNOWN","captured_at":"2026-08-28T18:45:00Z","independence":"company","retained_bytes":false,"redistribution_review":"PENDING","expires_after_days":30},
+    {"id":"LC-S4","title":"Self-hosted LangSmith","publisher":"LangChain Docs","url":"https://docs.langchain.com/langsmith/self-hosted","published_at":"UNKNOWN","captured_at":"2026-08-28T18:45:00Z","independence":"company","retained_bytes":false,"redistribution_review":"PENDING","expires_after_days":30},
+    {"id":"LC-S5","title":"LangSmith shared responsibility model","publisher":"LangChain Docs","url":"https://docs.langchain.com/langsmith/shared-responsibility-model","published_at":"UNKNOWN","captured_at":"2026-08-28T18:45:00Z","independence":"company","retained_bytes":false,"redistribution_review":"PENDING","expires_after_days":30}
+  ],
+  "limitations": [
+    "All current sources are vendor-controlled.",
+    "Mutable URL availability does not preserve the reviewed bytes.",
+    "Independent funding, customer, security-audit, and financial evidence is still required."
+  ]
+}

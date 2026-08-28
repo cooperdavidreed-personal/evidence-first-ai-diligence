@@ -67,6 +67,10 @@ deployment, or automated investment recommendation. See
 [Architecture](docs/ARCHITECTURE.md), [Threat Model](docs/THREAT-MODEL.md), and
 [Career Claims](docs/CAREER-CLAIMS.md).
 
+The [LangChain/LangSmith public pre-diligence contract](examples/langchain-public/README.md)
+shows how a recognizable private-market case remains bounded when source
+retention rights and private-company economics are unavailable.
+
 ## Authorship
 
 The proposed public attribution is recorded in [AUTHORS.md](AUTHORS.md) and
