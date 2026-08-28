@@ -11,7 +11,9 @@ requires-python = ">=3.11"
 authors = [{name = "Cooper Reed"}]
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
-dependencies = []
+dependencies = [
+    "jsonschema[format]==4.26.0",
+]
 
 [project.urls]
 Homepage = "https://cooperdavidreed-personal.github.io/evidence-first-ai-diligence/"

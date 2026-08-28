@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/ic-evidence-lab/packet.schema.json",
+  "title": "IC Evidence Lab Packet",
+  "type": "object",
+  "required": ["schema_version", "case_sha256", "policy_sha256", "case_id", "company", "as_of", "generated_at", "workflow_disposition", "investment_decision", "decision_owner", "source_results", "claim_results", "open_questions", "limitations", "content_sha256"],
+  "properties": {
+    "schema_version": {"const": "ic-evidence-lab.packet/v2"},
+    "case_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "policy_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "case_id": {"type": "string"},
+    "company": {"type": "string"},
+    "as_of": {"type": "string"},
+    "generated_at": {"type": "string"},
+    "workflow_disposition": {"enum": ["HOLD", "READY_FOR_HUMAN_REVIEW"]},
+    "investment_decision": {"const": "PENDING_HUMAN"},
+    "decision_owner": {"const": "HUMAN"},
+    "source_results": {"type": "array", "items": {"$ref": "#/$defs/source_result"}},
+    "claim_results": {"type": "array", "items": {"$ref": "#/$defs/claim_result"}},
+    "open_questions": {"type": "array", "items": {"type": "string"}},
+    "limitations": {"type": "array", "items": {"type": "string"}},
+    "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "source_result": {
+      "type": "object",
+      "required": ["source_id", "status", "declared_tier", "uri", "published_at", "retrieved_at", "expected_sha256", "sha256", "blocking_findings", "notes"],
+      "properties": {
+        "source_id": {"type": "string"},
+        "status": {"enum": ["PASS", "BLOCKED"]},
+        "declared_tier": {"enum": ["A", "B", "C", "D"]},
+        "uri": {"type": "string"},
+        "published_at": {"type": "string", "format": "date-time"},
+        "retrieved_at": {"type": "string", "format": "date-time"},
+        "expected_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "blocking_findings": {"type": "array", "items": {"type": "string"}},
+        "notes": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "semantic_assessment": {
+      "type": "object",
+      "required": ["status", "model_id", "run_receipt"],
+      "properties": {
+        "status": {"const": "NOT_RUN"},
+        "model_id": {"type": "null"},
+        "run_receipt": {"type": "null"}
+      },
+      "additionalProperties": false
+    },
+    "adjudication": {
+      "type": "object",
+      "required": ["status", "adjudicator", "rationale"],
+      "properties": {
+        "status": {"const": "PENDING_HUMAN"},
+        "adjudicator": {"type": "null"},
+        "rationale": {"type": "null"}
+      },
+      "additionalProperties": false
+    },
+    "claim_result": {
+      "type": "object",
+      "required": ["claim_id", "statement", "kind", "materiality", "citation_status", "semantic_assessment", "adjudication", "verified_evidence", "verified_counterevidence", "citation_checks", "computed", "findings"],
+      "properties": {
+        "claim_id": {"type": "string"},
+        "statement": {"type": "string"},
+        "kind": {"enum": ["fact", "derived", "judgment"]},
+        "materiality": {"enum": ["high", "medium", "low"]},
+        "citation_status": {"enum": ["LOCAL_CITATION_BYTES_MATCH", "LOCAL_EVIDENCE_AND_COUNTER_BYTES_MATCH", "LOCAL_COUNTER_BYTES_MATCH", "CITATION_BYTES_MISMATCH", "NO_CITATIONS", "SOURCE_CONTROL_BLOCKED", "CALC_CONTROL_MISMATCH"]},
+        "semantic_assessment": {"$ref": "#/$defs/semantic_assessment"},
+        "adjudication": {"$ref": "#/$defs/adjudication"},
+        "verified_evidence": {"type": "integer", "minimum": 0},
+        "verified_counterevidence": {"type": "integer", "minimum": 0},
+        "citation_checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["collection", "source_id", "status", "declared_tier", "locator"],
+            "properties": {
+              "collection": {"enum": ["evidence", "counterevidence"]},
+              "source_id": {"type": "string"},
+              "status": {"type": "string"},
+              "declared_tier": {"type": ["string", "null"]},
+              "locator": {"type": "object"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "computed": {"type": ["string", "null"]},
+        "findings": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    }
+  }
+}

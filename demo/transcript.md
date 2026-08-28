@@ -2,7 +2,7 @@
 
 This system checks evidence for diligence. It does not make the investment
 decision. The candidate memo starts with an unsupported claim: VectorForge has
-$4.8 million of contracted ARR. The local gate returns `UNVERIFIED`, and the
+$4.8 million of contracted ARR. The local gate records `NO_CITATIONS`, and the
 workflow stays on `HOLD`.
 
 That failure is retained in the receipt. Now add the retained synthetic source

@@ -35,6 +35,9 @@ def main() -> int:
     for raw in files:
         relative = raw.decode("utf-8", errors="strict")
         path = ROOT / relative
+        if not path.exists():
+            # A tracked path deleted in the working tree is not part of the candidate tree.
+            continue
         if FORBIDDEN_PATH_PARTS.intersection(Path(relative).parts):
             failures.append(f"{relative}: private or generated path")
             continue

@@ -1,37 +1,321 @@
 {
-  "schema_version": "ic-evidence-lab.case/v1",
+  "as_of": "2026-06-30T23:59:59Z",
   "case_id": "vectorforge-after-v1",
-  "company": "VectorForge AI (synthetic)",
-  "as_of": "2026-06-30",
-  "generated_at": "2026-06-30T23:59:59Z",
-  "sources": [
-    {"source_id":"S1","uri":"synthetic://vectorforge/founder-kpi-memo","source_type":"synthetic_dataroom","tier":"B","published_at":"2026-06-20","retrieved_at":"2026-06-30T12:00:00Z","path":"sources/founder-kpi-memo.txt","sha256":"c24a0ce01dd74ec6111cb9b771bad561b54c62200b7ad1bc5fd5bbed3a74d3f3"},
-    {"source_id":"S2","uri":"synthetic://vectorforge/current-billing","source_type":"synthetic_dataroom","tier":"B","published_at":"2026-06-30","retrieved_at":"2026-06-30T12:01:00Z","path":"sources/current-billing.txt","sha256":"04942c109813ba9f64971427899142b582602d5e846f7d2adaa978bb0fda8b3c"},
-    {"source_id":"S3","uri":"synthetic://vectorforge/prior-billing","source_type":"synthetic_dataroom","tier":"B","published_at":"2025-06-30","retrieved_at":"2026-06-30T12:02:00Z","path":"sources/prior-billing.txt","sha256":"be57f5843aee42b952fdbecb1056f8cd397a8f9e2cc9ca8d8089fdf94fbcf944"},
-    {"source_id":"S4","uri":"synthetic://vectorforge/quarterly-pnl","source_type":"synthetic_dataroom","tier":"B","published_at":"2026-06-30","retrieved_at":"2026-06-30T12:03:00Z","path":"sources/quarterly-pnl.txt","sha256":"3768c609aa30b8d427ddca4824253fa63c095c97e6fc8679e10a0a831b937e7e"},
-    {"source_id":"S5","uri":"synthetic://vectorforge/cash-burn","source_type":"synthetic_dataroom","tier":"B","published_at":"2026-06-30","retrieved_at":"2026-06-30T12:04:00Z","path":"sources/cash-burn.txt","sha256":"ed9cd32e29142eda196c6d0587f5a5ce1df612105a8db2ab432ffb11c3e1aa05"},
-    {"source_id":"S6","uri":"synthetic://vectorforge/crm-pipeline","source_type":"synthetic_dataroom","tier":"B","published_at":"2026-06-30","retrieved_at":"2026-06-30T12:05:00Z","path":"sources/crm-pipeline.txt","sha256":"6d66735bc74562e5c2102ba13368a5e53a14fa487c1f145f9a19f2e0cd31c043"},
-    {"source_id":"S7","uri":"synthetic://vectorforge/vendor-benchmark","source_type":"synthetic_dataroom","tier":"B","published_at":"2026-06-10","retrieved_at":"2026-06-30T12:06:00Z","path":"sources/vendor-benchmark.txt","sha256":"8a12988ff04324990bf21a71ca92fde412419421e0c6443a3e78e1a46ce63c39"},
-    {"source_id":"S8","uri":"synthetic://vectorforge/security-letter","source_type":"synthetic_dataroom","tier":"B","published_at":"2026-06-12","retrieved_at":"2026-06-30T12:07:00Z","path":"sources/security-letter.txt","sha256":"1f1b0498308a7492a0b7adbbc2dd8476c7b15cfdaebf9dbf9d9d1d05cb803b54"},
-    {"source_id":"S9","uri":"synthetic://vectorforge/concentration","source_type":"synthetic_dataroom","tier":"B","published_at":"2026-06-30","retrieved_at":"2026-06-30T12:08:00Z","path":"sources/concentration.txt","sha256":"a848be8d659ba98a7c5dd366878f86986135a012b9e4872140dc4982cc6c7db5"},
-    {"source_id":"S10","uri":"synthetic://vectorforge/term-sheet","source_type":"synthetic_dataroom","tier":"B","published_at":"2026-06-25","retrieved_at":"2026-06-30T12:09:00Z","path":"sources/term-sheet.txt","sha256":"9e8683c9e6f76067b77aa07666cb666a87159a0dfc1988abd73ab680e829411d"},
-    {"source_id":"S11","uri":"synthetic://vectorforge/post-cutoff-release","source_type":"synthetic_dataroom","tier":"D","published_at":"2026-07-15","retrieved_at":"2026-07-15T12:00:00Z","path":"sources/post-cutoff-release.txt","sha256":"dda539b421e87fa239fca20b9b69f18f4bd2c04e16683a6d526eaba80ad14fca"}
-  ],
   "claims": [
-    {"claim_id":"C1","statement":"Management reports $4.8 million ARR.","kind":"fact","materiality":"high","evidence":[{"source_id":"S1","quote":"Management reports $4.8 million ARR","locator":"line 2"}],"counterevidence":[{"source_id":"S2","quote":"Contracted recurring run-rate is $4.2 million","locator":"line 2"}]},
-    {"claim_id":"C2","statement":"Comparable contracted ARR grew 162.50% year over year.","kind":"derived","materiality":"high","evidence":[{"source_id":"S2","quote":"Contracted recurring run-rate is $4.2 million","locator":"line 2"},{"source_id":"S3","quote":"Comparable contracted recurring run-rate was $1.6 million","locator":"line 2"}],"counterevidence":[],"calculation":{"operation":"growth_rate","numerator":"4.2","denominator":"1.6","expected":"162.50","unit":"percent"}},
-    {"claim_id":"C3","statement":"Management reports 80 enterprise customers.","kind":"fact","materiality":"high","evidence":[{"source_id":"S1","quote":"80 enterprise customers","locator":"line 2"}],"counterevidence":[{"source_id":"S2","quote":"74 paying accounts","locator":"line 2"}]},
-    {"claim_id":"C4","statement":"Management reports 142% NRR; the cohort definition remains unavailable.","kind":"fact","materiality":"high","evidence":[{"source_id":"S1","quote":"142% NRR","locator":"line 2"}],"counterevidence":[]},
-    {"claim_id":"C5","statement":"Quarterly gross margin was 72.50% on the supplied P&L.","kind":"derived","materiality":"high","evidence":[{"source_id":"S4","quote":"Recognized revenue was $1.20 million. Hosting and support cost of revenue was $0.33 million","locator":"line 2"}],"counterevidence":[],"calculation":{"operation":"gross_margin","numerator":"0.87","denominator":"1.20","expected":"72.50","unit":"percent"}},
-    {"claim_id":"C6","statement":"Static runway is 7.50 months at the trailing three-month average burn.","kind":"derived","materiality":"medium","evidence":[{"source_id":"S5","quote":"Cash was $9.0 million. Monthly net burn was $1.0 million, $1.2 million, and $1.4 million","locator":"line 2"}],"counterevidence":[],"calculation":{"operation":"runway","numerator":"9.0","denominator":"1.2","expected":"7.50","unit":"months"}},
-    {"claim_id":"C7","statement":"The company-run selected benchmark measured 37% lower latency.","kind":"fact","materiality":"medium","evidence":[{"source_id":"S7","quote":"VectorForge measured 37% lower latency in its selected configuration","locator":"line 2"}],"counterevidence":[]},
-    {"claim_id":"C8","statement":"VectorForge has completed SOC 2 Type II.","kind":"fact","materiality":"high","evidence":[],"counterevidence":[{"source_id":"S8","quote":"A Type II examination has not been completed","locator":"line 2"}]},
-    {"claim_id":"C9","statement":"VectorForge has $12 million of committed pipeline.","kind":"fact","materiality":"high","evidence":[],"counterevidence":[{"source_id":"S6","quote":"Unweighted pipeline is $12 million. Probability-weighted pipeline is $3 million. No pipeline opportunity is signed","locator":"line 2"}]},
-    {"claim_id":"C10","statement":"The top three customers represent 41% of contracted recurring run-rate.","kind":"fact","materiality":"high","evidence":[{"source_id":"S9","quote":"The top three customers represent 41% of contracted recurring run-rate","locator":"line 2"}],"counterevidence":[]},
-    {"claim_id":"C11","statement":"Under the simplified fixture assumptions, $18 million at $72 million pre-money equals 20.00% new-money ownership.","kind":"derived","materiality":"medium","evidence":[{"source_id":"S10","quote":"$18 million of new money at a $72 million pre-money valuation","locator":"line 2"}],"counterevidence":[],"calculation":{"operation":"ratio","numerator":"18","denominator":"90","expected":"20.00","unit":"percent"}},
-    {"claim_id":"C12","statement":"The post-cutoff enterprise contract validates the June memo.","kind":"fact","materiality":"high","evidence":[{"source_id":"S11","quote":"announced a large enterprise contract after the diligence cutoff","locator":"line 2"}],"counterevidence":[]},
-    {"claim_id":"C13","statement":"VectorForge is attractive enough to approve an investment.","kind":"judgment","materiality":"high","evidence":[],"counterevidence":[]}
+    {
+      "claim_id": "C1",
+      "counterevidence": [
+        {
+          "locator": {
+            "end": 111,
+            "quote_sha256": "b8d0dbe05b3818e01105bd979d4b3e286eecabb266e403a35a34f164044aa0a4",
+            "scheme": "utf8-byte-offset/v1",
+            "section_label": "line 2",
+            "start": 66
+          },
+          "quote": "Contracted recurring run-rate is $4.2 million",
+          "source_id": "S2"
+        }
+      ],
+      "evidence": [
+        {
+          "locator": {
+            "end": 115,
+            "quote_sha256": "2bfb1e4306c167985c1a442c9a4577153c0156d6d421a7f221534e6f99b0b8d5",
+            "scheme": "utf8-byte-offset/v1",
+            "section_label": "line 2",
+            "start": 80
+          },
+          "quote": "Management reports $4.8 million ARR",
+          "source_id": "S1"
+        }
+      ],
+      "kind": "fact",
+      "materiality": "high",
+      "statement": "Management reports $4.8 million ARR."
+    },
+    {
+      "calculation": {
+        "denominator": "1.6",
+        "expected": "162.50",
+        "numerator": "4.2",
+        "operation": "growth_rate",
+        "unit": "percent"
+      },
+      "claim_id": "C2",
+      "counterevidence": [],
+      "evidence": [
+        {
+          "locator": {
+            "end": 111,
+            "quote_sha256": "b8d0dbe05b3818e01105bd979d4b3e286eecabb266e403a35a34f164044aa0a4",
+            "scheme": "utf8-byte-offset/v1",
+            "section_label": "line 2",
+            "start": 66
+          },
+          "quote": "Contracted recurring run-rate is $4.2 million",
+          "source_id": "S2"
+        },
+        {
+          "locator": {
+            "end": 123,
+            "quote_sha256": "1ff05bb20d933643c58ca113b286e4f59fea58d7c9bd2ba27a51a35181ef61f3",
+            "scheme": "utf8-byte-offset/v1",
+            "section_label": "line 2",
+            "start": 66
+          },
+          "quote": "Comparable contracted recurring run-rate was $1.6 million",
+          "source_id": "S3"
+        }
+      ],
+      "kind": "derived",
+      "materiality": "high",
+      "statement": "Comparable contracted ARR grew 162.50% year over year."
+    },
+    {
+      "claim_id": "C3",
+      "counterevidence": [
+        {
+          "locator": {
+            "end": 137,
+            "quote_sha256": "8f3c9cc3774863f0da7bbb3babf75426ed0588a789920d2b2f46ae43aeef8734",
+            "scheme": "utf8-byte-offset/v1",
+            "section_label": "line 2",
+            "start": 119
+          },
+          "quote": "74 paying accounts",
+          "source_id": "S2"
+        }
+      ],
+      "evidence": [
+        {
+          "locator": {
+            "end": 140,
+            "quote_sha256": "b49d52e1398fa4540811cf62d27fee118a20d5f42186cb497a11f855d1f7def8",
+            "scheme": "utf8-byte-offset/v1",
+            "section_label": "line 2",
+            "start": 117
+          },
+          "quote": "80 enterprise customers",
+          "source_id": "S1"
+        }
+      ],
+      "kind": "fact",
+      "materiality": "high",
+      "statement": "Management reports 80 enterprise customers."
+    },
+    {
+      "claim_id": "C4",
+      "counterevidence": [],
+      "evidence": [
+        {
+          "locator": {
+            "end": 150,
+            "quote_sha256": "8434fcec9c3ec024e3f4f28486843e9db70ef1e3348a793ab9306cf365743c86",
+            "scheme": "utf8-byte-offset/v1",
+            "section_label": "line 2",
+            "start": 142
+          },
+          "quote": "142% NRR",
+          "source_id": "S1"
+        }
+      ],
+      "kind": "fact",
+      "materiality": "high",
+      "statement": "Management reports 142% NRR; the cohort definition remains unavailable."
+    },
+    {
+      "calculation": {
+        "denominator": "1.20",
+        "expected": "72.50",
+        "numerator": "0.87",
+        "operation": "gross_margin",
+        "unit": "percent"
+      },
+      "claim_id": "C5",
+      "counterevidence": [],
+      "evidence": [
+        {
+          "locator": {
+            "end": 157,
+            "quote_sha256": "0c2e08524608f4c83f7831bd75a3719316d03ace985c87b54ef5c92ecc9bb83e",
+            "scheme": "utf8-byte-offset/v1",
+            "section_label": "line 2",
+            "start": 66
+          },
+          "quote": "Recognized revenue was $1.20 million. Hosting and support cost of revenue was $0.33 million",
+          "source_id": "S4"
+        }
+      ],
+      "kind": "derived",
+      "materiality": "high",
+      "statement": "Quarterly gross margin was 72.50% on the supplied P&L."
+    },
+    {
+      "calculation": {
+        "denominator": "1.2",
+        "expected": "7.50",
+        "numerator": "9.0",
+        "operation": "runway",
+        "unit": "months"
+      },
+      "claim_id": "C6",
+      "counterevidence": [],
+      "evidence": [
+        {
+          "locator": {
+            "end": 149,
+            "quote_sha256": "a71b37dc4ee6a5da6b1608b4d59520ccbd7778fc707d8c80cb552f306741c958",
+            "scheme": "utf8-byte-offset/v1",
+            "section_label": "line 2",
+            "start": 61
+          },
+          "quote": "Cash was $9.0 million. Monthly net burn was $1.0 million, $1.2 million, and $1.4 million",
+          "source_id": "S5"
+        }
+      ],
+      "kind": "derived",
+      "materiality": "medium",
+      "statement": "Static runway is 7.50 months at the trailing three-month average burn."
+    },
+    {
+      "claim_id": "C7",
+      "counterevidence": [],
+      "evidence": [
+        {
+          "locator": {
+            "end": 138,
+            "quote_sha256": "514e38d68191f2145df4d0d43b4a1a50dda42ca923cd7c7d711897ce82df0bc0",
+            "scheme": "utf8-byte-offset/v1",
+            "section_label": "line 2",
+            "start": 70
+          },
+          "quote": "VectorForge measured 37% lower latency in its selected configuration",
+          "source_id": "S7"
+        }
+      ],
+      "kind": "fact",
+      "materiality": "medium",
+      "statement": "The company-run selected benchmark measured 37% lower latency."
+    },
+    {
+      "claim_id": "C8",
+      "counterevidence": [
+        {
+          "locator": {
+            "end": 158,
+            "quote_sha256": "b2a58218e32996242c2c8e62fe1436168188d960cc36f05be464b4cff80a20f0",
+            "scheme": "utf8-byte-offset/v1",
+            "section_label": "line 2",
+            "start": 114
+          },
+          "quote": "A Type II examination has not been completed",
+          "source_id": "S8"
+        }
+      ],
+      "evidence": [],
+      "kind": "fact",
+      "materiality": "high",
+      "statement": "VectorForge has completed SOC 2 Type II."
+    },
+    {
+      "claim_id": "C9",
+      "counterevidence": [
+        {
+          "locator": {
+            "end": 165,
+            "quote_sha256": "adc3c02c7b237d3b4b16492c27dbee1a638d1cae3e5d2a9608b73d3f3549b3d5",
+            "scheme": "utf8-byte-offset/v1",
+            "section_label": "line 2",
+            "start": 51
+          },
+          "quote": "Unweighted pipeline is $12 million. Probability-weighted pipeline is $3 million. No pipeline opportunity is signed",
+          "source_id": "S6"
+        }
+      ],
+      "evidence": [],
+      "kind": "fact",
+      "materiality": "high",
+      "statement": "VectorForge has $12 million of committed pipeline."
+    },
+    {
+      "claim_id": "C10",
+      "counterevidence": [],
+      "evidence": [
+        {
+          "locator": {
+            "end": 137,
+            "quote_sha256": "9f5bbd79c91ce943c24214ac0cf416400854a9685f9b6f7accde26b079ac93d8",
+            "scheme": "utf8-byte-offset/v1",
+            "section_label": "line 2",
+            "start": 67
+          },
+          "quote": "The top three customers represent 41% of contracted recurring run-rate",
+          "source_id": "S9"
+        }
+      ],
+      "kind": "fact",
+      "materiality": "high",
+      "statement": "The top three customers represent 41% of contracted recurring run-rate."
+    },
+    {
+      "calculation": {
+        "denominator": "90",
+        "expected": "20.00",
+        "numerator": "18",
+        "operation": "ratio",
+        "unit": "percent"
+      },
+      "claim_id": "C11",
+      "counterevidence": [],
+      "evidence": [
+        {
+          "locator": {
+            "end": 157,
+            "quote_sha256": "138357d0f7c0f5b2e7baf862a0d87bb511325696b564fd6fb40700e2d16ac90b",
+            "scheme": "utf8-byte-offset/v1",
+            "section_label": "line 2",
+            "start": 96
+          },
+          "quote": "$18 million of new money at a $72 million pre-money valuation",
+          "source_id": "S10"
+        }
+      ],
+      "kind": "derived",
+      "materiality": "medium",
+      "statement": "Under the simplified fixture assumptions, $18 million at $72 million pre-money equals 20.00% new-money ownership."
+    },
+    {
+      "claim_id": "C12",
+      "counterevidence": [],
+      "evidence": [
+        {
+          "locator": {
+            "end": 138,
+            "quote_sha256": "db92898f5ec0c1a297db3c71724637acabdc59e52d4b0696a1a1bd28d305798c",
+            "scheme": "utf8-byte-offset/v1",
+            "section_label": "line 2",
+            "start": 74
+          },
+          "quote": "announced a large enterprise contract after the diligence cutoff",
+          "source_id": "S11"
+        }
+      ],
+      "kind": "fact",
+      "materiality": "high",
+      "statement": "The post-cutoff enterprise contract validates the June memo."
+    },
+    {
+      "claim_id": "C13",
+      "counterevidence": [],
+      "evidence": [],
+      "kind": "judgment",
+      "materiality": "high",
+      "statement": "VectorForge is attractive enough to approve an investment."
+    }
   ],
+  "company": "VectorForge AI (synthetic)",
+  "generated_at": "2026-07-16T00:00:00Z",
   "open_questions": [
     "Can management reconcile reported ARR to contracted recurring run-rate?",
     "What are gross and net retention by a consistently defined cohort?",
@@ -39,5 +323,143 @@
     "Can an independent benchmark reproduce the latency result?",
     "What is the SOC 2 Type II plan and current audit scope?",
     "What preferences, dilution, and option-pool terms are omitted from the simplified term sheet?"
+  ],
+  "schema_version": "ic-evidence-lab.case/v2",
+  "source_policy": {
+    "minimum_tier": {
+      "derived": {
+        "high": "B",
+        "low": "C",
+        "medium": "B"
+      },
+      "fact": {
+        "high": "B",
+        "low": "C",
+        "medium": "B"
+      }
+    }
+  },
+  "sources": [
+    {
+      "path": "sources/founder-kpi-memo.txt",
+      "published_at": "2026-06-20T12:00:00Z",
+      "retrieved_at": "2026-06-30T12:00:00Z",
+      "sha256": "c24a0ce01dd74ec6111cb9b771bad561b54c62200b7ad1bc5fd5bbed3a74d3f3",
+      "source_id": "S1",
+      "source_type": "synthetic_dataroom",
+      "tier": "B",
+      "uri": "synthetic://vectorforge/founder-kpi-memo",
+      "payload_kind": "raw_document"
+    },
+    {
+      "path": "sources/current-billing.txt",
+      "published_at": "2026-06-30T12:00:00Z",
+      "retrieved_at": "2026-06-30T12:01:00Z",
+      "sha256": "04942c109813ba9f64971427899142b582602d5e846f7d2adaa978bb0fda8b3c",
+      "source_id": "S2",
+      "source_type": "synthetic_dataroom",
+      "tier": "B",
+      "uri": "synthetic://vectorforge/current-billing",
+      "payload_kind": "raw_document"
+    },
+    {
+      "path": "sources/prior-billing.txt",
+      "published_at": "2025-06-30T12:00:00Z",
+      "retrieved_at": "2026-06-30T12:02:00Z",
+      "sha256": "be57f5843aee42b952fdbecb1056f8cd397a8f9e2cc9ca8d8089fdf94fbcf944",
+      "source_id": "S3",
+      "source_type": "synthetic_dataroom",
+      "tier": "B",
+      "uri": "synthetic://vectorforge/prior-billing",
+      "payload_kind": "raw_document"
+    },
+    {
+      "path": "sources/quarterly-pnl.txt",
+      "published_at": "2026-06-30T12:00:00Z",
+      "retrieved_at": "2026-06-30T12:03:00Z",
+      "sha256": "3768c609aa30b8d427ddca4824253fa63c095c97e6fc8679e10a0a831b937e7e",
+      "source_id": "S4",
+      "source_type": "synthetic_dataroom",
+      "tier": "B",
+      "uri": "synthetic://vectorforge/quarterly-pnl",
+      "payload_kind": "raw_document"
+    },
+    {
+      "path": "sources/cash-burn.txt",
+      "published_at": "2026-06-30T12:00:00Z",
+      "retrieved_at": "2026-06-30T12:04:00Z",
+      "sha256": "ed9cd32e29142eda196c6d0587f5a5ce1df612105a8db2ab432ffb11c3e1aa05",
+      "source_id": "S5",
+      "source_type": "synthetic_dataroom",
+      "tier": "B",
+      "uri": "synthetic://vectorforge/cash-burn",
+      "payload_kind": "raw_document"
+    },
+    {
+      "path": "sources/crm-pipeline.txt",
+      "published_at": "2026-06-30T12:00:00Z",
+      "retrieved_at": "2026-06-30T12:05:00Z",
+      "sha256": "6d66735bc74562e5c2102ba13368a5e53a14fa487c1f145f9a19f2e0cd31c043",
+      "source_id": "S6",
+      "source_type": "synthetic_dataroom",
+      "tier": "B",
+      "uri": "synthetic://vectorforge/crm-pipeline",
+      "payload_kind": "raw_document"
+    },
+    {
+      "path": "sources/vendor-benchmark.txt",
+      "published_at": "2026-06-10T12:00:00Z",
+      "retrieved_at": "2026-06-30T12:06:00Z",
+      "sha256": "8a12988ff04324990bf21a71ca92fde412419421e0c6443a3e78e1a46ce63c39",
+      "source_id": "S7",
+      "source_type": "synthetic_dataroom",
+      "tier": "B",
+      "uri": "synthetic://vectorforge/vendor-benchmark",
+      "payload_kind": "raw_document"
+    },
+    {
+      "path": "sources/security-letter.txt",
+      "published_at": "2026-06-12T12:00:00Z",
+      "retrieved_at": "2026-06-30T12:07:00Z",
+      "sha256": "1f1b0498308a7492a0b7adbbc2dd8476c7b15cfdaebf9dbf9d9d1d05cb803b54",
+      "source_id": "S8",
+      "source_type": "synthetic_dataroom",
+      "tier": "B",
+      "uri": "synthetic://vectorforge/security-letter",
+      "payload_kind": "raw_document"
+    },
+    {
+      "path": "sources/concentration.txt",
+      "published_at": "2026-06-30T12:00:00Z",
+      "retrieved_at": "2026-06-30T12:08:00Z",
+      "sha256": "a848be8d659ba98a7c5dd366878f86986135a012b9e4872140dc4982cc6c7db5",
+      "source_id": "S9",
+      "source_type": "synthetic_dataroom",
+      "tier": "B",
+      "uri": "synthetic://vectorforge/concentration",
+      "payload_kind": "raw_document"
+    },
+    {
+      "path": "sources/term-sheet.txt",
+      "published_at": "2026-06-25T12:00:00Z",
+      "retrieved_at": "2026-06-30T12:09:00Z",
+      "sha256": "9e8683c9e6f76067b77aa07666cb666a87159a0dfc1988abd73ab680e829411d",
+      "source_id": "S10",
+      "source_type": "synthetic_dataroom",
+      "tier": "B",
+      "uri": "synthetic://vectorforge/term-sheet",
+      "payload_kind": "raw_document"
+    },
+    {
+      "path": "sources/post-cutoff-release.txt",
+      "published_at": "2026-07-15T12:00:00Z",
+      "retrieved_at": "2026-07-15T12:00:00Z",
+      "sha256": "dda539b421e87fa239fca20b9b69f18f4bd2c04e16683a6d526eaba80ad14fca",
+      "source_id": "S11",
+      "source_type": "synthetic_dataroom",
+      "tier": "D",
+      "uri": "synthetic://vectorforge/post-cutoff-release",
+      "payload_kind": "raw_document"
+    }
   ]
 }

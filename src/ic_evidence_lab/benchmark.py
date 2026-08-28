@@ -17,16 +17,18 @@ def _find(records: list[dict[str, Any]], key: str, value: str) -> dict[str, Any]
     for record in records:
         if record.get(key) == value:
             return record
-    raise ValueError(f"benchmark target not found: {key}={value}")
+    raise ValueError(f"regression target not found: {key}={value}")
 
 
 def _mutate(case: dict[str, Any], root: Path, mutation: dict[str, Any]) -> None:
     kind = mutation["type"]
     if kind == "none":
         return
-    if kind.startswith("claim_") or kind.startswith("calc_") or kind in {
-        "remove_counterevidence", "counter_source_unknown"
-    }:
+    if (
+        kind.startswith("claim_")
+        or kind.startswith("calc_")
+        or kind in {"remove_counterevidence", "counter_source_unknown"}
+    ):
         claim = _find(case["claims"], "claim_id", mutation["claim_id"])
         if kind == "claim_quote":
             claim["evidence"][0]["quote"] = mutation["value"]
@@ -51,26 +53,30 @@ def _mutate(case: dict[str, Any], root: Path, mutation: dict[str, Any]) -> None:
         (root / source["path"]).write_bytes(data)
         source["sha256"] = hashlib.sha256(data).hexdigest()
     else:
-        raise ValueError(f"unsupported benchmark mutation: {kind}")
+        raise ValueError(f"unsupported regression mutation: {kind}")
 
 
 def _actual(packet: dict[str, Any], target: str) -> str:
     kind, _, identifier = target.partition(":")
     if kind == "claim":
-        return _find(packet["claim_results"], "claim_id", identifier)["state"]
+        return _find(packet["claim_results"], "claim_id", identifier)["citation_status"]
     if kind == "source":
         return _find(packet["source_results"], "source_id", identifier)["status"]
-    raise ValueError(f"unsupported benchmark target: {target}")
+    raise ValueError(f"unsupported regression target: {target}")
 
 
-def run_benchmark(repo: str | Path) -> dict[str, Any]:
+def run_regression_suite(repo: str | Path) -> dict[str, Any]:
     root = Path(repo).resolve(strict=True)
-    manifest = json.loads((root / "benchmark/manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads(
+        (root / "benchmark/manifest.json").read_text(encoding="utf-8")
+    )
     results: list[dict[str, str]] = []
     for definition in manifest["cases"]:
         with tempfile.TemporaryDirectory(prefix="ic-evidence-bench-") as temporary:
             case_root = Path(temporary)
-            shutil.copytree(root / "examples/vectorforge/sources", case_root / "sources")
+            shutil.copytree(
+                root / "examples/vectorforge/sources", case_root / "sources"
+            )
             base_path = root / f"examples/vectorforge/case-{definition['base']}.json"
             case = copy.deepcopy(json.loads(base_path.read_text(encoding="utf-8")))
             _mutate(case, case_root, definition["mutation"])
@@ -78,28 +84,41 @@ def run_benchmark(repo: str | Path) -> dict[str, Any]:
             case_path.write_bytes(canonical_json(case) + b"\n")
             try:
                 packet, _ = run_case(case_path)
-                actual = "NO_ERROR" if definition["target"] == "error" else _actual(packet, definition["target"])
+                actual = (
+                    "NO_ERROR"
+                    if definition["target"] == "error"
+                    else _actual(packet, definition["target"])
+                )
             except CaseError:
                 actual = "FAIL"
             matched = actual == definition["expected"]
-            results.append({
-                "id": definition["id"],
-                "family": definition["family"],
-                "expected": definition["expected"],
-                "actual": actual,
-                "result": "PASS" if matched else "FAIL",
-            })
+            results.append(
+                {
+                    "id": definition["id"],
+                    "family": definition["family"],
+                    "expected": definition["expected"],
+                    "actual": actual,
+                    "result": "PASS" if matched else "FAIL",
+                }
+            )
     counts = Counter(result["result"] for result in results)
     output_without_digest = {
-        "schema_version": "ic-evidence-lab.benchmark-results/v1",
+        "schema_version": "ic-evidence-lab.deterministic-regression-results/v1",
         "manifest_sha256": digest_json(manifest),
         "total": len(results),
         "matched": counts["PASS"],
         "failed": counts["FAIL"],
-        "status": "PASS" if counts["FAIL"] == 0 and len(results) == manifest["case_count"] else "FAIL",
+        "status": "PASS"
+        if counts["FAIL"] == 0 and len(results) == manifest["case_count"]
+        else "FAIL",
         "results": results,
         "limitations": manifest["limitations"],
     }
     output = dict(output_without_digest)
     output["content_sha256"] = digest_json(output_without_digest)
     return output
+
+
+def run_benchmark(repo: str | Path) -> dict[str, Any]:
+    """Compatibility alias; these cases are deterministic regressions, not an AI benchmark."""
+    return run_regression_suite(repo)

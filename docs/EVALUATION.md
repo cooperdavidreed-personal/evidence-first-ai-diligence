@@ -1,6 +1,6 @@
 # Evaluation plan
 
-The benchmark manifest defines 24 executable cases in eight families. A local
+The deterministic regression manifest defines 24 executable cases in eight families. A local
 result is evidence of declared control behavior only; it is not investment
 accuracy, semantic-entailment accuracy, or hosted reliability.
 

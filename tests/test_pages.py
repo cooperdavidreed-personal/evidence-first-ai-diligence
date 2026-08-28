@@ -34,13 +34,20 @@ def test_static_pages_are_built_from_canonical_cases(tmp_path: Path) -> None:
     assert "does not make investment decisions" in page
     assert 'class="skip" href="#content"' in page
     assert '<main id="content">' in page
-    assert "<caption>States for the corrected synthetic case</caption>" in page
+    assert (
+        "<caption>Citation statuses for the corrected synthetic case</caption>" in page
+    )
     assert 'rel="icon" href="data:image/svg+xml' in page
     assert "VectorForge AI" not in page or "synthetic" in page.lower()
     assert (tmp_path / "data/after.json").is_file()
     assert (tmp_path / "data/after-receipt.json").is_file()
     assert not (tmp_path / "assets/app.js").exists()
-    for relative in ("assets/styles.css", "data/after.json", "data/after-receipt.json", "data/before.json"):
+    for relative in (
+        "assets/styles.css",
+        "data/after.json",
+        "data/after-receipt.json",
+        "data/before.json",
+    ):
         assert (tmp_path / relative).is_file()
     parser = ResourceParser()
     parser.feed(page)

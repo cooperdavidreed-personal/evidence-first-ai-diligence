@@ -7,7 +7,7 @@ release evidence. The initial public slice is entirely offline:
 2. Sanitized snapshots enter a content-addressed local source pack.
 3. Candidate claims declare exact evidence and counterevidence spans.
 4. Code checks paths, hashes, dates, literal containment, and `Decimal` math.
-5. Judgments remain `HUMAN_REVIEW`; material gaps keep the workflow on `HOLD`.
+5. Semantic assessment remains `NOT_RUN`, adjudication remains `PENDING_HUMAN`, and material gaps keep the workflow on `HOLD`.
 6. The packet and receipt are serialized deterministically and hashed.
 7. The released toolkit can independently inspect artifacts through MCP.
 

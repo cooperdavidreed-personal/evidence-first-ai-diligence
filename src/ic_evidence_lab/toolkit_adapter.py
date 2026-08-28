@@ -53,7 +53,7 @@ async def _verify_packet(root: Path, packet_path: str) -> dict[str, Any]:
                 "verify_artifact",
                 arguments={
                     "artifact_path": packet_path,
-                    "required_terms": ["ic-evidence-lab.packet/v1", "content_sha256", "limitations"],
+                    "required_terms": ["ic-evidence-lab.packet/v2", "content_sha256", "limitations"],
                     "forbidden_terms": ["BUY", "SELL", "guaranteed return"],
                 },
             )

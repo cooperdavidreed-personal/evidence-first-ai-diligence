@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/ic-evidence-lab/case.schema.json",
+  "title": "IC Evidence Lab Case",
+  "type": "object",
+  "required": ["schema_version", "case_id", "company", "as_of", "generated_at", "source_policy", "sources", "claims", "open_questions"],
+  "properties": {
+    "schema_version": {"const": "ic-evidence-lab.case/v2"},
+    "case_id": {"type": "string", "minLength": 1, "maxLength": 120},
+    "company": {"type": "string", "minLength": 1, "maxLength": 200},
+    "as_of": {"type": "string", "format": "date-time"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "source_policy": {"$ref": "#/$defs/source_policy"},
+    "sources": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/source"}},
+    "claims": {"type": "array", "minItems": 1, "maxItems": 200, "items": {"$ref": "#/$defs/claim"}},
+    "open_questions": {"type": "array", "maxItems": 200, "items": {"type": "string", "minLength": 1, "maxLength": 2000}}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "tier": {"enum": ["A", "B", "C", "D"]},
+    "tier_by_materiality": {
+      "type": "object",
+      "required": ["high", "medium", "low"],
+      "properties": {
+        "high": {"$ref": "#/$defs/tier"},
+        "medium": {"$ref": "#/$defs/tier"},
+        "low": {"$ref": "#/$defs/tier"}
+      },
+      "additionalProperties": false
+    },
+    "source_policy": {
+      "type": "object",
+      "required": ["minimum_tier"],
+      "properties": {
+        "minimum_tier": {
+          "type": "object",
+          "required": ["fact", "derived"],
+          "properties": {
+            "fact": {"$ref": "#/$defs/tier_by_materiality"},
+            "derived": {"$ref": "#/$defs/tier_by_materiality"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "effective_period": {
+      "type": "object",
+      "properties": {
+        "start": {"type": "string", "format": "date"},
+        "end": {"type": "string", "format": "date"}
+      },
+      "anyOf": [{"required": ["start"]}, {"required": ["end"]}],
+      "additionalProperties": false
+    },
+    "locator": {
+      "type": "object",
+      "required": ["scheme", "start", "end", "quote_sha256", "section_label"],
+      "properties": {
+        "scheme": {"const": "utf8-byte-offset/v1"},
+        "start": {"type": "integer", "minimum": 0},
+        "end": {"type": "integer", "minimum": 1},
+        "quote_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "section_label": {"type": "string", "minLength": 1, "maxLength": 300}
+      },
+      "additionalProperties": false
+    },
+    "span": {
+      "type": "object",
+      "required": ["source_id", "quote", "locator"],
+      "properties": {
+        "source_id": {"type": "string", "minLength": 1, "maxLength": 120},
+        "quote": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "locator": {"$ref": "#/$defs/locator"}
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": ["source_id", "uri", "source_type", "payload_kind", "tier", "published_at", "retrieved_at", "path", "sha256"],
+      "properties": {
+        "source_id": {"type": "string", "minLength": 1, "maxLength": 120},
+        "uri": {"type": "string", "minLength": 1, "maxLength": 2048},
+        "source_type": {"type": "string", "minLength": 1, "maxLength": 120},
+        "payload_kind": {"enum": ["raw_document", "extract"]},
+        "tier": {"$ref": "#/$defs/tier"},
+        "published_at": {"type": "string", "format": "date-time"},
+        "retrieved_at": {"type": "string", "format": "date-time"},
+        "effective_period": {"$ref": "#/$defs/effective_period"},
+        "accession_no": {"type": "string", "minLength": 1, "maxLength": 40},
+        "path": {"type": "string", "minLength": 1, "maxLength": 512},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      },
+      "additionalProperties": false
+    },
+    "calculation": {
+      "type": "object",
+      "required": ["operation", "numerator", "denominator", "expected", "unit"],
+      "properties": {
+        "operation": {"enum": ["growth_rate", "gross_margin", "ratio", "runway"]},
+        "numerator": {"type": "string", "pattern": "^-?(?:0|[1-9][0-9]{0,30})(?:\\.[0-9]{1,12})?$"},
+        "denominator": {"type": "string", "pattern": "^-?(?:0|[1-9][0-9]{0,30})(?:\\.[0-9]{1,12})?$"},
+        "expected": {"type": "string", "pattern": "^-?(?:0|[1-9][0-9]{0,30})(?:\\.[0-9]{1,12})?$"},
+        "unit": {"enum": ["percent", "months"]}
+      },
+      "additionalProperties": false
+    },
+    "claim": {
+      "type": "object",
+      "required": ["claim_id", "statement", "kind", "materiality", "evidence", "counterevidence"],
+      "properties": {
+        "claim_id": {"type": "string", "minLength": 1, "maxLength": 120},
+        "statement": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "kind": {"enum": ["fact", "derived", "judgment"]},
+        "materiality": {"enum": ["high", "medium", "low"]},
+        "evidence": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/span"}},
+        "counterevidence": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/span"}},
+        "calculation": {"$ref": "#/$defs/calculation"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

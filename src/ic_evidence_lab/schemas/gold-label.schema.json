@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/ic-evidence-lab/gold-label.schema.json",
+  "title": "IC Evidence Lab Gold Label",
+  "type": "object",
+  "required": ["schema_version", "task_id", "family", "split", "source_pack_sha256", "as_of", "prompt_sha256", "claim", "citation_status", "evidence", "counterevidence", "normalized_fields", "semantic_label", "calculation", "investment_implication", "uncertainty", "labeler_id", "labeled_at", "label_sha256"],
+  "properties": {
+    "schema_version": {"const": "ic-evidence-lab.gold-label/v1"},
+    "task_id": {"type": "string", "pattern": "^CW-TASK-[0-9]{3}$"},
+    "family": {"enum": ["atomic_extraction", "period_unit_currency_definition", "definition_reconciliation", "counterevidence_relationship", "multi_step_calculation", "temporal_cutoff", "justified_abstention", "investment_implication"]},
+    "split": {"enum": ["DEV", "HELD_OUT"]},
+    "source_pack_sha256": {"$ref": "#/$defs/sha256"},
+    "as_of": {"type": "string", "format": "date-time"},
+    "prompt_sha256": {"$ref": "#/$defs/sha256"},
+    "claim": {"type": ["string", "null"], "maxLength": 4096},
+    "citation_status": {"enum": ["EXACT_BYTES_MATCH", "LOCATOR_MISMATCH", "NO_CITATION_REQUIRED", "ABSTAIN"]},
+    "evidence": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/span"}},
+    "counterevidence": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/span"}},
+    "normalized_fields": {"$ref": "#/$defs/normalized_fields"},
+    "semantic_label": {"enum": ["SUPPORTED", "COUNTERSUPPORTED", "DEFINITION_RECONCILIATION_REQUIRED", "INSUFFICIENT_EVIDENCE", "NOT_APPLICABLE", "ABSTAIN"]},
+    "calculation": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/calculation"}]},
+    "investment_implication": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/investment_implication"}]},
+    "uncertainty": {"type": "array", "maxItems": 50, "items": {"type": "string", "minLength": 1, "maxLength": 2000}},
+    "labeler_id": {"type": "string", "pattern": "^LABELER-[A-Z0-9_-]{2,32}$"},
+    "labeled_at": {"type": "string", "format": "date-time"},
+    "label_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "span": {
+      "type": "object",
+      "required": ["source_id", "scheme", "start", "end", "quote_sha256", "section_label"],
+      "properties": {
+        "source_id": {"type": "string", "minLength": 1, "maxLength": 120},
+        "scheme": {"const": "utf8-byte-offset/v1"},
+        "start": {"type": "integer", "minimum": 0},
+        "end": {"type": "integer", "minimum": 1},
+        "quote_sha256": {"$ref": "#/$defs/sha256"},
+        "section_label": {"type": "string", "minLength": 1, "maxLength": 300}
+      },
+      "additionalProperties": false
+    },
+    "normalized_fields": {
+      "type": "object",
+      "required": ["period", "currency", "unit", "metric", "definition_id"],
+      "properties": {
+        "period": {"type": ["string", "null"], "maxLength": 120},
+        "currency": {"type": ["string", "null"], "maxLength": 12},
+        "unit": {"type": ["string", "null"], "maxLength": 80},
+        "metric": {"type": ["string", "null"], "maxLength": 120},
+        "definition_id": {"type": ["string", "null"], "maxLength": 120}
+      },
+      "additionalProperties": false
+    },
+    "calculation": {
+      "type": "object",
+      "required": ["operands", "operation", "expected", "tolerance", "unit"],
+      "properties": {
+        "operands": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"type": "string", "pattern": "^-?(?:0|[1-9][0-9]{0,30})(?:\\.[0-9]{1,12})?$"}},
+        "operation": {"enum": ["add", "subtract", "growth_rate", "gross_margin", "ratio", "runway"]},
+        "expected": {"type": "string", "pattern": "^-?(?:0|[1-9][0-9]{0,30})(?:\\.[0-9]{1,12})?$"},
+        "tolerance": {"type": "string", "pattern": "^(?:0|[1-9][0-9]{0,30})(?:\\.[0-9]{1,12})?$"},
+        "unit": {"type": "string", "minLength": 1, "maxLength": 80}
+      },
+      "additionalProperties": false
+    },
+    "investment_implication": {
+      "type": "object",
+      "required": ["category", "rationale"],
+      "properties": {
+        "category": {"enum": ["POSITIVE", "NEGATIVE", "MIXED", "NO_CONCLUSION"]},
+        "rationale": {"type": "string", "minLength": 1, "maxLength": 4000}
+      },
+      "additionalProperties": false
+    }
+  }
+}

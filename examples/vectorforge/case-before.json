@@ -1,41 +1,56 @@
 {
-  "schema_version": "ic-evidence-lab.case/v1",
+  "as_of": "2026-06-30T23:59:59Z",
   "case_id": "vectorforge-before-v1",
-  "company": "VectorForge AI (synthetic)",
-  "as_of": "2026-06-30",
-  "generated_at": "2026-06-30T23:59:59Z",
-  "sources": [
-    {
-      "source_id": "S1",
-      "uri": "synthetic://vectorforge/founder-kpi-memo",
-      "source_type": "synthetic_dataroom",
-      "tier": "B",
-      "published_at": "2026-06-20",
-      "retrieved_at": "2026-06-30T12:00:00Z",
-      "path": "sources/founder-kpi-memo.txt",
-      "sha256": "c24a0ce01dd74ec6111cb9b771bad561b54c62200b7ad1bc5fd5bbed3a74d3f3"
-    }
-  ],
   "claims": [
     {
       "claim_id": "C1",
-      "statement": "VectorForge has $4.8 million of contracted ARR.",
+      "counterevidence": [],
+      "evidence": [],
       "kind": "fact",
       "materiality": "high",
-      "evidence": [],
-      "counterevidence": []
+      "statement": "VectorForge has $4.8 million of contracted ARR."
     },
     {
       "claim_id": "C2",
-      "statement": "VectorForge is an attractive Series A investment.",
+      "counterevidence": [],
+      "evidence": [],
       "kind": "judgment",
       "materiality": "high",
-      "evidence": [],
-      "counterevidence": []
+      "statement": "VectorForge is an attractive Series A investment."
     }
   ],
+  "company": "VectorForge AI (synthetic)",
+  "generated_at": "2026-06-30T23:59:59Z",
   "open_questions": [
     "What portion of reported ARR is contracted and non-cancellable?",
     "What evidence would falsify the investment thesis?"
+  ],
+  "schema_version": "ic-evidence-lab.case/v2",
+  "source_policy": {
+    "minimum_tier": {
+      "derived": {
+        "high": "B",
+        "low": "C",
+        "medium": "B"
+      },
+      "fact": {
+        "high": "B",
+        "low": "C",
+        "medium": "B"
+      }
+    }
+  },
+  "sources": [
+    {
+      "path": "sources/founder-kpi-memo.txt",
+      "published_at": "2026-06-20T12:00:00Z",
+      "retrieved_at": "2026-06-30T12:00:00Z",
+      "sha256": "c24a0ce01dd74ec6111cb9b771bad561b54c62200b7ad1bc5fd5bbed3a74d3f3",
+      "source_id": "S1",
+      "source_type": "synthetic_dataroom",
+      "tier": "B",
+      "uri": "synthetic://vectorforge/founder-kpi-memo",
+      "payload_kind": "raw_document"
+    }
   ]
 }

@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from .benchmark import run_benchmark
+from .benchmark import run_regression_suite
 from .canonical import canonical_json
 from .pipeline import CaseError, write_outputs
 from .toolkit_adapter import verify_release_bundle
@@ -17,21 +17,39 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--case", required=True)
     run.add_argument("--out", required=True)
     run.add_argument("--toolkit", action="store_true")
-    benchmark = subparsers.add_parser("benchmark", help="run the 24-case offline benchmark")
-    benchmark.add_argument("--out", required=True)
-    benchmark.add_argument("--root", default=".", help="repository root containing benchmark/ and examples/")
+    for command, help_text in (
+        ("regression", "run the 24-case deterministic offline regression suite"),
+        ("benchmark", "deprecated alias for the deterministic regression suite"),
+    ):
+        regression = subparsers.add_parser(command, help=help_text)
+        regression.add_argument("--out", required=True)
+        regression.add_argument(
+            "--root",
+            default=".",
+            help="repository root containing benchmark/ and examples/",
+        )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    if args.command == "benchmark":
+    if args.command in {"benchmark", "regression"}:
         repo = Path(args.root).resolve(strict=True)
-        results = run_benchmark(repo)
+        results = run_regression_suite(repo)
         destination = Path(args.out)
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(canonical_json(results) + b"\n")
-        print(json.dumps({"status": results["status"], "matched": results["matched"], "total": results["total"], "output": destination.as_posix()}, sort_keys=True))
+        print(
+            json.dumps(
+                {
+                    "status": results["status"],
+                    "matched": results["matched"],
+                    "total": results["total"],
+                    "output": destination.as_posix(),
+                },
+                sort_keys=True,
+            )
+        )
         return 0 if results["status"] == "PASS" else 1
     try:
         packet_path, receipt_path, memo_path = write_outputs(args.case, args.out)

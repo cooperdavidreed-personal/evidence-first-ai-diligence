@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/ic-evidence-lab/receipt.schema.json",
+  "title": "IC Evidence Lab Receipt",
+  "type": "object",
+  "required": ["schema_version", "case_id", "case_sha256", "policy_sha256", "status", "workflow_disposition", "investment_decision", "citation_status_counts", "packet_sha256", "limitations"],
+  "properties": {
+    "schema_version": {"const": "ic-evidence-lab.receipt/v2"},
+    "case_id": {"type": "string"},
+    "case_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "policy_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "status": {"enum": ["CONTROL_BLOCKED", "CONTROL_READY_FOR_REVIEW"]},
+    "workflow_disposition": {"enum": ["HOLD", "READY_FOR_HUMAN_REVIEW"]},
+    "investment_decision": {"const": "PENDING_HUMAN"},
+    "citation_status_counts": {
+      "type": "object",
+      "properties": {
+        "LOCAL_CITATION_BYTES_MATCH": {"type": "integer", "minimum": 0},
+        "LOCAL_EVIDENCE_AND_COUNTER_BYTES_MATCH": {"type": "integer", "minimum": 0},
+        "LOCAL_COUNTER_BYTES_MATCH": {"type": "integer", "minimum": 0},
+        "CITATION_BYTES_MISMATCH": {"type": "integer", "minimum": 0},
+        "NO_CITATIONS": {"type": "integer", "minimum": 0},
+        "SOURCE_CONTROL_BLOCKED": {"type": "integer", "minimum": 0},
+        "CALC_CONTROL_MISMATCH": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "packet_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "limitations": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}

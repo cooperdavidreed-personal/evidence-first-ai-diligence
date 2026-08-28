@@ -4,13 +4,16 @@
 
 This local workflow connects candidate claims, counterevidence, retained source
 snapshots, unresolved questions, and content-addressed receipts. It helps a
-human reviewer inspect what is supported, contradicted, blocked, or unverified.
+human reviewer inspect which declared citation bytes match, which source or
+calculation controls block, and which questions still require semantic and
+human adjudication.
 It does not make investment decisions or provide investment advice.
 
 > **Status: LOCAL FOUNDATION — PRODUCT AND PRESENTATION REASSESSMENT**
 
-Current local evidence: 20 Python tests pass, all 24 declared benchmark outcomes
-match, repeated packet outputs are byte-identical, and the released Evidence
+Current local evidence: 35 tests pass on Python 3.11, 3.12, and 3.13; all 24
+declared deterministic regression outcomes match; repeated packet outputs are
+byte-identical; and the released Evidence
 Gate and Release Gate 0.1.1 packages return `PASS` for the generated bundle.
 Hosted CI remains `NOT RUN`.
 
@@ -35,7 +38,7 @@ post-cutoff source that must be rejected. Both runs preserve their limitations.
 
 ## Render the 80-second prototype visualization
 
-The source-bound prototype shows failure, retained `UNVERIFIED`/`HOLD` states,
+The source-bound prototype shows failure, retained `NO_CITATIONS`/`HOLD` states,
 corrected inputs, deterministic rerun, open questions, and the final release
 receipt. It is silent and caption-led; complete SRT and WebVTT files are checked
 against the storyboard.

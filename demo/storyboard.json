@@ -20,7 +20,7 @@
       "eyebrow": "01  /  FAILURE",
       "title": "Unsupported material claims stop the workflow.",
       "body": "The candidate memo starts with a $4.8 million contracted ARR claim but supplies no retained evidence.",
-      "proof": "C1  →  UNVERIFIED     workflow  →  HOLD",
+      "proof": "C1  →  NO_CITATIONS     workflow  →  HOLD",
       "caption": "The candidate memo starts with an unsupported claim: VectorForge has 4.8 million dollars of contracted ARR.",
       "source": "examples/vectorforge/case-before.json"
     },
@@ -30,9 +30,9 @@
       "eyebrow": "02  /  RETAIN THE FAILURE",
       "title": "Failure is a result—not an exception.",
       "body": "The receipt preserves the failing state, limitations, source inventory, and content digest for review.",
-      "proof": "UNVERIFIED is explicit. HOLD is deterministic.",
-      "caption": "The local gate returns unverified, and the workflow stays on hold. That failure is retained in the receipt.",
-      "source": "schemas/receipt.schema.json"
+      "proof": "NO_CITATIONS is explicit. HOLD is deterministic.",
+      "caption": "The local gate records no citations, and the workflow stays on hold. That failure is retained in the receipt.",
+      "source": "src/ic_evidence_lab/schemas/receipt.schema.json"
     },
     {
       "start": 31,
