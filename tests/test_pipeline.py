@@ -94,6 +94,6 @@ def test_prompt_injection_source_is_blocked(tmp_path: Path) -> None:
 
 def test_manifest_declares_24_cases_in_8_families() -> None:
     manifest = json.loads((ROOT / "benchmark/manifest.json").read_text())
-    assert manifest["status"] == "DESIGNED_NOT_YET_EXECUTED"
-    assert len(manifest["families"]) == 8
-    assert sum(len(family["cases"]) for family in manifest["families"]) == 24
+    assert manifest["status"] == "EXECUTABLE"
+    assert len({case["family"] for case in manifest["cases"]}) == 8
+    assert len(manifest["cases"]) == 24

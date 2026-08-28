@@ -18,7 +18,7 @@ MAX_SOURCE_BYTES = 2 * 1024 * 1024
 MAX_SOURCES = 12
 MAX_CLAIMS = 40
 INJECTION_PATTERNS = (
-    re.compile(r"\bignore (?:all|any|the|previous|prior) instructions\b", re.I),
+    re.compile(r"\bignore (?:all |any |the )?(?:previous |prior )?instructions\b", re.I),
     re.compile(r"\bsystem prompt\b", re.I),
     re.compile(r"\bexfiltrat(?:e|ion)\b", re.I),
     re.compile(r"\bcall (?:this )?tool\b", re.I),
@@ -89,6 +89,7 @@ def _normalize(value: str) -> str:
 
 def _compute(calculation: dict[str, Any]) -> tuple[str, bool]:
     operation = _required_string(calculation, "operation", limit=32)
+    unit = _required_string(calculation, "unit", limit=32)
     try:
         numerator = Decimal(_required_string(calculation, "numerator", limit=100))
         denominator = Decimal(_required_string(calculation, "denominator", limit=100))
@@ -98,10 +99,16 @@ def _compute(calculation: dict[str, Any]) -> tuple[str, bool]:
     if denominator == 0:
         raise CaseError("calculation_division_by_zero")
     if operation == "growth_rate":
+        if unit != "percent":
+            raise CaseError("calculation_unit_invalid")
         computed = ((numerator - denominator) / denominator) * Decimal("100")
     elif operation in {"gross_margin", "ratio"}:
+        if unit != "percent":
+            raise CaseError("calculation_unit_invalid")
         computed = (numerator / denominator) * Decimal("100")
     elif operation == "runway":
+        if unit != "months":
+            raise CaseError("calculation_unit_invalid")
         computed = numerator / denominator
     else:
         raise CaseError("calculation_operation_invalid")

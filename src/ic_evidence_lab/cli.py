@@ -4,6 +4,8 @@ import argparse
 import json
 from pathlib import Path
 
+from .benchmark import run_benchmark
+from .canonical import canonical_json
 from .pipeline import CaseError, write_outputs
 from .toolkit_adapter import verify_packet
 
@@ -15,11 +17,21 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--case", required=True)
     run.add_argument("--out", required=True)
     run.add_argument("--toolkit", action="store_true")
+    benchmark = subparsers.add_parser("benchmark", help="run the 24-case offline benchmark")
+    benchmark.add_argument("--out", required=True)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.command == "benchmark":
+        repo = Path(__file__).resolve().parents[2]
+        results = run_benchmark(repo)
+        destination = Path(args.out)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(canonical_json(results) + b"\n")
+        print(json.dumps({"status": results["status"], "matched": results["matched"], "total": results["total"], "output": destination.as_posix()}, sort_keys=True))
+        return 0 if results["status"] == "PASS" else 1
     try:
         packet_path, receipt_path, memo_path = write_outputs(args.case, args.out)
     except CaseError as exc:

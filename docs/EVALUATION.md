@@ -1,7 +1,8 @@
 # Evaluation plan
 
-The benchmark manifest defines 24 cases in eight families. Its current literal
-status is `DESIGNED_NOT_YET_EXECUTED`; no accuracy percentage may be claimed.
+The benchmark manifest defines 24 executable cases in eight families. A local
+result is evidence of declared control behavior only; it is not investment
+accuracy, semantic-entailment accuracy, or hosted reliability.
 
 The release target is 16 visible development cases and eight held-out cases,
 with held-out inputs hashed before three final repetitions. Deterministic checks
