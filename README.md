@@ -7,7 +7,7 @@ snapshots, unresolved questions, and content-addressed receipts. It helps a
 human reviewer inspect what is supported, contradicted, blocked, or unverified.
 It does not make investment decisions or provide investment advice.
 
-> **Status: LOCAL DRAFT — NOT YET PUBLICLY VERIFIED**
+> **Status: LOCAL RELEASE CANDIDATE — NOT YET PUBLICLY VERIFIED**
 
 Current local evidence: 19 Python tests pass, all 24 declared benchmark outcomes
 match, repeated packet outputs are byte-identical, and the released Evidence
@@ -92,4 +92,4 @@ retention rights and private-company economics are unavailable.
 ## Authorship
 
 The proposed public attribution is recorded in [AUTHORS.md](AUTHORS.md) and
-remains subject to Cooper Reed's final review before publication.
+the project is licensed under [Apache-2.0](LICENSE).
