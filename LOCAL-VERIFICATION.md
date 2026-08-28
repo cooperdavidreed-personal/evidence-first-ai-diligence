@@ -3,7 +3,7 @@
 Status: `VERIFIED_LOCAL — PUBLICATION AUTHORIZED; PERSONAL CLI AUTH PENDING`
 
 Implementation commit tested:
-`a0852a655891c17803bf01761488a4f3f3cc68c9`
+`1717abb1fbaf579ba2b8855f6e151d1043f60c68`
 
 Environment: macOS, Python 3.11, ffmpeg 8.1.2. Hosted CI on Ubuntu/macOS
 and Python 3.11–3.13 remains `NOT RUN` until the repository is pushed.
@@ -12,7 +12,7 @@ and Python 3.11–3.13 remains `NOT RUN` until the repository is pushed.
 
 - Python tests: 20/20 passed.
 - Executable benchmark: 24/24 declared outcomes matched across eight families.
-- Public-tree scan: 67 candidate files, zero findings.
+- Public-tree scan: 70 candidate files, zero findings.
 - Repeated packet, memo, and receipt outputs: byte-identical.
 - Released `dailyaiagents-evidence-gate==0.1.1`: exact four-tool discovery and
   three artifact-verification receipts returned `PASS` through MCP stdio.
@@ -42,9 +42,9 @@ and Python 3.11–3.13 remains `NOT RUN` until the repository is pushed.
 - Benchmark results (`verification/benchmark-results.json`):
   `62897aa7ae036e6a41649f2f8dbe32c7aab84ffbe567b88f45369aa91c1f26bd`
 - Wheel:
-  `178aee814abe4122c24f0e03e8c7552712b2c697e15186578574bd9963eaa413`
+  `00f05e3a8c8bb957dd9515d47a2076264172e20eba6eae522ffca9b62609b65d`
 - Source distribution:
-  `c1cfb0e9ff6d4b49e2bc4a4e405359f41b55f9af754126f80690b699b426f747`
+  `d70dc0d5253ee9414868833f7c732fb71d1643a445f01739cd5cd925e264b37f`
 - Generated Pages index:
   `2c50004e9bfcbaa8689004b4a4496393b2f9f42caea8726d1e1ac1a9dfc8ff7f`
 - Rendered demo video:
