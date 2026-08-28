@@ -9,7 +9,7 @@ It does not make investment decisions or provide investment advice.
 
 > **Status: LOCAL DRAFT — NOT YET PUBLICLY VERIFIED**
 
-Current local evidence: 17 Python tests pass, all 24 declared benchmark outcomes
+Current local evidence: 19 Python tests pass, all 24 declared benchmark outcomes
 match, repeated packet outputs are byte-identical, and the released Evidence
 Gate and Release Gate 0.1.1 packages return `PASS` for the generated bundle.
 Hosted CI remains `NOT RUN`.
@@ -32,6 +32,23 @@ ic-evidence-lab run \
 The first case leaves a material growth claim unsupported. The corrected case
 adds retained evidence, deterministic calculations, counterevidence, and a
 post-cutoff source that must be rejected. Both runs preserve their limitations.
+
+## Render the 80-second demonstration
+
+The source-bound demo shows failure, retained `UNVERIFIED`/`HOLD` states,
+corrected inputs, deterministic rerun, open questions, and the final release
+receipt. It is silent and caption-led; complete SRT and WebVTT files are checked
+against the storyboard.
+
+```bash
+uv sync --locked --extra demo
+uv run python scripts/render_demo.py --out dist/demo
+uv run python scripts/verify_demo.py --root dist/demo
+```
+
+Local verification requires H.264 at 1920×1080 and 30 fps, a duration between
+75 and 85 seconds, no audio track, matching captions, and a SHA-256-bound media
+manifest. Encoder and font versions may change the MP4 bytes.
 
 ## What the project demonstrates
 

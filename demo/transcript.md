@@ -1,16 +1,19 @@
-# Demo transcript — draft
+# Demo transcript
 
 This system checks evidence for diligence. It does not make the investment
 decision. The candidate memo starts with an unsupported claim: VectorForge has
 $4.8 million of contracted ARR. The local gate returns `UNVERIFIED`, and the
 workflow stays on `HOLD`.
 
-Now add the retained synthetic billing exports, exact evidence spans, source
-dates, and SHA-256 digests. The same rules calculate 162.50% comparable ARR
-growth and 72.50% gross margin. They also preserve contradictions: reported ARR
-includes cancellable pilots, the security evidence is Type I rather than Type
-II, and a July contract is blocked by the June cutoff.
+That failure is retained in the receipt. Now add the retained synthetic source
+snapshots, exact evidence spans, source dates, calculations, and
+counterevidence. The same rules calculate the metrics, preserve contradictions,
+and reproduce the same hash-bound packet.
 
-The output is not a buy or sell recommendation. It is a claim ledger, open
-questions, and a human-review packet with a reproducible digest. Inspect every
-source, state, limitation, and receipt in the repository.
+The output is a claim ledger, an open-question queue, and a human-review
+packet—not a recommendation. Inspect every source, state, limitation, and
+receipt in the repository. Human judgment remains the boundary.
+
+The rendered video is intentionally silent and caption-led. SRT and WebVTT
+caption files contain the complete narration; no external voice or media
+service is required.

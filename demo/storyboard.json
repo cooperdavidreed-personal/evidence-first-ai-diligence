@@ -2,15 +2,81 @@
   "schema_version": "ic-evidence-lab.demo-storyboard/v1",
   "target_duration_seconds": 80,
   "allowed_duration_seconds": [75, 85],
-  "status": "SCRIPTED_NOT_RENDERED",
+  "status": "RENDERABLE_LOCAL",
   "scenes": [
-    {"start":0,"end":7,"title":"Boundary","source":"README.md"},
-    {"start":7,"end":18,"title":"Unsupported claim","source":"examples/vectorforge/case-before.json"},
-    {"start":18,"end":31,"title":"UNVERIFIED and HOLD","source":"dist/before/receipt.json"},
-    {"start":31,"end":45,"title":"Retained evidence and counterevidence","source":"examples/vectorforge/case-after.json"},
-    {"start":45,"end":59,"title":"Deterministic rerun","source":"dist/after/receipt.json"},
-    {"start":59,"end":72,"title":"Claim ledger and open questions","source":"dist/after/memo.md"},
-    {"start":72,"end":80,"title":"Receipt and architecture","source":"dist/after/packet.json"}
+    {
+      "start": 0,
+      "end": 7,
+      "eyebrow": "EVIDENCE-FIRST AI DILIGENCE",
+      "title": "A diligence packet that shows its work.",
+      "body": "Deterministic checks support human review. They do not make investment decisions.",
+      "proof": "Synthetic case  /  offline execution  /  explicit limitations",
+      "caption": "This system checks evidence for diligence. It does not make the investment decision.",
+      "source": "README.md"
+    },
+    {
+      "start": 7,
+      "end": 18,
+      "eyebrow": "01  /  FAILURE",
+      "title": "Unsupported material claims stop the workflow.",
+      "body": "The candidate memo starts with a $4.8 million contracted ARR claim but supplies no retained evidence.",
+      "proof": "C1  →  UNVERIFIED     workflow  →  HOLD",
+      "caption": "The candidate memo starts with an unsupported claim: VectorForge has 4.8 million dollars of contracted ARR.",
+      "source": "examples/vectorforge/case-before.json"
+    },
+    {
+      "start": 18,
+      "end": 31,
+      "eyebrow": "02  /  RETAIN THE FAILURE",
+      "title": "Failure is a result—not an exception.",
+      "body": "The receipt preserves the failing state, limitations, source inventory, and content digest for review.",
+      "proof": "UNVERIFIED is explicit. HOLD is deterministic.",
+      "caption": "The local gate returns unverified, and the workflow stays on hold. That failure is retained in the receipt.",
+      "source": "schemas/receipt.schema.json"
+    },
+    {
+      "start": 31,
+      "end": 45,
+      "eyebrow": "03  /  CORRECT THE INPUTS",
+      "title": "Evidence can support, contradict, or be blocked.",
+      "body": "Add frozen source snapshots, exact spans, source dates, calculations, and counterevidence—without erasing disagreement.",
+      "proof": "162.50% growth  /  72.50% margin  /  post-cutoff source BLOCKED",
+      "caption": "Now add retained synthetic source snapshots, exact evidence spans, source dates, calculations, and counterevidence.",
+      "source": "examples/vectorforge/case-after.json"
+    },
+    {
+      "start": 45,
+      "end": 59,
+      "eyebrow": "04  /  RERUN",
+      "title": "The same inputs produce the same packet.",
+      "body": "Canonical JSON, Decimal arithmetic, and SHA-256 bind the output to the reviewed inputs.",
+      "proof": "packet SHA-256  {packet_sha256}",
+      "caption": "The same rules calculate the metrics, preserve contradictions, and reproduce the same hash-bound packet.",
+      "source": "src/ic_evidence_lab/canonical.py"
+    },
+    {
+      "start": 59,
+      "end": 72,
+      "eyebrow": "05  /  REVIEW",
+      "title": "Every unresolved question survives into review.",
+      "body": "The output is a claim ledger and open-question queue—not a buy, sell, or approval recommendation.",
+      "proof": "{claim_count} claims  /  {question_count} open questions  /  human judgment retained",
+      "caption": "The output is a claim ledger, an open-question queue, and a human-review packet—not a recommendation.",
+      "source": "docs/EVALUATION.md"
+    },
+    {
+      "start": 72,
+      "end": 80,
+      "eyebrow": "06  /  VERIFY",
+      "title": "Two released MCP gates verify the bundle.",
+      "body": "Evidence Gate checks each artifact. Release Gate binds the verified artifacts into one release receipt.",
+      "proof": "Evidence Gate 0.1.1  →  PASS     Release Gate 0.1.1  →  PASS",
+      "caption": "Inspect every source, state, limitation, and receipt in the repository. Human judgment remains the boundary.",
+      "source": "src/ic_evidence_lab/toolkit_adapter.py"
+    }
   ],
-  "limitations": ["No video has been rendered or visually verified yet."]
+  "limitations": [
+    "The demo is silent and caption-led; no external voice or media service is used.",
+    "Rendering is reproducible from public repository inputs, but encoder and font versions can change media bytes."
+  ]
 }

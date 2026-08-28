@@ -18,6 +18,7 @@ toolkit = [
   "mcp==1.29.1",
 ]
 dev = ["pytest==8.3.5"]
+demo = ["Pillow==10.4.0"]
 
 [project.scripts]
 ic-evidence-lab = "ic_evidence_lab.cli:main"
