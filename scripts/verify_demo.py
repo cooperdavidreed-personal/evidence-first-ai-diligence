@@ -15,6 +15,11 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def require(condition: bool, message: str) -> None:
+    if not condition:
+        raise RuntimeError(message)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Verify the rendered portfolio demonstration")
     parser.add_argument("--root", default="dist/demo")
@@ -42,19 +47,31 @@ def main() -> int:
     video_streams = [stream for stream in media["streams"] if stream["codec_type"] == "video"]
     audio_streams = [stream for stream in media["streams"] if stream["codec_type"] == "audio"]
 
-    assert lower <= duration <= upper, duration
-    assert abs(duration - storyboard["target_duration_seconds"]) <= 0.1, duration
-    assert len(video_streams) == 1
-    assert audio_streams == []
+    require(lower <= duration <= upper, f"duration outside declared range: {duration}")
+    require(
+        abs(duration - storyboard["target_duration_seconds"]) <= 0.1,
+        f"duration differs from target: {duration}",
+    )
+    require(len(video_streams) == 1, f"expected one video stream, found {len(video_streams)}")
+    require(audio_streams == [], f"unexpected audio streams: {len(audio_streams)}")
     stream = video_streams[0]
-    assert stream["codec_name"] == "h264"
-    assert (stream["width"], stream["height"]) == (1920, 1080)
-    assert stream["pix_fmt"] == "yuv420p"
-    assert stream["avg_frame_rate"] == "30/1"
-    assert manifest["sha256"] == sha256(video)
-    assert manifest["packet_sha256"] and len(manifest["packet_sha256"]) == 64
-    assert (root / "captions.srt").read_text() == (repo / "demo/captions.srt").read_text()
-    assert (root / "captions.vtt").read_text() == (repo / "demo/captions.vtt").read_text()
+    require(stream["codec_name"] == "h264", f"unexpected codec: {stream['codec_name']}")
+    require((stream["width"], stream["height"]) == (1920, 1080), "unexpected resolution")
+    require(stream["pix_fmt"] == "yuv420p", f"unexpected pixel format: {stream['pix_fmt']}")
+    require(stream["avg_frame_rate"] == "30/1", f"unexpected frame rate: {stream['avg_frame_rate']}")
+    require(manifest["sha256"] == sha256(video), "video digest does not match manifest")
+    require(
+        bool(manifest["packet_sha256"]) and len(manifest["packet_sha256"]) == 64,
+        "packet digest is missing or malformed",
+    )
+    require(
+        (root / "captions.srt").read_text() == (repo / "demo/captions.srt").read_text(),
+        "rendered SRT captions do not match the public source",
+    )
+    require(
+        (root / "captions.vtt").read_text() == (repo / "demo/captions.vtt").read_text(),
+        "rendered WebVTT captions do not match the public source",
+    )
     print(
         json.dumps(
             {

@@ -17,8 +17,8 @@ toolkit = [
   "dailyaiagents-release-gate==0.1.1",
   "mcp==1.29.1",
 ]
-dev = ["pytest==8.3.5"]
-demo = ["Pillow==10.4.0"]
+dev = ["pytest==9.0.3"]
+demo = ["Pillow==12.3.0"]
 
 [project.scripts]
 ic-evidence-lab = "ic_evidence_lab.cli:main"
