@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ic-evidence-lab"
+version = "0.1.0.dev0"
+description = "Offline, evidence-first investment diligence reference workflow"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{name = "Cooper Reed"}]
+dependencies = []
+
+[project.optional-dependencies]
+toolkit = [
+  "dailyaiagents-evidence-gate==0.1.1",
+  "dailyaiagents-release-gate==0.1.1",
+  "mcp==1.29.1",
+]
+dev = ["pytest==8.3.5"]
+
+[project.scripts]
+ic-evidence-lab = "ic_evidence_lab.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ic_evidence_lab"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]

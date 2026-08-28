@@ -1,0 +1,16 @@
+{
+  "schema_version": "ic-evidence-lab.demo-storyboard/v1",
+  "target_duration_seconds": 80,
+  "allowed_duration_seconds": [75, 85],
+  "status": "SCRIPTED_NOT_RENDERED",
+  "scenes": [
+    {"start":0,"end":7,"title":"Boundary","source":"README.md"},
+    {"start":7,"end":18,"title":"Unsupported claim","source":"examples/vectorforge/case-before.json"},
+    {"start":18,"end":31,"title":"UNVERIFIED and HOLD","source":"dist/before/receipt.json"},
+    {"start":31,"end":45,"title":"Retained evidence and counterevidence","source":"examples/vectorforge/case-after.json"},
+    {"start":45,"end":59,"title":"Deterministic rerun","source":"dist/after/receipt.json"},
+    {"start":59,"end":72,"title":"Claim ledger and open questions","source":"dist/after/memo.md"},
+    {"start":72,"end":80,"title":"Receipt and architecture","source":"dist/after/packet.json"}
+  ],
+  "limitations": ["No video has been rendered or visually verified yet."]
+}

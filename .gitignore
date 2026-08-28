@@ -1,0 +1,10 @@
+/.venv/
+/.pytest_cache/
+/.ruff_cache/
+/dist/
+/evidence/
+/state/
+__pycache__/
+*.pyc
+*.mp4
+.DS_Store

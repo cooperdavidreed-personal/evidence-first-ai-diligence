@@ -1,0 +1,41 @@
+{
+  "schema_version": "ic-evidence-lab.case/v1",
+  "case_id": "vectorforge-before-v1",
+  "company": "VectorForge AI (synthetic)",
+  "as_of": "2026-06-30",
+  "generated_at": "2026-06-30T23:59:59Z",
+  "sources": [
+    {
+      "source_id": "S1",
+      "uri": "synthetic://vectorforge/founder-kpi-memo",
+      "source_type": "synthetic_dataroom",
+      "tier": "B",
+      "published_at": "2026-06-20",
+      "retrieved_at": "2026-06-30T12:00:00Z",
+      "path": "sources/founder-kpi-memo.txt",
+      "sha256": "72d93daa4c16640c23e0e3c4ab99d0b6b382fb03d5e41fb1edb3b4ccd1e9675a"
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "C1",
+      "statement": "VectorForge has $4.8 million of contracted ARR.",
+      "kind": "fact",
+      "materiality": "high",
+      "evidence": [],
+      "counterevidence": []
+    },
+    {
+      "claim_id": "C2",
+      "statement": "VectorForge is an attractive Series A investment.",
+      "kind": "judgment",
+      "materiality": "high",
+      "evidence": [],
+      "counterevidence": []
+    }
+  ],
+  "open_questions": [
+    "What portion of reported ARR is contracted and non-cancellable?",
+    "What evidence would falsify the investment thesis?"
+  ]
+}

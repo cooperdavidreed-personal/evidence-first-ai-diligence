@@ -1,0 +1,2 @@
+SYNTHETIC FIXTURE — customer concentration table — 2026-06-30.
+The top three customers represent 41% of contracted recurring run-rate. The largest customer represents 18%.

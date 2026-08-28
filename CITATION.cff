@@ -1,0 +1,8 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using this metadata."
+title: "Evidence-First AI Diligence"
+type: software
+authors:
+  - family-names: "Reed"
+    given-names: "Cooper"
+abstract: "A local reference workflow for auditable, human-reviewed investment diligence."

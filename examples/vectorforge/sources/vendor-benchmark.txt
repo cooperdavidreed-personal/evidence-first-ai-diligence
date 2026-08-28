@@ -1,0 +1,3 @@
+SYNTHETIC FIXTURE — company-run benchmark — published 2026-06-10.
+VectorForge measured 37% lower latency in its selected configuration.
+Competitor hardware and settings differed, and raw benchmark results were not retained.

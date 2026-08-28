@@ -1,0 +1,3 @@
+SYNTHETIC FIXTURE — simplified term sheet — published 2026-06-25.
+The proposed financing is $18 million of new money at a $72 million pre-money valuation.
+This fixture assumes no option-pool adjustment and omits preferences for arithmetic testing only.

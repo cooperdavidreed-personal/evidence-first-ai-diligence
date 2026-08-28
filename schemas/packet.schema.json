@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/ic-evidence-lab/packet.schema.json",
+  "title": "IC Evidence Lab Packet",
+  "type": "object",
+  "required": ["schema_version", "case_id", "company", "as_of", "generated_at", "workflow_disposition", "investment_decision", "decision_owner", "source_results", "claim_results", "open_questions", "limitations", "content_sha256"],
+  "properties": {
+    "schema_version":{"const":"ic-evidence-lab.packet/v1"},
+    "workflow_disposition":{"enum":["HOLD","READY_FOR_HUMAN_REVIEW"]},
+    "investment_decision":{"const":"PENDING_HUMAN"},
+    "decision_owner":{"const":"HUMAN"},
+    "content_sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"}
+  },
+  "additionalProperties": true
+}

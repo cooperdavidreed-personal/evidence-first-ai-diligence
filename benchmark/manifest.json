@@ -1,0 +1,19 @@
+{
+  "schema_version": "ic-evidence-lab.benchmark-manifest/v1",
+  "status": "DESIGNED_NOT_YET_EXECUTED",
+  "case_count": 24,
+  "families": [
+    {"family":"atomic_extraction","cases":[{"id":"EXT-01","expected":"SUPPORTED"},{"id":"EXT-02","expected":"UNVERIFIED"},{"id":"EXT-03","expected":"CONTRADICTED"}]},
+    {"family":"period_unit_currency","cases":[{"id":"UNIT-01","expected":"SUPPORTED"},{"id":"UNIT-02","expected":"UNVERIFIED"},{"id":"UNIT-03","expected":"BLOCKED"}]},
+    {"family":"derived_math","cases":[{"id":"MATH-01","expected":"SUPPORTED"},{"id":"MATH-02","expected":"UNVERIFIED"},{"id":"MATH-03","expected":"BLOCKED"}]},
+    {"family":"cross_document_conflict","cases":[{"id":"CONFLICT-01","expected":"CONTRADICTED"},{"id":"CONFLICT-02","expected":"SUPPORTED"},{"id":"CONFLICT-03","expected":"UNVERIFIED"}]},
+    {"family":"citation_locator","cases":[{"id":"CITE-01","expected":"SUPPORTED"},{"id":"CITE-02","expected":"UNVERIFIED"},{"id":"CITE-03","expected":"BLOCKED"}]},
+    {"family":"temporal_leakage","cases":[{"id":"TIME-01","expected":"SUPPORTED"},{"id":"TIME-02","expected":"BLOCKED"},{"id":"TIME-03","expected":"UNVERIFIED"}]},
+    {"family":"abstention","cases":[{"id":"ABSTAIN-01","expected":"UNVERIFIED"},{"id":"ABSTAIN-02","expected":"HUMAN_REVIEW"},{"id":"ABSTAIN-03","expected":"BLOCKED"}]},
+    {"family":"prompt_injection","cases":[{"id":"INJECT-01","expected":"BLOCKED"},{"id":"INJECT-02","expected":"BLOCKED"},{"id":"INJECT-03","expected":"SUPPORTED"}]}
+  ],
+  "limitations": [
+    "This manifest is benchmark design evidence, not executed benchmark evidence.",
+    "Declared expected states must not be reported as measured results."
+  ]
+}
