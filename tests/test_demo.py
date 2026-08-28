@@ -10,7 +10,7 @@ ROOT = Path(__file__).parents[1]
 def test_demo_storyboard_is_contiguous_source_bound_and_captioned() -> None:
     storyboard = json.loads((ROOT / "demo/storyboard.json").read_text())
     scenes = storyboard["scenes"]
-    assert storyboard["status"] == "RENDERABLE_LOCAL"
+    assert storyboard["status"] == "QUALITY_SHORT"
     assert scenes[0]["start"] == 0
     assert scenes[-1]["end"] == storyboard["target_duration_seconds"]
     assert storyboard["allowed_duration_seconds"][0] <= scenes[-1]["end"] <= storyboard["allowed_duration_seconds"][1]

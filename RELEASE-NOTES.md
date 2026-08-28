@@ -1,5 +1,8 @@
 # Evidence-First AI Diligence 0.1.0
 
+> `PUBLICATION HELD`: the verified engineering foundation remains local while
+> the product thesis and rejected `QUALITY SHORT` demo are reassessed.
+
 This first public release demonstrates a narrow idea: an AI-assisted diligence
 workflow should make unsupported claims, counterevidence, temporal leakage, and
 human judgment visible instead of smoothing them into confident prose.

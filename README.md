@@ -7,7 +7,7 @@ snapshots, unresolved questions, and content-addressed receipts. It helps a
 human reviewer inspect what is supported, contradicted, blocked, or unverified.
 It does not make investment decisions or provide investment advice.
 
-> **Status: LOCAL RELEASE CANDIDATE — NOT YET PUBLICLY VERIFIED**
+> **Status: LOCAL FOUNDATION — PRODUCT AND PRESENTATION REASSESSMENT**
 
 Current local evidence: 20 Python tests pass, all 24 declared benchmark outcomes
 match, repeated packet outputs are byte-identical, and the released Evidence
@@ -33,12 +33,17 @@ The first case leaves a material growth claim unsupported. The corrected case
 adds retained evidence, deterministic calculations, counterevidence, and a
 post-cutoff source that must be rejected. Both runs preserve their limitations.
 
-## Render the 80-second demonstration
+## Render the 80-second prototype visualization
 
-The source-bound demo shows failure, retained `UNVERIFIED`/`HOLD` states,
+The source-bound prototype shows failure, retained `UNVERIFIED`/`HOLD` states,
 corrected inputs, deterministic rerun, open questions, and the final release
 receipt. It is silent and caption-led; complete SRT and WebVTT files are checked
 against the storyboard.
+
+> **Quality verdict: `QUALITY SHORT`.** The media contract is reproducible, but
+> static slides do not demonstrate a convincing product interaction or
+> investment-review experience. This artifact must not be used as the public
+> portfolio demo.
 
 ```bash
 uv sync --locked --extra demo

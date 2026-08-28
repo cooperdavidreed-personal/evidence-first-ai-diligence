@@ -2,7 +2,7 @@
   "schema_version": "ic-evidence-lab.demo-storyboard/v1",
   "target_duration_seconds": 80,
   "allowed_duration_seconds": [75, 85],
-  "status": "RENDERABLE_LOCAL",
+  "status": "QUALITY_SHORT",
   "scenes": [
     {
       "start": 0,
@@ -76,6 +76,8 @@
     }
   ],
   "limitations": [
+    "This artifact verifies a media contract but is not accepted as a public portfolio demo.",
+    "Static slides do not demonstrate the product workflow, evidence inspection, correction interaction, or reviewer decision process.",
     "The demo is silent and caption-led; no external voice or media service is used.",
     "Rendering is reproducible from public repository inputs, but encoder and font versions can change media bytes."
   ]
