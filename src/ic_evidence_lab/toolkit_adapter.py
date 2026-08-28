@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
@@ -19,8 +20,15 @@ async def _verify_packet(root: Path, packet_path: str) -> dict[str, Any]:
     from mcp import ClientSession, StdioServerParameters
     from mcp.client.stdio import stdio_client
 
+    command = Path(sys.executable).with_name("dailyai-evidence-gate")
+    if not command.is_file():
+        return {
+            "schema_version": "ic-evidence-lab.toolkit-adapter/v1",
+            "status": "FAIL",
+            "reason": "toolkit_executable_missing_from_active_environment",
+        }
     parameters = StdioServerParameters(
-        command="dailyai-evidence-gate",
+        command=str(command),
         args=["--root", str(root.resolve(strict=True))],
     )
     async with stdio_client(parameters) as (read, write):

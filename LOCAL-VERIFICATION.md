@@ -25,7 +25,7 @@ Environment: macOS, Python 3.11. Hosted CI on Ubuntu/macOS and Python
 
 ## Digests
 
-- Benchmark results:
+- Benchmark results file bytes (`sha256sum verification/benchmark-results.json`):
   `62897aa7ae036e6a41649f2f8dbe32c7aab84ffbe567b88f45369aa91c1f26bd`
 - Wheel:
   `389c244358a0b539f836a2d123ec991b3cf1fa8ad603d5658093e9f0001fc308`

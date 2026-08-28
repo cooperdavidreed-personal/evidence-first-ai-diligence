@@ -37,6 +37,8 @@ def test_corrected_case_preserves_mixed_states() -> None:
     assert states["C8"] == "CONTRADICTED"
     assert states["C12"] == "BLOCKED"
     assert states["C13"] == "HUMAN_REVIEW"
+    post_cutoff = next(item for item in packet["source_results"] if item["source_id"] == "S11")
+    assert post_cutoff["findings"] == ["POST_CUTOFF_SOURCE", "POST_CUTOFF_RETRIEVAL"]
     assert receipt["status"] == "BLOCKED"
 
 

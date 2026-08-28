@@ -6,7 +6,7 @@ import os
 import re
 import stat
 from collections import Counter
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_EVEN
 from pathlib import Path
 from typing import Any
@@ -83,6 +83,16 @@ def _parse_date(value: str, field: str) -> date:
         raise CaseError(f"{field}_invalid") from exc
 
 
+def _parse_datetime(value: str, field: str) -> datetime:
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise CaseError(f"{field}_invalid") from exc
+    if parsed.tzinfo is None:
+        raise CaseError(f"{field}_timezone_required")
+    return parsed
+
+
 def _normalize(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip().casefold()
 
@@ -122,7 +132,7 @@ def _validate_case(case: Any) -> dict[str, Any]:
     _required_string(case, "case_id", limit=120)
     _required_string(case, "company", limit=200)
     _parse_date(_required_string(case, "as_of", limit=10), "as_of")
-    _required_string(case, "generated_at", limit=40)
+    _parse_datetime(_required_string(case, "generated_at", limit=40), "generated_at")
     sources = case.get("sources")
     claims = case.get("claims")
     questions = case.get("open_questions")
@@ -153,7 +163,7 @@ def run_case(case_path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
         if source_id in source_index:
             raise CaseError("source_id_duplicate")
         published_at = _parse_date(_required_string(source, "published_at", limit=10), "published_at")
-        _required_string(source, "retrieved_at", limit=40)
+        retrieved_at = _parse_datetime(_required_string(source, "retrieved_at", limit=40), "retrieved_at")
         _required_string(source, "uri", limit=2048)
         if source.get("tier") not in {"A", "B", "C", "D"}:
             raise CaseError("source_tier_invalid")
@@ -167,6 +177,8 @@ def run_case(case_path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
             findings.append("DIGEST_MISMATCH")
         if published_at > as_of:
             findings.append("POST_CUTOFF_SOURCE")
+        if retrieved_at.date() > as_of:
+            findings.append("POST_CUTOFF_RETRIEVAL")
         if any(pattern.search(text) for pattern in INJECTION_PATTERNS):
             findings.append("PROMPT_INJECTION_PATTERN")
         status = "PASS" if not findings else "BLOCKED"

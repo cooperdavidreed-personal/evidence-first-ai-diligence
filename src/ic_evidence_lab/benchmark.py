@@ -78,7 +78,7 @@ def run_benchmark(repo: str | Path) -> dict[str, Any]:
             case_path.write_bytes(canonical_json(case) + b"\n")
             try:
                 packet, _ = run_case(case_path)
-                actual = _actual(packet, definition["target"])
+                actual = "NO_ERROR" if definition["target"] == "error" else _actual(packet, definition["target"])
             except CaseError:
                 actual = "FAIL"
             matched = actual == definition["expected"]
