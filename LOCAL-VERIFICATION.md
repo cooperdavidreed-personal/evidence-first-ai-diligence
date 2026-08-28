@@ -3,7 +3,7 @@
 Status: `VERIFIED_LOCAL — PUBLICATION NOT AUTHORIZED`
 
 Implementation commit tested:
-`5892de8d032284f5e44f142c0c6241b2907d7c4c`
+`5f75496a07e4d4c5fcb02802f097ef48c27c9998`
 
 Environment: macOS, Python 3.11. Hosted CI on Ubuntu/macOS and Python
 3.11–3.13 remains `NOT RUN` until the repository is pushed.
@@ -18,8 +18,11 @@ Environment: macOS, Python 3.11. Hosted CI on Ubuntu/macOS and Python
   `verify_artifact` result `PASS` through MCP stdio.
 - Wheel and source distribution: built successfully.
 - Clean wheel install with `--no-deps`: CLI case and benchmark both passed.
-- Static Pages artifact: generated locally; browser and accessibility review
-  remain `NOT RUN`.
+- Static Pages artifact: generated locally. Its unchanged layout generator was
+  inspected at 1440x1000, 768x900, and 390x844 before the final non-layout
+  hardening commit, with zero horizontal overflow and zero console warnings or
+  errors. Exact-final-digest visual review and automated accessibility remain
+  `NOT RUN`; a cosmetic favicon request returned 404.
 - LangChain/LangSmith case: contract-only, URL-only, and explicitly
   `UNVERIFIED`; no third-party page bytes retained.
 
@@ -28,11 +31,11 @@ Environment: macOS, Python 3.11. Hosted CI on Ubuntu/macOS and Python
 - Benchmark results file bytes (`sha256sum verification/benchmark-results.json`):
   `62897aa7ae036e6a41649f2f8dbe32c7aab84ffbe567b88f45369aa91c1f26bd`
 - Wheel:
-  `389c244358a0b539f836a2d123ec991b3cf1fa8ad603d5658093e9f0001fc308`
+  `75090f54b5ebbd4951cd70a6bc840f17b8a00a1ea34c92de77f48927c6845b41`
 - Source distribution:
-  `a78f4fa57dd22e3a8e0ff4a9cffaabaa572d8e9315cc54d387defb83e9ddc073`
+  `6bcb155d18f02a4c9c273b053f8ad8fe32d96e34c3c2b22b65175d9b74692276`
 - Generated Pages index:
-  `3c2fda71af4dd375add97db7bc1fb721ca53b1b13ab88aa109398cb98bf6da82`
+  `b2a0a2464925a3d69110ca757d2bb1638858202165eb7e8927d16f7efe048004`
 
 ## Boundaries
 
