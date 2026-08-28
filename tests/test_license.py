@@ -12,6 +12,7 @@ def test_apache_license_and_package_metadata_agree() -> None:
     license_text = (ROOT / "LICENSE").read_text()
 
     assert metadata["project"]["license"] == "Apache-2.0"
+    assert metadata["project"]["version"] == "0.1.0"
     assert metadata["project"]["license-files"] == ["LICENSE", "NOTICE"]
     assert "Apache License" in license_text
     assert "Version 2.0, January 2004" in license_text

@@ -514,7 +514,7 @@ wheels = [
 
 [[package]]
 name = "ic-evidence-lab"
-version = "0.1.0.dev0"
+version = "0.1.0"
 source = { editable = "." }
 
 [package.optional-dependencies]

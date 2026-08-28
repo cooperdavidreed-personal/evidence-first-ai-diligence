@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ic-evidence-lab"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Offline, evidence-first investment diligence reference workflow"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -12,6 +12,11 @@ authors = [{name = "Cooper Reed"}]
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 dependencies = []
+
+[project.urls]
+Homepage = "https://cooperdavidreed-personal.github.io/evidence-first-ai-diligence/"
+Repository = "https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence"
+Issues = "https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence/issues"
 
 [project.optional-dependencies]
 toolkit = [
