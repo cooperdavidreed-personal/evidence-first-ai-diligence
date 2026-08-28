@@ -19,13 +19,14 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--toolkit", action="store_true")
     benchmark = subparsers.add_parser("benchmark", help="run the 24-case offline benchmark")
     benchmark.add_argument("--out", required=True)
+    benchmark.add_argument("--root", default=".", help="repository root containing benchmark/ and examples/")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.command == "benchmark":
-        repo = Path(__file__).resolve().parents[2]
+        repo = Path(args.root).resolve(strict=True)
         results = run_benchmark(repo)
         destination = Path(args.out)
         destination.parent.mkdir(parents=True, exist_ok=True)
