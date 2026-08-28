@@ -7,7 +7,7 @@ from pathlib import Path
 from .benchmark import run_benchmark
 from .canonical import canonical_json
 from .pipeline import CaseError, write_outputs
-from .toolkit_adapter import verify_packet
+from .toolkit_adapter import verify_release_bundle
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -45,7 +45,10 @@ def main(argv: list[str] | None = None) -> int:
         "memo": memo_path.as_posix(),
     }
     if args.toolkit:
-        result["toolkit"] = verify_packet(Path(args.out), packet_path.name)
+        result["toolkit"] = verify_release_bundle(
+            Path(args.out),
+            [packet_path.name, receipt_path.name, memo_path.name],
+        )
     print(json.dumps(result, sort_keys=True))
     return 0
 

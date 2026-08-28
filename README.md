@@ -9,9 +9,10 @@ It does not make investment decisions or provide investment advice.
 
 > **Status: LOCAL DRAFT — NOT YET PUBLICLY VERIFIED**
 
-Current local evidence: 16 Python tests pass, all 24 declared benchmark outcomes
+Current local evidence: 17 Python tests pass, all 24 declared benchmark outcomes
 match, repeated packet outputs are byte-identical, and the released Evidence
-Gate 0.1.1 returns `PASS` for the generated packet. Hosted CI remains `NOT RUN`.
+Gate and Release Gate 0.1.1 packages return `PASS` for the generated bundle.
+Hosted CI remains `NOT RUN`.
 
 ## See the evidence fail and repair
 
