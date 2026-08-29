@@ -441,8 +441,11 @@ def xirr(cash_flows: Sequence[DatedCashFlow]) -> Decimal:
     sign_changes = sum(left != right for left, right in zip(signs, signs[1:], strict=False))
     if sign_changes != 1:
         raise UnderwritingError("xirr_not_identified")
-    low, high = Decimal("-0.999999"), Decimal("10")
+    low, high = Decimal("-0.999999"), Decimal("1")
     low_npv, high_npv = npv_cents(low, ordered), npv_cents(high, ordered)
+    while low_npv * high_npv > 0 and high < Decimal("1000000"):
+        high = (high + 1) * 2 - 1
+        high_npv = npv_cents(high, ordered)
     if low_npv * high_npv > 0:
         raise UnderwritingError("xirr_root_not_bracketed")
     for _ in range(256):
