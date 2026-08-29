@@ -16,6 +16,9 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
     analysis_path = analyze_room(manifest, room / "analysis.json")
     case = json.loads(analysis_path.read_text(encoding="utf-8"))
     artifacts = build_ic_packet_from_case(case, tmp_path / "packet")
+    repeated = build_ic_packet_from_case(case, tmp_path / "packet-repeat")
+    for artifact_name in ("memo", "html", "appendix", "receipt"):
+        assert artifacts[artifact_name].read_bytes() == repeated[artifact_name].read_bytes()
     packet = json.loads(artifacts["appendix"].read_text(encoding="utf-8"))
     packet_body = dict(packet)
     packet_digest = packet_body.pop("packet_sha256")
@@ -91,3 +94,43 @@ def test_ic_packet_fails_closed_on_failed_diagnostic(tmp_path: Path) -> None:
         assert "ic_packet_blocked_failed_diagnostic:AG-10:xirr_npv_residual" in str(exc)
     else:  # pragma: no cover - fail-closed assertion
         raise AssertionError("memo generation accepted a failed diagnostic")
+
+
+def test_helios_ic_packet_reconciles_engine_terms_and_receipts(tmp_path: Path) -> None:
+    room = tmp_path / "helios"
+    manifest = generate_room("helios", 20260829, room)
+    analysis_path = analyze_room(manifest, room / "analysis.json")
+    case = json.loads(analysis_path.read_text(encoding="utf-8"))
+    artifacts = build_ic_packet_from_case(case, tmp_path / "packet")
+    repeated = build_ic_packet_from_case(case, tmp_path / "packet-repeat")
+    for artifact_name in ("memo", "html", "appendix", "receipt"):
+        assert artifacts[artifact_name].read_bytes() == repeated[artifact_name].read_bytes()
+    packet = json.loads(artifacts["appendix"].read_text(encoding="utf-8"))
+    body = dict(packet)
+    expected = body.pop("packet_sha256")
+    assert expected == digest(body)
+    assert packet["analysis_sha256"] == case["analysis_sha256"]
+    for key in ("base", "milestone", "downside", "financing_shortfall"):
+        assert packet["scenarios"][key]["receipt_sha256"] == case["vcEngine"][key]["receipt_sha256"]
+        assert packet["scenarios"][key]["gross_xirr"] == case["vcEngine"][key]["gross_xirr"]
+    markdown = artifacts["memo"].read_text(encoding="utf-8")
+    for section in (
+        "## Recommendation and executable terms",
+        "## Product, market, customers, competition, and business model",
+        "## Cap table and financing-event bridge",
+        "## Milestone financing and monthly runway",
+        "## Preference waterfall and investor return bridge",
+        "## Econometric credit and zero-credit map",
+        "## Value creation and board cadence",
+        "## Receipt appendix",
+    ):
+        assert section in markdown
+    assert "gross XIRR" in markdown
+    assert "no delegated investment authority" in markdown
+    receipt = json.loads(artifacts["receipt"].read_text(encoding="utf-8"))
+    for name, path in (
+        ("ic-memo.md", artifacts["memo"]),
+        ("ic-memo.html", artifacts["html"]),
+        ("model-appendix.json", artifacts["appendix"]),
+    ):
+        assert receipt["artifacts"][name] == sha256_file(path)

@@ -10,7 +10,7 @@ from typing import Any, Iterable
 import numpy as np
 
 from .contracts import CONTRACT_VERSION, CUTOFF, digest, sha256_file, write_json
-from .experiments import atlasgrid_experiment_fixture
+from .experiments import atlasgrid_experiment_fixture, helios_optimizer_fixture
 from .specs import analysis_specs
 
 
@@ -294,7 +294,6 @@ def _atlasgrid(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, A
 def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]]:
     entity_rng = _rng(seed, "helios/entities")
     event_rng = _rng(seed, "helios/events")
-    experiment_rng = _rng(seed, "helios/experiments")
     customer_count = 480
     customer_rows: list[dict[str, Any]] = []
     month_rows: list[dict[str, Any]] = []
@@ -450,34 +449,7 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
     write_json(case_root / "data/market_assumptions.json", market_assumptions)
     artifacts.append(_artifact(case_root, "data/market_assumptions.json", "helios.market-assumptions/v1", 1))
 
-    experiment_rows: list[dict[str, Any]] = []
-    baselines = experiment_rng.normal(0, 0.17, 120)
-    noises = experiment_rng.normal(0, 0.08, 120)
-    treated_customers: set[int] | None = None
-    for _ in range(1_000):
-        candidate = set(int(item) for item in experiment_rng.permutation(120)[:60])
-        treated_values = np.array([baselines[idx] for idx in candidate])
-        control_values = np.array([baselines[idx] for idx in range(120) if idx not in candidate])
-        pooled_sd = math.sqrt((treated_values.var(ddof=1) + control_values.var(ddof=1)) / 2)
-        balance_smd = (treated_values.mean() - control_values.mean()) / pooled_sd
-        if abs(balance_smd) <= 0.15:
-            treated_customers = candidate
-            break
-    if treated_customers is None:
-        raise RuntimeError("optimizer_assignment_balance_not_found")
-    for idx in range(120):
-        treatment = int(idx in treated_customers)
-        baseline = float(baselines[idx])
-        effect = -0.11 * treatment
-        outcome = baseline + effect + float(noises[idx])
-        experiment_rows.append(
-            {
-                "customer_id": f"HX-X{idx + 1:03d}",
-                "treatment": treatment,
-                "baseline_log_cost": f"{baseline:.6f}",
-                "outcome_log_cost_change": f"{outcome:.6f}",
-            }
-        )
+    experiment_rows = helios_optimizer_fixture(seed)
     rows = _write_csv(case_root / "data/optimizer_experiment.csv", list(experiment_rows[0]), experiment_rows)
     artifacts.append(_artifact(case_root, "data/optimizer_experiment.csv", "helios.optimizer-experiment/v1", rows))
 
@@ -517,6 +489,25 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
     def projected_cash_path(start_use: int, monthly_improvement: int) -> list[int]:
         return [-(max(25_000_000, start_use - monthly_improvement * month)) for month in range(60)]
 
+    def milestone_results(state: str) -> list[dict[str, str]]:
+        if state == "PASS":
+            states = ("PASS", "PASS", "PASS", "PASS")
+        else:
+            states = ("PASS", "PASS", "FAIL", "OPEN")
+        return [
+            {"metric_id": metric_id, "state": result_state}
+            for metric_id, result_state in zip(
+                (
+                    "hx-nrr-metric",
+                    "hx-margin-metric",
+                    "hx-pipeline-audit",
+                    "hx-optimizer-replication",
+                ),
+                states,
+                strict=True,
+            )
+        ]
+
     financing_plan = {
         "schema_version": "helios.financing-plan/v2",
         "projection_origin": "2026-08-29",
@@ -546,7 +537,7 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
                 "monthly_net_cash_flow_cents": projected_cash_path(105_000_000, 700_000),
                 "events": [
                     {"event_id": "series-c-close", "scheduled_month": 1, "sequence": 10, "event_type": "PRIMARY", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 2_500_000_000, "pre_money_cents": 16_000_000_000, "price_rule": "PRE_MONEY", "pool_target": "0.12", "milestone_state": "NOT_APPLICABLE", "funded": True, "seniority": 1},
-                    {"event_id": "series-c-tranche", "scheduled_month": 12, "sequence": 20, "event_type": "MILESTONE", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 1_500_000_000, "pre_money_cents": None, "price_rule": "SAME_AS_SERIES_C", "pool_target": "0", "milestone_state": "FAIL", "funded": False, "seniority": 1},
+                    {"event_id": "series-c-tranche", "scheduled_month": 12, "sequence": 20, "event_type": "MILESTONE", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 1_500_000_000, "pre_money_cents": None, "price_rule": "SAME_AS_SERIES_C", "pool_target": "0", "milestone_state": "FAIL", "milestone_results": milestone_results("FAIL"), "funded": False, "seniority": 1},
                     {"event_id": "series-d-base", "scheduled_month": 30, "sequence": 30, "event_type": "LATER_ROUND", "holder_id": "series-d-investor", "class_id": "SERIES_D", "new_money_cents": 2_000_000_000, "pre_money_cents": 45_000_000_000, "price_rule": "PRE_MONEY", "pool_target": "0", "milestone_state": "NOT_APPLICABLE", "funded": True, "seniority": 0},
                 ],
             },
@@ -555,7 +546,7 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
                 "monthly_net_cash_flow_cents": projected_cash_path(95_000_000, 850_000),
                 "events": [
                     {"event_id": "series-c-close", "scheduled_month": 1, "sequence": 10, "event_type": "PRIMARY", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 2_500_000_000, "pre_money_cents": 16_000_000_000, "price_rule": "PRE_MONEY", "pool_target": "0.12", "milestone_state": "NOT_APPLICABLE", "funded": True, "seniority": 1},
-                    {"event_id": "series-c-tranche", "scheduled_month": 12, "sequence": 20, "event_type": "MILESTONE", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 1_500_000_000, "pre_money_cents": None, "price_rule": "SAME_AS_SERIES_C", "pool_target": "0", "milestone_state": "PASS", "funded": True, "seniority": 1},
+                    {"event_id": "series-c-tranche", "scheduled_month": 12, "sequence": 20, "event_type": "MILESTONE", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 1_500_000_000, "pre_money_cents": None, "price_rule": "SAME_AS_SERIES_C", "pool_target": "0", "milestone_state": "PASS", "milestone_results": milestone_results("PASS"), "funded": True, "seniority": 1},
                 ],
             },
             {
@@ -563,7 +554,7 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
                 "monthly_net_cash_flow_cents": projected_cash_path(125_000_000, 0),
                 "events": [
                     {"event_id": "series-c-close", "scheduled_month": 1, "sequence": 10, "event_type": "PRIMARY", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 2_500_000_000, "pre_money_cents": 16_000_000_000, "price_rule": "PRE_MONEY", "pool_target": "0.12", "milestone_state": "NOT_APPLICABLE", "funded": True, "seniority": 1},
-                    {"event_id": "series-c-tranche", "scheduled_month": 12, "sequence": 20, "event_type": "MILESTONE", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 1_500_000_000, "pre_money_cents": None, "price_rule": "SAME_AS_SERIES_C", "pool_target": "0", "milestone_state": "FAIL", "funded": False, "seniority": 1},
+                    {"event_id": "series-c-tranche", "scheduled_month": 12, "sequence": 20, "event_type": "MILESTONE", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 1_500_000_000, "pre_money_cents": None, "price_rule": "SAME_AS_SERIES_C", "pool_target": "0", "milestone_state": "FAIL", "milestone_results": milestone_results("FAIL"), "funded": False, "seniority": 1},
                     {"event_id": "series-d-down", "scheduled_month": 18, "sequence": 30, "event_type": "LATER_ROUND", "holder_id": "series-d-investor", "class_id": "SERIES_D", "new_money_cents": 4_000_000_000, "pre_money_cents": 12_000_000_000, "price_rule": "PRE_MONEY", "pool_target": "0", "milestone_state": "NOT_APPLICABLE", "funded": True, "seniority": 0},
                 ],
             },
@@ -572,7 +563,7 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
                 "monthly_net_cash_flow_cents": projected_cash_path(125_000_000, 0),
                 "events": [
                     {"event_id": "series-c-close", "scheduled_month": 1, "sequence": 10, "event_type": "PRIMARY", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 2_500_000_000, "pre_money_cents": 16_000_000_000, "price_rule": "PRE_MONEY", "pool_target": "0.12", "milestone_state": "NOT_APPLICABLE", "funded": True, "seniority": 1},
-                    {"event_id": "series-c-tranche", "scheduled_month": 12, "sequence": 20, "event_type": "MILESTONE", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 1_500_000_000, "pre_money_cents": None, "price_rule": "SAME_AS_SERIES_C", "pool_target": "0", "milestone_state": "FAIL", "funded": False, "seniority": 1},
+                    {"event_id": "series-c-tranche", "scheduled_month": 12, "sequence": 20, "event_type": "MILESTONE", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 1_500_000_000, "pre_money_cents": None, "price_rule": "SAME_AS_SERIES_C", "pool_target": "0", "milestone_state": "FAIL", "milestone_results": milestone_results("FAIL"), "funded": False, "seniority": 1},
                     {"event_id": "series-c-bridge", "scheduled_month": 1, "sequence": 90, "event_type": "SHORTFALL", "holder_id": "bridge-investor", "class_id": "SERIES_BRIDGE", "new_money_cents": 3_500_000_000, "pre_money_cents": None, "price_rule": "DISCOUNT_TO_SERIES_C", "shortfall_discount": "0.25", "pool_target": "0", "milestone_state": "NOT_APPLICABLE", "funded": True, "seniority": 0},
                 ],
             },
@@ -584,9 +575,9 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
         "schema_version": "helios.venture-scenarios/v2",
         "draws": 1000,
         "distribution_seed_offset": 41,
-        "exit_value_multiple_low": "0.35",
+        "exit_value_multiple_low": "0.05",
         "exit_value_multiple_high": "1.85",
-        "path_method": "FULL_EVENT_LEDGER_AND_EXACT_WATERFALL_REPLAY",
+        "path_method": "WEIGHTED_SCENARIO_STATE_PLUS_OPERATING_EXIT_AND_TIMING_FULL_ENGINE_REPLAY",
     }
     write_json(case_root / "data/venture_scenarios.json", venture_scenarios)
     artifacts.append(_artifact(case_root, "data/venture_scenarios.json", "helios.venture-scenarios/v2", 1))

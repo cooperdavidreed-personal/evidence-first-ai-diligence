@@ -5,7 +5,7 @@
 This portfolio candidate combines a deterministic Python analytics layer with a static React investment-committee workbench. Two fully synthetic cases demonstrate the same governed workflow across control buyout and venture/growth underwriting:
 
 - **AtlasGrid Systems:** a 60-month vertical-SaaS buyout that exposes retention survivorship, parent-level concentration, underburdened gross margin, challenged EBITDA add-backs, and leverage fragility. Illustrative IC decision: `REPRICE`.
-- **Helios Compute Control:** an AI-infrastructure growth investment that separates design-partner performance from ordinary cohorts, recomputes pipeline, models tiered market adoption, reconciles dilution, and stress-tests venture outcomes. Illustrative IC decision: `INVEST`, subject to milestones.
+- **Helios Compute Control:** an AI-infrastructure growth investment that separates design-partner performance from ordinary cohorts, recomputes pipeline, models tiered market adoption, and runs exact event-by-event dilution, milestone, runway, preference-waterfall, and dated-return mechanics. Illustrative IC disposition: `CONDITIONAL INVEST`, pending human approval and executable milestones.
 
 > **Status: LOCAL PORTFOLIO CANDIDATE — FOUNDER REVIEW PENDING**
 >
@@ -43,6 +43,10 @@ underwriting-lab generate --case atlasgrid --seed 20260828 --out dist/atlasgrid
 underwriting-lab analyze \
   --manifest dist/atlasgrid/case/manifest.json \
   --out dist/atlasgrid/analysis.json
+underwriting-lab generate --case helios --seed 20260829 --out dist/helios
+underwriting-lab analyze \
+  --manifest dist/helios/case/manifest.json \
+  --out dist/helios/analysis.json
 underwriting-lab build-workbench \
   --cases dist/atlasgrid/analysis.json dist/helios/analysis.json \
   --out workbench/src/data/cases.json
@@ -57,7 +61,10 @@ The existing `ic-evidence-lab` CLI and evidence-kernel behavior remain intact.
 - Verification truth lives outside the runtime case directory and is not serialized into the React payload.
 - Analysis receipts declare question, population, cutoff, method, outputs, uncertainty or diagnostics, assumptions, classification, and input digests.
 - Scenario books, thesis graphs, decisions, and receipts are independently hash-bound.
-- Six seeded recovery runs test 15 precommitted checks per seed set: six AtlasGrid checks and nine Helios checks, for 45 total recovery checks. This is estimator recovery against planted synthetic truth—not backtested investment performance.
+- Helios uses four distinct financing regimes—milestone-funded, tranche-withheld plus Series D, down round, and financing shortfall—inside a 1,000-path distribution that also varies operating cash, exit value, and two-sided exit timing.
+- Six seeded smoke-recovery runs test 45 planted-truth conditions. Separate frozen 500-seed interval ledgers recover AtlasGrid endpoints at 477/500, 472/500, and 471/500 and the Helios optimizer endpoint at 476/500. These are synthetic estimator checks—not backtested investment performance.
+- Venture proceeds are checked against an independent exact waterfall implementation over 500 random exits and each discovered conversion breakpoint at one cent below, at, and above the boundary.
+- Every Helios headline ownership, MOIC, XIRR, cash, and waterfall value is bound to explicit operands, dated cash flows, formulas, source locators, and governing receipts.
 - `NOT_IDENTIFIED` analyses abstain rather than convert correlation into causal claims.
 
 See [Underwriting Architecture](docs/UNDERWRITING-ARCHITECTURE.md), [Product Contract](docs/UNDERWRITING-PRODUCT-CONTRACT.md), [Econometrics Contract](docs/ECONOMETRICS-CONTRACT.md), and [Build Provenance](docs/BUILD-PROVENANCE.md).

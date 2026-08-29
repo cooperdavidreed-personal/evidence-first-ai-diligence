@@ -8,7 +8,10 @@ describe("workbench v2 data contract", () => {
     expect(() => assertWorkbenchData(candidate)).not.toThrow();
     assertWorkbenchData(candidate);
     const atlasgrid = candidate.cases.find((item) => item.caseId === "atlasgrid");
+    const helios = candidate.cases.find((item) => item.caseId === "helios");
     expect(atlasgrid?.renderManifest.formula_sample_metric_ids).toHaveLength(10);
+    expect(helios?.renderManifest.formula_sample_metric_ids).toHaveLength(10);
+    expect(helios?.vcEngine?.distribution.draws).toBe(1000);
   });
 
   it("fails closed when a formula output is tampered", () => {

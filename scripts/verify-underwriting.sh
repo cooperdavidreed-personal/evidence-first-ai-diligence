@@ -15,9 +15,15 @@ uv run underwriting-lab build-workbench \
 uv run underwriting-lab verify-estimator-coverage \
   --case atlasgrid \
   --out verification/atlasgrid-estimator-coverage.json
+uv run underwriting-lab verify-estimator-coverage \
+  --case helios \
+  --out verification/helios-estimator-coverage.json
 uv run underwriting-lab build-memo \
   --analysis dist/underwriting/atlasgrid/analysis.json \
   --out-dir portfolio/atlasgrid
+uv run underwriting-lab build-memo \
+  --analysis dist/underwriting/helios/analysis.json \
+  --out-dir portfolio/helios
 uv run python scripts/build_recovery_ledger.py
 
 cd workbench

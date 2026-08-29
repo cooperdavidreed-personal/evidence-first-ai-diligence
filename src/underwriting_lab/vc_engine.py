@@ -66,6 +66,7 @@ class FundingEvent:
     price_rule: str
     pool_target: Decimal = Decimal("0")
     milestone_tests: tuple[str, ...] = ()
+    milestone_results: tuple[tuple[str, str], ...] = ()
     milestone_state: str = "NOT_APPLICABLE"
     evaluator: str = "NOT_APPLICABLE"
     cure_period_days: int = 0
@@ -87,6 +88,31 @@ class FundingEvent:
             raise UnderwritingError("vc_pool_target_invalid")
         if self.event_type == "MILESTONE" and self.milestone_state not in {"PASS", "FAIL", "OPEN"}:
             raise UnderwritingError("vc_milestone_state_invalid")
+        if self.event_type == "MILESTONE":
+            if not self.milestone_tests or len(set(self.milestone_tests)) != len(
+                self.milestone_tests
+            ):
+                raise UnderwritingError("vc_milestone_tests_invalid")
+            result_map = dict(self.milestone_results)
+            if len(result_map) != len(self.milestone_results) or set(result_map) != set(
+                self.milestone_tests
+            ):
+                raise UnderwritingError("vc_milestone_results_incomplete")
+            if not set(result_map.values()).issubset({"PASS", "FAIL", "OPEN"}):
+                raise UnderwritingError("vc_milestone_result_state_invalid")
+            derived_state = (
+                "PASS"
+                if all(value == "PASS" for value in result_map.values())
+                else "FAIL"
+                if any(value == "FAIL" for value in result_map.values())
+                else "OPEN"
+            )
+            if self.milestone_state != derived_state:
+                raise UnderwritingError("vc_milestone_state_not_derived")
+            if self.funded != (derived_state == "PASS"):
+                raise UnderwritingError("vc_milestone_funding_not_derived")
+        elif self.milestone_tests or self.milestone_results or self.milestone_state != "NOT_APPLICABLE":
+            raise UnderwritingError("vc_non_milestone_has_test_state")
 
 
 @dataclass(frozen=True)
@@ -154,6 +180,7 @@ class VCScenarioResult:
     waterfall: WaterfallResult
     target_invested_cents: int
     target_proceeds_cents: int
+    target_cash_flows: tuple[dict[str, Any], ...]
     target_ownership: Decimal
     gross_moic: Decimal
     gross_xirr: Decimal
@@ -161,11 +188,20 @@ class VCScenarioResult:
     engine_inputs_sha256: str
 
     def receipt(self) -> dict[str, Any]:
+        engine_inputs = {
+            **_scenario_inputs(self.assumptions),
+            "opening_cash_cents": self.opening_cash_cents,
+            "initial_holders": [asdict(item) for item in self.initial_holders],
+            "initial_preferences": [
+                _preference_dict(item) for item in self.initial_preferences
+            ],
+            "initial_unissued_pool_shares": self.initial_unissued_pool_shares,
+        }
         body: dict[str, Any] = {
             "schema_version": "underwriting.vc-scenario-result/v2",
             "scenario_id": self.scenario_id,
             "engine_inputs_sha256": self.engine_inputs_sha256,
-            "engine_inputs": _scenario_inputs(self.assumptions),
+            "engine_inputs": engine_inputs,
             "opening_cash_cents": self.opening_cash_cents,
             "financing_events": list(self.financing_events),
             "holders": [asdict(item) for item in self.holders],
@@ -179,6 +215,7 @@ class VCScenarioResult:
             "waterfall": self.waterfall.receipt(),
             "target_invested_cents": self.target_invested_cents,
             "target_proceeds_cents": self.target_proceeds_cents,
+            "target_cash_flows": list(self.target_cash_flows),
             "target_ownership": format(self.target_ownership, "f"),
             "gross_moic": format(self.gross_moic, "f"),
             "gross_xirr": format(self.gross_xirr, "f"),
@@ -214,6 +251,7 @@ def _event_dict(item: FundingEvent) -> dict[str, Any]:
             else None
         ),
         "milestone_tests": list(item.milestone_tests),
+        "milestone_results": [list(result) for result in item.milestone_results],
     }
 
 
@@ -571,6 +609,7 @@ def run_vc_scenario(
                 "sequence": event.sequence,
                 "date": _add_months(assumptions.close_date, month - 1).isoformat(),
                 "milestone_tests": list(event.milestone_tests),
+                "milestone_results": [list(result) for result in event.milestone_results],
                 "milestone_state": event.milestone_state,
                 "evaluator": event.evaluator,
                 "cure_period_days": event.cure_period_days,
@@ -739,6 +778,13 @@ def run_vc_scenario(
         waterfall=waterfall,
         target_invested_cents=target_invested,
         target_proceeds_cents=target_proceeds,
+        target_cash_flows=tuple(
+            {
+                "date": item.date.isoformat(),
+                "amount_cents": item.amount_cents,
+            }
+            for item in target_cash_flows
+        ),
         target_ownership=ownership,
         gross_moic=moic,
         gross_xirr=irr,
@@ -750,6 +796,7 @@ def run_vc_scenario(
 def simulate_vc_distribution(
     *,
     base_result: VCScenarioResult,
+    scenario_results: Iterable[VCScenarioResult] | None = None,
     seed: int,
     draws: int,
     exit_multiple_low: Decimal = Decimal("0.35"),
@@ -758,39 +805,84 @@ def simulate_vc_distribution(
     if draws < 500:
         raise UnderwritingError("vc_distribution_draws_below_minimum")
     rng = random.Random(seed)
+    templates = {item.scenario_id: item for item in (scenario_results or (base_result,))}
+    if base_result.scenario_id not in templates:
+        templates[base_result.scenario_id] = base_result
+    canonical_order = [
+        item for item in ("MILESTONE", "BASE", "DOWNSIDE", "FINANCING_SHORTFALL")
+        if item in templates
+    ]
+    if not canonical_order:
+        raise UnderwritingError("vc_distribution_template_missing")
+    canonical_weights = {
+        "MILESTONE": 0.45,
+        "BASE": 0.30,
+        "DOWNSIDE": 0.15,
+        "FINANCING_SHORTFALL": 0.10,
+    }
+    weights = [canonical_weights.get(item, 1.0) for item in canonical_order]
     records: list[dict[str, Any]] = []
     for index in range(draws):
+        template_id = rng.choices(canonical_order, weights=weights, k=1)[0]
+        template = templates[template_id]
         shock = Decimal(str(rng.gauss(0, 1)))
         multiple = min(
             exit_multiple_high,
             max(exit_multiple_low, Decimal("1") + shock * Decimal("0.32")),
         )
-        timing_delta = max(-12, min(0, int(round(rng.gauss(-4, 5)))))
+        timing_delta = max(-12, min(18, int(round(rng.gauss(2, 7)))))
+        operating_factor = Decimal(
+            str(
+                max(
+                    0.85,
+                    min(
+                        1.00 if template_id == "FINANCING_SHORTFALL" else 1.12,
+                        rng.gauss(1.00, 0.07),
+                    ),
+                )
+            )
+        )
         exit_value = int(
-            (Decimal(base_result.assumptions.exit_value_cents) * multiple).quantize(
+            (Decimal(template.assumptions.exit_value_cents) * multiple).quantize(
                 Decimal("1"), rounding=ROUND_HALF_EVEN
             )
         )
-        exit_month = max(24, base_result.assumptions.exit_month + timing_delta)
+        exit_month = max(24, min(60, template.assumptions.exit_month + timing_delta))
+        operating_path = tuple(
+            int((Decimal(value) * operating_factor).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN))
+            for value in template.assumptions.monthly_net_cash_flow_cents
+        )
         path_assumptions = replace(
-            base_result.assumptions,
+            template.assumptions,
             exit_month=exit_month,
             exit_value_cents=exit_value,
+            monthly_net_cash_flow_cents=operating_path,
         )
         path_result = run_vc_scenario(
             assumptions=path_assumptions,
-            opening_cash_cents=base_result.opening_cash_cents,
-            initial_holders=base_result.initial_holders,
-            initial_preferences=base_result.initial_preferences,
-            unissued_pool_shares=base_result.initial_unissued_pool_shares,
+            opening_cash_cents=template.opening_cash_cents,
+            initial_holders=template.initial_holders,
+            initial_preferences=template.initial_preferences,
+            unissued_pool_shares=template.initial_unissued_pool_shares,
         )
         path_receipt = path_result.receipt()
         body: dict[str, Any] = {
             "path_id": f"VC_PATH_{index:05d}",
+            "template_scenario_id": template_id,
             "engine_inputs_sha256": path_result.engine_inputs_sha256,
             "exit_value_cents": exit_value,
             "exit_month": exit_month,
             "exit_value_multiple": format(multiple, "f"),
+            "timing_delta_months": timing_delta,
+            "operating_cash_factor": format(operating_factor, "f"),
+            "milestone_state": next(
+                (
+                    event.milestone_state
+                    for event in path_assumptions.events
+                    if event.event_type == "MILESTONE"
+                ),
+                "NOT_APPLICABLE",
+            ),
             "target_proceeds_cents": path_result.target_proceeds_cents,
             "gross_moic": format(path_result.gross_moic, "f"),
             "gross_xirr": format(path_result.gross_xirr, "f"),
@@ -811,6 +903,14 @@ def simulate_vc_distribution(
         "seed": seed,
         "draws": draws,
         "base_result_receipt_sha256": base_result.receipt()["receipt_sha256"],
+        "template_result_receipt_sha256s": {
+            scenario_id: templates[scenario_id].receipt()["receipt_sha256"]
+            for scenario_id in canonical_order
+        },
+        "template_weights": {
+            scenario_id: format(Decimal(str(weight)), "f")
+            for scenario_id, weight in zip(canonical_order, weights, strict=True)
+        },
         "moic_quantiles": [format(moics[index], "f") for index in indices],
         "xirr_quantiles": [format(irrs[index], "f") for index in indices],
         "probability_below_one": format(

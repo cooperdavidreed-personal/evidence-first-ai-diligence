@@ -20,8 +20,8 @@ class Estimate:
     control_count: int
 
 
-def _rng(master_seed: int) -> np.random.Generator:
-    material = f"{master_seed}:{CONTRACT_VERSION}:atlasgrid/experiments".encode()
+def _stream_rng(master_seed: int, stream: str) -> np.random.Generator:
+    material = f"{master_seed}:{CONTRACT_VERSION}:{stream}".encode()
     seed = int.from_bytes(hashlib.sha256(material).digest()[:16], "big")
     return np.random.Generator(np.random.PCG64(seed))
 
@@ -29,7 +29,7 @@ def _rng(master_seed: int) -> np.random.Generator:
 def atlasgrid_experiment_fixture(
     master_seed: int, *, include_post_cutoff_sentinel: bool = False
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    rng = _rng(master_seed)
+    rng = _stream_rng(master_seed, "atlasgrid/experiments")
     pricing_rows: list[dict[str, Any]] = []
     for idx in range(800):
         treatment = int(rng.random() < 0.5)
@@ -79,6 +79,38 @@ def atlasgrid_experiment_fixture(
                 }
             )
     return pricing_rows, pod_rows
+
+
+def helios_optimizer_fixture(master_seed: int) -> list[dict[str, Any]]:
+    """Return the exact precommitted 60/60 synthetic optimizer experiment."""
+    rng = _stream_rng(master_seed, "helios/experiments")
+    baselines = rng.normal(0, 0.17, 120)
+    noises = rng.normal(0, 0.08, 120)
+    treated_customers: set[int] | None = None
+    for _ in range(1_000):
+        candidate = set(int(item) for item in rng.permutation(120)[:60])
+        treated_values = np.array([baselines[idx] for idx in candidate])
+        control_values = np.array(
+            [baselines[idx] for idx in range(120) if idx not in candidate]
+        )
+        pooled_sd = math.sqrt(
+            (treated_values.var(ddof=1) + control_values.var(ddof=1)) / 2
+        )
+        balance_smd = (treated_values.mean() - control_values.mean()) / pooled_sd
+        if abs(balance_smd) <= 0.15:
+            treated_customers = candidate
+            break
+    if treated_customers is None:
+        raise UnderwritingError("optimizer_assignment_balance_not_found")
+    return [
+        {
+            "customer_id": f"HX-X{idx + 1:03d}",
+            "treatment": int(idx in treated_customers),
+            "baseline_log_cost": f"{float(baselines[idx]):.6f}",
+            "outcome_log_cost_change": f"{-0.11 * int(idx in treated_customers) + float(noises[idx]):.6f}",
+        }
+        for idx in range(120)
+    ]
 
 
 def difference_in_means(outcome: np.ndarray, treatment: np.ndarray) -> Estimate:

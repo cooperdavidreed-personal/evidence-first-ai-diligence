@@ -69,8 +69,11 @@ def _formula(
 
 
 def _money(cents: int) -> str:
-    value = Decimal(cents) / Decimal(100_000_000)
-    return f"${value.quantize(Decimal('0.1'))}M".replace(".0M", "M")
+    value = (Decimal(abs(cents)) / Decimal(100_000_000)).quantize(Decimal("0.1"))
+    if value == 0:
+        return "$0"
+    sign = "−" if cents < 0 else ""
+    return f"{sign}${value}M".replace(".0M", "M")
 
 
 def _percent(decimal_value: str) -> str:
@@ -260,6 +263,40 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
 
     vc_engine = case.get("vcEngine")
     if vc_engine is not None:
+        pipeline_receipt = next(
+            item for item in case["analyses"] if item["analysis_id"] == "HX-04"
+        )
+        optimizer_receipt = next(
+            item for item in case["analyses"] if item["analysis_id"] == "HX-06"
+        )
+        add(
+            metric_id="hx-pipeline-audit",
+            label="Pipeline stage-history audit completion",
+            value=1,
+            display_value="COMPLETE",
+            unit="binary_state",
+            quantum="1",
+            period="as of underwriting cutoff",
+            classification="DESCRIPTIVE",
+            locator_ids=[locator_by_lineage["hx-pipeline"]],
+            receipt_sha256=pipeline_receipt["receipt_sha256"],
+            assumption_ids=["complete_stage_history_audit"],
+            downstream_ids=["series-c-tranche"],
+        )
+        add(
+            metric_id="hx-optimizer-replication",
+            label="Production optimizer replication",
+            value=0,
+            display_value="OPEN — NOT REPLICATED",
+            unit="binary_state",
+            quantum="1",
+            period="pre-tranche condition",
+            classification="SCENARIO",
+            locator_ids=[locator_by_lineage["hx-optimizer"]],
+            receipt_sha256=optimizer_receipt["receipt_sha256"],
+            assumption_ids=["production_replication_required"],
+            downstream_ids=["series-c-tranche"],
+        )
         for scenario_key in ("base", "milestone", "downside", "financing_shortfall"):
             result = vc_engine[scenario_key]
             scenario_id = result["scenario_id"]
@@ -296,19 +333,54 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
                     **extra,
                 )
 
-            add_vc_cents(f"{prefix}-target-invested", "Series C funded capital", result["target_invested_cents"])
+            scenario_label = scenario_id.replace("_", " ").title()
+            add_vc_cents(f"{prefix}-target-invested", f"{scenario_label} · Series C funded capital", result["target_invested_cents"])
             add_vc_cents(f"{prefix}-target-proceeds", "Series C exit proceeds", result["target_proceeds_cents"])
             add_vc_cents(f"{prefix}-minimum-cash", "Minimum modeled cash", result["minimum_cash_cents"])
-            add_vc_cents(f"{prefix}-exit-value", "Exit equity value", result["waterfall"]["exit_value_cents"])
+            waterfall_operand_ids = [f"{prefix}-waterfall-common"] + [
+                f"{prefix}-waterfall-{class_id.lower()}-proceeds"
+                for class_id in result["waterfall"]["class_proceeds_cents"]
+            ]
+            waterfall_formula = f"vc-formula-{scenario_id.lower()}-waterfall-conservation"
+            add_vc_cents(
+                f"{prefix}-exit-value",
+                "Exit equity value",
+                result["waterfall"]["exit_value_cents"],
+                formula_id=waterfall_formula,
+                operand_ids=waterfall_operand_ids,
+            )
+            target_holder = next(
+                item for item in result["holders"] if item["holder_id"] == "series-c-investor"
+            )
+            fully_diluted_shares = (
+                sum(int(item["shares"]) for item in result["holders"])
+                + int(result["unissued_pool_shares"])
+            )
+            add(
+                metric_id=f"{prefix}-fully-diluted-shares",
+                label="Fully diluted shares",
+                value=fully_diluted_shares,
+                display_value=f"{fully_diluted_shares:,}",
+                unit="shares",
+                quantum="1",
+                **common,
+            )
+            ownership_formula = f"vc-formula-{scenario_id.lower()}-ownership"
             add(
                 metric_id=f"{prefix}-ownership",
-                label="Series C fully diluted ownership",
+                label=f"{scenario_label} · Series C fully diluted ownership",
                 value=result["target_ownership"],
                 display_value=_percent(result["target_ownership"]),
                 unit="decimal_rate",
                 quantum="0.00000001",
+                formula_id=ownership_formula,
+                operand_ids=[
+                    f"{prefix}-target-shares",
+                    f"{prefix}-fully-diluted-shares",
+                ],
                 **common,
             )
+            moic_formula = f"vc-formula-{scenario_id.lower()}-moic"
             add(
                 metric_id=f"{prefix}-gross-moic",
                 label="Series C gross MOIC",
@@ -316,15 +388,37 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
                 display_value=_multiple(result["gross_moic"]),
                 unit="multiple",
                 quantum="0.0001",
+                formula_id=moic_formula,
+                operand_ids=[
+                    f"{prefix}-target-proceeds",
+                    f"{prefix}-target-invested",
+                ],
                 **common,
             )
+            cash_flow_operand_ids: list[str] = []
+            for flow_index, flow in enumerate(result["target_cash_flows"], start=1):
+                flow_metric_id = f"{prefix}-target-cash-flow-{flow_index:02d}"
+                flow_common = {**common, "period": flow["date"]}
+                add(
+                    metric_id=flow_metric_id,
+                    label=f"Series C dated cash flow {flow_index}",
+                    value=flow["amount_cents"],
+                    display_value=_money(flow["amount_cents"]),
+                    unit="cents",
+                    quantum="1",
+                    **flow_common,
+                )
+                cash_flow_operand_ids.append(flow_metric_id)
+            xirr_formula = f"vc-formula-{scenario_id.lower()}-dated-xirr"
             add(
                 metric_id=f"{prefix}-gross-xirr",
-                label="Series C gross XIRR",
+                label=f"{scenario_label} · Series C gross XIRR",
                 value=result["gross_xirr"],
                 display_value=_percent(result["gross_xirr"]),
                 unit="decimal_rate",
-                quantum="0.0001",
+                quantum="0.00000000000001",
+                formula_id=xirr_formula,
+                operand_ids=cash_flow_operand_ids,
                 **common,
             )
             add(
@@ -336,9 +430,6 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
                 quantum="1",
                 **common,
             )
-            target_holder = next(
-                item for item in result["holders"] if item["holder_id"] == "series-c-investor"
-            )
             add(
                 metric_id=f"{prefix}-target-shares",
                 label="Series C investor shares",
@@ -348,6 +439,53 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
                 quantum="1",
                 **common,
             )
+            formulas.extend(
+                [
+                    _formula(
+                        ownership_formula,
+                        "DIVIDE",
+                        [
+                            f"{prefix}-target-shares",
+                            f"{prefix}-fully-diluted-shares",
+                        ],
+                        f"{prefix}-ownership",
+                        "decimal_rate",
+                    ),
+                    _formula(
+                        moic_formula,
+                        "DIVIDE",
+                        [
+                            f"{prefix}-target-proceeds",
+                            f"{prefix}-target-invested",
+                        ],
+                        f"{prefix}-gross-moic",
+                        "multiple",
+                    ),
+                    _formula(
+                        xirr_formula,
+                        "DATED_XIRR",
+                        cash_flow_operand_ids,
+                        f"{prefix}-gross-xirr",
+                        "decimal_rate",
+                    ),
+                ]
+            )
+            for holder in result["holders"]:
+                add(
+                    metric_id=f"{prefix}-holder-{holder['holder_id']}-shares",
+                    label=f"{holder['holder_id']} issued shares",
+                    value=holder["shares"],
+                    display_value=f"{holder['shares']:,}",
+                    unit="shares",
+                    quantum="1",
+                    **common,
+                )
+            for preference in result["preferences"]:
+                add_vc_cents(
+                    f"{prefix}-preference-{preference['class_id'].lower()}-invested",
+                    f"{preference['class_id']} invested preference",
+                    preference["invested_cents"],
+                )
             for event in result["financing_events"]:
                 event_prefix = f"{prefix}-event-{event['event_id']}"
                 add_vc_cents(f"{event_prefix}-new-money", "Funded cash", event["new_money_cents"])
@@ -433,6 +571,15 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
                     f"{class_id} proceeds",
                     proceeds,
                 )
+            formulas.append(
+                _formula(
+                    waterfall_formula,
+                    "SUM",
+                    waterfall_operand_ids,
+                    f"{prefix}-exit-value",
+                    "cents",
+                )
+            )
 
         distribution = vc_engine["distribution"]
         distribution_common = {
@@ -463,6 +610,47 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
                 quantum="0.0001",
                 **distribution_common,
             )
+        for cell in vc_engine["sensitivities"]["cells"]:
+            common = {
+                "period": "projection origin through selected exit",
+                "classification": "SCENARIO",
+                "locator_ids": [locator_by_lineage["hx-return"], locator_by_lineage["hx-runway"]],
+                "receipt_sha256": cell["receipt_sha256"],
+                "assumption_ids": [cell["cell_id"]],
+                "downstream_ids": ["decision"],
+            }
+            prefix = f"helios-{cell['cell_id']}"
+            add(metric_id=f"{prefix}-gross-moic", label="Gross MOIC", value=cell["gross_moic"], display_value=_multiple(cell["gross_moic"]), unit="multiple", quantum="0.0001", **common)
+            add(metric_id=f"{prefix}-gross-xirr", label="Gross XIRR", value=cell["gross_xirr"], display_value=_percent(cell["gross_xirr"]), unit="decimal_rate", quantum="0.0001", **common)
+            add(metric_id=f"{prefix}-ownership", label="Series C ownership", value=cell["target_ownership"], display_value=_percent(cell["target_ownership"]), unit="decimal_rate", quantum="0.00000001", **common)
+            add(metric_id=f"{prefix}-minimum-cash", label="Minimum cash", value=cell["minimum_cash_cents"], display_value=_money(cell["minimum_cash_cents"]), unit="cents", quantum="1", **common)
+        bridge = case["vcValueCreationBridge"]
+        bridge_common = {
+            "period": "projection origin through month 60",
+            "classification": "SCENARIO",
+            "locator_ids": [locator_by_lineage["hx-nrr"], locator_by_lineage["hx-margin"], locator_by_lineage["hx-pipeline"], locator_by_lineage["hx-runway"]],
+            "receipt_sha256": bridge["receipt_sha256"],
+            "assumption_ids": ["vc-value-creation-book"],
+            "downstream_ids": ["decision"],
+        }
+        for lever in bridge["standalone"]:
+            for field in (
+                "implementation_cost_cents",
+                "minimum_cash_delta_cents",
+                "target_proceeds_delta_cents",
+            ):
+                add(metric_id=f"helios-value-{lever['lever_id']}-{field}", label=f"{lever['lever_id']} {field}", value=lever[field], display_value=_money(lever[field]), unit="cents", quantum="1", **bridge_common)
+            add(metric_id=f"helios-value-{lever['lever_id']}-gross-xirr-delta", label=f"{lever['lever_id']} gross XIRR impact", value=lever["gross_xirr_delta"], display_value=_percent(lever["gross_xirr_delta"]), unit="decimal_rate", quantum="0.0001", **bridge_common)
+            add(metric_id=f"helios-value-{lever['lever_id']}-gross-moic-delta", label=f"{lever['lever_id']} gross MOIC impact", value=lever["gross_moic_delta"], display_value=_multiple(lever["gross_moic_delta"]), unit="multiple", quantum="0.0001", **bridge_common)
+        for field in (
+            "combined_minimum_cash_delta_cents",
+            "combined_target_proceeds_delta_cents",
+            "sum_standalone_target_proceeds_delta_cents",
+            "interaction_residual_cents",
+        ):
+            add(metric_id=f"helios-value-{field}", label=field.replace("_", " "), value=bridge[field], display_value=_money(bridge[field]), unit="cents", quantum="1", **bridge_common)
+        add(metric_id="helios-value-combined-gross-xirr-delta", label="Combined gross XIRR impact", value=bridge["combined_gross_xirr_delta"], display_value=_percent(bridge["combined_gross_xirr_delta"]), unit="decimal_rate", quantum="0.0001", **bridge_common)
+        add(metric_id="helios-value-combined-gross-moic-delta", label="Combined gross MOIC impact", value=bridge["combined_gross_moic_delta"], display_value=_multiple(bridge["combined_gross_moic_delta"]), unit="multiple", quantum="0.0001", **bridge_common)
 
     metric_ids = [item["metric_id"] for item in metrics]
     if len(metric_ids) != len(set(metric_ids)):

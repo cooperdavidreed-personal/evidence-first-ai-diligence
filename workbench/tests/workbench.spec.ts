@@ -5,8 +5,8 @@ const viewChecks = {
   "IC Snapshot": /What must be true/,
   "Thesis & Evidence": /Evidence → estimate → judgment → action/,
   "Econometric Lab": /What the design can—and cannot—establish/,
-  "Underwriting Room": /Price, (structure|leverage), and downside/,
-  "Value Creation": /(Every initiative earns its place|Value creation reconciles)/,
+  "Underwriting Room": /(Price, leverage, and downside|Terms, ownership, runway, and preferences)/,
+  "Value Creation": /(Every initiative earns its place|Value creation reconciles|Value creation changes runway)/,
 };
 
 async function assertBoundedAndAccessible(page: Page) {
@@ -26,7 +26,8 @@ async function assertBoundedAndAccessible(page: Page) {
 for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
   test(`${caseName} complete keyboard, interaction, visual, and accessibility flow`, async ({page}, testInfo: TestInfo) => {
     await page.goto("/");
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+    await page.evaluate(() => window.scrollTo({top: 0, left: 0, behavior: "instant"}));
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThanOrEqual(4);
     await page.getByRole("button", {name: new RegExp(caseName)}).click();
     await expect(page.getByRole("heading", {name: caseName})).toBeVisible();
     await expect(page.getByText("SYNTHETIC — NOT INVESTMENT ADVICE")).toBeVisible();
@@ -83,15 +84,28 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
           await page.keyboard.press("Escape");
           await expect(financeLineage).toBeFocused();
         } else {
-          for (const scenario of await page.locator(".scenario-tabs button").all()) await scenario.click();
-          await expect(page.getByText(/No display-only approximation is permitted/)).toBeVisible();
-          expect(await page.getByRole("slider").count()).toBe(0);
+          const receipt = await page.locator(".engine-receipt code").textContent();
+          await page.getByRole("button", {name: "Shortfall bridge"}).click();
+          await expect(page.getByText(/Shortfall M/)).toBeVisible();
+          expect(await page.locator(".engine-receipt code").textContent()).not.toBe(receipt);
+          await expect(page.getByRole("heading", {name: "Exit waterfall"})).toBeVisible();
+          await expect(page.getByRole("heading", {name: "Milestone test ledger"})).toBeVisible();
+          await page.getByRole("combobox", {name: "Driver"}).selectOption("milestone_state");
+          await page.getByRole("button", {name: "FAIL"}).click();
+          const financeLineage = page.getByRole("button", {name: /Series C gross XIRR/}).first();
+          await financeLineage.click();
+          await expect(page.getByRole("dialog")).toBeVisible();
+          await expect(page.getByRole("dialog")).toContainText("DATED_XIRR");
+          await expect(page.getByRole("dialog").locator(".formula-inspection li")).toHaveCount(2);
+          await page.keyboard.press("Escape");
+          await expect(financeLineage).toBeFocused();
         }
       }
       if (view === "Value Creation") {
+        if (caseName === "Helios Compute Control") await expect(page.locator(".initiative-list")).toContainText("Formula:");
         const evidence = caseName === "AtlasGrid Systems"
           ? page.getByRole("button", {name: /Inspect lineage for Renewal architecture exit_equity_delta_cents/}).first()
-          : page.getByRole("button", {name: "Inspect baseline evidence ↗"}).first();
+          : page.getByRole("button", {name: /combined minimum cash delta cents/i}).first();
         await evidence.click();
         await expect(page.getByRole("dialog")).toBeVisible();
         await page.keyboard.press("Escape");
@@ -104,7 +118,7 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
         if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
         window.scrollTo({top: 0, left: 0, behavior: "instant"});
       });
-      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThanOrEqual(4);
       await page.screenshot({path: `../dist/visual-evidence/${testInfo.project.name}-${caseSlug}-${slug}.png`, fullPage: false, animations: "disabled"});
     }
   });

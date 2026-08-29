@@ -6,10 +6,10 @@ All wording remains draft-only until the repository, workbench, and named verifi
 |---|---|---|
 | Built a shared PE/VC underwriting workbench | committed AtlasGrid and Helios cases, five shared views, reproducible local build | `VERIFIED_LOCAL` |
 | Bound displayed metrics to source and method lineage | fail-closed compiler, nested digests, clickable lineage, tamper tests | `VERIFIED_LOCAL` |
-| Applied econometric identification discipline | declared estimands, uncertainty, diagnostics, causal classes, abstentions, recovery ledger | `VERIFIED_LOCAL_SYNTHETIC` |
-| Modeled buyout and venture economics | exact accounting/debt/capitalization bridges and seeded scenarios | `VERIFIED_LOCAL_SYNTHETIC` |
+| Applied econometric identification discipline | declared estimands, uncertainty, diagnostics, causal classes, abstentions, smoke recovery, and two fixed 500-seed coverage ledgers | `VERIFIED_LOCAL_SYNTHETIC` |
+| Modeled buyout and venture economics | exact accounting/debt/capitalization bridges, event-derived milestone funding, dated cash flows, independent waterfall oracle, and seeded full-engine scenarios | `VERIFIED_LOCAL_SYNTHETIC` |
 | Produced a portfolio-grade interface | responsive screenshots and automated interaction/a11y checks plus independent editorial review | `PENDING_INDEPENDENT_REVIEW` |
-| Used governed multi-model collaboration | provider receipts, one-writer enforcement, independent review | `PARTIAL — GROK HELD; CLAUDE FINAL PENDING` |
+| Used governed multi-model collaboration | provider receipts, one-writer enforcement, independent review | `PARTIAL — GROK PRODUCED; CLAUDE HELD_PROVIDER` |
 | Preserved the evidence kernel | full suite and 24-case deterministic regression | `VERIFIED_LOCAL` |
 | Publicly available | anonymous repository and artifact checks | `NOT PUBLISHED` |
 | Improves investment outcomes | independent longitudinal evidence on real decisions | `DO NOT CLAIM` |

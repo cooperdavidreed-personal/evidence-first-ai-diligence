@@ -87,6 +87,234 @@ def _packet(case: dict[str, Any]) -> dict[str, Any]:
     return body
 
 
+def _vc_packet(case: dict[str, Any]) -> dict[str, Any]:
+    engine = case["vcEngine"]
+    body: dict[str, Any] = {
+        "schema_version": "underwriting.vc-ic-packet/v2",
+        "case_id": case["caseId"],
+        "company": case["company"],
+        "disclosure": case["disclosure"],
+        "manifest_sha256": case["manifest_sha256"],
+        "analysis_sha256": case["analysis_sha256"],
+        "decision": case["decision"],
+        "summary_metrics": case["summaryMetrics"],
+        "thesis": case["thesis"],
+        "team_assessment": case["teamAssessment"],
+        "ownership_cadence": case["ownershipCadence"],
+        "scenarios": {
+            key: engine[key]
+            for key in ("base", "milestone", "downside", "financing_shortfall")
+        },
+        "milestone_contract": engine["milestone_contract"],
+        "exit_value_basis": engine["exit_value_basis"],
+        "distribution": engine["distribution"],
+        "sensitivities": engine["sensitivities"],
+        "value_creation": case["valueCreation"],
+        "value_creation_bridge": case["vcValueCreationBridge"],
+        "analysis_receipts": [
+            {
+                "analysis_id": item["analysis_id"],
+                "classification": item["classification"],
+                "state": item["state"],
+                "spec_sha256": item["spec_sha256"],
+                "receipt_sha256": item["receipt_sha256"],
+                "outputs": item["outputs"],
+            }
+            for item in case["analyses"]
+        ],
+        "temporal_scan": case["temporalScan"],
+    }
+    body["packet_sha256"] = digest(body)
+    return body
+
+
+def _vc_memo_markdown(packet: dict[str, Any]) -> str:
+    decision = packet["decision"]
+    scenarios = packet["scenarios"]
+    base = scenarios["base"]
+    selected = scenarios["milestone"]
+    downside = scenarios["downside"]
+    shortfall = scenarios["financing_shortfall"]
+    close_event = next(
+        item for item in selected["financing_events"] if item["event_id"] == "series-c-close"
+    )
+    first_close_ownership = Decimal(close_event["ownership_numerator"]) / Decimal(
+        close_event["ownership_denominator"]
+    )
+    annual_cash = [item for item in selected["cash_by_month"] if item["month"] % 12 == 0]
+    analysis = {item["analysis_id"]: item for item in packet["analysis_receipts"]}
+    lever_rows = list(
+        zip(
+            packet["value_creation"],
+            packet["value_creation_bridge"]["standalone"],
+            strict=True,
+        )
+    )
+    lines = [
+        f"# {packet['company']} — illustrative venture investment committee memorandum",
+        "",
+        f"> {packet['disclosure']}",
+        "",
+        f"**Conditional posture:** `{decision['decision']}` subject to the executable terms and falsifiers below.",
+        "",
+        f"**Authority:** `{decision['status']}` / `{decision['signature_status']}` / no delegated investment authority.",
+        "",
+        f"**Knowledge cutoff:** `{decision['as_of']}`",
+        f"**Packet receipt:** `{packet['packet_sha256']}`",
+        "",
+        "## Recommendation and executable terms",
+        "",
+        decision["rationale"],
+        "",
+        "| Term | Exact selected-case position |",
+        "|---|---|",
+        "| Security | Series C, 1x non-participating preference, senior to A/B and junior to any declared bridge |",
+        f"| Initial / conditional capital | {_money(2_500_000_000)} at close / {_money(packet['milestone_contract']['amount_cents'])} at month {packet['milestone_contract']['test_month']} |",
+        f"| Valuation | {_money(16_000_000_000)} pre-money / {_money(20_000_000_000)} fully funded post-money |",
+        f"| Series C ownership | {first_close_ownership * 100:.2f}% at first close / {Decimal(selected['target_ownership']) * 100:.2f}% fully funded |",
+        f"| Option pool | {selected['unissued_pool_shares']:,} unissued shares after refresh; pre-money holders bear the refresh |",
+        f"| Base returns | {_percent(base['gross_xirr'])} gross XIRR / {_multiple(base['gross_moic'])} gross MOIC |",
+        f"| Down-round returns | {_percent(downside['gross_xirr'])} gross XIRR / {_multiple(downside['gross_moic'])} gross MOIC |",
+        f"| Shortfall case | Bridge at month {shortfall['first_cash_exhaustion_month_without_contingent_financing']}; {_percent(shortfall['gross_xirr'])} / {_multiple(shortfall['gross_moic'])} |",
+        "",
+        "## Product, market, customers, competition, and business model",
+        "",
+        packet["thesis"]["statement"],
+        "",
+        "| Dimension | Underwriting judgment | Disconfirming fact / open gate |",
+        "|---|---|---|",
+        "| Product | GPU-spend control plane with customer-level usage and cost records. | Production replication of the optimizer effect remains open. |",
+        "| Market | Tiered Bayesian survey supports a scenario range, not a market fact. | Tier 5 is data-thin and abstained; priors remain explicit. |",
+        "| Customers | Ordinary cohorts are separated from hand-picked design partners. | Pooled retention overstates repeatability. |",
+        "| Competition | Workflow value depends on neutral provider-cost control. | Provider-native tooling and cloud concentration may compress differentiation. |",
+        "| Business model | Usage-linked expansion can compound with customer compute spend. | Gross margin remains exposed to compute, telemetry, and support costs. |",
+        "| Terms | Milestone financing limits capital at risk before operating proof. | Failure creates explicit down-round or bridge dilution. |",
+        "",
+        f"**Counterthesis:** {packet['thesis']['counterthesis']}",
+        "",
+        "## Team and financing accountability",
+        "",
+        "These are role-level evidence states, not invented biographies or reference-checked conclusions.",
+        "",
+        "| Dimension | Assessment |",
+        "|---|---|",
+        f"| Observable strengths | {' '.join(packet['team_assessment']['strengths'])} |",
+        f"| Unproven capabilities | {' '.join(packet['team_assessment']['unproven'])} |",
+        f"| Key-person risk | {packet['team_assessment']['key_person_risk']} |",
+        f"| Required capacity | {' '.join(packet['team_assessment']['required_hires'])} |",
+        "",
+        "## Cap table and financing-event bridge",
+        "",
+        "| Scenario | Funded Series C | Ownership | Minimum cash | Exit proceeds | Gross XIRR | Gross MOIC |",
+        "|---|---:|---:|---:|---:|---:|---:|",
+        *[
+            f"| {item['scenario_id']} | {_money(item['target_invested_cents'])} | {Decimal(item['target_ownership']) * 100:.2f}% | {_money(item['minimum_cash_cents'])} | {_money(item['target_proceeds_cents'])} | {_percent(item['gross_xirr'])} | {_multiple(item['gross_moic'])} |"
+            for item in (base, selected, downside, shortfall)
+        ],
+        "",
+        "| Selected event | Month | Status | Cash | New shares | Fully diluted shares |",
+        "|---|---:|---|---:|---:|---:|",
+        *[
+            f"| {item['event_id']} | {item['actual_month']} | {item['status']} | {_money(item['new_money_cents'])} | {item['new_shares']:,} | {item['fully_diluted_after']:,} |"
+            for item in selected["financing_events"]
+        ],
+        "",
+        "## Milestone financing and monthly runway",
+        "",
+        f"The {_money(packet['milestone_contract']['amount_cents'])} second tranche releases only when `{packet['milestone_contract']['release_rule']}` after a {packet['milestone_contract']['cure_period_days']}-day cure. Evaluator: `{packet['milestone_contract']['evaluator']}`. Failure consequence: `{packet['milestone_contract']['failure_consequence']}`.",
+        "",
+        *[
+            f"- `{item['metric_id']}` {item['operator']} `{item['threshold']}` over `{item['period']}`."
+            for item in packet["milestone_contract"]["tests"]
+        ],
+        "",
+        "| Year | Ending cash |",
+        "|---:|---:|",
+        *[f"| {item['month'] // 12} | {_money(item['ending_cash_cents'])} |" for item in annual_cash],
+        "",
+        "## Preference waterfall and investor return bridge",
+        "",
+        f"Exit value basis is `{packet['exit_value_basis']}`. Unissued pool shares receive zero proceeds. Class proceeds conserve to {_money(selected['waterfall']['exit_value_cents'])} with a {selected['waterfall']['conservation_residual_cents']}-cent residual.",
+        "",
+        "| Class | Election | Preference | Residual | Total proceeds |",
+        "|---|---|---:|---:|---:|",
+        *[
+            f"| {class_id} | {'CONVERT' if selected['waterfall']['conversion_profile'][class_id] else 'PREFERENCE'} | {_money(selected['waterfall']['class_preference_cents'][class_id])} | {_money(selected['waterfall']['class_residual_cents'][class_id])} | {_money(proceeds)} |"
+            for class_id, proceeds in selected["waterfall"]["class_proceeds_cents"].items()
+        ],
+        "",
+        f"Series C invests {_money(selected['target_invested_cents'])} in dated funded tranches and receives {_money(selected['target_proceeds_cents'])} at exit: **{_percent(selected['gross_xirr'])} gross XIRR / {_multiple(selected['gross_moic'])} gross MOIC**.",
+        "",
+        "## Conditional distribution and sensitivity",
+        "",
+        "The 1,000 retained paths replay the full financing ledger and exact waterfall. They are scenario priors, not a forecast or evidence of real-world accuracy.",
+        "",
+        "| Statistic | p10 | p50 | p90 |",
+        "|---|---:|---:|---:|",
+        f"| Gross MOIC | {_multiple(packet['distribution']['moic_quantiles'][0])} | {_multiple(packet['distribution']['moic_quantiles'][1])} | {_multiple(packet['distribution']['moic_quantiles'][2])} |",
+        f"| Gross XIRR | {_percent(packet['distribution']['xirr_quantiles'][0])} | {_percent(packet['distribution']['xirr_quantiles'][1])} | {_percent(packet['distribution']['xirr_quantiles'][2])} |",
+        "",
+        f"- Probability below 1.0x: **{_percent(packet['distribution']['probability_below_one'])}**.",
+        f"- Sensitivity book: {len(packet['sensitivities']['cells'])} full-engine cells across exit value, exit date, later-round price, and milestone state.",
+        "",
+        "## Econometric credit and zero-credit map",
+        "",
+        f"- HX-06 (`{analysis['HX-06']['classification']}`) supports only the randomized synthetic optimizer estimand and tested population.",
+        f"- HX-07 (`{analysis['HX-07']['classification']}`) receives zero base-case causal credit because adoption follows spend spikes and identification fails.",
+        f"- HX-05 (`{analysis['HX-05']['classification']}`) is a prior-sensitive market-size scenario, not causal evidence.",
+        "",
+        "## Value creation and board cadence",
+        "",
+        f"Combined full-model impact: **{_money(packet['value_creation_bridge']['combined_minimum_cash_delta_cents'])} minimum cash**, **{_money(packet['value_creation_bridge']['combined_target_proceeds_delta_cents'])} Series C proceeds**, **{_percent(packet['value_creation_bridge']['combined_gross_xirr_delta'])} gross XIRR**, including an explicit **{_money(packet['value_creation_bridge']['interaction_residual_cents'])} interaction residual**.",
+        "",
+        "| Initiative | Evidence class | Baseline / target | Owner | Modeled consequence | Stop rule / risk |",
+        "|---|---|---|---|---|---|",
+        *[
+            f"| {item['initiative']} | {item.get('credit_classification', 'HUMAN_JUDGMENT')} | {item['baseline']} / {item['target']} | {item['owner']} | {_money(lever['monthly_cash_delta_cents'])}/month cash; {_money(lever['exit_value_delta_cents'])} exit value; {_money(lever['implementation_cost_cents'])} cost | {item['risk']} |"
+            for item, lever in lever_rows
+        ],
+        "",
+        "### Economic mapping register",
+        "",
+        *[
+            f"- **{item['initiative']}:** {lever['economic_mapping']['formula']}. Inputs: "
+            + "; ".join(
+                f"{key}={value}"
+                for key, value in lever["economic_mapping"].items()
+                if key != "formula"
+            )
+            for item, lever in lever_rows
+        ],
+        "",
+        "| Phase | Timing | Owner | Milestone | KPI | Stop rule |",
+        "|---|---|---|---|---|---|",
+        *[
+            f"| {item['phase']} | {item['timing']} | {item['owner']} | {item['milestone']} | {item['kpi']} | {item['stop_rule']} |"
+            for item in packet["ownership_cadence"]
+        ],
+        "",
+        "## Falsifiers, open diligence, and limitations",
+        "",
+        *[f"- FALSIFIER: {item}" for item in packet["thesis"]["falsifiers"]],
+        *[f"- OPEN: {item}" for item in packet["thesis"]["requests"]],
+        "",
+        "This packet is generated from a fictional deterministic room. Synthetic causal estimates recover planted mechanisms only. Scenario outputs are not forecasts. The investment record remains unsigned and requires human IC authority.",
+        "",
+        "## Receipt appendix",
+        "",
+        f"- Case analysis: `{packet['analysis_sha256']}`",
+        *[
+            f"- {key.upper()} result: `{value['receipt_sha256']}`"
+            for key, value in packet["scenarios"].items()
+        ],
+        f"- Distribution: `{packet['distribution']['receipt_sha256']}`",
+        f"- Sensitivity book: `{packet['sensitivities']['receipt_sha256']}`",
+        f"- Value-creation bridge: `{packet['value_creation_bridge']['receipt_sha256']}`",
+        "",
+    ]
+    return "\n".join(lines)
+
+
 def _memo_markdown(packet: dict[str, Any]) -> str:
     decision = packet["decision"]
     ask = packet["scenarios"]["ask"]
@@ -318,8 +546,14 @@ def _memo_html(markdown: str, packet: dict[str, Any]) -> str:
 
 def build_ic_packet_from_case(case: dict[str, Any], output_dir: str | Path) -> dict[str, Path]:
     validate_workbench_case(case)
-    if case.get("caseId") != "atlasgrid" or "peEngine" not in case:
-        raise ValueError("ic_packet_requires_atlasgrid_pe_v2")
+    if case.get("caseId") == "atlasgrid" and "peEngine" in case:
+        packet_builder = _packet
+        memo_builder = _memo_markdown
+    elif case.get("caseId") == "helios" and "vcEngine" in case:
+        packet_builder = _vc_packet
+        memo_builder = _vc_memo_markdown
+    else:
+        raise ValueError("ic_packet_requires_supported_v2_engine")
     failed = [
         f"{receipt['analysis_id']}:{diagnostic['name']}"
         for receipt in case["analyses"]
@@ -330,8 +564,8 @@ def build_ic_packet_from_case(case: dict[str, Any], output_dir: str | Path) -> d
         raise ValueError(f"ic_packet_blocked_failed_diagnostic:{','.join(failed)}")
     destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
-    packet = _packet(case)
-    markdown = _memo_markdown(packet)
+    packet = packet_builder(case)
+    markdown = memo_builder(packet)
     html = _memo_html(markdown, packet)
     memo_path = destination / "ic-memo.md"
     html_path = destination / "ic-memo.html"

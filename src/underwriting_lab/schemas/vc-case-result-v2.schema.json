@@ -3,7 +3,7 @@
   "$id": "https://dailyaiagents.dev/schemas/vc-case-result-v2.schema.json",
   "title": "VC Case Result v2",
   "type": "object",
-  "required": ["schema_version", "scenario_id", "engine_inputs_sha256", "financing_events", "holders", "preferences", "cash_by_month", "waterfall", "target_invested_cents", "target_proceeds_cents", "target_ownership", "gross_moic", "gross_xirr", "receipt_sha256"],
+  "required": ["schema_version", "scenario_id", "engine_inputs_sha256", "financing_events", "holders", "preferences", "cash_by_month", "waterfall", "target_invested_cents", "target_proceeds_cents", "target_cash_flows", "target_ownership", "gross_moic", "gross_xirr", "receipt_sha256"],
   "properties": {
     "schema_version": {"const": "underwriting.vc-scenario-result/v2"},
     "scenario_id": {"enum": ["BASE", "MILESTONE", "DOWNSIDE", "FINANCING_SHORTFALL"]},
@@ -15,6 +15,7 @@
     "waterfall": {"type": "object"},
     "target_invested_cents": {"type": "integer", "minimum": 1},
     "target_proceeds_cents": {"type": "integer", "minimum": 0},
+    "target_cash_flows": {"type": "array", "minItems": 2},
     "target_ownership": {"type": "string"},
     "gross_moic": {"type": "string"},
     "gross_xirr": {"type": "string"},

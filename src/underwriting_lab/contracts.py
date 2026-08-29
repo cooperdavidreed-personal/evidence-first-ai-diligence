@@ -191,6 +191,15 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         ] != waterfall["exit_value_cents"]:
             raise UnderwritingError("vc_waterfall_conservation_failed")
         funded_target = 0
+        engine_inputs = result["engine_inputs"]
+        issued_shares = sum(
+            int(holder["shares"]) for holder in engine_inputs["initial_holders"]
+        )
+        unissued_pool = int(engine_inputs["initial_unissued_pool_shares"])
+        preference_invested = {
+            item["class_id"]: int(item["invested_cents"])
+            for item in engine_inputs["initial_preferences"]
+        }
         previous_ending: int | None = None
         for event in result["financing_events"]:
             validate_v2_document(event, "vc-financing-event-v2.schema.json")
@@ -200,8 +209,100 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
                 raise UnderwritingError("vc_event_digest_mismatch")
             if event["status"] == "FUNDED" and event["holder_id"] == "series-c-investor":
                 funded_target += event["new_money_cents"]
+            if event["issued_shares_before"] != issued_shares or event[
+                "unissued_pool_before"
+            ] != unissued_pool:
+                raise UnderwritingError("vc_event_opening_capitalization_mismatch")
+            if event["status"] == "NOT_FUNDED":
+                if any(
+                    event[field] != 0
+                    for field in ("new_money_cents", "new_shares", "pool_top_up_shares")
+                ):
+                    raise UnderwritingError("vc_unfunded_event_has_effect")
+            else:
+                from fractions import Fraction
+
+                price = Fraction(
+                    int(event["price_per_share_numerator_cents"]),
+                    int(event["price_per_share_denominator"]),
+                )
+                apic = Fraction(
+                    int(event["apic_remainder_numerator_cents"]),
+                    int(event["apic_remainder_denominator"]),
+                )
+                if price * int(event["new_shares"]) + apic != int(
+                    event["new_money_cents"]
+                ):
+                    raise UnderwritingError("vc_event_apic_reconciliation_failed")
+                preference_invested[event["class_id"]] = preference_invested.get(
+                    event["class_id"], 0
+                ) + int(event["new_money_cents"])
+            issued_shares += int(event["new_shares"])
+            unissued_pool += int(event["pool_top_up_shares"])
+            if event["issued_shares_after"] != issued_shares or event[
+                "unissued_pool_after"
+            ] != unissued_pool:
+                raise UnderwritingError("vc_event_closing_capitalization_mismatch")
+            if event["fully_diluted_after"] != issued_shares + unissued_pool:
+                raise UnderwritingError("vc_event_fully_diluted_mismatch")
+            if event["event_type"] == "MILESTONE":
+                milestone_states = {
+                    metric_id: state for metric_id, state in event["milestone_results"]
+                }
+                derived_pass = bool(milestone_states) and all(
+                    state == "PASS" for state in milestone_states.values()
+                )
+                if (event["status"] == "FUNDED") != derived_pass:
+                    raise UnderwritingError("vc_milestone_funding_not_derived")
         if funded_target != result["target_invested_cents"]:
             raise UnderwritingError("vc_target_investment_reconciliation_failed")
+        if sum(int(holder["shares"]) for holder in result["holders"]) != issued_shares:
+            raise UnderwritingError("vc_holder_share_rollforward_failed")
+        if int(result["unissued_pool_shares"]) != unissued_pool:
+            raise UnderwritingError("vc_pool_share_rollforward_failed")
+        for preference in result["preferences"]:
+            if int(preference["invested_cents"]) != preference_invested[
+                preference["class_id"]
+            ]:
+                raise UnderwritingError("vc_preference_rollforward_failed")
+        target_holder = next(
+            holder
+            for holder in result["holders"]
+            if holder["holder_id"] == "series-c-investor"
+        )
+        fully_diluted = issued_shares + unissued_pool
+        expected_ownership = (
+            Decimal(int(target_holder["shares"])) / Decimal(fully_diluted)
+        ).quantize(Decimal("0.00000001"), rounding=ROUND_HALF_EVEN)
+        if Decimal(result["target_ownership"]) != expected_ownership:
+            raise UnderwritingError("vc_target_ownership_reconciliation_failed")
+        target_flows = result["target_cash_flows"]
+        if -sum(min(0, int(flow["amount_cents"])) for flow in target_flows) != result[
+            "target_invested_cents"
+        ] or sum(max(0, int(flow["amount_cents"])) for flow in target_flows) != result[
+            "target_proceeds_cents"
+        ]:
+            raise UnderwritingError("vc_target_cash_flow_reconciliation_failed")
+        expected_moic = (
+            Decimal(result["target_proceeds_cents"])
+            / Decimal(result["target_invested_cents"])
+        ).quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN)
+        if Decimal(result["gross_moic"]) != expected_moic:
+            raise UnderwritingError("vc_target_moic_reconciliation_failed")
+        from datetime import date
+
+        from .finance import DatedCashFlow, xirr
+
+        expected_xirr = xirr(
+            tuple(
+                DatedCashFlow(
+                    date.fromisoformat(flow["date"]), int(flow["amount_cents"])
+                )
+                for flow in target_flows
+            )
+        )
+        if Decimal(result["gross_xirr"]) != expected_xirr:
+            raise UnderwritingError("vc_target_xirr_reconciliation_failed")
         for row in result["cash_by_month"]:
             if previous_ending is not None and row["beginning_cash_cents"] != previous_ending:
                 raise UnderwritingError("vc_cash_opening_mismatch")
@@ -232,6 +333,25 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         expected = record_body.pop("receipt_sha256")
         if expected != digest(record_body):
             raise UnderwritingError("vc_distribution_path_digest_mismatch")
+    sensitivity = engine["sensitivities"]
+    sensitivity_body = dict(sensitivity)
+    sensitivity_sha256 = sensitivity_body.pop("receipt_sha256")
+    if sensitivity_sha256 != digest(sensitivity_body):
+        raise UnderwritingError("vc_sensitivity_book_digest_mismatch")
+    if sensitivity["axis_order"] != [
+        "exit_value",
+        "exit_date",
+        "later_round_price",
+        "milestone_state",
+    ]:
+        raise UnderwritingError("vc_sensitivity_axes_invalid")
+    for cell in sensitivity["cells"]:
+        body = dict(cell)
+        expected = body.pop("receipt_sha256")
+        if expected != digest(body):
+            raise UnderwritingError("vc_sensitivity_cell_digest_mismatch")
+    if {cell["axis"] for cell in sensitivity["cells"]} != set(sensitivity["axis_order"]):
+        raise UnderwritingError("vc_sensitivity_axis_missing")
     quantile_indices = [
         int((Decimal(len(records) - 1) * probability).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN))
         for probability in (Decimal("0.10"), Decimal("0.50"), Decimal("0.90"))
@@ -240,6 +360,23 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         values = sorted(Decimal(record[field]) for record in records)
         if [format(values[index], "f") for index in quantile_indices] != distribution[output]:
             raise UnderwritingError(f"vc_distribution_quantile_mismatch:{field}")
+    bridge = case.get("vcValueCreationBridge")
+    if not isinstance(bridge, dict):
+        raise UnderwritingError("vc_value_creation_bridge_missing")
+    bridge_body = dict(bridge)
+    expected = bridge_body.pop("receipt_sha256")
+    if expected != digest(bridge_body):
+        raise UnderwritingError("vc_value_creation_bridge_digest_mismatch")
+    for lever in bridge["standalone"]:
+        body = dict(lever)
+        expected = body.pop("receipt_sha256")
+        if expected != digest(body):
+            raise UnderwritingError("vc_value_creation_lever_digest_mismatch")
+    if bridge["combined_target_proceeds_delta_cents"] != (
+        bridge["sum_standalone_target_proceeds_delta_cents"]
+        + bridge["interaction_residual_cents"]
+    ):
+        raise UnderwritingError("vc_value_creation_interaction_mismatch")
 
 
 def _validate_metric_contract(case: dict[str, Any]) -> None:
@@ -282,7 +419,8 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
         output = metrics[formula["output_metric_id"]]
         if output["formula_id"] != formula_id or output["operand_ids"] != formula["operand_ids"]:
             raise UnderwritingError("formula_output_binding_mismatch")
-        left, right = (Decimal(metrics[item]["value"]) for item in formula["operand_ids"])
+        values = [Decimal(metrics[item]["value"]) for item in formula["operand_ids"]]
+        left, right = values[:2]
         operation = formula["operation"]
         if operation == "ADD":
             expected = left + right
@@ -296,8 +434,27 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             expected = left / right
         elif operation == "MIN":
             expected = min(left, right)
+        elif operation == "SUM":
+            expected = sum(values)
+        elif operation == "DATED_XIRR":
+            from datetime import date
+
+            from .finance import DatedCashFlow, xirr
+
+            expected = xirr(
+                tuple(
+                    DatedCashFlow(
+                        date.fromisoformat(metrics[item]["period"]),
+                        int(Decimal(metrics[item]["value"])),
+                    )
+                    for item in formula["operand_ids"]
+                )
+            )
         else:
             expected = max(left, right)
+        expected = expected.quantize(
+            Decimal(output["quantum"]), rounding=ROUND_HALF_EVEN
+        )
         if Decimal(output["value"]) != expected:
             raise UnderwritingError(f"formula_value_mismatch:{formula_id}")
 
@@ -311,6 +468,14 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
         raise UnderwritingError("formula_sample_not_derived")
     if case["caseId"] in {"atlasgrid", "helios"} and len(sample_ids) != 10:
         raise UnderwritingError(f"{case['caseId']}_formula_sample_requires_ten")
+    if case["caseId"] == "helios":
+        milestone = case["vcEngine"]["milestone_contract"]
+        lineage_ids = {item["node_id"] for item in case["lineage"]}
+        for test in milestone["tests"]:
+            if test["metric_id"] not in metrics:
+                raise UnderwritingError("vc_milestone_metric_orphan")
+            if test["evidence_locator"] not in lineage_ids:
+                raise UnderwritingError("vc_milestone_locator_orphan")
 
 
 def validate_workbench_data(document: dict[str, Any]) -> None:

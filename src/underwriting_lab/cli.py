@@ -10,7 +10,10 @@ from .analysis import analyze_room
 from .contracts import UnderwritingError, validate_workbench_data
 from .generator import CASE_IDS, generate_room
 from .memo import build_ic_packet
-from .verification import build_estimator_coverage_ledger
+from .verification import (
+    build_estimator_coverage_ledger,
+    build_helios_estimator_coverage_ledger,
+)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -26,11 +29,11 @@ def _parser() -> argparse.ArgumentParser:
     build = subparsers.add_parser("build-workbench", help="compile analyzed cases into one static frontend data file")
     build.add_argument("--cases", nargs="+", required=True)
     build.add_argument("--out", required=True)
-    memo = subparsers.add_parser("build-memo", help="build a deterministic AtlasGrid IC memo and appendix")
+    memo = subparsers.add_parser("build-memo", help="build a deterministic PE or VC IC memo and appendix")
     memo.add_argument("--analysis", required=True)
     memo.add_argument("--out-dir", required=True)
-    coverage = subparsers.add_parser("verify-estimator-coverage", help="run the fixed AtlasGrid interval-coverage policy")
-    coverage.add_argument("--case", required=True, choices=["atlasgrid"])
+    coverage = subparsers.add_parser("verify-estimator-coverage", help="run a fixed 500-seed interval-coverage policy")
+    coverage.add_argument("--case", required=True, choices=["atlasgrid", "helios"])
     coverage.add_argument("--out", required=True)
     return parser
 
@@ -51,7 +54,11 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"status": "PRODUCED", "artifacts": {key: value.as_posix() for key, value in artifacts.items()}}, sort_keys=True))
             return 0
         if args.command == "verify-estimator-coverage":
-            result = build_estimator_coverage_ledger(args.out)
+            result = (
+                build_estimator_coverage_ledger(args.out)
+                if args.case == "atlasgrid"
+                else build_helios_estimator_coverage_ledger(args.out)
+            )
             print(json.dumps({"status": "PRODUCED", "coverage": result.as_posix()}, sort_keys=True))
             return 0
         cases = [json.loads(Path(path).read_text(encoding="utf-8")) for path in args.cases]

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import rawData from "./data/cases.json";
 import {assertWorkbenchData} from "./data-contract";
 import { PEUnderwritingRoom, PEValueCreation } from "./pe";
+import { VCSnapshotTerms, VCUnderwritingRoom, VCValueCreation } from "./vc";
 import { ThesisGraphView } from "./thesis-graph";
 import type { Analysis, CaseData, Lineage, Metric, WorkbenchData } from "./types";
 
@@ -93,10 +94,10 @@ function Snapshot({caseData, openMetric}: {caseData: CaseData; openMetric: (metr
   const falsifiers = caseData.falsifierStates ?? caseData.thesis.falsifiers.map((label) => ({label, status: "OPEN" as const, observed: "Not evaluated"}));
   return (
     <div className="view-stack">
-      <section className="decision-strip" aria-labelledby="decision-title">
+      <section className={`decision-strip ${caseData.vcEngine ? "vc-decision-strip" : ""}`} aria-labelledby="decision-title">
         <div className="decision-call">
           <p className="kicker">Illustrative IC decision</p>
-          <h2 id="decision-title">{caseData.decision.decision}</h2>
+          <h2 id="decision-title">{caseData.vcEngine ? "CONDITIONAL INVEST" : caseData.decision.decision}</h2>
           <p>{caseData.decision.attribution}</p>
         </div>
         <div className="decision-rationale">
@@ -106,6 +107,7 @@ function Snapshot({caseData, openMetric}: {caseData: CaseData; openMetric: (metr
           <ul className="condition-list">{caseData.decision.conditions.map((condition) => <li key={condition}>{condition}</li>)}</ul>
         </div>
       </section>
+      {caseData.vcEngine && <VCSnapshotTerms caseData={caseData} openMetric={openMetric} />}
       <section aria-labelledby="metrics-title">
         <div className="section-heading"><p className="kicker">Decision economics</p><h2 id="metrics-title">What must be true</h2></div>
         <div className="metric-ledger">
@@ -170,13 +172,13 @@ function EconometricLab({caseData}: {caseData: CaseData}) {
   const [mode, setMode] = useState<"identified" | "naive">("identified");
   const visible = mode === "identified" ? identified : associative;
   const paired = caseData.caseId === "atlasgrid"
-    ? {naive: "Observational offer-scale association", naiveValue: caseData.analyses.find((item) => item.analysis_id === "AG-06")?.outputs.find((item) => item.name === "implied_offer_scale_association")?.value ?? "n/a", adjusted: "Randomized offer ITT", adjustedValue: caseData.analyses.find((item) => item.analysis_id === "AG-07")?.outputs[0]?.value ?? "n/a", unit: "percentage points · same offer scale"}
-    : {naive: "Pooled NRR", naiveValue: caseData.analyses.find((item) => item.analysis_id === "HX-02")?.outputs[0]?.value ?? "n/a", adjusted: "Ordinary-cohort NRR", adjustedValue: caseData.analyses.find((item) => item.analysis_id === "HX-02")?.outputs[1]?.value ?? "n/a", unit: "percent"};
+    ? {naive: "Observational offer-scale association", naiveValue: caseData.analyses.find((item) => item.analysis_id === "AG-06")?.outputs.find((item) => item.name === "implied_offer_scale_association")?.value ?? "n/a", adjusted: "Randomized offer ITT", adjustedValue: caseData.analyses.find((item) => item.analysis_id === "AG-07")?.outputs[0]?.value ?? "n/a", unit: "percentage points · same offer scale", naiveNote: "selection exposed", adjustedNote: "design-aligned comparison"}
+    : {naive: "Unadjusted randomized ITT", naiveValue: caseData.analyses.find((item) => item.analysis_id === "HX-06")?.outputs.find((item) => item.name === "optimizer_unadjusted_itt")?.value ?? "n/a", adjusted: "Baseline-adjusted randomized ITT", adjustedValue: caseData.analyses.find((item) => item.analysis_id === "HX-06")?.outputs.find((item) => item.name === "optimizer_ate")?.value ?? "n/a", unit: "log-cost percentage points · same randomized population", naiveNote: "unadjusted estimate", adjustedNote: "prespecified baseline adjustment"};
   return (
     <div className="view-stack">
       <section className="econ-intro"><div><p className="kicker">Identification before inference</p><h2>What the design can—and cannot—establish</h2></div><div className="segmented" aria-label="Analysis comparison"><button aria-pressed={mode === "naive"} onClick={() => setMode("naive")}>Association / abstention</button><button aria-pressed={mode === "identified"} onClick={() => setMode("identified")}>Identified synthetic effect</button></div></section>
       <aside className="epistemic-note"><strong>Synthetic causal boundary</strong><span>Identified effects recover a planted assignment mechanism. They are not real-company causal claims.</span></aside>
-      <section className="paired-estimate" aria-label="Naive versus adjusted comparison"><article><span>{paired.naive}</span><strong>{paired.naiveValue}</strong><small>{paired.unit} · selection exposed</small></article><div aria-hidden="true">→</div><article><span>{paired.adjusted}</span><strong>{paired.adjustedValue}</strong><small>{paired.unit} · design-aligned comparison</small></article></section>
+      <section className="paired-estimate" aria-label="Naive versus adjusted comparison"><article><span>{paired.naive}</span><strong>{paired.naiveValue}</strong><small>{paired.unit} · {paired.naiveNote}</small></article><div aria-hidden="true">→</div><article><span>{paired.adjusted}</span><strong>{paired.adjustedValue}</strong><small>{paired.unit} · {paired.adjustedNote}</small></article></section>
       <section className="analysis-list">{visible.length ? visible.map((analysis) => <AnalysisDetail key={analysis.analysis_id} analysis={analysis} />) : <p>No analysis in this class.</p>}</section>
       <section className="classification-key"><h3>Method classes</h3>{["ACCOUNTING_IDENTITY", "DESCRIPTIVE", "PREDICTIVE_ASSOCIATION", "CAUSAL_SYNTHETIC_ONLY", "SCENARIO", "NOT_IDENTIFIED"].map((item) => <span key={item}>{displayClass(item)}</span>)}</section>
     </div>
@@ -214,13 +216,14 @@ function LegacyUnderwritingRoom({caseData, openMetric}: {caseData: CaseData; ope
 }
 
 function UnderwritingRoom({caseData, openMetric}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
-  return caseData.peEngine
-    ? <PEUnderwritingRoom caseData={caseData} openMetric={openMetric} />
-    : <LegacyUnderwritingRoom caseData={caseData} openMetric={openMetric} />;
+  if (caseData.peEngine) return <PEUnderwritingRoom caseData={caseData} openMetric={openMetric} />;
+  if (caseData.vcEngine) return <VCUnderwritingRoom caseData={caseData} openMetric={openMetric} />;
+  return <LegacyUnderwritingRoom caseData={caseData} openMetric={openMetric} />;
 }
 
 function ValueCreation({caseData, openMetric}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
   if (caseData.valueCreationBridge) return <PEValueCreation caseData={caseData} openMetric={openMetric} />;
+  if (caseData.vcEngine) return <VCValueCreation caseData={caseData} openMetric={openMetric} />;
   return (
     <div className="view-stack">
       <section className="value-head"><p className="kicker">Underwriting to ownership</p><h2>Every initiative earns its place in the value bridge</h2><p>Baselines come from the frozen room. Targets are illustrative human assumptions with named owners, milestones, and failure modes.</p></section>

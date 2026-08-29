@@ -275,6 +275,31 @@ def _mean_difference(
     return estimate.effect, estimate.standard_error, estimate.low, estimate.high
 
 
+def _baseline_adjusted_difference(
+    outcome: np.ndarray, treatment: np.ndarray, baseline: np.ndarray
+) -> tuple[float, float, float, float]:
+    design = np.column_stack([np.ones(len(outcome)), treatment, baseline])
+    if len(outcome) != len(treatment) or len(outcome) != len(baseline):
+        raise UnderwritingError("adjusted_difference_length_mismatch")
+    beta_hat = np.linalg.lstsq(design, outcome, rcond=None)[0]
+    residuals = outcome - design @ beta_hat
+    degrees_of_freedom = len(outcome) - design.shape[1]
+    if degrees_of_freedom <= 0:
+        raise UnderwritingError("adjusted_difference_degrees_of_freedom")
+    covariance = (
+        float((residuals @ residuals) / degrees_of_freedom)
+        * np.linalg.inv(design.T @ design)
+    )
+    effect = float(beta_hat[1])
+    standard_error = math.sqrt(float(covariance[1, 1]))
+    return (
+        effect,
+        standard_error,
+        effect - 1.96 * standard_error,
+        effect + 1.96 * standard_error,
+    )
+
+
 def _slope(y: np.ndarray, x: np.ndarray) -> tuple[float, float]:
     design = np.column_stack([np.ones(len(x)), x])
     beta_hat = np.linalg.lstsq(design, y, rcond=None)[0]
@@ -998,6 +1023,9 @@ def _helios(
     baseline_cost = np.array([float(row["baseline_log_cost"]) for row in experiment])
     optimizer_smd = _smd(baseline_cost, treatment)
     rct_effect, rct_se, rct_low, rct_high = _mean_difference(outcome, treatment)
+    adjusted_effect, adjusted_se, adjusted_low, adjusted_high = (
+        _baseline_adjusted_difference(outcome, treatment, baseline_cost)
+    )
     initial_holders = tuple(
         Holder(item["holder_id"], item["class_id"], int(item["issued_shares"]))
         for item in cap["holders"]
@@ -1039,6 +1067,14 @@ def _helios(
             price_rule=item["price_rule"],
             pool_target=Decimal(item["pool_target"]),
             milestone_tests=milestone_ids if is_milestone else (),
+            milestone_results=(
+                tuple(
+                    (str(result["metric_id"]), str(result["state"]))
+                    for result in item["milestone_results"]
+                )
+                if is_milestone
+                else ()
+            ),
             milestone_state=item["milestone_state"],
             evaluator=(
                 financing_plan["milestone_contract"]["evaluator"]
@@ -1091,6 +1127,7 @@ def _helios(
     )
     vc_distribution = simulate_vc_distribution(
         base_result=selected_vc,
+        scenario_results=tuple(scenario_results.values()),
         seed=scenario_seed,
         draws=int(venture_scenarios["draws"]),
         exit_multiple_low=Decimal(venture_scenarios["exit_value_multiple_low"]),
@@ -1102,6 +1139,265 @@ def _helios(
     three_x_probability = Decimal(
         sum(Decimal(item["gross_moic"]) >= 3 for item in vc_distribution["path_records"])
     ) / Decimal(vc_distribution["draws"])
+    vc_sensitivity_cells: list[dict[str, Any]] = []
+    series_d_base = next(
+        event
+        for event in scenario_results["BASE"].assumptions.events
+        if event.event_id == "series-d-base"
+    )
+    vc_sensitivity_base = replace(
+        selected_vc.assumptions,
+        events=tuple(
+            sorted(
+                (*selected_vc.assumptions.events, series_d_base),
+                key=lambda event: (event.scheduled_month, event.sequence, event.event_id),
+            )
+        ),
+    )
+
+    def add_vc_sensitivity(axis: str, label: str, assumptions: VCScenarioAssumptions) -> None:
+        result = run_vc_scenario(
+            assumptions=assumptions,
+            opening_cash_cents=int(cap["cash_at_cutoff_cents"]),
+            initial_holders=initial_holders,
+            initial_preferences=initial_preferences,
+            unissued_pool_shares=int(cap["unissued_option_pool_shares"]),
+        )
+        body: dict[str, Any] = {
+            "cell_id": f"vc-{axis}-{len([item for item in vc_sensitivity_cells if item['axis'] == axis]) + 1}",
+            "axis": axis,
+            "baseline_scenario_id": "VC_SENSITIVITY_BASE_MILESTONE_PLUS_SERIES_D",
+            "assumption_label": label,
+            "engine_inputs_sha256": result.engine_inputs_sha256,
+            "result_receipt_sha256": result.receipt()["receipt_sha256"],
+            "gross_moic": format(result.gross_moic, "f"),
+            "gross_xirr": format(result.gross_xirr, "f"),
+            "target_ownership": format(result.target_ownership, "f"),
+            "minimum_cash_cents": result.minimum_cash_cents,
+            "target_proceeds_cents": result.target_proceeds_cents,
+        }
+        body["receipt_sha256"] = digest(body)
+        vc_sensitivity_cells.append(body)
+
+    for exit_value in (80_000_000_000, 120_000_000_000, 160_000_000_000):
+        add_vc_sensitivity(
+            "exit_value",
+            f"${exit_value // 100_000_000}M",
+            replace(vc_sensitivity_base, exit_value_cents=exit_value),
+        )
+    for exit_month in (48, 54, 60):
+        add_vc_sensitivity(
+            "exit_date",
+            f"Month {exit_month}",
+            replace(vc_sensitivity_base, exit_month=exit_month),
+        )
+    for pre_money in (30_000_000_000, 45_000_000_000, 60_000_000_000):
+        events = tuple(
+            replace(event, pre_money_cents=pre_money)
+            if event.event_id == "series-d-base"
+            else event
+            for event in vc_sensitivity_base.events
+        )
+        add_vc_sensitivity(
+            "later_round_price",
+            f"${pre_money // 100_000_000}M pre",
+            replace(vc_sensitivity_base, events=events),
+        )
+    for state in ("FAIL", "PASS"):
+        events = tuple(
+            replace(
+                event,
+                funded=state == "PASS",
+                milestone_state=state,
+                milestone_results=(
+                    tuple((metric_id, "PASS") for metric_id in event.milestone_tests)
+                    if state == "PASS"
+                    else tuple(
+                        (metric_id, "FAIL" if index == 2 else "OPEN" if index == 3 else "PASS")
+                        for index, metric_id in enumerate(event.milestone_tests)
+                    )
+                ),
+            )
+            if event.event_type == "MILESTONE"
+            else event
+            for event in vc_sensitivity_base.events
+        )
+        add_vc_sensitivity(
+            "milestone_state",
+            state,
+            replace(vc_sensitivity_base, events=events),
+        )
+    vc_sensitivity_book: dict[str, Any] = {
+        "schema_version": "underwriting.vc-sensitivity-book/v2",
+        "axis_order": ["exit_value", "exit_date", "later_round_price", "milestone_state"],
+        "cells": vc_sensitivity_cells,
+    }
+    vc_sensitivity_book["receipt_sha256"] = digest(vc_sensitivity_book)
+
+    def run_vc_value_case(
+        lever_id: str,
+        *,
+        monthly_cash_delta_cents: int,
+        exit_value_delta_cents: int,
+        implementation_cost_cents: int,
+        credit_classification: str,
+        source_analysis_ids: list[str],
+        mapping: dict[str, Any],
+    ) -> tuple[dict[str, Any], Any]:
+        cash_path = [
+            value + monthly_cash_delta_cents
+            for value in selected_vc.assumptions.monthly_net_cash_flow_cents
+        ]
+        cash_path[0] -= implementation_cost_cents
+        assumptions = replace(
+            selected_vc.assumptions,
+            monthly_net_cash_flow_cents=tuple(cash_path),
+            exit_value_cents=selected_vc.assumptions.exit_value_cents
+            + exit_value_delta_cents,
+        )
+        result = run_vc_scenario(
+            assumptions=assumptions,
+            opening_cash_cents=int(cap["cash_at_cutoff_cents"]),
+            initial_holders=initial_holders,
+            initial_preferences=initial_preferences,
+            unissued_pool_shares=int(cap["unissued_option_pool_shares"]),
+        )
+        body: dict[str, Any] = {
+            "lever_id": lever_id,
+            "monthly_cash_delta_cents": monthly_cash_delta_cents,
+            "exit_value_delta_cents": exit_value_delta_cents,
+            "implementation_cost_cents": implementation_cost_cents,
+            "minimum_cash_delta_cents": result.minimum_cash_cents
+            - selected_vc.minimum_cash_cents,
+            "target_proceeds_delta_cents": result.target_proceeds_cents
+            - selected_vc.target_proceeds_cents,
+            "gross_xirr_delta": format(result.gross_xirr - selected_vc.gross_xirr, "f"),
+            "gross_moic_delta": format(result.gross_moic - selected_vc.gross_moic, "f"),
+            "credit_classification": credit_classification,
+            "source_analysis_ids": source_analysis_ids,
+            "economic_mapping": mapping,
+            "result_receipt_sha256": result.receipt()["receipt_sha256"],
+        }
+        body["receipt_sha256"] = digest(body)
+        return body, result
+
+    ordinary_base_arr_cents = sum(int(row["revenue_cents"]) for row in ordinary) * 12
+    ordinary_target_nrr = Decimal("1.25")
+    ordinary_nrr_gap = max(Decimal("0"), ordinary_target_nrr - Decimal(str(ordinary_nrr)))
+    ordinary_annual_cash_delta = int(
+        (
+            Decimal(ordinary_base_arr_cents)
+            * ordinary_nrr_gap
+            * Decimal(str(gross_margin))
+            * Decimal("0.50")
+        ).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN)
+    )
+    ordinary_monthly_cash_delta = ordinary_annual_cash_delta // 12
+    ordinary_exit_delta = ordinary_annual_cash_delta * 10
+    ltm_months = {item["month"] for item in ltm}
+    ltm_compute_cost_cents = sum(
+        int(row["compute_cost_cents"])
+        for row in customers
+        if row["month"] in ltm_months
+    )
+    optimizer_adoption = Decimal("0.65")
+    optimizer_annual_cash_delta = int(
+        (
+            Decimal(ltm_compute_cost_cents)
+            * Decimal(str(abs(adjusted_effect)))
+            * optimizer_adoption
+        ).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN)
+    )
+    optimizer_monthly_cash_delta = optimizer_annual_cash_delta // 12
+    optimizer_exit_delta = optimizer_annual_cash_delta * 12
+    vc_value_cases = [
+        run_vc_value_case(
+            "ordinary-expansion",
+            monthly_cash_delta_cents=ordinary_monthly_cash_delta,
+            exit_value_delta_cents=ordinary_exit_delta,
+            implementation_cost_cents=150_000_000,
+            credit_classification="HUMAN_JUDGMENT",
+            source_analysis_ids=["HX-02"],
+            mapping={
+                "formula": "ordinary_base_arr_cents * max(0, target_nrr - observed_nrr) * gross_margin * 50% realization",
+                "ordinary_base_arr_cents": ordinary_base_arr_cents,
+                "observed_nrr": format(Decimal(str(ordinary_nrr)), "f"),
+                "target_nrr": format(ordinary_target_nrr, "f"),
+                "gross_margin": format(Decimal(str(gross_margin)), "f"),
+                "realization_factor": "0.50",
+                "exit_multiple_on_annual_cash": "10.0",
+            },
+        ),
+        run_vc_value_case(
+            "optimizer-unit-economics",
+            monthly_cash_delta_cents=optimizer_monthly_cash_delta,
+            exit_value_delta_cents=optimizer_exit_delta,
+            implementation_cost_cents=200_000_000,
+            credit_classification="MIXED_CAUSAL_SYNTHETIC_AND_SCENARIO",
+            source_analysis_ids=["HX-01", "HX-06"],
+            mapping={
+                "formula": "ltm_compute_cost_cents * abs(adjusted_optimizer_itt) * adoption_rate",
+                "ltm_compute_cost_cents": ltm_compute_cost_cents,
+                "adjusted_optimizer_itt": format(Decimal(str(adjusted_effect)), "f"),
+                "adoption_rate": format(optimizer_adoption, "f"),
+                "exit_multiple_on_annual_cash": "12.0",
+                "causal_boundary": "Synthetic ITT identifies the planted test population only; adoption and valuation multiple remain scenario judgments.",
+            },
+        ),
+        run_vc_value_case(
+            "sales-governance",
+            monthly_cash_delta_cents=0,
+            exit_value_delta_cents=0,
+            implementation_cost_cents=125_000_000,
+            credit_classification="DESCRIPTIVE_ZERO_BASE_CASE_CREDIT",
+            source_analysis_ids=["HX-04", "HX-07"],
+            mapping={
+                "formula": "zero_base_case_credit_until_stage_history_and_conversion_design_are_identified",
+                "modeled_value_credit_cents": 0,
+            },
+        ),
+    ]
+    total_monthly_cash_delta = sum(item[0]["monthly_cash_delta_cents"] for item in vc_value_cases)
+    total_exit_value_delta = sum(item[0]["exit_value_delta_cents"] for item in vc_value_cases)
+    total_implementation_cost = sum(item[0]["implementation_cost_cents"] for item in vc_value_cases)
+    combined_cash_path = [
+        value + total_monthly_cash_delta
+        for value in selected_vc.assumptions.monthly_net_cash_flow_cents
+    ]
+    combined_cash_path[0] -= total_implementation_cost
+    combined_result = run_vc_scenario(
+        assumptions=replace(
+            selected_vc.assumptions,
+            monthly_net_cash_flow_cents=tuple(combined_cash_path),
+            exit_value_cents=selected_vc.assumptions.exit_value_cents
+            + total_exit_value_delta,
+        ),
+        opening_cash_cents=int(cap["cash_at_cutoff_cents"]),
+        initial_holders=initial_holders,
+        initial_preferences=initial_preferences,
+        unissued_pool_shares=int(cap["unissued_option_pool_shares"]),
+    )
+    standalone_bodies = [item[0] for item in vc_value_cases]
+    standalone_proceeds_delta = sum(item["target_proceeds_delta_cents"] for item in standalone_bodies)
+    combined_proceeds_delta = combined_result.target_proceeds_cents - selected_vc.target_proceeds_cents
+    vc_value_creation_bridge: dict[str, Any] = {
+        "schema_version": "underwriting.vc-value-creation-bridge/v2",
+        "base_receipt_sha256": selected_vc.receipt()["receipt_sha256"],
+        "standalone": standalone_bodies,
+        "combined_result_receipt_sha256": combined_result.receipt()["receipt_sha256"],
+        "combined_minimum_cash_delta_cents": combined_result.minimum_cash_cents
+        - selected_vc.minimum_cash_cents,
+        "combined_target_proceeds_delta_cents": combined_proceeds_delta,
+        "sum_standalone_target_proceeds_delta_cents": standalone_proceeds_delta,
+        "interaction_residual_cents": combined_proceeds_delta - standalone_proceeds_delta,
+        "combined_gross_xirr_delta": format(
+            combined_result.gross_xirr - selected_vc.gross_xirr, "f"
+        ),
+        "combined_gross_moic_delta": format(
+            combined_result.gross_moic - selected_vc.gross_moic, "f"
+        ),
+    }
+    vc_value_creation_bridge["receipt_sha256"] = digest(vc_value_creation_bridge)
 
     receipts = [
         analysis_receipt(
@@ -1180,9 +1476,9 @@ def _helios(
             method="Intention-to-treat difference in mean log-cost change",
             population=f"{len(experiment)} randomized synthetic customers",
             inputs=[_input(artifacts["optimizer-experiment"])],
-            outputs=[_output("optimizer_ate", quantize(rct_effect * 100), "percent_log_points")],
+            outputs=[_output("optimizer_unadjusted_itt", quantize(rct_effect * 100), "percent_log_points"), _output("optimizer_ate", quantize(adjusted_effect * 100), "percent_log_points")],
             assumptions=["Seed-permuted 60-of-120 assignment and no cross-customer interference."],
-            diagnostics=[_diagnostic("assignment_mechanism", "seeded_permutation_60_of_120_customers", "REPORTED"), _diagnostic("confidence_interval", f"[{quantize(rct_low * 100)}, {quantize(rct_high * 100)}]", "REPORTED"), _diagnostic("standard_error", quantize(rct_se * 100), "REPORTED"), _diagnostic("baseline_cost_smd", quantize(optimizer_smd), "PASS" if abs(optimizer_smd) <= 0.15 else "FAIL")],
+            diagnostics=[_diagnostic("assignment_mechanism", "seeded_permutation_60_of_120_customers", "REPORTED"), _diagnostic("unadjusted_confidence_interval", f"[{quantize(rct_low * 100)}, {quantize(rct_high * 100)}]", "REPORTED"), _diagnostic("unadjusted_standard_error", quantize(rct_se * 100), "REPORTED"), _diagnostic("confidence_interval", f"[{quantize(adjusted_low * 100)}, {quantize(adjusted_high * 100)}]", "REPORTED"), _diagnostic("standard_error", quantize(adjusted_se * 100), "REPORTED"), _diagnostic("baseline_cost_smd", quantize(optimizer_smd), "PASS" if abs(optimizer_smd) <= 0.15 else "FAIL")],
         ),
         analysis_receipt(
             analysis_id="HX-07",
@@ -1215,7 +1511,7 @@ def _helios(
             population="Declared synthetic venture scenario distribution",
             inputs=[_input(artifacts["cap-table"]), _input(artifacts["financing-plan"]), _input(artifacts["venture-scenarios"]), _input(artifacts["team-diligence"])],
             outputs=[_output("p10_moic", quantize(moic_q[0]), "multiple"), _output("p50_moic", quantize(moic_q[1]), "multiple"), _output("p90_moic", quantize(moic_q[2]), "multiple"), _output("p10_xirr", quantize(irr_q[0] * 100), "percent"), _output("p50_xirr", quantize(irr_q[1] * 100), "percent"), _output("p90_xirr", quantize(irr_q[2] * 100), "percent"), _output("probability_below_1x", quantize(loss_probability * 100), "percent"), _output("probability_at_least_3x", quantize(three_x_probability * 100), "percent")],
-            assumptions=["Exit value and timing are disclosed conditional priors; every retained path replays financing events and the exact legal waterfall."],
+            assumptions=["Scenario-state weights, exit value, exit timing, and operating-cash factors are disclosed conditional priors; every retained path replays financing events and the exact legal waterfall."],
             diagnostics=[_diagnostic("draws", vc_distribution["draws"]), _diagnostic("ordered_moic_quantiles", "true", "PASS" if moic_q[0] <= moic_q[1] <= moic_q[2] else "FAIL"), _diagnostic("ordered_xirr_quantiles", "true", "PASS" if irr_q[0] <= irr_q[1] <= irr_q[2] else "FAIL"), _diagnostic("waterfall_conservation_max_error_cents", 0, "PASS"), _diagnostic("xirr_npv_residual_max_cents", quantize(max(item.xirr_npv_residual_cents for item in scenario_results.values())), "PASS")],
         ),
     ]
@@ -1227,6 +1523,7 @@ def _helios(
         lineage_item(node_id="hx-tam", label="Modeled TAM survey evidence", artifact_id="market-survey", field="tier,adopted", analysis_id="HX-05", output_names=["modeled_tam"], transformation="Tier-level beta-binomial adoption medians", downstream="Market-size range with data-thin abstention"),
         lineage_item(node_id="hx-tam-assumptions", label="Modeled TAM universe assumptions", artifact_id="market-assumptions", field="universe_counts,tier_mid_spend_cents", analysis_id="HX-05", output_names=["modeled_tam"], transformation="Multiply tier adoption medians by declared universe counts and spend assumptions", downstream="Market-size scenario; not a market fact"),
         lineage_item(node_id="hx-pipeline", label="Pipeline stage-history audit", artifact_id="stage-history", field="opportunity_id,observation_index,stage", analysis_id="HX-04", output_names=["inflated_opportunities", "weighted_pipeline_inflation", "weighted_pipeline_inflation_cents"], transformation="Compare reported stage with the latest eligible history, then reweight using declared probabilities", downstream="Milestone financing and forecast governance"),
+        lineage_item(node_id="hx-optimizer", label="Optimizer randomized test", artifact_id="optimizer-experiment", field="customer_id,treatment,baseline_log_cost,outcome_log_cost_change", analysis_id="HX-06", output_names=["optimizer_unadjusted_itt", "optimizer_ate"], transformation="Compare the precommitted randomized arms and retain the prespecified baseline-adjusted ITT", downstream="Optimizer replication milestone and scenario-limited unit-economics mapping"),
         lineage_item(node_id="hx-ownership", label="Series C ownership", artifact_id="financing-plan", field="scenario_books[*].events,event_id,class_id,pre_money_cents,pool_target", analysis_id="HX-08", output_names=["first_close_new_shares", "fully_funded_series_c_ownership"], transformation="Event-ordered integer-share capitalization with exact rational price and option-pool refresh", downstream="First-close and fully funded ownership"),
         lineage_item(node_id="hx-return", label="Series C return distribution", artifact_id="venture-scenarios", field="draws,exit_value_multiple_low,exit_value_multiple_high,path_method", analysis_id="HX-09", output_names=["p10_moic", "p50_moic", "p90_moic", "p10_xirr", "p50_xirr", "p90_xirr", "probability_below_1x", "probability_at_least_3x"], transformation="One-thousand seeded full event-ledger, waterfall, MOIC, and dated-XIRR reruns", downstream="Conditional venture outcome range; not a forecast"),
         lineage_item(node_id="hx-team", label="Role-level team diligence", artifact_id="team-diligence", field="roles[*].role,strength,gap,evidence_state,financing_consequence", analysis_id="HX-09", output_names=["p50_moic"], transformation="Role-specific evidence-state and financing-consequence register", downstream="Closing conditions and board ownership"),
@@ -1308,12 +1605,14 @@ def _helios(
             "downside": scenario_results["DOWNSIDE"].receipt(),
             "financing_shortfall": scenario_results["FINANCING_SHORTFALL"].receipt(),
             "distribution": vc_distribution,
+            "sensitivities": vc_sensitivity_book,
             "milestone_contract": financing_plan["milestone_contract"],
             "exit_value_basis": financing_plan["exit_value_basis"],
         },
+        "vcValueCreationBridge": vc_value_creation_bridge,
         "valueCreation": [
-            {"initiative": "Ordinary-cohort expansion", "kpi": "Non-design-partner NRR", "baseline": f"{quantize(ordinary_nrr * 100)}%", "target": "125%", "owner": "CRO", "milestone": "Cohort playbooks and referenceable renewal evidence by quarter 2", "value": "Illustrative +6 months runway; $15M tranche remains conditional; causal credit: zero", "credit_classification": "HUMAN_JUDGMENT", "risk": "Design-partner tactics do not transfer; stop if two ordinary cohorts fall below 105%", "lineage": ["hx-nrr", "hx-runway"]},
-            {"initiative": "Optimizer unit economics", "kpi": "Fully burdened gross margin", "baseline": f"{quantize(gross_margin * 100)}%", "target": "74%", "owner": "CTO", "milestone": "Replicate randomized log-cost effect in production before tranche test", "value": "Illustrative +4 months runway; HX-06 credit limited to tested population", "credit_classification": "CAUSAL_SYNTHETIC_ONLY", "risk": "Provider price changes; stop if replication interval crosses zero", "lineage": ["hx-margin", "hx-runway"]},
+            {"initiative": "Ordinary-cohort expansion", "kpi": "Non-design-partner NRR", "baseline": f"{quantize(ordinary_nrr * 100)}%", "target": "125%", "owner": "CRO", "milestone": "Cohort playbooks and referenceable renewal evidence by quarter 2", "value": f"Formula: ordinary ARR × NRR gap × gross margin × 50% realization; ${quantize(ordinary_monthly_cash_delta / 100_000_000)}M monthly cash and ${quantize(ordinary_exit_delta / 100_000_000)}M exit-equity scenario credit", "credit_classification": "HUMAN_JUDGMENT", "risk": "Design-partner tactics do not transfer; stop if two ordinary cohorts fall below 105%", "lineage": ["hx-nrr", "hx-runway"]},
+            {"initiative": "Optimizer unit economics", "kpi": "Fully burdened gross margin", "baseline": f"{quantize(gross_margin * 100)}%", "target": "74%", "owner": "CTO", "milestone": "Replicate randomized log-cost effect in production before tranche test", "value": f"Formula: LTM compute cost × |baseline-adjusted ITT| × 65% adoption; ${quantize(optimizer_monthly_cash_delta / 100_000_000)}M monthly cash and ${quantize(optimizer_exit_delta / 100_000_000)}M exit-equity scenario credit", "credit_classification": "MIXED_CAUSAL_SYNTHETIC_AND_SCENARIO", "risk": "Provider price changes; stop if replication interval crosses zero", "lineage": ["hx-margin", "hx-optimizer", "hx-runway"]},
             {"initiative": "Enterprise sales governance", "kpi": "Stage-to-close forecast error", "baseline": f"{inflated_count} inflated opportunities", "target": "<15% forecast error", "owner": "CRO / Finance", "milestone": "Opportunity-level stage audit by day 45", "value": "Avoids an illustrative shortfall-round trigger; unidentified forecast effect receives zero base-case credit", "credit_classification": "DESCRIPTIVE", "risk": "Enterprise cycle elongation; stop tranche if stage history is incomplete", "lineage": ["hx-pipeline", "hx-runway"]},
         ],
         "lineage": lineages,

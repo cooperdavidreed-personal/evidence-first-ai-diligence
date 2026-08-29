@@ -15,6 +15,7 @@ from .experiments import (
     atlasgrid_experiment_fixture,
     collapsed_pod_delta,
     difference_in_means,
+    helios_optimizer_fixture,
 )
 from .generator import generate_room
 
@@ -461,6 +462,68 @@ def build_estimator_coverage_ledger(output: str | Path) -> Path:
         },
         "endpoints": endpoints,
         "status": "FAIL" if failed else "PASS",
+    }
+    ledger["receipt_sha256"] = digest(ledger)
+    destination = Path(output)
+    write_json(destination, ledger)
+    return destination
+
+
+def build_helios_estimator_coverage_ledger(output: str | Path) -> Path:
+    simulations = 500
+    seeds = [
+        int.from_bytes(
+            hashlib.sha256(
+                f"underwriting-econometrics/v2:helios-coverage:{index:04d}".encode()
+            ).digest()[:16],
+            "big",
+        )
+        for index in range(simulations)
+    ]
+    if len(set(seeds)) != simulations:
+        raise ValueError("helios_coverage_seed_collision")
+    truth = -0.11
+    values: list[tuple[float, float, float]] = []
+    for seed in seeds:
+        rows = helios_optimizer_fixture(seed)
+        treatment = np.array([int(row["treatment"]) for row in rows])
+        outcome = np.array([float(row["outcome_log_cost_change"]) for row in rows])
+        estimate = difference_in_means(outcome, treatment)
+        values.append((estimate.effect, estimate.low, estimate.high))
+    covered = sum(low <= truth <= high for _, low, high in values)
+    coverage = covered / simulations
+    lower, upper = _wilson(covered, simulations)
+    endpoint = {
+        "endpoint": "HX-06.optimizer_itt",
+        "truth": format(truth, ".6f"),
+        "simulations": simulations,
+        "valid": simulations,
+        "covered": covered,
+        "missed": simulations - covered,
+        "empirical_coverage": format(coverage, ".6f"),
+        "monte_carlo_standard_error": format(
+            math.sqrt(coverage * (1 - coverage) / simulations), ".6f"
+        ),
+        "wilson_95_interval": [format(lower, ".6f"), format(upper, ".6f")],
+        "mean_estimate": format(
+            sum(value[0] for value in values) / simulations, ".6f"
+        ),
+        "status": "PASS" if 0.92 <= coverage <= 0.98 else "FAIL",
+    }
+    ledger: dict[str, Any] = {
+        "schema_version": "underwriting.estimator-coverage-ledger/v1",
+        "purpose": "Frequentist interval coverage on the planted synthetic Helios optimizer effect; not real-world investment accuracy.",
+        "policy": {
+            "simulations": simulations,
+            "nominal_coverage": "0.95",
+            "inclusive_acceptance_band": ["0.92", "0.98"],
+            "seed_derivation": "first_128_bits_sha256(underwriting-econometrics/v2:helios-coverage:{index:04d})",
+            "seed_commitment": digest([str(seed) for seed in seeds]),
+            "rerolls": 0,
+            "excluded": 0,
+        },
+        "endpoints": [endpoint],
+        "status": endpoint["status"],
     }
     ledger["receipt_sha256"] = digest(ledger)
     destination = Path(output)

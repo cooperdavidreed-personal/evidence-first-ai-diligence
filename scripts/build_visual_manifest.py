@@ -26,10 +26,26 @@ def main() -> int:
                         "bytes": path.stat().st_size,
                     }
                 )
+    print_files = []
+    for path, format_name in (
+        (evidence / "desktop-helios-ic-memo.png", "full-page PNG"),
+        (root / "output" / "pdf" / "helios-ic-memo-letter.pdf", "US Letter PDF"),
+    ):
+        if not path.is_file():
+            raise SystemExit(f"missing_print_evidence:{path.name}")
+        print_files.append(
+            {
+                "path": path.relative_to(root).as_posix(),
+                "format": format_name,
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                "bytes": path.stat().st_size,
+            }
+        )
     manifest = {
         "schema_version": "underwriting.visual-evidence/v1",
         "files": files,
-        "scope": "Five views, two synthetic cases, desktop and mobile; automated serious/critical axe scan and root-overflow assertion per route.",
+        "print_files": print_files,
+        "scope": "Five views, two synthetic cases, desktop and mobile; automated serious/critical axe scan and root-overflow assertion per route; Helios IC memo full-page and five-page Letter render.",
     }
     manifest["manifest_sha256"] = hashlib.sha256(canonical_json(manifest)).hexdigest()
     output = root / "verification" / "visual-evidence.json"

@@ -10,13 +10,12 @@ No API-key or paid fallback route is authorized. No provider output is case evid
 
 | Order | Provider role | Result | Treatment |
 |---|---|---:|---|
-| Product and editorial contract | Claude | `PRODUCED` | Frozen into `docs/UNDERWRITING-PRODUCT-CONTRACT.md` before results |
-| Econometrics and DGP contract | Claude | `PRODUCED` | Frozen into `docs/ECONOMETRICS-CONTRACT.md` before results |
-| Reference-pattern red team | Grok | `HELD_PROVIDER` after retry ceiling | Partial output retained as nonauthoritative advisory evidence; not used as verified research |
-| Investment/econometrics review of `360e129` | Claude | `QUALITY_SHORT` | Truth leakage, stage-history, decision-integrity, falsifier, lineage, and recovery findings became mandatory repair work |
-| Critical/high repair pass | Codex | `LOCALLY VERIFIED` | Exact repaired commit is submitted to Claude only after deterministic acceptance |
-| Independent final acceptance of `7e55e45` | Claude | `ACCEPTED_FOR_FOUNDER_REVIEW` | Exact-commit acceptance retained; no public or enterprise claim follows |
-| Successor medium-polish delta review | Claude | `PENDING` | Required because the candidate bytes changed after the accepted commit |
+| V2 model-integrity architecture review | Claude | `HELD_PROVIDER` | Native signed-in CLI returned a 429 usage hold; no paid or API-key fallback was used |
+| V2 benchmark and countercase orders | Grok | `PRODUCED` | Advisory findings entered the frozen contracts only through deterministic implementation gates |
+| AtlasGrid PE implementation and verdict reviews | Grok | `ACCEPT_PE_GATE` | Final advisory score 92 with no critical or high finding; exact output digest is retained in local mission evidence |
+| Helios finance, data, and rendered-product audits | Codex subagents | `QUALITY_SHORT` then repaired | Milestone derivation, independent waterfall oracle, distribution-state risk, econometric labeling, headline formulas, and value mapping became executable repair gates |
+| V2 implementation and deterministic acceptance | Codex | `LOCALLY_VERIFIED_DETERMINISTIC` | Codex remained the only filesystem writer; 120 Python, 11 React, five browser/print flows, 45 smoke-recovery checks, two 500-seed coverage ledgers, and visual/PDF evidence passed on the candidate tree |
+| Independent final V2 acceptance | Claude | `HELD_PROVIDER` | Required before the mission can claim provider-independent founder-review acceptance |
 
 Durable provider stdout, state events, and episode receipts live in the excluded local mission directory, not the proposed public package.
 

@@ -17,6 +17,10 @@ from underwriting_lab.vc_engine import (
     solve_pool_top_up,
     solve_waterfall,
 )
+from tests.oracles.waterfall_reference import (
+    reference_breakpoints,
+    reference_waterfall,
+)
 
 
 def _opening() -> tuple[tuple[Holder, ...], tuple[PreferenceTerms, ...]]:
@@ -69,6 +73,13 @@ def _event(
         price_rule=price_rule,
         pool_target=Decimal("0.12") if event_type == "PRIMARY" else Decimal("0"),
         milestone_tests=("HX-NRR", "HX-GM") if event_type == "MILESTONE" else (),
+        milestone_results=(
+            (("HX-NRR", "PASS"), ("HX-GM", "PASS"))
+            if funded and event_type == "MILESTONE"
+            else (("HX-NRR", "FAIL"), ("HX-GM", "PASS"))
+            if event_type == "MILESTONE"
+            else ()
+        ),
         milestone_state="PASS" if funded and event_type == "MILESTONE" else (
             "FAIL" if event_type == "MILESTONE" else "NOT_APPLICABLE"
         ),
@@ -111,7 +122,15 @@ def _scenario(scenario_id: str) -> VCScenarioAssumptions:
         path = tuple(-82_500_000 for _ in range(60))
         exit_value = 120_000_000_000
     elif scenario_id == "MILESTONE":
-        events = (close, replace(withheld, funded=True, milestone_state="PASS"))
+        events = (
+            close,
+            replace(
+                withheld,
+                funded=True,
+                milestone_state="PASS",
+                milestone_results=(("HX-NRR", "PASS"), ("HX-GM", "PASS")),
+            ),
+        )
         path = tuple(-75_000_000 for _ in range(60))
         exit_value = 160_000_000_000
     elif scenario_id == "DOWNSIDE":
@@ -213,6 +232,38 @@ def test_unfunded_milestone_has_no_cash_shares_preference_or_investment() -> Non
     assert base.target_invested_cents == 2_500_000_000
 
 
+def test_milestone_funding_is_derived_from_complete_test_results() -> None:
+    with pytest.raises(UnderwritingError, match="vc_milestone_funding_not_derived"):
+        replace(
+            _event(
+                "bad-tranche",
+                12,
+                1_500_000_000,
+                "SERIES_C",
+                "series-c-investor",
+                event_type="MILESTONE",
+                funded=False,
+            ),
+            funded=True,
+        )
+    with pytest.raises(UnderwritingError, match="vc_milestone_results_incomplete"):
+        FundingEvent(
+            event_id="missing-test",
+            scheduled_month=12,
+            sequence=1,
+            event_type="MILESTONE",
+            holder_id="series-c-investor",
+            class_id="SERIES_C",
+            new_money_cents=1_500_000_000,
+            pre_money_cents=None,
+            price_rule="SAME_AS_SERIES_C",
+            milestone_tests=("HX-NRR", "HX-GM"),
+            milestone_results=(("HX-NRR", "PASS"),),
+            milestone_state="PASS",
+            funded=True,
+        )
+
+
 def test_unissued_pool_receives_no_exit_proceeds() -> None:
     result = _run("MILESTONE")
     assert result.unissued_pool_shares > 0
@@ -245,6 +296,36 @@ def test_seeded_waterfall_properties_cover_500_examples() -> None:
         assert sum(result.class_proceeds_cents.values()) + result.common_proceeds_cents == exit_value
 
 
+def test_independent_waterfall_oracle_matches_500_draws_and_breakpoints() -> None:
+    rng = random.Random(20260830)
+    holders, preferences = _opening()
+    for exit_value in [rng.randrange(0, 300_000_000_001) for _ in range(500)]:
+        actual = solve_waterfall(
+            exit_value_cents=exit_value, holders=holders, preferences=preferences
+        )
+        profile, class_proceeds, common_proceeds = reference_waterfall(
+            exit_value, holders, preferences
+        )
+        assert actual.conversion_profile == profile
+        assert actual.class_proceeds_cents == class_proceeds
+        assert actual.common_proceeds_cents == common_proceeds
+    breakpoints = reference_breakpoints(holders, preferences, 300_000_000_000)
+    assert breakpoints
+    for breakpoint in breakpoints:
+        for exit_value in (breakpoint - 1, breakpoint, breakpoint + 1):
+            actual = solve_waterfall(
+                exit_value_cents=exit_value,
+                holders=holders,
+                preferences=preferences,
+            )
+            profile, class_proceeds, common_proceeds = reference_waterfall(
+                exit_value, holders, preferences
+            )
+            assert actual.conversion_profile == profile
+            assert actual.class_proceeds_cents == class_proceeds
+            assert actual.common_proceeds_cents == common_proceeds
+
+
 def test_distribution_replays_engine_paths_and_is_deterministic() -> None:
     base = _run("MILESTONE")
     first = simulate_vc_distribution(base_result=base, seed=31, draws=500)
@@ -252,6 +333,7 @@ def test_distribution_replays_engine_paths_and_is_deterministic() -> None:
     assert first == repeat
     assert len(first["path_records"]) == 500
     assert len({item["engine_inputs_sha256"] for item in first["path_records"]}) > 450
+    assert any(item["timing_delta_months"] > 0 for item in first["path_records"])
     assert first["receipt_sha256"] == digest(
         {key: value for key, value in first.items() if key != "receipt_sha256"}
     )

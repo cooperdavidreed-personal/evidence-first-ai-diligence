@@ -54,7 +54,7 @@ export interface SourceLocator {
 
 export interface FormulaEntry {
   formula_id: string;
-  operation: "ADD" | "SUBTRACT" | "MULTIPLY" | "DIVIDE" | "MIN" | "MAX";
+  operation: "ADD" | "SUBTRACT" | "MULTIPLY" | "DIVIDE" | "MIN" | "MAX" | "SUM" | "DATED_XIRR";
   operand_ids: string[];
   output_metric_id: string;
   output_unit: string;
@@ -245,6 +245,139 @@ export interface PEValueCreationBridge {
   receipt_sha256: string;
 }
 
+export interface VCFinancingEvent {
+  event_id: string;
+  event_type: "PRIMARY" | "MILESTONE" | "LATER_ROUND" | "SHORTFALL";
+  holder_id: string;
+  class_id: string;
+  scheduled_month: number;
+  actual_month: number;
+  date: string;
+  milestone_tests: string[];
+  milestone_state: string;
+  status: "FUNDED" | "NOT_FUNDED";
+  new_money_cents: number;
+  new_shares: number;
+  pool_top_up_shares: number;
+  issued_shares_after: number;
+  unissued_pool_after: number;
+  fully_diluted_after: number;
+  event_sha256: string;
+}
+
+export interface VCCashMonth {
+  month: number;
+  date: string;
+  beginning_cash_cents: number;
+  financing_cash_cents: number;
+  operating_net_cash_flow_cents: number;
+  ending_cash_cents: number;
+  first_exhaustion_without_contingent: boolean;
+}
+
+export interface VCScenarioResult {
+  scenario_id: "BASE" | "MILESTONE" | "DOWNSIDE" | "FINANCING_SHORTFALL";
+  engine_inputs_sha256: string;
+  financing_events: VCFinancingEvent[];
+  holders: Array<{holder_id: string; class_id: string; shares: number}>;
+  preferences: Array<{
+    class_id: string;
+    seniority: number;
+    invested_cents: number;
+    preference_multiple: string;
+    participation: string;
+    participation_cap_multiple: string | null;
+  }>;
+  unissued_pool_shares: number;
+  cash_by_month: VCCashMonth[];
+  first_cash_exhaustion_month_without_contingent_financing: number | null;
+  minimum_cash_cents: number;
+  waterfall: {
+    exit_value_cents: number;
+    conversion_profile: Record<string, boolean>;
+    class_preference_cents: Record<string, number>;
+    class_residual_cents: Record<string, number>;
+    class_proceeds_cents: Record<string, number>;
+    common_proceeds_cents: number;
+    receipt_sha256: string;
+  };
+  target_invested_cents: number;
+  target_proceeds_cents: number;
+  target_ownership: string;
+  gross_moic: string;
+  gross_xirr: string;
+  receipt_sha256: string;
+}
+
+export interface VCSensitivityCell {
+  cell_id: string;
+  axis: "exit_value" | "exit_date" | "later_round_price" | "milestone_state";
+  assumption_label: string;
+  engine_inputs_sha256: string;
+  result_receipt_sha256: string;
+  gross_moic: string;
+  gross_xirr: string;
+  target_ownership: string;
+  minimum_cash_cents: number;
+  target_proceeds_cents: number;
+  receipt_sha256: string;
+}
+
+export interface VCEngine {
+  base: VCScenarioResult;
+  milestone: VCScenarioResult;
+  downside: VCScenarioResult;
+  financing_shortfall: VCScenarioResult;
+  distribution: {
+    draws: number;
+    moic_quantiles: string[];
+    xirr_quantiles: string[];
+    probability_below_one: string;
+    receipt_sha256: string;
+  };
+  sensitivities: {
+    axis_order: VCSensitivityCell["axis"][];
+    cells: VCSensitivityCell[];
+    receipt_sha256: string;
+  };
+  milestone_contract: {
+    amount_cents: number;
+    test_month: number;
+    evaluator: string;
+    cure_period_days: number;
+    release_rule: string;
+    failure_consequence: string;
+    tests: Array<{metric_id: string; period: string; operator: string; threshold: string}>;
+  };
+  exit_value_basis: "EQUITY_VALUE";
+}
+
+export interface VCValueCreationBridge {
+  base_receipt_sha256: string;
+  standalone: Array<{
+    lever_id: string;
+    monthly_cash_delta_cents: number;
+    exit_value_delta_cents: number;
+    implementation_cost_cents: number;
+    minimum_cash_delta_cents: number;
+    target_proceeds_delta_cents: number;
+    gross_xirr_delta: string;
+    gross_moic_delta: string;
+    credit_classification: string;
+    source_analysis_ids: string[];
+    economic_mapping: Record<string, string | number>;
+    result_receipt_sha256: string;
+    receipt_sha256: string;
+  }>;
+  combined_minimum_cash_delta_cents: number;
+  combined_target_proceeds_delta_cents: number;
+  sum_standalone_target_proceeds_delta_cents: number;
+  interaction_residual_cents: number;
+  combined_gross_xirr_delta: string;
+  combined_gross_moic_delta: string;
+  receipt_sha256: string;
+}
+
 export interface EvidenceMapping {
   mapping_id: string;
   source_analysis_id: string;
@@ -336,6 +469,8 @@ export interface CaseData {
   valueCreation: Initiative[];
   valueCreationBridge?: PEValueCreationBridge;
   peEngine?: PEEngine;
+  vcEngine?: VCEngine;
+  vcValueCreationBridge?: VCValueCreationBridge;
   evidenceMappings?: EvidenceMapping[];
   sourceLocators: SourceLocator[];
   formulaRegistry: FormulaEntry[];

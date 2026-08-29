@@ -20,7 +20,7 @@ describe("Underwriting Intelligence Lab", () => {
     render(<App />);
     await user.click(screen.getByRole("button", {name: /Helios Compute Control/}));
     expect(screen.getByRole("heading", {name: "Helios Compute Control"})).toBeInTheDocument();
-    expect(screen.getByRole("heading", {name: "INVEST"})).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "CONDITIONAL INVEST"})).toBeInTheDocument();
     expect(screen.getByText("Cooper David Reed — illustrative IC")).toBeInTheDocument();
   });
 
@@ -70,6 +70,38 @@ describe("Underwriting Intelligence Lab", () => {
     expect(visibleIds.length).toBeGreaterThanOrEqual(70);
     expect(visibleIds.every((id) => registered.has(id))).toBe(true);
     expect([...document.querySelectorAll<HTMLElement>("td [data-metric-id], .exit-equation [data-metric-id]")].every((item) => item.tagName === "BUTTON")).toBe(true);
+  });
+
+  it("renders Helios as an event-based VC model with receipt-changing scenarios", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", {name: /Helios Compute Control/}));
+    await user.click(screen.getByRole("button", {name: /Underwriting Room/}));
+    expect(screen.getByRole("heading", {name: "Terms, ownership, runway, and preferences"})).toBeInTheDocument();
+    expect(screen.queryByText(/pending v2 engine/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^n\/a$/i)).not.toBeInTheDocument();
+    const receipt = screen.getByText(/Selected engine receipt/).parentElement?.querySelector("code")?.textContent;
+    await user.click(screen.getByRole("button", {name: "Shortfall bridge"}));
+    expect(screen.getByText(/Shortfall M/)).toBeInTheDocument();
+    expect(screen.getByText(/Selected engine receipt/).parentElement?.querySelector("code")?.textContent).not.toBe(receipt);
+    expect(screen.getByRole("heading", {name: "Exit waterfall"})).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "Milestone test ledger"})).toBeInTheDocument();
+    await user.selectOptions(screen.getByRole("combobox", {name: "Driver"}), "milestone_state");
+    await user.click(screen.getByRole("button", {name: "FAIL"}));
+    expect(screen.getByRole("button", {name: /Series C gross XIRR/})).toBeInTheDocument();
+  });
+
+  it("binds every rendered VC finance control to the registry", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", {name: /Helios Compute Control/}));
+    await user.click(screen.getByRole("button", {name: /Underwriting Room/}));
+    const candidate: unknown = rawData;
+    assertWorkbenchData(candidate);
+    const registered = new Set(candidate.cases.find((item) => item.caseId === "helios")!.metricRegistry.map((item) => item.metric_id));
+    const visibleIds = [...document.querySelectorAll<HTMLElement>("[data-metric-id]")].map((item) => item.dataset.metricId!);
+    expect(visibleIds.length).toBeGreaterThanOrEqual(35);
+    expect(visibleIds.every((id) => registered.has(id))).toBe(true);
   });
 
   it("renders explicit team gaps and the full ownership cadence", async () => {

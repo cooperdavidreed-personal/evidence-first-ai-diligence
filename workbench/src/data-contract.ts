@@ -12,7 +12,29 @@ function validateFormula(formula: FormulaEntry, metrics: Map<string, TypedMetric
   const output = metrics.get(formula.output_metric_id);
   const operands = formula.operand_ids.map((id) => metrics.get(id));
   if (!output || operands.some((item) => !item)) throw new Error("formula_metric_orphan");
-  const [left, right] = operands.map((item) => exactInteger(item!.value));
+  if (formula.operation === "DATED_XIRR") {
+    const dated = operands.map((item) => ({date: Date.parse(`${item!.period}T00:00:00Z`), value: Number(item!.value)}));
+    if (dated.some((item) => !Number.isFinite(item.date) || !Number.isFinite(item.value)) || !dated.some((item) => item.value < 0) || !dated.some((item) => item.value > 0) || !Number.isFinite(Number(output.value))) throw new Error("formula_dated_xirr_operand_invalid");
+    return;
+  }
+  const integerInputs = operands.every((item) => /^-?[0-9]+$/.test(item!.value)) && /^-?[0-9]+$/.test(output.value);
+  if (!integerInputs) {
+    const values = operands.map((item) => Number(item!.value));
+    const [left, right] = values;
+    let expected: number;
+    if (formula.operation === "ADD") expected = left + right;
+    else if (formula.operation === "SUBTRACT") expected = left - right;
+    else if (formula.operation === "MULTIPLY") expected = left * right;
+    else if (formula.operation === "DIVIDE") expected = left / right;
+    else if (formula.operation === "MIN") expected = Math.min(...values);
+    else if (formula.operation === "MAX") expected = Math.max(...values);
+    else expected = values.reduce((sum, value) => sum + value, 0);
+    const tolerance = Math.abs(Number(output.quantum)) / 2 + Number.EPSILON * Math.max(1, Math.abs(expected)) * 8;
+    if (!Number.isFinite(expected) || Math.abs(Number(output.value) - expected) > tolerance) throw new Error(`formula_value_mismatch:${formula.formula_id}`);
+    return;
+  }
+  const integerValues = operands.map((item) => exactInteger(item!.value));
+  const [left, right] = integerValues;
   let expected: bigint;
   if (formula.operation === "ADD") expected = left + right;
   else if (formula.operation === "SUBTRACT") expected = left - right;
@@ -21,7 +43,8 @@ function validateFormula(formula: FormulaEntry, metrics: Map<string, TypedMetric
     if (right === 0n || left % right !== 0n) throw new Error("formula_non_exact_division");
     expected = left / right;
   } else if (formula.operation === "MIN") expected = left < right ? left : right;
-  else expected = left > right ? left : right;
+  else if (formula.operation === "MAX") expected = left > right ? left : right;
+  else expected = integerValues.reduce((sum, value) => sum + value, 0n);
   if (exactInteger(output.value) !== expected) throw new Error(`formula_value_mismatch:${formula.formula_id}`);
 }
 
@@ -51,7 +74,7 @@ function validateCase(candidate: unknown): asserts candidate is CaseData {
   const rendered = candidate.renderManifest.metric_ids as string[];
   if (rendered.some((id) => !metrics.has(id))) throw new Error("render_manifest_metric_orphan");
   const sample = candidate.renderManifest.formula_sample_metric_ids as string[];
-  if (candidate.caseId === "atlasgrid" && sample.length !== 10) throw new Error("formula_sample_requires_ten");
+  if (["atlasgrid", "helios"].includes(String(candidate.caseId)) && sample.length !== 10) throw new Error("formula_sample_requires_ten");
   for (const id of sample) {
     const metric = metrics.get(id);
     if (!metric?.formula_id || !formulas.has(metric.formula_id)) throw new Error("formula_sample_invalid");
