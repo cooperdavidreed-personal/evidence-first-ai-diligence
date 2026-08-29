@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Underwriting PE distribution v2",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "draws", "moic_quantiles", "xirr_quantiles", "probability_below_one", "correlation_structure_sha256", "path_receipt_sha256s", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "underwriting.pe-distribution/v2"},
+    "draws": {"type": "integer", "minimum": 100},
+    "moic_quantiles": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$"}},
+    "xirr_quantiles": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$"}},
+    "probability_below_one": {"type": "string", "pattern": "^(0(\\.[0-9]+)?|1(\\.0+)?)$"},
+    "correlation_structure_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "path_receipt_sha256s": {"type": "array", "minItems": 100, "items": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+    "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

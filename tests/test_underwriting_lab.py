@@ -143,7 +143,22 @@ def test_atlasgrid_displayed_returns_bind_to_cash_flow_engine(generated: dict[st
         + bridge["interaction_residual_cents"]
     )
     assert len(bridge["standalone"]) == len(case["valueCreation"]) == 3
+    assert all(item["implementation_cost_cents"] >= 0 for item in bridge["standalone"])
+    assert all(item["credit_classification"] for item in bridge["standalone"])
     assert all("no standalone value" not in item["value"].lower() for item in case["valueCreation"])
+
+    mappings = {item["mapping_id"]: dict(item) for item in case["evidenceMappings"]}
+    assert set(mappings) == {
+        "ag-parent-concentration-to-terms",
+        "ag-hazard-to-downside-nrr",
+        "ag-pricing-rct-to-renewal-credit",
+        "ag-support-did-to-retention-lever",
+    }
+    for mapping in mappings.values():
+        expected_mapping_digest = mapping.pop("mapping_sha256")
+        assert expected_mapping_digest == digest(mapping)
+    assert mappings["ag-pricing-rct-to-renewal-credit"]["model_credit"].startswith("0 from price")
+    assert mappings["ag-support-did-to-retention-lever"]["credit_classification"] == "CAUSAL_SYNTHETIC_ONLY"
 
 
 def test_helios_contract_gates(generated: dict[str, tuple[Path, dict]]) -> None:

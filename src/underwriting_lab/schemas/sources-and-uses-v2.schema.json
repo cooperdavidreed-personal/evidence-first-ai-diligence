@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Underwriting sources and uses v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "uses_cents", "non_sponsor_sources_cents", "sponsor_equity_cents", "undrawn_revolver_commitment_cents", "total_uses_cents", "total_sources_cents", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "underwriting.sources-and-uses/v2"},
+    "uses_cents": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "integer", "minimum": 0}},
+    "non_sponsor_sources_cents": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "sponsor_equity_cents": {"type": "integer", "minimum": 0},
+    "undrawn_revolver_commitment_cents": {"type": "integer", "minimum": 0},
+    "total_uses_cents": {"type": "integer", "minimum": 0},
+    "total_sources_cents": {"type": "integer", "minimum": 0},
+    "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -22,10 +22,12 @@ from .contracts import (
     write_json,
 )
 from .v2_core import DecisionState, DiagnosticRole, derive_decision_state
+from .finance import npv_cents
 from .pe_engine import (
     PEOperatingAssumptions,
     PETransactionAssumptions,
     PEValueLever,
+    build_pe_sensitivity_book,
     build_value_creation_bridge,
     run_pe_case,
     simulate_pe_distribution,
@@ -63,7 +65,7 @@ def _input(artifact: dict[str, Any]) -> dict[str, str]:
     return {"artifact_id": artifact["artifact_id"], "sha256": artifact["sha256"]}
 
 
-def _output(name: str, value: float | str, unit: str) -> dict[str, str]:
+def _output(name: str, value: Decimal | float | int | str, unit: str) -> dict[str, str]:
     return {"name": name, "value": str(value), "unit": unit}
 
 
@@ -86,6 +88,14 @@ def _bind_specs(receipts: list[dict[str, Any]], manifest: dict[str, Any]) -> Non
         expected = spec_body.pop("spec_sha256")
         if expected != digest(spec_body):
             raise UnderwritingError("analysis_spec_digest_mismatch")
+        if receipt["analysis_id"] in {"AG-10", "AG-11"}:
+            required = set(spec["design"]["required_diagnostics"])
+            observed = {item["name"] for item in receipt["diagnostics"]}
+            if not required.issubset(observed):
+                missing = ",".join(sorted(required - observed))
+                raise UnderwritingError(
+                    f"analysis_required_diagnostic_missing:{receipt['analysis_id']}:{missing}"
+                )
         receipt.pop("receipt_sha256")
         receipt["spec_sha256"] = expected
         receipt["receipt_sha256"] = digest(receipt)
@@ -460,6 +470,7 @@ def _atlasgrid(
         starting_arr_cents=live_arr,
         starting_ltm_revenue_cents=revenue,
         starting_normalized_ebitda_cents=normalized_ebitda,
+        starting_annual_opex_cents=revenue - burdened_cogs - normalized_ebitda,
         full_cohort_nrr=Decimal(str(full_nrr)),
         annual_new_arr_rate=Decimal("0.10"),
         gross_margin=Decimal(str(burdened_gm)),
@@ -467,13 +478,20 @@ def _atlasgrid(
         capex_as_revenue=Decimal("0.02"),
         working_capital_as_incremental_revenue=Decimal("0.08"),
         cash_tax_rate=Decimal("0.25"),
+        tax_depreciation_as_capex=Decimal("0.80"),
+        preclose_lender_ebitda_cents=tuple(
+            int(row["normalized_ebitda_cents"]) for row in pnl[-11:]
+        ),
+        preclose_lender_ebitda_source_sha256=artifacts["monthly-pnl"]["sha256"],
+        lender_ebitda_adjustments_by_month=(),
+        deductible_fee_amortization_cents_by_month=(),
     )
     downside_operating = replace(
         base_operating,
-        full_cohort_nrr=Decimal("0.96"),
+        full_cohort_nrr=Decimal("0.97"),
         annual_new_arr_rate=Decimal("0.08"),
-        gross_margin=Decimal("0.70"),
-        annual_opex_growth_rate=Decimal("0.01"),
+        gross_margin=Decimal("0.71"),
+        annual_opex_growth_rate=Decimal("0.02"),
         capex_as_revenue=Decimal("0.025"),
         working_capital_as_incremental_revenue=Decimal("0.10"),
     )
@@ -492,6 +510,11 @@ def _atlasgrid(
         sweep_rate=Decimal(debt_terms_document["sweep_rate"]),
         maximum_gross_leverage=Decimal(debt_terms_document["maximum_gross_leverage"]),
         exit_multiple=Decimal(debt_terms_document["base_exit_multiple"]),
+        maturity_months=debt_terms_document["maturity_months"],
+        interest_balance_convention=debt_terms_document[
+            "interest_balance_convention"
+        ],
+        paydown_priority=tuple(debt_terms_document["paydown_priority"]),
     )
     selected_transaction = replace(
         ask_transaction,
@@ -520,13 +543,19 @@ def _atlasgrid(
         low_cents=15_000_000_000,
         high_cents=26_000_000_000,
     )
-    ask_moic = float(ask_case.gross_moic)
-    reprice_moic = float(selected_case.gross_moic)
-    downside_moic = float(downside_case.gross_moic)
-    ask_irr = float(ask_case.gross_xirr)
-    reprice_irr = float(selected_case.gross_xirr)
-    downside_irr = float(downside_case.gross_xirr)
-    base_headroom = min(float(item.covenant_headroom) for item in selected_case.debt_schedule.months)
+    ask_moic = ask_case.gross_moic
+    reprice_moic = selected_case.gross_moic
+    downside_moic = downside_case.gross_moic
+    ask_irr = ask_case.gross_xirr
+    reprice_irr = selected_case.gross_xirr
+    downside_irr = downside_case.gross_xirr
+    base_headroom = min(
+        item.covenant_headroom for item in selected_case.debt_schedule.months
+    )
+    selected_reconciliation = selected_case.debt_schedule.reconciliation
+    selected_xirr_residual = abs(
+        npv_cents(selected_case.gross_xirr, selected_case.sponsor_cash_flows)
+    )
     downside_breaches = [
         item.month for item in downside_case.debt_schedule.months if item.covenant_breach
     ]
@@ -536,6 +565,10 @@ def _atlasgrid(
         transaction=selected_transaction,
         seed=scenario_seed,
         draws=1000,
+    )
+    pe_sensitivities = build_pe_sensitivity_book(
+        operating=base_operating,
+        transaction=selected_transaction,
     )
     draws = pe_distribution.draws
     moic_q = pe_distribution.moic_quantiles
@@ -547,19 +580,29 @@ def _atlasgrid(
             PEValueLever(
                 "renewal",
                 "Renewal architecture",
+                credit_classification="HUMAN_JUDGMENT",
+                source_analysis_ids=("AG-07",),
+                assumption_ids=("assumption:renewal-process-nrr-uplift",),
                 nrr_delta=Decimal("0.015"),
                 implementation_costs_by_month=((1, 75_000_000), (2, 75_000_000)),
             ),
             PEValueLever(
                 "support",
                 "Support automation",
-                nrr_delta=Decimal("0.005"),
+                credit_classification="MIXED_CAUSAL_SYNTHETIC_AND_HUMAN_JUDGMENT",
+                source_analysis_ids=("AG-08",),
+                assumption_ids=("assumption:support-margin-uplift",),
+                nrr_delta=Decimal(str(-did_churn)).quantize(Decimal("0.01"))
+                / Decimal(10_000),
                 gross_margin_delta=Decimal("0.010"),
                 implementation_costs_by_month=((1, 100_000_000), (2, 100_000_000)),
             ),
             PEValueLever(
                 "delivery",
                 "Delivery cost reset",
+                credit_classification="HUMAN_JUDGMENT",
+                source_analysis_ids=("AG-04", "AG-09"),
+                assumption_ids=("assumption:delivery-margin-uplift",),
                 gross_margin_delta=Decimal("0.015"),
                 implementation_costs_by_month=((3, 125_000_000), (4, 125_000_000)),
             ),
@@ -704,7 +747,15 @@ def _atlasgrid(
             inputs=[_input(artifacts["debt-terms"]), _input(artifacts["qoe-bridge"]), _input(artifacts["monthly-pnl"]), _input(artifacts["billing-ledger"]), _input(artifacts["customer-month"])],
             outputs=[_output("ask_irr", quantize(ask_irr * 100), "percent"), _output("ask_moic", quantize(ask_moic), "multiple"), _output("reprice_irr", quantize(reprice_irr * 100), "percent"), _output("reprice_moic", quantize(reprice_moic), "multiple"), _output("downside_irr", quantize(downside_irr * 100), "percent"), _output("downside_moic", quantize(downside_moic), "multiple"), _output("maximum_bid_cents", maximum_bid, "cents"), _output("base_exit_debt_cents", selected_case.debt_schedule.ending_debt_cents, "cents"), _output("downside_exit_debt_cents", downside_case.debt_schedule.ending_debt_cents, "cents"), _output("base_min_covenant_headroom", quantize(base_headroom), "turns"), _output("downside_first_breach_month", str(min(downside_breaches)) if downside_breaches else "NONE", "month")],
             assumptions=["Starting ARR, revenue, normalized EBITDA, NRR, and burdened margin bind to AG-01, AG-02, and AG-04; exit multiples, financing terms, and operating deltas are declared synthetic scenario assumptions."],
-            diagnostics=[_diagnostic("ask_misses_selected_clears", "ask_misses_22pct_irr; selected_clears_22pct_and_2x", "PASS" if ask_irr < 0.22 and reprice_irr >= 0.22 and reprice_moic >= 2 else "FAIL", DiagnosticRole.DECISION_CRITICAL), _diagnostic("sources_equal_uses", selected_case.sources_and_uses.total_uses_cents - selected_case.sources_and_uses.total_sources_cents, "PASS" if selected_case.sources_and_uses.total_uses_cents == selected_case.sources_and_uses.total_sources_cents else "FAIL", DiagnosticRole.GENERATOR_INVARIANT), _diagnostic("base_debt_and_cash_reconcile", selected_case.debt_schedule.engine_inputs_sha256, "PASS", DiagnosticRole.GENERATOR_INVARIANT), _diagnostic("downside_floor", "5pct_irr;1.25x_moic;$3m_liquidity;no_default;no_breach", "PASS" if downside_irr >= 0.05 and downside_moic >= 1.25 and downside_case.debt_schedule.minimum_liquidity_cents >= 300_000_000 and not downside_case.debt_schedule.has_payment_default and not downside_breaches else "FAIL", DiagnosticRole.DECISION_CRITICAL), _diagnostic("month_18_19_boundary", f"m18={selected_case.debt_schedule.months[17].covenant_breach};m19={selected_case.debt_schedule.months[18].covenant_breach}", "PASS", DiagnosticRole.GENERATOR_INVARIANT)],
+            diagnostics=[
+                _diagnostic("ask_misses_selected_clears", "ask_misses_22pct_irr; selected_clears_22pct_and_2x", "PASS" if ask_irr < Decimal("0.22") and reprice_irr >= Decimal("0.22") and reprice_moic >= Decimal("2") else "FAIL", DiagnosticRole.DECISION_CRITICAL),
+                _diagnostic("sources_equal_uses", selected_case.sources_and_uses.total_uses_cents - selected_case.sources_and_uses.total_sources_cents, "PASS" if selected_case.sources_and_uses.total_uses_cents == selected_case.sources_and_uses.total_sources_cents else "FAIL", DiagnosticRole.GENERATOR_INVARIANT),
+                _diagnostic("cash_rollforward", selected_reconciliation["cash_rollforward_max_residual_cents"], "PASS" if selected_reconciliation["cash_rollforward_max_residual_cents"] == 0 else "FAIL", DiagnosticRole.GENERATOR_INVARIANT),
+                _diagnostic("debt_rollforward", max(selected_reconciliation["term_rollforward_max_residual_cents"], selected_reconciliation["revolver_rollforward_max_residual_cents"]), "PASS" if selected_reconciliation["term_rollforward_max_residual_cents"] == 0 and selected_reconciliation["revolver_rollforward_max_residual_cents"] == 0 else "FAIL", DiagnosticRole.GENERATOR_INVARIANT),
+                _diagnostic("xirr_npv_residual", format(selected_xirr_residual, "f"), "PASS" if selected_xirr_residual <= Decimal(1) else "FAIL", DiagnosticRole.GENERATOR_INVARIANT),
+                _diagnostic("downside_floor", "5pct_irr;1.25x_moic;$3m_liquidity;no_default;no_breach", "PASS" if downside_irr >= Decimal("0.05") and downside_moic >= Decimal("1.25") and downside_case.debt_schedule.minimum_liquidity_cents >= 300_000_000 and not downside_case.debt_schedule.has_payment_default and not downside_breaches else "FAIL", DiagnosticRole.DECISION_CRITICAL),
+                _diagnostic("month_18_19_boundary", f"m18={selected_case.debt_schedule.months[17].covenant_breach};m19={selected_case.debt_schedule.months[18].covenant_breach}", "PASS" if not any(item.covenant_breach for item in selected_case.debt_schedule.months[:18]) else "FAIL", DiagnosticRole.DECISION_CRITICAL),
+            ],
         ),
         analysis_receipt(
             analysis_id="AG-11",
@@ -721,10 +772,55 @@ def _atlasgrid(
             ],
             outputs=[_output("p10_moic", quantize(moic_q[0]), "multiple"), _output("p50_moic", quantize(moic_q[1]), "multiple"), _output("p90_moic", quantize(moic_q[2]), "multiple"), _output("probability_below_1x", quantize(pe_distribution.probability_below_one * 100), "percent")],
             assumptions=["Correlated ARR retention, new ARR, gross margin, and exit-multiple draws are disclosed conditional scenario inputs, not forecasts; every draw reruns the complete monthly cash and debt engine."],
-            diagnostics=[_diagnostic("draws", draws), _diagnostic("ordered_quantiles", "true", "PASS" if moic_q[0] <= moic_q[1] <= moic_q[2] else "FAIL"), _diagnostic("correlation_structure_sha256", pe_distribution.correlation_structure_sha256, "REPORTED"), _diagnostic("complete_path_recomputations", len(pe_distribution.path_receipt_sha256s), "PASS" if len(pe_distribution.path_receipt_sha256s) == draws else "FAIL")],
+            diagnostics=[_diagnostic("draws", draws), _diagnostic("ordered_quantiles", "true", "PASS" if moic_q[0] <= moic_q[1] <= moic_q[2] else "FAIL"), _diagnostic("correlation_digest", pe_distribution.correlation_structure_sha256, "REPORTED"), _diagnostic("path_reconciliation", len(pe_distribution.path_receipt_sha256s), "PASS" if len(pe_distribution.path_receipt_sha256s) == draws else "FAIL")],
         ),
     ]
     _bind_specs(receipts, manifest)
+    receipt_by_id = {item["analysis_id"]: item for item in receipts}
+    evidence_mappings = [
+        {
+            "mapping_id": "ag-parent-concentration-to-terms",
+            "source_analysis_id": "AG-03",
+            "source_receipt_sha256": receipt_by_id["AG-03"]["receipt_sha256"],
+            "observed_value": f"{quantize(parent_concentration * 100)}% top-10 parent concentration",
+            "target_assumption_or_condition": "Parent-account legal mapping and termination-right condition",
+            "credit_classification": "DESCRIPTIVE_ZERO_DIRECT_MODEL_CREDIT",
+            "model_credit": "0",
+            "decision_response": "HOLD condition and contingent consideration tied to verified live ARR",
+        },
+        {
+            "mapping_id": "ag-hazard-to-downside-nrr",
+            "source_analysis_id": "AG-05",
+            "source_receipt_sha256": receipt_by_id["AG-05"]["receipt_sha256"],
+            "observed_value": f"{quantize(annualized_churn * 100)}% annualized descriptive logo churn",
+            "target_assumption_or_condition": "DOWNSIDE full-cohort NRR of 97%",
+            "credit_classification": "DESCRIPTIVE_SCENARIO_ANCHOR",
+            "model_credit": "Scenario calibration only; no causal claim",
+            "decision_response": "Downside floor must survive retention compression",
+        },
+        {
+            "mapping_id": "ag-pricing-rct-to-renewal-credit",
+            "source_analysis_id": "AG-07",
+            "source_receipt_sha256": receipt_by_id["AG-07"]["receipt_sha256"],
+            "observed_value": f"{quantize(rct_effect * 100)} percentage-point renewal ITT",
+            "target_assumption_or_condition": "Renewal architecture value lever",
+            "credit_classification": "CAUSAL_SYNTHETIC_ONLY_ZERO_UPSIDE_CREDIT",
+            "model_credit": "0 from price increase; +1.5pp NRR remains HUMAN_JUDGMENT",
+            "decision_response": "Do not underwrite broad price-led expansion without a safer renewal design",
+        },
+        {
+            "mapping_id": "ag-support-did-to-retention-lever",
+            "source_analysis_id": "AG-08",
+            "source_receipt_sha256": receipt_by_id["AG-08"]["receipt_sha256"],
+            "observed_value": f"{quantize(did_churn)} bps gross-churn ATT",
+            "target_assumption_or_condition": "Support lever NRR delta",
+            "credit_classification": "CAUSAL_SYNTHETIC_ONLY",
+            "model_credit": f"{quantize(-did_churn)} bps NRR-equivalent; 100 bps margin uplift remains HUMAN_JUDGMENT",
+            "decision_response": "Separate identified synthetic retention credit from unverified margin credit",
+        },
+    ]
+    for mapping in evidence_mappings:
+        mapping["mapping_sha256"] = digest(mapping)
     lineages = [
         lineage_item(node_id="ag-nrr", label="Full-cohort NRR", artifact_id="customer-month", field="entity_id,month,mrr_cents", analysis_id="AG-02", output_names=["full_cohort_grr", "full_cohort_nrr", "active_only_nrr"], transformation="Frozen base cohort ARR bridge including churned entities", downstream="Retention thesis and renewal initiative"),
         lineage_item(node_id="ag-concentration", label="Parent concentration", artifact_id="customer-month", field="parent_id,mrr_cents", analysis_id="AG-03", output_names=["entity_top_10_concentration", "parent_top_10_concentration", "top_parent_concentration"], transformation="Map entity ARR to parent and rank the largest parent and top ten", downstream="Price and customer-concentration risk"),
@@ -746,8 +842,8 @@ def _atlasgrid(
         "open_conditions": 3,
         "terms": ["Illustrative $210M enterprise value", "Same declared debt quantum", "Earnout capped against verified live ARR"],
         "metric_pairs": [
-            {"metric": "Gross IRR", "threshold": ">=22%", "observed": f"{quantize(reprice_irr * 100)}%", "status": "CLEARS" if reprice_irr >= 0.22 else "MISSES"},
-            {"metric": "Gross MOIC", "threshold": ">=2.0x", "observed": f"{quantize(reprice_moic)}x", "status": "CLEARS" if reprice_moic >= 2 else "MISSES"},
+            {"metric": "Gross IRR", "threshold": ">=22%", "observed": f"{quantize(reprice_irr * 100)}%", "status": "CLEARS" if reprice_irr >= Decimal("0.22") else "MISSES"},
+            {"metric": "Gross MOIC", "threshold": ">=2.0x", "observed": f"{quantize(reprice_moic)}x", "status": "CLEARS" if reprice_moic >= Decimal("2") else "MISSES"},
         ],
         "verification_sources": ["AG-02", "AG-03", "AG-04", "AG-10", "AG-11"],
         "failure_consequences": ["Do not advance at seller ask", "Retain HOLD until open diligence conditions are adjudicated"],
@@ -791,12 +887,20 @@ def _atlasgrid(
         "distributionLineage": "ag-distribution",
         "scenarios": scenarios,
         "returnsDistribution": {"moic": [quantize(value) for value in moic_q], "irr": [quantize(value * 100) for value in irr_q], "labels": ["p10", "p50", "p90"]},
-        "peEngine": {"ask": ask_case.receipt(), "selected": selected_case.receipt(), "downside": downside_case.receipt(), "distribution": pe_distribution.receipt(), "maximum_bid_cents": maximum_bid},
+        "peEngine": {
+            "ask": ask_case.receipt(),
+            "selected": selected_case.receipt(),
+            "downside": downside_case.receipt(),
+            "distribution": pe_distribution.receipt(),
+            "sensitivities": pe_sensitivities.receipt(),
+            "maximum_bid_cents": maximum_bid,
+        },
+        "evidenceMappings": evidence_mappings,
         "valueCreationBridge": value_bridge.receipt(),
         "valueCreation": [
-            {"initiative": "Renewal architecture", "kpi": "Complete-cohort NRR", "baseline": f"{quantize(full_nrr * 100)}%", "target": f"{quantize((full_nrr + 0.015) * 100)}%", "owner": "Chief Revenue Officer", "milestone": "Segment playbooks live by day 90", "value": f"${quantize(value_by_id['renewal'].exit_equity_delta_cents / 100_000_000)}M exit equity · {quantize(value_by_id['renewal'].gross_xirr_delta * 10_000)} bps IRR · ${quantize(value_by_id['renewal'].exit_ebitda_delta_cents / 100_000_000)}M exit EBITDA", "risk": "Price-driven churn; $1.5M implementation cost is modeled", "lineage": ["ag-nrr"]},
-            {"initiative": "Support automation", "kpi": "Resolution time", "baseline": f"{quantize(np.mean([float(row['resolution_hours']) for row in rollout if int(row['post']) == 0]))} hours", "target": "17.5 hours", "owner": "Chief Customer Officer", "milestone": "20-pod rollout by day 120", "value": f"${quantize(value_by_id['support'].exit_equity_delta_cents / 100_000_000)}M exit equity · {quantize(value_by_id['support'].gross_xirr_delta * 10_000)} bps IRR · ${quantize(-value_by_id['support'].exit_debt_delta_cents / 100_000_000)}M incremental deleveraging", "risk": "Service-quality regression; $2.0M implementation cost is modeled", "lineage": ["ag-support"]},
-            {"initiative": "Delivery cost reset", "kpi": "Burdened gross margin", "baseline": f"{quantize(burdened_gm * 100)}%", "target": f"{quantize((burdened_gm + 0.015) * 100)}%", "owner": "CFO", "milestone": "Account contribution ledger and vendor plan by day 30", "value": f"${quantize(value_by_id['delivery'].exit_equity_delta_cents / 100_000_000)}M exit equity · {quantize(value_by_id['delivery'].gross_xirr_delta * 10_000)} bps IRR · ${quantize(value_by_id['delivery'].exit_ebitda_delta_cents / 100_000_000)}M exit EBITDA", "risk": "Human scenario with zero causal credit; $2.5M implementation cost is modeled", "lineage": ["ag-margin", "ag-ebitda"]},
+            {"initiative": "Renewal architecture", "kpi": "Complete-cohort NRR", "baseline": f"{quantize(full_nrr * 100)}%", "target": f"{quantize((Decimal(str(full_nrr)) + Decimal('0.015')) * 100)}%", "owner": "Chief Revenue Officer", "milestone": "Segment playbooks live by day 90", "value": f"${quantize(value_by_id['renewal'].exit_equity_delta_cents / 100_000_000)}M exit equity · {quantize(value_by_id['renewal'].gross_xirr_delta * 10_000)} bps IRR · ${quantize(value_by_id['renewal'].exit_ebitda_delta_cents / 100_000_000)}M exit EBITDA", "credit_classification": value_by_id["renewal"].credit_classification, "risk": "Price-driven churn; $1.5M implementation cost is modeled; AG-07 contributes zero upside credit", "lineage": ["ag-nrr"]},
+            {"initiative": "Support automation", "kpi": "Resolution time", "baseline": f"{quantize(np.mean([float(row['resolution_hours']) for row in rollout if int(row['post']) == 0]))} hours", "target": "17.5 hours", "owner": "Chief Customer Officer", "milestone": "20-pod rollout by day 120", "value": f"${quantize(value_by_id['support'].exit_equity_delta_cents / 100_000_000)}M exit equity · {quantize(value_by_id['support'].gross_xirr_delta * 10_000)} bps IRR · ${quantize(-value_by_id['support'].exit_debt_delta_cents / 100_000_000)}M incremental deleveraging", "credit_classification": value_by_id["support"].credit_classification, "risk": "AG-08 maps only the churn effect; the 100 bps margin uplift is human judgment; $2.0M implementation cost is modeled", "lineage": ["ag-support"]},
+            {"initiative": "Delivery cost reset", "kpi": "Burdened gross margin", "baseline": f"{quantize(burdened_gm * 100)}%", "target": f"{quantize((Decimal(str(burdened_gm)) + Decimal('0.015')) * 100)}%", "owner": "CFO", "milestone": "Account contribution ledger and vendor plan by day 30", "value": f"${quantize(value_by_id['delivery'].exit_equity_delta_cents / 100_000_000)}M exit equity · {quantize(value_by_id['delivery'].gross_xirr_delta * 10_000)} bps IRR · ${quantize(value_by_id['delivery'].exit_ebitda_delta_cents / 100_000_000)}M exit EBITDA", "credit_classification": value_by_id["delivery"].credit_classification, "risk": "Human scenario with zero causal credit; $2.5M implementation cost is modeled", "lineage": ["ag-margin", "ag-ebitda"]},
         ],
         "lineage": lineages,
         "artifacts": list(artifacts.values()),

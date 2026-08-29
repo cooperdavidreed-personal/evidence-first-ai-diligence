@@ -107,6 +107,9 @@ class DebtTerms:
     sweep_rate: Decimal
     minimum_cash_cents: int
     maximum_gross_leverage: Decimal
+    maturity_months: int = 60
+    interest_balance_convention: str = "BEGINNING_FUNDED_PRINCIPAL"
+    paydown_priority: tuple[str, str] = ("REVOLVER", "TERM")
 
     def __post_init__(self) -> None:
         for name in ("term_opening_cents", "revolver_opening_cents", "revolver_commitment_cents", "minimum_cash_cents"):
@@ -120,6 +123,12 @@ class DebtTerms:
             raise UnderwritingError("opening_revolver_exceeds_commitment")
         if self.sweep_rate > 1 or self.annual_mandatory_amortization_rate > 1:
             raise UnderwritingError("debt_rate_out_of_range")
+        if self.maturity_months < 1:
+            raise UnderwritingError("debt_maturity_invalid")
+        if self.interest_balance_convention != "BEGINNING_FUNDED_PRINCIPAL":
+            raise UnderwritingError("debt_interest_convention_unsupported")
+        if self.paydown_priority != ("REVOLVER", "TERM"):
+            raise UnderwritingError("debt_paydown_priority_unsupported")
 
 
 @dataclass(frozen=True)
@@ -170,6 +179,7 @@ class DebtSchedule:
     terms: DebtTerms
     months: tuple[DebtMonth, ...]
     engine_inputs_sha256: str
+    reconciliation: Mapping[str, int]
 
     @property
     def ending_debt_cents(self) -> int:
@@ -204,6 +214,7 @@ class DebtSchedule:
             "minimum_liquidity_cents": self.minimum_liquidity_cents,
             "first_covenant_breach_month": self.first_covenant_breach_month,
             "has_payment_default": self.has_payment_default,
+            "reconciliation": dict(sorted(self.reconciliation.items())),
         }
         body["receipt_sha256"] = digest(body)
         return body
@@ -220,6 +231,8 @@ def build_debt_schedule(
         raise UnderwritingError("preclose_lender_ebitda_requires_11_months")
     if not operating_months:
         raise UnderwritingError("operating_schedule_empty")
+    if len(operating_months) > terms.maturity_months:
+        raise UnderwritingError("debt_schedule_exceeds_maturity")
     if [item.month for item in operating_months] != list(range(1, len(operating_months) + 1)):
         raise UnderwritingError("operating_months_not_contiguous")
     beginning_cash = _cents(opening_cash_cents, "opening_cash")
@@ -227,6 +240,11 @@ def build_debt_schedule(
     revolver_balance = terms.revolver_opening_cents
     monthly_ebitda = list(preclose_lender_ebitda_cents)
     schedule: list[DebtMonth] = []
+    maximum_cash_rollforward_residual = 0
+    maximum_term_rollforward_residual = 0
+    maximum_revolver_rollforward_residual = 0
+    maximum_interest_residual = 0
+    covenant_status_mismatches = 0
     monthly_cash_rate = terms.annual_cash_rate / Decimal(12)
     monthly_pik_rate = terms.annual_pik_rate / Decimal(12)
     monthly_mandatory = round_cents(
@@ -278,6 +296,65 @@ def build_debt_schedule(
         leverage = Decimal(gross_debt) / Decimal(trailing_lender_ebitda)
         headroom = terms.maximum_gross_leverage - leverage
         payment_default = ending_cash < 0
+        maximum_cash_rollforward_residual = max(
+            maximum_cash_rollforward_residual,
+            abs(
+                ending_cash
+                - (
+                    beginning_cash
+                    + operating.ebitda_cents
+                    - cash_taxes
+                    - operating.capex_cents
+                    - operating.delta_working_capital_cents
+                    - cash_interest
+                    - mandatory
+                    + revolver_draw
+                    - optional_sweep
+                )
+            ),
+        )
+        derived_revolver_paydown = (
+            beginning_revolver + revolver_draw - revolver_balance
+        )
+        derived_term_paydown = optional_sweep - derived_revolver_paydown
+        maximum_term_rollforward_residual = max(
+            maximum_term_rollforward_residual,
+            abs(
+                term_balance
+                - (
+                    beginning_term
+                    - mandatory
+                    + pik_interest
+                    - derived_term_paydown
+                )
+            ),
+        )
+        maximum_revolver_rollforward_residual = max(
+            maximum_revolver_rollforward_residual,
+            abs(
+                revolver_balance
+                - (
+                    beginning_revolver
+                    + revolver_draw
+                    - derived_revolver_paydown
+                )
+            ),
+        )
+        maximum_interest_residual = max(
+            maximum_interest_residual,
+            abs(
+                cash_interest
+                - round_cents(
+                    Decimal(beginning_term + beginning_revolver)
+                    * terms.annual_cash_rate
+                    / Decimal(12)
+                )
+            ),
+        )
+        covenant_status_mismatches += int(
+            (leverage > terms.maximum_gross_leverage)
+            != (headroom < Decimal(0))
+        )
         schedule.append(
             DebtMonth(
                 month=operating.month,
@@ -318,7 +395,18 @@ def build_debt_schedule(
         "opening_cash_cents": opening_cash_cents,
         "preclose_lender_ebitda_cents": list(preclose_lender_ebitda_cents),
     }
-    return DebtSchedule(terms=terms, months=tuple(schedule), engine_inputs_sha256=digest(inputs))
+    return DebtSchedule(
+        terms=terms,
+        months=tuple(schedule),
+        engine_inputs_sha256=digest(inputs),
+        reconciliation={
+            "cash_rollforward_max_residual_cents": maximum_cash_rollforward_residual,
+            "term_rollforward_max_residual_cents": maximum_term_rollforward_residual,
+            "revolver_rollforward_max_residual_cents": maximum_revolver_rollforward_residual,
+            "cash_interest_max_residual_cents": maximum_interest_residual,
+            "covenant_status_mismatches": covenant_status_mismatches,
+        },
+    )
 
 
 @dataclass(frozen=True)

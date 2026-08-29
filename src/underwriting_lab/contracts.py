@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from ic_evidence_lab.canonical import canonical_json
+from jsonschema import Draft202012Validator
 
 
 CONTRACT_VERSION = "underwriting-econometrics/v1"
@@ -50,6 +51,71 @@ def write_json(path: Path, document: Any) -> None:
 
 def read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_underwriting_schema(name: str) -> dict[str, Any]:
+    if not name or "/" in name or "\\" in name or not name.endswith(".schema.json"):
+        raise UnderwritingError("underwriting_schema_name_invalid")
+    path = Path(__file__).resolve().parent / "schemas" / name
+    if not path.is_file():
+        raise UnderwritingError(f"underwriting_schema_missing:{name}")
+    document = read_json(path)
+    Draft202012Validator.check_schema(document)
+    return document
+
+
+def validate_v2_document(document: dict[str, Any], schema_name: str) -> None:
+    errors = sorted(
+        Draft202012Validator(load_underwriting_schema(schema_name)).iter_errors(document),
+        key=lambda item: list(item.absolute_path),
+    )
+    if errors:
+        path = "/".join(str(item) for item in errors[0].absolute_path) or "$"
+        raise UnderwritingError(f"v2_schema_invalid:{schema_name}:{path}:{errors[0].message}")
+
+
+def _validate_hashed_v2_document(document: dict[str, Any], schema_name: str) -> None:
+    validate_v2_document(document, schema_name)
+    body = dict(document)
+    expected = body.pop("receipt_sha256", None)
+    if expected != digest(body):
+        raise UnderwritingError(f"v2_receipt_digest_mismatch:{schema_name}")
+
+
+def _validate_pe_payload(case: dict[str, Any]) -> None:
+    engine = case.get("peEngine")
+    if engine is None:
+        return
+    if not isinstance(engine.get("maximum_bid_cents"), int):
+        raise UnderwritingError("pe_maximum_bid_integer_cents_required")
+    for scenario_id in ("ask", "selected", "downside"):
+        result = engine.get(scenario_id)
+        if not isinstance(result, dict):
+            raise UnderwritingError(f"pe_scenario_missing:{scenario_id}")
+        _validate_hashed_v2_document(
+            result["sources_and_uses"], "sources-and-uses-v2.schema.json"
+        )
+        _validate_hashed_v2_document(
+            result["debt_schedule"], "debt-schedule-v2.schema.json"
+        )
+        _validate_hashed_v2_document(result, "pe-case-result-v2.schema.json")
+    _validate_hashed_v2_document(
+        engine["distribution"], "pe-distribution-v2.schema.json"
+    )
+    sensitivity = engine.get("sensitivities")
+    if not isinstance(sensitivity, dict):
+        raise UnderwritingError("pe_sensitivity_book_missing")
+    for cell in sensitivity["one_way"] + sensitivity["entry_exit_matrix"]:
+        _validate_hashed_v2_document(cell, "pe-sensitivity-cell-v2.schema.json")
+    _validate_hashed_v2_document(
+        sensitivity, "pe-sensitivity-book-v2.schema.json"
+    )
+    bridge = case.get("valueCreationBridge")
+    if not isinstance(bridge, dict):
+        raise UnderwritingError("pe_value_creation_bridge_missing")
+    _validate_hashed_v2_document(
+        bridge, "pe-value-creation-bridge-v2.schema.json"
+    )
 
 
 def analysis_receipt(
@@ -120,6 +186,7 @@ def lineage_item(
 
 
 def validate_workbench_case(case: dict[str, Any]) -> None:
+    _validate_pe_payload(case)
     body = dict(case)
     expected = body.pop("analysis_sha256", None)
     if expected != digest(body):

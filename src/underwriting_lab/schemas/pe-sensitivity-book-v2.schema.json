@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Underwriting PE sensitivity book v2",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "baseline_receipt_sha256", "axis_order", "one_way", "entry_exit_matrix", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "underwriting.pe-sensitivity-book/v2"},
+    "baseline_receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "axis_order": {"type": "array", "minItems": 6, "maxItems": 6, "uniqueItems": true, "items": {"type": "string"}},
+    "one_way": {"type": "array", "minItems": 18, "maxItems": 18, "items": {"type": "object"}},
+    "entry_exit_matrix": {"type": "array", "minItems": 9, "maxItems": 9, "items": {"type": "object"}},
+    "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

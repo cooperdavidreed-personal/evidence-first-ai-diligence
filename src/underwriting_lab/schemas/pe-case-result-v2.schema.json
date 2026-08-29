@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Underwriting PE case result v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "scenario_id", "engine_inputs_sha256", "engine_inputs", "sources_and_uses", "debt_schedule", "arr_cents_by_month", "revenue_cents_by_month", "sponsor_cash_flows", "exit_enterprise_value_cents", "exit_equity_value_cents", "earnout_cents", "gross_moic", "gross_xirr", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "underwriting.pe-case-result/v2"},
+    "scenario_id": {"type": "string", "minLength": 1},
+    "engine_inputs_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "engine_inputs": {"type": "object", "required": ["scenario_id", "operating", "transaction", "close_date"], "properties": {"scenario_id": {"type": "string"}, "operating": {"type": "object"}, "transaction": {"type": "object"}, "close_date": {"type": "string", "format": "date"}}},
+    "sources_and_uses": {"type": "object"},
+    "debt_schedule": {"type": "object"},
+    "arr_cents_by_month": {"type": "array", "minItems": 60, "maxItems": 60, "items": {"type": "integer", "minimum": 0}},
+    "revenue_cents_by_month": {"type": "array", "minItems": 60, "maxItems": 60, "items": {"type": "integer", "minimum": 0}},
+    "sponsor_cash_flows": {"type": "array", "minItems": 2, "items": {"type": "object", "additionalProperties": false, "required": ["date", "amount_cents"], "properties": {"date": {"type": "string", "format": "date"}, "amount_cents": {"type": "integer"}}}},
+    "exit_enterprise_value_cents": {"type": "integer", "minimum": 0},
+    "exit_equity_value_cents": {"type": "integer", "minimum": 0},
+    "earnout_cents": {"type": "integer", "minimum": 0},
+    "gross_moic": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$"},
+    "gross_xirr": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$"},
+    "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Underwriting PE value creation bridge v2",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "base_receipt_sha256", "standalone", "combined_receipt_sha256", "combined_exit_equity_delta_cents", "sum_standalone_exit_equity_delta_cents", "interaction_residual_cents", "combined_gross_xirr_delta", "combined_gross_moic_delta", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "underwriting.pe-value-creation-bridge/v2"},
+    "base_receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "standalone": {"type": "array", "minItems": 3, "maxItems": 5, "items": {"type": "object", "additionalProperties": false, "required": ["lever_id", "label", "exit_ebitda_delta_cents", "exit_debt_delta_cents", "exit_equity_delta_cents", "gross_xirr_delta", "gross_moic_delta", "implementation_cost_cents", "credit_classification", "source_analysis_ids", "assumption_ids", "result_receipt_sha256"], "properties": {"lever_id": {"type": "string"}, "label": {"type": "string"}, "exit_ebitda_delta_cents": {"type": "integer"}, "exit_debt_delta_cents": {"type": "integer"}, "exit_equity_delta_cents": {"type": "integer"}, "gross_xirr_delta": {"type": "string"}, "gross_moic_delta": {"type": "string"}, "implementation_cost_cents": {"type": "integer", "minimum": 0}, "credit_classification": {"type": "string", "minLength": 1}, "source_analysis_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "assumption_ids": {"type": "array", "items": {"type": "string"}}, "result_receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}}},
+    "combined_receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "combined_exit_equity_delta_cents": {"type": "integer"}, "sum_standalone_exit_equity_delta_cents": {"type": "integer"}, "interaction_residual_cents": {"type": "integer"},
+    "combined_gross_xirr_delta": {"type": "string"}, "combined_gross_moic_delta": {"type": "string"},
+    "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
