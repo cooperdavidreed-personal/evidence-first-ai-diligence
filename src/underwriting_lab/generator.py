@@ -578,6 +578,12 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
         "exit_value_multiple_low": "0.05",
         "exit_value_multiple_high": "1.85",
         "path_method": "WEIGHTED_SCENARIO_STATE_PLUS_OPERATING_EXIT_AND_TIMING_FULL_ENGINE_REPLAY",
+        "scenario_state_weights": {
+            "MILESTONE": "0.45",
+            "BASE": "0.30",
+            "DOWNSIDE": "0.15",
+            "FINANCING_SHORTFALL": "0.10",
+        },
     }
     write_json(case_root / "data/venture_scenarios.json", venture_scenarios)
     artifacts.append(_artifact(case_root, "data/venture_scenarios.json", "helios.venture-scenarios/v2", 1))

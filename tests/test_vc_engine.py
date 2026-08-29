@@ -333,7 +333,23 @@ def test_distribution_replays_engine_paths_and_is_deterministic() -> None:
     assert first == repeat
     assert len(first["path_records"]) == 500
     assert len({item["engine_inputs_sha256"] for item in first["path_records"]}) > 450
-    assert any(item["timing_delta_months"] > 0 for item in first["path_records"])
+    assert any(item["exit_month"] > base.assumptions.exit_month for item in first["path_records"])
+    delayed = run_vc_scenario(
+        assumptions=replace(
+            base.assumptions,
+            exit_month=66,
+            monthly_net_cash_flow_cents=(
+                *base.assumptions.monthly_net_cash_flow_cents,
+                *([base.assumptions.monthly_net_cash_flow_cents[-1]] * 6),
+            ),
+        ),
+        opening_cash_cents=base.opening_cash_cents,
+        initial_holders=base.initial_holders,
+        initial_preferences=base.initial_preferences,
+        unissued_pool_shares=base.initial_unissued_pool_shares,
+    )
+    assert delayed.gross_xirr < base.gross_xirr
+    assert first["template_weights"] == {"MILESTONE": "1"}
     assert first["receipt_sha256"] == digest(
         {key: value for key, value in first.items() if key != "receipt_sha256"}
     )

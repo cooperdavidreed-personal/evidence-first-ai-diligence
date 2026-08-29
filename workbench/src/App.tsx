@@ -79,6 +79,7 @@ function Distribution({caseData, openMetric}: {caseData: CaseData; openMetric?: 
   return (
     <figure className="distribution" aria-label="Return distribution">
       <figcaption>Conditional return distribution <span>Scenario inputs, not a forecast</span></figcaption>
+      {caseData.vcEngine?.distribution.template_weights ? <p className="distribution-priors" aria-label="Scenario state prior weights">State priors · {Object.entries(caseData.vcEngine.distribution.template_weights).map(([key, value]) => `${key.replaceAll("_", " ").toLowerCase()} ${(Number(value) * 100).toFixed(0)}%`).join(" · ")}</p> : null}
       {values.map((value, index) => (
         <div className="distribution-row" key={caseData.returnsDistribution.labels[index]}>
           <span>{caseData.returnsDistribution.labels[index]}</span>
@@ -173,7 +174,7 @@ function EconometricLab({caseData}: {caseData: CaseData}) {
   const visible = mode === "identified" ? identified : associative;
   const paired = caseData.caseId === "atlasgrid"
     ? {naive: "Observational offer-scale association", naiveValue: caseData.analyses.find((item) => item.analysis_id === "AG-06")?.outputs.find((item) => item.name === "implied_offer_scale_association")?.value ?? "n/a", adjusted: "Randomized offer ITT", adjustedValue: caseData.analyses.find((item) => item.analysis_id === "AG-07")?.outputs[0]?.value ?? "n/a", unit: "percentage points · same offer scale", naiveNote: "selection exposed", adjustedNote: "design-aligned comparison"}
-    : {naive: "Unadjusted randomized ITT", naiveValue: caseData.analyses.find((item) => item.analysis_id === "HX-06")?.outputs.find((item) => item.name === "optimizer_unadjusted_itt")?.value ?? "n/a", adjusted: "Baseline-adjusted randomized ITT", adjustedValue: caseData.analyses.find((item) => item.analysis_id === "HX-06")?.outputs.find((item) => item.name === "optimizer_ate")?.value ?? "n/a", unit: "log-cost percentage points · same randomized population", naiveNote: "unadjusted estimate", adjustedNote: "prespecified baseline adjustment"};
+    : {naive: "Precommitted unadjusted randomized ITT", naiveValue: caseData.analyses.find((item) => item.analysis_id === "HX-06")?.outputs.find((item) => item.name === "optimizer_ate")?.value ?? "n/a", adjusted: "Baseline-adjusted precision companion", adjustedValue: caseData.analyses.find((item) => item.analysis_id === "HX-06")?.outputs.find((item) => item.name === "optimizer_baseline_adjusted_companion")?.value ?? "n/a", unit: "log-cost percentage points · same randomized population", naiveNote: "primary recovery and economic mapping", adjustedNote: "companion only; receives no separate credit"};
   return (
     <div className="view-stack">
       <section className="econ-intro"><div><p className="kicker">Identification before inference</p><h2>What the design can—and cannot—establish</h2></div><div className="segmented" aria-label="Analysis comparison"><button aria-pressed={mode === "naive"} onClick={() => setMode("naive")}>Association / abstention</button><button aria-pressed={mode === "identified"} onClick={() => setMode("identified")}>Identified synthetic effect</button></div></section>

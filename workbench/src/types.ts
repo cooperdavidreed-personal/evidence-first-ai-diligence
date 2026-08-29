@@ -330,6 +330,7 @@ export interface VCEngine {
   financing_shortfall: VCScenarioResult;
   distribution: {
     draws: number;
+    template_weights: Record<string, string>;
     moic_quantiles: string[];
     xirr_quantiles: string[];
     probability_below_one: string;

@@ -106,7 +106,7 @@ Required analyses and precommitments:
 | HX-03 | CAC, payback, burn multiple, and runway — `ACCOUNTING_IDENTITY` | Micro-fixtures and generated totals recompute exactly at declared precision. |
 | HX-04 | Pipeline integrity — `DESCRIPTIVE` | Inflated-deal roster and weighted-pipeline residual match the planted set and cents exactly; denominators below 15 report insufficient history. |
 | HX-05 | Bayesian tiered market sizing — `PREDICTIVE_ASSOCIATION` | Beta-binomial posterior by tier; intervals ordered; prior sensitivity shown; tiers 1–4 contain generator truth within the declared 90% interval; data-thin tier 5 returns `ABSTAIN`. |
-| HX-06 | Randomized optimizer experiment — `CAUSAL_SYNTHETIC_ONLY` | Balance standardized differences below 0.15; effect sign matches truth; 95% interval contains the planted effect. |
+| HX-06 | Randomized optimizer experiment — `CAUSAL_SYNTHETIC_ONLY` | The precommitted unadjusted ITT is primary and supplies any explicit economic mapping; baseline-adjusted OLS is a labeled precision companion only. Balance standardized differences below 0.15; primary effect sign matches truth; primary 95% interval contains the planted effect. |
 | HX-07 | Total-spend-growth attribution — `NOT_IDENTIFIED` | Adoption follows spend spikes and violates parallel trends; runtime must abstain. Any causal estimate is `ABSTENTION_MISSED`. |
 | HX-08 | Cap-table dilution and preference waterfall — `ACCOUNTING_IDENTITY` | Integer shares and cents; class proceeds sum exactly to exit value; conversion and participation breakpoints are explicit. |
 | HX-09 | New-money outcome distribution — `SCENARIO` | 20,000 draws; p10 ≤ p50 ≤ p90; loss and ≥3x probabilities in [0,1]; same seed repeats; scenario priors disclosed as assumptions. |

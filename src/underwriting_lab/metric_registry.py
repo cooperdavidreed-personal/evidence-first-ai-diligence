@@ -334,7 +334,19 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
                 )
 
             scenario_label = scenario_id.replace("_", " ").title()
-            add_vc_cents(f"{prefix}-target-invested", f"{scenario_label} · Series C funded capital", result["target_invested_cents"])
+            funded_target_operand_ids = [
+                f"{prefix}-event-{event['event_id']}-new-money"
+                for event in result["financing_events"]
+                if event["holder_id"] == "series-c-investor"
+            ]
+            funded_capital_formula = f"vc-formula-{scenario_id.lower()}-funded-capital"
+            add_vc_cents(
+                f"{prefix}-target-invested",
+                f"{scenario_label} · Series C funded capital",
+                result["target_invested_cents"],
+                formula_id=funded_capital_formula,
+                operand_ids=funded_target_operand_ids,
+            )
             add_vc_cents(f"{prefix}-target-proceeds", "Series C exit proceeds", result["target_proceeds_cents"])
             add_vc_cents(f"{prefix}-minimum-cash", "Minimum modeled cash", result["minimum_cash_cents"])
             waterfall_operand_ids = [f"{prefix}-waterfall-common"] + [
@@ -441,6 +453,13 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
             )
             formulas.extend(
                 [
+                    _formula(
+                        funded_capital_formula,
+                        "SUM",
+                        funded_target_operand_ids,
+                        f"{prefix}-target-invested",
+                        "cents",
+                    ),
                     _formula(
                         ownership_formula,
                         "DIVIDE",

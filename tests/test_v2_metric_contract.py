@@ -16,6 +16,13 @@ def atlasgrid_v2(tmp_path_factory: pytest.TempPathFactory) -> dict:
     return read_json(analyze_room(manifest, root / "analysis.json"))
 
 
+@pytest.fixture(scope="module")
+def helios_v2(tmp_path_factory: pytest.TempPathFactory) -> dict:
+    root = tmp_path_factory.mktemp("helios-v2-contract")
+    manifest = generate_room("helios", 20260829, root)
+    return read_json(analyze_room(manifest, root / "analysis.json"))
+
+
 def _rebind_case(case: dict) -> None:
     case.pop("analysis_sha256", None)
     case["analysis_sha256"] = digest(case)
@@ -64,3 +71,32 @@ def test_inner_distribution_path_tamper_fails_even_when_outer_digest_is_rebound(
     _rebind_case(case)
     with pytest.raises(UnderwritingError, match="pe_distribution_path_digest_mismatch"):
         validate_workbench_case(case)
+
+
+def test_helios_distribution_priors_and_funded_capital_are_explicit(helios_v2: dict) -> None:
+    validate_workbench_case(helios_v2)
+    assert helios_v2["vcEngine"]["distribution"]["template_weights"] == {
+        "BASE": "0.30",
+        "DOWNSIDE": "0.15",
+        "FINANCING_SHORTFALL": "0.10",
+        "MILESTONE": "0.45",
+    }
+    metric = next(
+        item
+        for item in helios_v2["metricRegistry"]
+        if item["metric_id"] == "helios-MILESTONE-target-invested"
+    )
+    assert metric["formula_id"] == "vc-formula-milestone-funded-capital"
+    assert metric["operand_ids"] == [
+        "helios-MILESTONE-event-series-c-close-new-money",
+        "helios-MILESTONE-event-series-c-tranche-new-money",
+    ]
+
+
+def test_helios_distribution_contains_effective_later_exit_paths(helios_v2: dict) -> None:
+    records = helios_v2["vcEngine"]["distribution"]["path_records"]
+    assert any(item["exit_month"] > 60 for item in records)
+    assert all(
+        item["realized_timing_delta_months"] == item["exit_month"] - 60
+        for item in records
+    )

@@ -799,6 +799,7 @@ def simulate_vc_distribution(
     scenario_results: Iterable[VCScenarioResult] | None = None,
     seed: int,
     draws: int,
+    scenario_weights: Mapping[str, Decimal] | None = None,
     exit_multiple_low: Decimal = Decimal("0.35"),
     exit_multiple_high: Decimal = Decimal("1.85"),
 ) -> dict[str, Any]:
@@ -814,13 +815,28 @@ def simulate_vc_distribution(
     ]
     if not canonical_order:
         raise UnderwritingError("vc_distribution_template_missing")
-    canonical_weights = {
-        "MILESTONE": 0.45,
-        "BASE": 0.30,
-        "DOWNSIDE": 0.15,
-        "FINANCING_SHORTFALL": 0.10,
-    }
-    weights = [canonical_weights.get(item, 1.0) for item in canonical_order]
+    if scenario_weights is None:
+        canonical_defaults = {
+            "MILESTONE": Decimal("0.45"),
+            "BASE": Decimal("0.30"),
+            "DOWNSIDE": Decimal("0.15"),
+            "FINANCING_SHORTFALL": Decimal("0.10"),
+        }
+        default_total = sum(
+            (canonical_defaults[item] for item in canonical_order), Decimal("0")
+        )
+        declared_weights = {
+            item: canonical_defaults[item] / default_total for item in canonical_order
+        }
+    else:
+        declared_weights = scenario_weights
+    if set(declared_weights) != set(canonical_order):
+        raise UnderwritingError("vc_distribution_weight_keys_invalid")
+    if any(value <= 0 for value in declared_weights.values()):
+        raise UnderwritingError("vc_distribution_weight_nonpositive")
+    if sum(declared_weights.values(), Decimal("0")) != Decimal("1"):
+        raise UnderwritingError("vc_distribution_weights_do_not_sum_to_one")
+    weights = [float(declared_weights[item]) for item in canonical_order]
     records: list[dict[str, Any]] = []
     for index in range(draws):
         template_id = rng.choices(canonical_order, weights=weights, k=1)[0]
@@ -847,11 +863,39 @@ def simulate_vc_distribution(
                 Decimal("1"), rounding=ROUND_HALF_EVEN
             )
         )
-        exit_month = max(24, min(60, template.assumptions.exit_month + timing_delta))
-        operating_path = tuple(
+        operating_path_values = [
             int((Decimal(value) * operating_factor).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN))
             for value in template.assumptions.monthly_net_cash_flow_cents
+        ]
+        adjusted_horizon_cash = (
+            template.cash_by_month[-1]["ending_cash_cents"]
+            + sum(operating_path_values)
+            - sum(template.assumptions.monthly_net_cash_flow_cents)
         )
+        terminal_monthly_cash = operating_path_values[-1]
+        extra_liquidity_months = (
+            18
+            if terminal_monthly_cash >= 0
+            else max(0, adjusted_horizon_cash // abs(terminal_monthly_cash))
+        )
+        liquidity_supported_ceiling = min(
+            78, template.assumptions.exit_month + extra_liquidity_months
+        )
+        exit_month = max(
+            24,
+            min(
+                liquidity_supported_ceiling,
+                template.assumptions.exit_month + timing_delta,
+            ),
+        )
+        # The deterministic cases end at month 60, but the distribution must
+        # make delayed exits economically real. Extend the final declared
+        # monthly cash assumption instead of recording an inert timing delta.
+        if exit_month > len(operating_path_values):
+            operating_path_values.extend(
+                [operating_path_values[-1]] * (exit_month - len(operating_path_values))
+            )
+        operating_path = tuple(operating_path_values)
         path_assumptions = replace(
             template.assumptions,
             exit_month=exit_month,
@@ -874,6 +918,8 @@ def simulate_vc_distribution(
             "exit_month": exit_month,
             "exit_value_multiple": format(multiple, "f"),
             "timing_delta_months": timing_delta,
+            "realized_timing_delta_months": exit_month - template.assumptions.exit_month,
+            "liquidity_supported_exit_ceiling_month": liquidity_supported_ceiling,
             "operating_cash_factor": format(operating_factor, "f"),
             "milestone_state": next(
                 (
@@ -908,8 +954,8 @@ def simulate_vc_distribution(
             for scenario_id in canonical_order
         },
         "template_weights": {
-            scenario_id: format(Decimal(str(weight)), "f")
-            for scenario_id, weight in zip(canonical_order, weights, strict=True)
+            scenario_id: format(declared_weights[scenario_id], "f")
+            for scenario_id in canonical_order
         },
         "moic_quantiles": [format(moics[index], "f") for index in indices],
         "xirr_quantiles": [format(irrs[index], "f") for index in indices],

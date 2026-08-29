@@ -249,6 +249,11 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
         "",
         "The 1,000 retained paths replay the full financing ledger and exact waterfall. They are scenario priors, not a forecast or evidence of real-world accuracy.",
         "",
+        "Declared scenario-state priors: " + "; ".join(
+            f"{name.replace('_', ' ').title()} {_percent(value)}"
+            for name, value in packet["distribution"]["template_weights"].items()
+        ) + ".",
+        "",
         "| Statistic | p10 | p50 | p90 |",
         "|---|---:|---:|---:|",
         f"| Gross MOIC | {_multiple(packet['distribution']['moic_quantiles'][0])} | {_multiple(packet['distribution']['moic_quantiles'][1])} | {_multiple(packet['distribution']['moic_quantiles'][2])} |",

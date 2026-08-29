@@ -7,7 +7,7 @@
 **Authority:** `DECISION_RECORD_INCOMPLETE` / `PENDING_FOUNDER_SIGNATURE` / no delegated investment authority.
 
 **Knowledge cutoff:** `2026-08-29T00:00:00Z`
-**Packet receipt:** `aa69df6565a8473ff0e9e673b76b9970b2537a737e7e9277931ed0ed33fc19fa`
+**Packet receipt:** `20b9cee7af3f64aa192c0fc4a5d05914f5eca23c517a983691fcfe22d139a209`
 
 ## Recommendation and executable terms
 
@@ -97,10 +97,12 @@ Series C invests $40M in dated funded tranches and receives $360M at exit: **59.
 
 The 1,000 retained paths replay the full financing ledger and exact waterfall. They are scenario priors, not a forecast or evidence of real-world accuracy.
 
+Declared scenario-state priors: Base 30.00%; Downside 15.00%; Financing Shortfall 10.00%; Milestone 45.00%.
+
 | Statistic | p10 | p50 | p90 |
 |---|---:|---:|---:|
 | Gross MOIC | 1.46x | 6.85x | 11.47x |
-| Gross XIRR | 8.23% | 49.51% | 71.35% |
+| Gross XIRR | 7.97% | 45.54% | 68.28% |
 
 - Probability below 1.0x: **0.10%**.
 - Sensitivity book: 11 full-engine cells across exit value, exit date, later-round price, and milestone state.
@@ -113,18 +115,18 @@ The 1,000 retained paths replay the full financing ledger and exact waterfall. T
 
 ## Value creation and board cadence
 
-Combined full-model impact: **$3.2M minimum cash**, **$3.9M Series C proceeds**, **0.36% gross XIRR**, including an explicit **$0 interaction residual**.
+Combined full-model impact: **$3.1M minimum cash**, **$3.9M Series C proceeds**, **0.36% gross XIRR**, including an explicit **-$0 interaction residual**.
 
 | Initiative | Evidence class | Baseline / target | Owner | Modeled consequence | Stop rule / risk |
 |---|---|---|---|---|---|
 | Ordinary-cohort expansion | HUMAN_JUDGMENT | 117.07% / 125% | CRO | $75,504/month cash; $9.1M exit value; $1.5M cost | Design-partner tactics do not transfer; stop if two ordinary cohorts fall below 105% |
-| Optimizer unit economics | MIXED_CAUSAL_SYNTHETIC_AND_SCENARIO | 70.61% / 74% | CTO | $56,437/month cash; $8.1M exit value; $2M cost | Provider price changes; stop if replication interval crosses zero |
+| Optimizer unit economics | MIXED_CAUSAL_SYNTHETIC_AND_SCENARIO | 70.61% / 74% | CTO | $56,142/month cash; $8.1M exit value; $2M cost | Provider price changes; stop if replication interval crosses zero |
 | Enterprise sales governance | DESCRIPTIVE | 48 inflated opportunities / <15% forecast error | CRO / Finance | $0/month cash; $0 exit value; $1.2M cost | Enterprise cycle elongation; stop tranche if stage history is incomplete |
 
 ### Economic mapping register
 
 - **Ordinary-cohort expansion:** ordinary_base_arr_cents * max(0, target_nrr - observed_nrr) * gross_margin * 50% realization. Inputs: exit_multiple_on_annual_cash=10.0; gross_margin=0.7061223762551445; observed_nrr=1.1706504793654182; ordinary_base_arr_cents=3234114396; realization_factor=0.50; target_nrr=1.25
-- **Optimizer unit economics:** ltm_compute_cost_cents * abs(adjusted_optimizer_itt) * adoption_rate. Inputs: adjusted_optimizer_itt=-0.09154958494336665; adoption_rate=0.65; causal_boundary=Synthetic ITT identifies the planted test population only; adoption and valuation multiple remain scenario judgments.; exit_multiple_on_annual_cash=12.0; ltm_compute_cost_cents=1138084029
+- **Optimizer unit economics:** ltm_compute_cost_cents * abs(precommitted_unadjusted_optimizer_itt) * adoption_rate. Inputs: adoption_rate=0.65; causal_boundary=Synthetic ITT identifies the planted test population only; adoption and valuation multiple remain scenario judgments.; exit_multiple_on_annual_cash=12.0; ltm_compute_cost_cents=1138084029; precommitted_unadjusted_optimizer_itt=-0.09107139999999998
 - **Enterprise sales governance:** zero_base_case_credit_until_stage_history_and_conversion_design_are_identified. Inputs: modeled_value_credit_cents=0
 
 | Phase | Timing | Owner | Milestone | KPI | Stop rule |
@@ -150,11 +152,11 @@ This packet is generated from a fictional deterministic room. Synthetic causal e
 
 ## Receipt appendix
 
-- Case analysis: `dc67fce3adecef8ccb32654d3a0384fbf301903d5704ff024ecbb747ce7405c7`
+- Case analysis: `7e7e06047a4db2b9698ec68b85d61d5cbbf3b2bd498bec1a2a046ee34e8c0e8a`
 - BASE result: `25e42585f6c9cd97a030d3d79dcb69c9aa70795ec76da82e822b8e2a6f0f3417`
 - MILESTONE result: `9cf24ca939951b9d65eecd0ce26b2721d39f4f0c48578e6a0a9093cbcf2203e8`
 - DOWNSIDE result: `8c4a2cfe0cafaa5a6340c8f0419f32e97ca590eab1ef8ac25cac9576affe2d20`
 - FINANCING_SHORTFALL result: `12e20a1bd48af041b1079449c086fe22fb0272ddc7350bba5a0e8f45d43676d0`
-- Distribution: `313c65dba75bbb7f41df051d6863d0ce505b35667cda0b8e6d762b685ab6c3fb`
+- Distribution: `23f00c394c8c68fa84a27bf93020af913ee655ad2ea8818b517abb7525073b8e`
 - Sensitivity book: `2a22c9c3cb2cd91ee537e0cca6ae8081b700e8d778e2dd1e03d9cfc4757b060d`
-- Value-creation bridge: `ffb804f3e4c8e0b310ddb656c0911b6f55f1da79d7669517799c9edc02b1c08c`
+- Value-creation bridge: `4c3ca1b029af6671b42490f2363559e19cec1cf56944a08733c92839d2976fda`

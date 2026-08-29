@@ -1130,6 +1130,10 @@ def _helios(
         scenario_results=tuple(scenario_results.values()),
         seed=scenario_seed,
         draws=int(venture_scenarios["draws"]),
+        scenario_weights={
+            key: Decimal(value)
+            for key, value in venture_scenarios["scenario_state_weights"].items()
+        },
         exit_multiple_low=Decimal(venture_scenarios["exit_value_multiple_low"]),
         exit_multiple_high=Decimal(venture_scenarios["exit_value_multiple_high"]),
     )
@@ -1304,7 +1308,7 @@ def _helios(
     optimizer_annual_cash_delta = int(
         (
             Decimal(ltm_compute_cost_cents)
-            * Decimal(str(abs(adjusted_effect)))
+            * Decimal(str(abs(rct_effect)))
             * optimizer_adoption
         ).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN)
     )
@@ -1336,9 +1340,9 @@ def _helios(
             credit_classification="MIXED_CAUSAL_SYNTHETIC_AND_SCENARIO",
             source_analysis_ids=["HX-01", "HX-06"],
             mapping={
-                "formula": "ltm_compute_cost_cents * abs(adjusted_optimizer_itt) * adoption_rate",
+                "formula": "ltm_compute_cost_cents * abs(precommitted_unadjusted_optimizer_itt) * adoption_rate",
                 "ltm_compute_cost_cents": ltm_compute_cost_cents,
-                "adjusted_optimizer_itt": format(Decimal(str(adjusted_effect)), "f"),
+                "precommitted_unadjusted_optimizer_itt": format(Decimal(str(rct_effect)), "f"),
                 "adoption_rate": format(optimizer_adoption, "f"),
                 "exit_multiple_on_annual_cash": "12.0",
                 "causal_boundary": "Synthetic ITT identifies the planted test population only; adoption and valuation multiple remain scenario judgments.",
@@ -1473,10 +1477,10 @@ def _helios(
             analysis_id="HX-06",
             question="What is the synthetic optimizer experiment effect on log unit cost?",
             classification="CAUSAL_SYNTHETIC_ONLY",
-            method="Intention-to-treat difference in mean log-cost change",
+            method="Precommitted unadjusted randomized ITT with a labeled baseline-adjusted precision companion",
             population=f"{len(experiment)} randomized synthetic customers",
             inputs=[_input(artifacts["optimizer-experiment"])],
-            outputs=[_output("optimizer_unadjusted_itt", quantize(rct_effect * 100), "percent_log_points"), _output("optimizer_ate", quantize(adjusted_effect * 100), "percent_log_points")],
+            outputs=[_output("optimizer_ate", quantize(rct_effect * 100), "percent_log_points"), _output("optimizer_baseline_adjusted_companion", quantize(adjusted_effect * 100), "percent_log_points")],
             assumptions=["Seed-permuted 60-of-120 assignment and no cross-customer interference."],
             diagnostics=[_diagnostic("assignment_mechanism", "seeded_permutation_60_of_120_customers", "REPORTED"), _diagnostic("unadjusted_confidence_interval", f"[{quantize(rct_low * 100)}, {quantize(rct_high * 100)}]", "REPORTED"), _diagnostic("unadjusted_standard_error", quantize(rct_se * 100), "REPORTED"), _diagnostic("confidence_interval", f"[{quantize(adjusted_low * 100)}, {quantize(adjusted_high * 100)}]", "REPORTED"), _diagnostic("standard_error", quantize(adjusted_se * 100), "REPORTED"), _diagnostic("baseline_cost_smd", quantize(optimizer_smd), "PASS" if abs(optimizer_smd) <= 0.15 else "FAIL")],
         ),
@@ -1523,9 +1527,9 @@ def _helios(
         lineage_item(node_id="hx-tam", label="Modeled TAM survey evidence", artifact_id="market-survey", field="tier,adopted", analysis_id="HX-05", output_names=["modeled_tam"], transformation="Tier-level beta-binomial adoption medians", downstream="Market-size range with data-thin abstention"),
         lineage_item(node_id="hx-tam-assumptions", label="Modeled TAM universe assumptions", artifact_id="market-assumptions", field="universe_counts,tier_mid_spend_cents", analysis_id="HX-05", output_names=["modeled_tam"], transformation="Multiply tier adoption medians by declared universe counts and spend assumptions", downstream="Market-size scenario; not a market fact"),
         lineage_item(node_id="hx-pipeline", label="Pipeline stage-history audit", artifact_id="stage-history", field="opportunity_id,observation_index,stage", analysis_id="HX-04", output_names=["inflated_opportunities", "weighted_pipeline_inflation", "weighted_pipeline_inflation_cents"], transformation="Compare reported stage with the latest eligible history, then reweight using declared probabilities", downstream="Milestone financing and forecast governance"),
-        lineage_item(node_id="hx-optimizer", label="Optimizer randomized test", artifact_id="optimizer-experiment", field="customer_id,treatment,baseline_log_cost,outcome_log_cost_change", analysis_id="HX-06", output_names=["optimizer_unadjusted_itt", "optimizer_ate"], transformation="Compare the precommitted randomized arms and retain the prespecified baseline-adjusted ITT", downstream="Optimizer replication milestone and scenario-limited unit-economics mapping"),
+        lineage_item(node_id="hx-optimizer", label="Optimizer randomized test", artifact_id="optimizer-experiment", field="customer_id,treatment,baseline_log_cost,outcome_log_cost_change", analysis_id="HX-06", output_names=["optimizer_ate", "optimizer_baseline_adjusted_companion"], transformation="Use the precommitted unadjusted randomized ITT for recovery and economic mapping; show baseline adjustment only as a labeled precision companion", downstream="Optimizer replication milestone and scenario-limited unit-economics mapping"),
         lineage_item(node_id="hx-ownership", label="Series C ownership", artifact_id="financing-plan", field="scenario_books[*].events,event_id,class_id,pre_money_cents,pool_target", analysis_id="HX-08", output_names=["first_close_new_shares", "fully_funded_series_c_ownership"], transformation="Event-ordered integer-share capitalization with exact rational price and option-pool refresh", downstream="First-close and fully funded ownership"),
-        lineage_item(node_id="hx-return", label="Series C return distribution", artifact_id="venture-scenarios", field="draws,exit_value_multiple_low,exit_value_multiple_high,path_method", analysis_id="HX-09", output_names=["p10_moic", "p50_moic", "p90_moic", "p10_xirr", "p50_xirr", "p90_xirr", "probability_below_1x", "probability_at_least_3x"], transformation="One-thousand seeded full event-ledger, waterfall, MOIC, and dated-XIRR reruns", downstream="Conditional venture outcome range; not a forecast"),
+        lineage_item(node_id="hx-return", label="Series C return distribution", artifact_id="venture-scenarios", field="draws,scenario_state_weights,exit_value_multiple_low,exit_value_multiple_high,path_method", analysis_id="HX-09", output_names=["p10_moic", "p50_moic", "p90_moic", "p10_xirr", "p50_xirr", "p90_xirr", "probability_below_1x", "probability_at_least_3x"], transformation="One-thousand seeded full event-ledger, waterfall, MOIC, and dated-XIRR reruns under four visible scenario-state priors", downstream="Conditional venture outcome range; not a forecast"),
         lineage_item(node_id="hx-team", label="Role-level team diligence", artifact_id="team-diligence", field="roles[*].role,strength,gap,evidence_state,financing_consequence", analysis_id="HX-09", output_names=["p50_moic"], transformation="Role-specific evidence-state and financing-consequence register", downstream="Closing conditions and board ownership"),
     ]
     decision = {
@@ -1612,7 +1616,7 @@ def _helios(
         "vcValueCreationBridge": vc_value_creation_bridge,
         "valueCreation": [
             {"initiative": "Ordinary-cohort expansion", "kpi": "Non-design-partner NRR", "baseline": f"{quantize(ordinary_nrr * 100)}%", "target": "125%", "owner": "CRO", "milestone": "Cohort playbooks and referenceable renewal evidence by quarter 2", "value": f"Formula: ordinary ARR × NRR gap × gross margin × 50% realization; ${quantize(ordinary_monthly_cash_delta / 100_000_000)}M monthly cash and ${quantize(ordinary_exit_delta / 100_000_000)}M exit-equity scenario credit", "credit_classification": "HUMAN_JUDGMENT", "risk": "Design-partner tactics do not transfer; stop if two ordinary cohorts fall below 105%", "lineage": ["hx-nrr", "hx-runway"]},
-            {"initiative": "Optimizer unit economics", "kpi": "Fully burdened gross margin", "baseline": f"{quantize(gross_margin * 100)}%", "target": "74%", "owner": "CTO", "milestone": "Replicate randomized log-cost effect in production before tranche test", "value": f"Formula: LTM compute cost × |baseline-adjusted ITT| × 65% adoption; ${quantize(optimizer_monthly_cash_delta / 100_000_000)}M monthly cash and ${quantize(optimizer_exit_delta / 100_000_000)}M exit-equity scenario credit", "credit_classification": "MIXED_CAUSAL_SYNTHETIC_AND_SCENARIO", "risk": "Provider price changes; stop if replication interval crosses zero", "lineage": ["hx-margin", "hx-optimizer", "hx-runway"]},
+            {"initiative": "Optimizer unit economics", "kpi": "Fully burdened gross margin", "baseline": f"{quantize(gross_margin * 100)}%", "target": "74%", "owner": "CTO", "milestone": "Replicate randomized log-cost effect in production before tranche test", "value": f"Formula: LTM compute cost × |precommitted unadjusted ITT| × 65% adoption; ${quantize(optimizer_monthly_cash_delta / 100_000_000)}M monthly cash and ${quantize(optimizer_exit_delta / 100_000_000)}M exit-equity scenario credit", "credit_classification": "MIXED_CAUSAL_SYNTHETIC_AND_SCENARIO", "risk": "Provider price changes; stop if replication interval crosses zero", "lineage": ["hx-margin", "hx-optimizer", "hx-runway"]},
             {"initiative": "Enterprise sales governance", "kpi": "Stage-to-close forecast error", "baseline": f"{inflated_count} inflated opportunities", "target": "<15% forecast error", "owner": "CRO / Finance", "milestone": "Opportunity-level stage audit by day 45", "value": "Avoids an illustrative shortfall-round trigger; unidentified forecast effect receives zero base-case credit", "credit_classification": "DESCRIPTIVE", "risk": "Enterprise cycle elongation; stop tranche if stage history is incomplete", "lineage": ["hx-pipeline", "hx-runway"]},
         ],
         "lineage": lineages,

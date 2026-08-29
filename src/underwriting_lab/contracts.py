@@ -325,6 +325,15 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
     _validate_hashed_v2_document(distribution, "vc-distribution-v2.schema.json")
     if distribution["base_result_receipt_sha256"] != engine["milestone"]["receipt_sha256"]:
         raise UnderwritingError("vc_distribution_base_binding_mismatch")
+    template_weights = {
+        key: Decimal(value) for key, value in distribution["template_weights"].items()
+    }
+    if set(template_weights) != {"MILESTONE", "BASE", "DOWNSIDE", "FINANCING_SHORTFALL"}:
+        raise UnderwritingError("vc_distribution_weight_keys_invalid")
+    if any(value <= 0 for value in template_weights.values()):
+        raise UnderwritingError("vc_distribution_weight_nonpositive")
+    if sum(template_weights.values(), Decimal("0")) != Decimal("1"):
+        raise UnderwritingError("vc_distribution_weights_do_not_sum_to_one")
     records = distribution["path_records"]
     if len(records) != distribution["draws"]:
         raise UnderwritingError("vc_distribution_path_count_mismatch")

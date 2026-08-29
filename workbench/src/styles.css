@@ -89,6 +89,7 @@ main { min-height: 650px; padding: 34px 32px 64px; }
 .distribution { margin: 0; padding: 24px 0; border-block: 1px solid var(--hairline); }
 .distribution figcaption { display: flex; justify-content: space-between; margin-bottom: 20px; font: 650 13px var(--mono); }
 .distribution figcaption span { color: var(--muted); font-size: 10px; font-weight: 500; }
+.distribution-priors { margin: -10px 0 16px; color: var(--muted); font: 600 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .035em; }
 .distribution-row { display: grid; grid-template-columns: 40px 1fr 70px; gap: 12px; align-items: center; margin: 9px 0; font-variant-numeric: tabular-nums; }
 .distribution-row > span { color: var(--muted); font: 650 10px var(--mono); }
 .distribution-row > strong { text-align: right; font: 500 17px Georgia, ui-serif, serif; }
