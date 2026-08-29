@@ -20,6 +20,7 @@ from .contracts import (
     sha256_file,
     write_json,
 )
+from .v2_core import DecisionState, DiagnosticRole, derive_decision_state
 
 
 def _manifest(manifest_path: Path) -> tuple[Path, dict[str, Any], dict[str, dict[str, Any]]]:
@@ -56,8 +57,13 @@ def _output(name: str, value: float | str, unit: str) -> dict[str, str]:
     return {"name": name, "value": str(value), "unit": unit}
 
 
-def _diagnostic(name: str, value: float | str, status: str = "PASS") -> dict[str, str]:
-    return {"name": name, "value": str(value), "status": status}
+def _diagnostic(
+    name: str,
+    value: float | str,
+    status: str = "PASS",
+    role: DiagnosticRole = DiagnosticRole.GENERATOR_INVARIANT,
+) -> dict[str, str]:
+    return {"name": name, "value": str(value), "status": status, "role": role.value}
 
 
 def _bind_specs(receipts: list[dict[str, Any]], manifest: dict[str, Any]) -> None:
@@ -108,13 +114,22 @@ def _scenario_book(case_id: str, scenarios: list[dict[str, str]], distribution: 
 
 def _workflow_disposition(receipts: list[dict[str, Any]], decision: dict[str, Any]) -> str:
     diagnostics = [item for receipt in receipts for item in receipt["diagnostics"]]
-    unresolved = (
-        decision["status"] != "DECISION_RECORD_WELL_FORMED"
-        or decision["open_conditions"] > 0
-        or any(receipt["state"] in {"ABSTAIN", "DIAGNOSTIC_BLOCKED"} for receipt in receipts)
-        or any(item["status"] in {"FAIL", "BLOCKED"} for item in diagnostics)
+    if decision["status"] != "DECISION_RECORD_WELL_FORMED":
+        diagnostics.append(
+            {
+                "name": "decision_record_completeness",
+                "value": decision["status"],
+                "status": "BLOCKED",
+                "role": DiagnosticRole.DECISION_CRITICAL.value,
+            }
+        )
+    state = derive_decision_state(
+        diagnostics=diagnostics,
+        stale_metric_ids=[],
+        open_conditions=decision["open_conditions"],
+        signature_status=decision["signature_status"],
     )
-    return "HOLD" if unresolved else "READY_FOR_HUMAN_ADJUDICATION"
+    return "READY_FOR_HUMAN_ADJUDICATION" if state is DecisionState.READY_FOR_ADJUDICATION else "HOLD"
 
 
 def _thesis_graph(result: dict[str, Any]) -> dict[str, Any]:
@@ -555,7 +570,7 @@ def _atlasgrid(
             assumptions=["Realized price is post-treatment and selected by negotiation; its slope is not causal."],
             diagnostics=[
                 _diagnostic("standard_error", quantize(naive_se * 100), "REPORTED"),
-                _diagnostic("confounding_audit", "realized_price_is_endogenous", "BLOCKED"),
+                _diagnostic("confounding_audit", "realized_price_is_endogenous", "BLOCKED", DiagnosticRole.IDENTIFICATION_BOUNDARY),
             ],
         ),
         analysis_receipt(
@@ -589,7 +604,7 @@ def _atlasgrid(
             inputs=[_input(artifacts["customer-month"])],
             outputs=[],
             assumptions=["No valid untreated comparison group is available."],
-            diagnostics=[_diagnostic("overlapping_events", "leader_hire, pricing_change, macro_shift", "BLOCKED")],
+            diagnostics=[_diagnostic("overlapping_events", "leader_hire, pricing_change, macro_shift", "BLOCKED", DiagnosticRole.IDENTIFICATION_BOUNDARY)],
             state="ABSTAIN",
         ),
         analysis_receipt(
@@ -601,7 +616,7 @@ def _atlasgrid(
             inputs=[_input(artifacts["debt-terms"]), _input(artifacts["debt-schedule"]), _input(artifacts["qoe-bridge"])],
             outputs=[_output("ask_irr", quantize(ask_irr * 100), "percent"), _output("reprice_irr", quantize(reprice_irr * 100), "percent"), _output("reprice_moic", quantize(reprice_moic), "multiple"), _output("base_min_covenant_headroom", quantize(base_headroom), "turns"), _output("downside_first_breach_year", str(min(downside_breaches)) if downside_breaches else "NONE", "year")],
             assumptions=["Exit EBITDA, multiple, debt paydown, and hold period are declared scenario inputs."],
-            diagnostics=[_diagnostic("hurdle_test", "reprice_clears_22pct_and_2x", "PASS" if reprice_irr >= 0.22 and reprice_moic >= 2 else "FAIL"), _diagnostic("base_covenant_headroom_turns", quantize(base_headroom), "PASS" if base_headroom > 0 else "FAIL"), _diagnostic("downside_breach", str(min(downside_breaches)) if downside_breaches else "NONE", "PASS" if downside_breaches else "FAIL")],
+            diagnostics=[_diagnostic("hurdle_test", "reprice_clears_22pct_and_2x", "PASS" if reprice_irr >= 0.22 and reprice_moic >= 2 else "FAIL", DiagnosticRole.DECISION_CRITICAL), _diagnostic("base_covenant_headroom_turns", quantize(base_headroom), "PASS" if base_headroom > 0 else "FAIL", DiagnosticRole.DECISION_CRITICAL), _diagnostic("downside_breach", str(min(downside_breaches)) if downside_breaches else "NONE", "PASS" if downside_breaches else "FAIL", DiagnosticRole.DECISION_CRITICAL)],
         ),
         analysis_receipt(
             analysis_id="AG-11",
@@ -903,7 +918,7 @@ def _helios(
             inputs=[_input(artifacts["customer-month"])],
             outputs=[],
             assumptions=["Adoption follows spend spikes, so untreated parallel trends do not hold."],
-            diagnostics=[_diagnostic("pretrend", "non_parallel", "BLOCKED")],
+            diagnostics=[_diagnostic("pretrend", "non_parallel", "BLOCKED", DiagnosticRole.IDENTIFICATION_BOUNDARY)],
             state="ABSTAIN",
         ),
         analysis_receipt(

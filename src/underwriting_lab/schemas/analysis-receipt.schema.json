@@ -16,7 +16,7 @@
     "inputs": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["artifact_id", "sha256"], "properties": {"artifact_id": {"type": "string"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}}},
     "outputs": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["name", "value", "unit"], "properties": {"name": {"type": "string"}, "value": {"type": "string"}, "unit": {"type": "string"}}}},
     "assumptions": {"type": "array", "items": {"type": "string"}},
-    "diagnostics": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["name", "value", "status"], "properties": {"name": {"type": "string"}, "value": {"type": "string"}, "status": {"type": "string"}}}},
+    "diagnostics": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["name", "value", "status"], "properties": {"name": {"type": "string"}, "value": {"type": "string"}, "status": {"type": "string"}, "role": {"enum": ["GENERATOR_INVARIANT", "IDENTIFICATION_BOUNDARY", "DECISION_CRITICAL"]}}}},
     "state": {"enum": ["REPORTED", "DIAGNOSTIC_BLOCKED", "ABSTAIN", "NOT_APPLICABLE"]},
     "spec_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}

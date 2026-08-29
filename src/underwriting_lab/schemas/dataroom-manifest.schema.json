@@ -36,16 +36,32 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["schema_version", "analysis_id", "cutoff", "tolerance_policy", "state_policy", "estimand", "method_family", "recovery_rule", "spec_sha256"],
+        "required": ["schema_version", "analysis_id", "cutoff", "tolerance_policy", "state_policy", "method_family", "recovery_rule", "design", "spec_sha256"],
         "properties": {
-          "schema_version": {"const": "underwriting.analysis-spec/v1"},
+          "schema_version": {"const": "underwriting.analysis-spec/v2"},
           "analysis_id": {"type": "string", "pattern": "^[A-Z]{2}-[0-9]{2}$"},
           "cutoff": {"type": "string", "format": "date-time"},
           "tolerance_policy": {"type": "string"},
           "state_policy": {"type": "string"},
-          "estimand": {"type": "string", "minLength": 1},
           "method_family": {"type": "string", "minLength": 1},
           "recovery_rule": {"type": "string", "minLength": 1},
+          "design": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["outcome", "treatment_or_exposure", "population", "period", "estimand", "unit", "assignment_or_design", "uncertainty_method", "required_diagnostics", "permitted_use"],
+            "properties": {
+              "outcome": {"type": "string", "minLength": 1},
+              "treatment_or_exposure": {"type": "string", "minLength": 1},
+              "population": {"type": "string", "minLength": 1},
+              "period": {"type": "string", "minLength": 1},
+              "estimand": {"type": "string", "minLength": 1},
+              "unit": {"type": "string", "minLength": 1},
+              "assignment_or_design": {"type": "string", "minLength": 1},
+              "uncertainty_method": {"type": "string", "minLength": 1},
+              "required_diagnostics": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+              "permitted_use": {"type": "string", "minLength": 1}
+            }
+          },
           "spec_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
         }
       }
