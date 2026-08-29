@@ -128,6 +128,7 @@ caption { padding: 12px 0; text-align: left; color: var(--muted); font: 600 10px
 th, td { padding: 12px 14px; text-align: left; vertical-align: top; border-bottom: 1px solid #dedbd3; }
 th { color: var(--muted); font: 700 9px var(--mono); text-transform: uppercase; letter-spacing: .08em; }
 td { font-variant-numeric: tabular-nums; }
+.cell-receipt { display: block; margin-top: 5px; color: var(--muted); font: 600 8px var(--mono); }
 
 .econ-intro, .underwriting-head { display: flex; justify-content: space-between; align-items: end; gap: 30px; }
 .segmented, .scenario-tabs { display: flex; border: 1px solid var(--hairline); padding: 3px; }
