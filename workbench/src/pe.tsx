@@ -1,4 +1,5 @@
 import {useEffect, useMemo, useState} from "react";
+import {registeredMetric} from "./data-contract";
 import type {CaseData, Metric, PECaseResult, PESensitivityCell} from "./types";
 
 type OpenMetric = (metric: Metric, trigger: HTMLElement) => void;
@@ -23,18 +24,21 @@ function financeMetric(
   value: string,
   detail: string,
 ): Metric {
+  const metricId = `${caseData.caseId}-${scenario.scenario_id}-${suffix}`;
+  const registry = registeredMetric(caseData, metricId);
   return {
-    metric_id: `${caseData.caseId}-${scenario.scenario_id}-${suffix}`,
+    metric_id: metricId,
     label,
-    value,
+    value: registry.display_value || value,
     detail: `${detail} Result receipt ${scenario.receipt_sha256.slice(0, 16)}….`,
-    classification: "SCENARIO",
-    lineage: ["ag-reprice"],
+    classification: registry.classification,
+    lineage: registry.source_locator_ids.map((id) => id.replace(/^locator-/, "")),
+    registry,
   };
 }
 
 function MetricButton({metric, openMetric}: {metric: Metric; openMetric: OpenMetric}) {
-  return <button className="finance-metric" onClick={(event) => openMetric(metric, event.currentTarget)}>
+  return <button className="finance-metric" data-metric-id={metric.metric_id} onClick={(event) => openMetric(metric, event.currentTarget)}>
     <span>{metric.label}</span><strong>{metric.value}</strong><small>Inspect ↗</small>
   </button>;
 }
@@ -44,8 +48,8 @@ function SourcesUses({caseData, scenario, openMetric}: {caseData: CaseData; scen
   return <section className="finance-panel" aria-labelledby="sources-uses-title">
     <div className="panel-heading"><div><p className="kicker">Closing capitalization</p><h3 id="sources-uses-title">Sources &amp; uses</h3></div><code>{schedule.receipt_sha256.slice(0, 12)}…</code></div>
     <div className="sources-uses-grid">
-      <table><caption>Uses</caption><tbody>{Object.entries(schedule.uses_cents).map(([label, value]) => <tr key={label}><th>{label.replaceAll("_", " ")}</th><td>{money(value)}</td></tr>)}<tr className="total"><th>Total uses</th><td>{money(schedule.total_uses_cents)}</td></tr></tbody></table>
-      <table><caption>Sources</caption><tbody>{Object.entries(schedule.non_sponsor_sources_cents).map(([label, value]) => <tr key={label}><th>{label.replaceAll("_", " ")}</th><td>{money(value)}</td></tr>)}<tr><th>Sponsor equity</th><td>{money(schedule.sponsor_equity_cents)}</td></tr><tr className="total"><th>Total sources</th><td>{money(schedule.total_sources_cents)}</td></tr></tbody></table>
+      <table><caption>Uses</caption><tbody>{Object.entries(schedule.uses_cents).map(([label, value]) => <tr key={label}><th>{label.replaceAll("_", " ")}</th><td data-metric-id={`${caseData.caseId}-${scenario.scenario_id}-uses-${label}`}>{money(value)}</td></tr>)}<tr className="total"><th>Total uses</th><td data-metric-id={`${caseData.caseId}-${scenario.scenario_id}-total-uses`}>{money(schedule.total_uses_cents)}</td></tr></tbody></table>
+      <table><caption>Sources</caption><tbody>{Object.entries(schedule.non_sponsor_sources_cents).map(([label, value]) => <tr key={label}><th>{label.replaceAll("_", " ")}</th><td data-metric-id={`${caseData.caseId}-${scenario.scenario_id}-sources-${label}`}>{money(value)}</td></tr>)}<tr><th>Sponsor equity</th><td data-metric-id={`${caseData.caseId}-${scenario.scenario_id}-sources-sponsor-equity`}>{money(schedule.sponsor_equity_cents)}</td></tr><tr className="total"><th>Total sources</th><td data-metric-id={`${caseData.caseId}-${scenario.scenario_id}-total-sources`}>{money(schedule.total_sources_cents)}</td></tr></tbody></table>
     </div>
     <MetricButton metric={financeMetric(caseData, scenario, "sources-reconcile", "Reconciliation", schedule.total_sources_cents === schedule.total_uses_cents ? "$0 residual" : "BLOCKED", `Exact integer-cent sources equal uses. Undrawn revolver ${money(schedule.undrawn_revolver_commitment_cents)} is capacity, not a closing source.`)} openMetric={openMetric} />
   </section>;
@@ -58,13 +62,13 @@ function DebtCovenant({caseData, scenario, openMetric}: {caseData: CaseData; sce
   const minimumHeadroom = months.reduce((minimum, item) => Math.min(minimum, Number(item.covenant_headroom)), Number.POSITIVE_INFINITY);
   return <section className="finance-panel debt-panel" aria-labelledby="debt-title">
     <div className="panel-heading"><div><p className="kicker">Cash-generated deleveraging</p><h3 id="debt-title">Debt &amp; covenant tape</h3></div><span>{scenario.debt_schedule.first_covenant_breach_month ? `Breach M${scenario.debt_schedule.first_covenant_breach_month}` : "No modeled breach"}</span></div>
-    <div className="debt-tape" aria-label="Sixty month ending debt profile">{months.map((item) => <span key={item.month} className={item.covenant_breach ? "breach" : ""} style={{height: `${Math.max(4, ((item.ending_term_cents + item.ending_revolver_cents) / maximumDebt) * 100)}%`}} title={`Month ${item.month}: ${money(item.ending_term_cents + item.ending_revolver_cents)}`} />)}</div>
+    <div className="debt-tape" aria-label="Sixty month ending debt profile">{months.map((item) => <span key={item.month} data-metric-id={`${caseData.caseId}-${scenario.scenario_id}-month-${String(item.month).padStart(2, "0")}-ending_term_cents`} className={item.covenant_breach ? "breach" : ""} style={{height: `${Math.max(4, ((item.ending_term_cents + item.ending_revolver_cents) / maximumDebt) * 100)}%`}} title={`Month ${item.month}: ${money(item.ending_term_cents + item.ending_revolver_cents)}`} />)}</div>
     <div className="finance-metric-grid">
       <MetricButton metric={financeMetric(caseData, scenario, "exit-debt", "Exit debt", money(scenario.debt_schedule.ending_debt_cents), "Generated by the monthly cash, interest, amortization, revolver, and sweep schedule.")} openMetric={openMetric} />
       <MetricButton metric={financeMetric(caseData, scenario, "min-liquidity", "Minimum liquidity", money(scenario.debt_schedule.minimum_liquidity_cents), "Minimum ending cash across all 60 modeled months.")} openMetric={openMetric} />
       <MetricButton metric={financeMetric(caseData, scenario, "min-headroom", "Minimum headroom", leverage(String(minimumHeadroom)), "Minimum covenant ceiling less recomputed gross leverage across all months.")} openMetric={openMetric} />
     </div>
-    <details><summary>Open annual debt workpaper</summary><div className="table-wrap" tabIndex={0}><table><thead><tr><th>Month</th><th>Cash</th><th>Term debt</th><th>Revolver</th><th>Interest</th><th>Sweep</th><th>Gross leverage</th><th>Headroom</th></tr></thead><tbody>{annual.map((item) => <tr key={item.month}><th scope="row">{item.month}</th><td>{money(item.ending_cash_cents)}</td><td>{money(item.ending_term_cents)}</td><td>{money(item.ending_revolver_cents)}</td><td>{money(item.cash_interest_cents)}</td><td>{money(item.optional_sweep_cents)}</td><td>{leverage(item.gross_leverage)}</td><td>{leverage(item.covenant_headroom)}</td></tr>)}</tbody></table></div></details>
+    <details><summary>Open annual debt workpaper</summary><div className="table-wrap" tabIndex={0}><table><thead><tr><th>Month</th><th>Cash</th><th>Term debt</th><th>Revolver</th><th>Interest</th><th>Sweep</th><th>Gross leverage</th><th>Headroom</th></tr></thead><tbody>{annual.map((item) => {const id = `${caseData.caseId}-${scenario.scenario_id}-month-${String(item.month).padStart(2, "0")}`; return <tr key={item.month}><th scope="row">{item.month}</th><td data-metric-id={`${id}-ending_cash_cents`}>{money(item.ending_cash_cents)}</td><td data-metric-id={`${id}-ending_term_cents`}>{money(item.ending_term_cents)}</td><td data-metric-id={`${id}-ending_revolver_cents`}>{money(item.ending_revolver_cents)}</td><td data-metric-id={`${id}-cash_interest_cents`}>{money(item.cash_interest_cents)}</td><td data-metric-id={`${id}-optional_sweep_cents`}>{money(item.optional_sweep_cents)}</td><td data-metric-id={`${id}-gross_leverage`}>{leverage(item.gross_leverage)}</td><td data-metric-id={`${id}-covenant_headroom`}>{leverage(item.covenant_headroom)}</td></tr>;})}</tbody></table></div></details>
   </section>;
 }
 
@@ -73,10 +77,10 @@ function ExitBridge({caseData, scenario, openMetric}: {caseData: CaseData; scena
   return <section className="finance-panel" aria-labelledby="exit-bridge-title">
     <div className="panel-heading"><div><p className="kicker">Enterprise to sponsor return</p><h3 id="exit-bridge-title">Exit bridge</h3></div><code>{scenario.receipt_sha256.slice(0, 12)}…</code></div>
     <div className="exit-equation">
-      <span><small>Exit EV</small><strong>{money(scenario.exit_enterprise_value_cents)}</strong></span><b>−</b>
-      <span><small>Debt</small><strong>{money(scenario.debt_schedule.ending_debt_cents)}</strong></span><b>+</b>
-      <span><small>Cash</small><strong>{money(finalCash)}</strong></span><b>=</b>
-      <span className="result"><small>Exit equity</small><strong>{money(scenario.exit_equity_value_cents)}</strong></span>
+      <span data-metric-id={`${caseData.caseId}-${scenario.scenario_id}-exit-ev`}><small>Exit EV</small><strong>{money(scenario.exit_enterprise_value_cents)}</strong></span><b>−</b>
+      <span data-metric-id={`${caseData.caseId}-${scenario.scenario_id}-exit-debt`}><small>Debt</small><strong>{money(scenario.debt_schedule.ending_debt_cents)}</strong></span><b>+</b>
+      <span data-metric-id={`${caseData.caseId}-${scenario.scenario_id}-exit-cash`}><small>Cash</small><strong>{money(finalCash)}</strong></span><b>=</b>
+      <span className="result" data-metric-id={`${caseData.caseId}-${scenario.scenario_id}-exit-equity`}><small>Exit equity</small><strong>{money(scenario.exit_equity_value_cents)}</strong></span>
     </div>
     <div className="finance-metric-grid">
       <MetricButton metric={financeMetric(caseData, scenario, "gross-irr", "Gross IRR", percent(scenario.gross_xirr), "Dated sponsor cash flows, including any contingent earnout payment.")} openMetric={openMetric} />
@@ -95,7 +99,7 @@ function SensitivityBook({caseData, openMetric}: {caseData: CaseData; openMetric
   if (!book) return null;
   const selected = cells.find((item) => item.cell_id === selectedId) ?? cells[0];
   const axisLabels: Record<string, string> = {entry_enterprise_value_cents: "Entry EV", full_cohort_nrr: "Full-cohort NRR", gross_margin: "Gross margin", annual_cash_rate: "Cash interest", funded_term_face_cents: "Funded debt", exit_multiple: "Exit multiple"};
-  const cellMetric = (cell: PESensitivityCell, suffix: string, label: string, value: string): Metric => ({metric_id: `${caseData.caseId}-${cell.cell_id}-${suffix}`, label, value, detail: `Fully recomputed sensitivity cell. Engine input ${cell.engine_inputs_sha256.slice(0, 16)}…; result ${cell.result_receipt_sha256.slice(0, 16)}….`, classification: "SCENARIO", lineage: ["ag-reprice"]});
+  const cellMetric = (cell: PESensitivityCell, suffix: string, label: string, value: string): Metric => {const registry = registeredMetric(caseData, `${caseData.caseId}-${cell.cell_id}-${suffix}`); return {metric_id: registry.metric_id, label, value: registry.display_value || value, detail: `Fully recomputed sensitivity cell. Engine input ${cell.engine_inputs_sha256.slice(0, 16)}…; result ${cell.result_receipt_sha256.slice(0, 16)}….`, classification: registry.classification, lineage: registry.source_locator_ids.map((id) => id.replace(/^locator-/, "")), registry};};
   return <section className="finance-panel sensitivity-book" aria-labelledby="sensitivity-title">
     <div className="panel-heading"><div><p className="kicker">Receipt-bound recomputation</p><h3 id="sensitivity-title">Sensitivity book</h3></div><code>{book.receipt_sha256.slice(0, 12)}…</code></div>
     <div className="sensitivity-controls"><label htmlFor="axis">Driver</label><select id="axis" value={axis} onChange={(event) => setAxis(event.target.value)}>{book.axis_order.map((item) => <option key={item} value={item}>{axisLabels[item] ?? item}</option>)}</select><div className="scenario-tabs">{cells.map((item) => <button key={item.cell_id} aria-pressed={item.cell_id === selected?.cell_id} onClick={() => setSelectedId(item.cell_id)}>{item.assumption_label}</button>)}</div></div>
@@ -120,7 +124,7 @@ export function PEUnderwritingRoom({caseData, openMetric}: {caseData: CaseData; 
   const earnoutThreshold = Number(transaction.earnout_threshold_arr_cents ?? 0);
   const earnoutCap = Number(transaction.earnout_cap_cents ?? 0);
   return <div className="view-stack pe-room">
-    <section className="underwriting-head"><div><p className="kicker">Cash-flow underwriting</p><h2>Price, leverage, and downside</h2><p>Every selected state is a retained Python-engine result. The browser performs no underwriting calculation.</p></div><div className="scenario-tabs">{(["ask", "selected", "downside"] as ScenarioKey[]).map((item) => <button key={item} aria-pressed={item === scenarioKey} onClick={() => setScenarioKey(item)}>{labels[item]}</button>)}</div></section>
+    <section className="underwriting-head"><div><p className="kicker">Cash-flow underwriting · {labels[scenarioKey]} basis</p><h2>Price, leverage, and downside</h2><p>Every selected state is a retained Python-engine result. The browser verifies ten simple accounting identities but does not recreate the financial engine.</p></div><div className="scenario-tabs">{(["ask", "selected", "downside"] as ScenarioKey[]).map((item) => <button key={item} aria-pressed={item === scenarioKey} onClick={() => setScenarioKey(item)}>{labels[item]}</button>)}</div></section>
     <section className="terms-ribbon">
       <MetricButton metric={financeMetric(caseData, scenario, "entry", "Upfront EV", money(scenario.sources_and_uses.uses_cents.cash_enterprise_value), "Cash enterprise value in the selected sources-and-uses schedule.")} openMetric={openMetric} />
       <MetricButton metric={financeMetric(caseData, scenario, "max-bid", "Maximum bid", money(engine.maximum_bid_cents), "One-cent boundary solving the frozen 22% IRR and 2.0x MOIC hurdles with other selected terms fixed.")} openMetric={openMetric} />
@@ -129,7 +133,7 @@ export function PEUnderwritingRoom({caseData, openMetric}: {caseData: CaseData; 
     </section>
     <div className="finance-layout"><SourcesUses caseData={caseData} scenario={scenario} openMetric={openMetric} /><ExitBridge caseData={caseData} scenario={scenario} openMetric={openMetric} /></div>
     <DebtCovenant caseData={caseData} scenario={scenario} openMetric={openMetric} />
-    <SensitivityBook caseData={caseData} openMetric={openMetric} />
+    <aside className="epistemic-note"><strong>Sensitivity basis: selected operating and financing case</strong><span>Sensitivity cells are independent full-model reruns and do not inherit the scenario tab above.</span></aside><SensitivityBook caseData={caseData} openMetric={openMetric} />
   </div>;
 }
 
@@ -139,7 +143,7 @@ export function PEValueCreation({caseData, openMetric}: {caseData: CaseData; ope
   const maximum = Math.max(...bridge.standalone.map((item) => Math.abs(item.exit_equity_delta_cents)), Math.abs(bridge.interaction_residual_cents), 1);
   return <div className="view-stack">
     <section className="value-head"><p className="kicker">Diligence to Day 1</p><h2>Value creation reconciles into sponsor equity</h2><p>Each lever is a full operating, debt, and return recomputation. Synthetic causal evidence and human assumptions are labeled separately.</p></section>
-    <section className="value-waterfall" aria-labelledby="value-waterfall-title"><div className="panel-heading"><div><p className="kicker">Standalone effects + interaction</p><h3 id="value-waterfall-title">Exit-equity value bridge</h3></div><code>{bridge.receipt_sha256.slice(0, 12)}…</code></div>{bridge.standalone.map((item) => <article key={item.lever_id}><div><span>{item.label}</span><small>{item.credit_classification.replaceAll("_", " ")}</small></div><div className="waterfall-track"><span style={{width: `${Math.max(2, Math.abs(item.exit_equity_delta_cents) / maximum * 100)}%`}} /></div><strong>{money(item.exit_equity_delta_cents)}</strong><dl><div><dt>Exit EBITDA</dt><dd>{money(item.exit_ebitda_delta_cents)}</dd></div><div><dt>Exit debt</dt><dd>{money(item.exit_debt_delta_cents)}</dd></div><div><dt>IRR</dt><dd>{percent(item.gross_xirr_delta)}</dd></div><div><dt>Cost</dt><dd>{money(item.implementation_cost_cents)}</dd></div></dl></article>)}<article className="interaction"><div><span>Interaction residual</span><small>Explicit double-count control</small></div><div className="waterfall-track"><span style={{width: `${Math.max(2, Math.abs(bridge.interaction_residual_cents) / maximum * 100)}%`}} /></div><strong>{money(bridge.interaction_residual_cents)}</strong></article><footer><span>Combined exit-equity impact</span><button onClick={(event) => openMetric({metric_id: "atlasgrid-value-combined", label: "Combined value-creation impact", value: money(bridge.combined_exit_equity_delta_cents), detail: `Standalone sum ${money(bridge.sum_standalone_exit_equity_delta_cents)} plus interaction ${money(bridge.interaction_residual_cents)}. Receipt ${bridge.receipt_sha256}.`, classification: "SCENARIO", lineage: ["ag-nrr", "ag-support", "ag-margin"]}, event.currentTarget)}>{money(bridge.combined_exit_equity_delta_cents)} · inspect ↗</button></footer></section>
+    <section className="value-waterfall" aria-labelledby="value-waterfall-title"><div className="panel-heading"><div><p className="kicker">Standalone effects + interaction</p><h3 id="value-waterfall-title">Exit-equity value bridge</h3></div><code>{bridge.receipt_sha256.slice(0, 12)}…</code></div>{bridge.standalone.map((item) => <article key={item.lever_id}><div><span>{item.label}</span><small>{item.credit_classification.replaceAll("_", " ")}</small></div><div className="waterfall-track"><span style={{width: `${Math.max(2, Math.abs(item.exit_equity_delta_cents) / maximum * 100)}%`}} /></div><strong data-metric-id={`atlasgrid-value-${item.lever_id}-exit_equity_delta_cents`}>{money(item.exit_equity_delta_cents)}</strong><dl><div><dt>Exit EBITDA</dt><dd data-metric-id={`atlasgrid-value-${item.lever_id}-exit_ebitda_delta_cents`}>{money(item.exit_ebitda_delta_cents)}</dd></div><div><dt>Exit debt</dt><dd data-metric-id={`atlasgrid-value-${item.lever_id}-exit_debt_delta_cents`}>{money(item.exit_debt_delta_cents)}</dd></div><div><dt>IRR</dt><dd>{percent(item.gross_xirr_delta)}</dd></div><div><dt>Cost</dt><dd data-metric-id={`atlasgrid-value-${item.lever_id}-implementation_cost_cents`}>{money(item.implementation_cost_cents)}</dd></div></dl></article>)}<article className="interaction"><div><span>Interaction residual</span><small>Explicit double-count control</small></div><div className="waterfall-track"><span style={{width: `${Math.max(2, Math.abs(bridge.interaction_residual_cents) / maximum * 100)}%`}} /></div><strong>{money(bridge.interaction_residual_cents)}</strong></article><footer><span>Combined exit-equity impact</span><button data-metric-id="atlasgrid-value-combined" onClick={(event) => openMetric({metric_id: "atlasgrid-value-combined", label: "Combined value-creation impact", value: money(bridge.combined_exit_equity_delta_cents), detail: `Standalone sum ${money(bridge.sum_standalone_exit_equity_delta_cents)} plus interaction ${money(bridge.interaction_residual_cents)}. Receipt ${bridge.receipt_sha256}.`, classification: "SCENARIO", lineage: ["ag-nrr", "ag-support", "ag-margin"]}, event.currentTarget)}>{money(bridge.combined_exit_equity_delta_cents)} · inspect ↗</button></footer></section>
     <section className="initiative-list">{caseData.valueCreation.map((item, index) => <article key={item.initiative}><span className="initiative-number">0{index + 1}</span><div className="initiative-title"><h3>{item.initiative}</h3><p>{item.owner}</p><small>{item.credit_classification?.replaceAll("_", " ")}</small></div><dl><div><dt>KPI</dt><dd>{item.kpi}</dd></div><div><dt>Baseline → target</dt><dd>{item.baseline} → {item.target}</dd></div><div><dt>Milestone</dt><dd>{item.milestone}</dd></div><div><dt>Value bridge</dt><dd>{item.value}</dd></div><div><dt>Principal risk</dt><dd>{item.risk}</dd></div></dl></article>)}</section>
   </div>;
 }

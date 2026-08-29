@@ -12,16 +12,20 @@ const columnFor = (kind: ThesisNode["kind"]) => {
 function connected(graph: ThesisGraph, selected: string | null): Set<string> {
   if (!selected) return new Set(graph.nodes.map((item) => item.node_id));
   const result = new Set([selected]);
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const edge of graph.edges) {
-      if (result.has(edge.from) || result.has(edge.to)) {
-        if (!result.has(edge.from)) { result.add(edge.from); changed = true; }
-        if (!result.has(edge.to)) { result.add(edge.to); changed = true; }
+  const walk = (start: string, direction: "upstream" | "downstream") => {
+    const pending = [start];
+    while (pending.length) {
+      const current = pending.pop()!;
+      for (const edge of graph.edges) {
+        const next = direction === "downstream" && edge.from === current
+          ? edge.to
+          : direction === "upstream" && edge.to === current ? edge.from : null;
+        if (next && !result.has(next)) {result.add(next); pending.push(next);}
       }
     }
-  }
+  };
+  walk(selected, "upstream");
+  walk(selected, "downstream");
   return result;
 }
 
@@ -40,7 +44,7 @@ export function ThesisGraphView({graph}: {graph: ThesisGraph}) {
   const active = connected(graph, selected);
   const height = Math.max(320, ...positioned.map((item) => item.y + 64));
   const selectedNode = selected ? byId.get(selected) : undefined;
-  const selectedEdges = selected ? graph.edges.filter((edge) => edge.from === selected || edge.to === selected) : [];
+  const selectedEdges = selected ? graph.edges.filter((edge) => active.has(edge.from) && active.has(edge.to)) : [];
   const choose = (nodeId: string) => setSelected((current) => current === nodeId ? null : nodeId);
   return <div className="dag-shell">
     <div className="dag-column-labels"><span>Evidence + assumptions</span><span>Estimates + scenarios</span><span>Decision + action</span></div>
@@ -51,6 +55,7 @@ export function ThesisGraphView({graph}: {graph: ThesisGraph}) {
         <g className="dag-nodes">{positioned.map((node: PositionedNode) => <g key={node.node_id} transform={`translate(${node.x} ${node.y})`} role="treeitem" tabIndex={0} aria-selected={selected === node.node_id} className={`dag-node ${node.kind.toLowerCase()} ${active.has(node.node_id) ? "active" : "muted"}`} onClick={() => choose(node.node_id)} onKeyDown={(event) => {if (event.key === "Enter" || event.key === " ") {event.preventDefault(); choose(node.node_id);}}}><rect width="275" height="56" rx="2" /><text x="12" y="18" className="dag-kind">{node.kind}</text><text x="12" y="39" className="dag-label">{node.label.length > 38 ? `${node.label.slice(0, 37)}…` : node.label}</text><title>{node.label} · {node.status}</title></g>)}</g>
       </svg>
     </div>
+    <ol className="dag-mobile-list" aria-label="Thesis dependency list">{positioned.filter((node) => active.has(node.node_id)).map((node) => <li key={node.node_id}><button aria-pressed={selected === node.node_id} onClick={() => choose(node.node_id)}><span>{node.kind}</span><strong>{node.label}</strong><small>{node.status}</small></button></li>)}</ol>
     <div className="dag-detail" aria-live="polite">{selectedNode ? <><div><p className="kicker">Selected dependency</p><strong>{selectedNode.label}</strong><small>{selectedNode.kind} · {selectedNode.status}</small></div><ul>{selectedEdges.map((edge) => <li key={`${edge.from}-${edge.to}`}><code>{edge.from}</code> {edge.relationship.replaceAll("_", " ")} <code>{edge.to}</code></li>)}</ul><button onClick={() => setSelected(null)}>Clear path</button></> : <p>Select any node to isolate its connected evidence-to-action path. All {graph.nodes.length} nodes and {graph.edges.length} typed edges are rendered.</p>}</div>
   </div>;
 }

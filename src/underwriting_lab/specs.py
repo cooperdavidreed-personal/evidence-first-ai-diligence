@@ -11,7 +11,7 @@ CASE_ANALYSES = {
 }
 
 METHOD_FAMILIES = {
-    "AG-01": "integer-cent accounting bridge", "AG-02": "fixed-cohort retention bridge", "AG-03": "mapped-parent concentration", "AG-04": "QoE normalization", "AG-05": "discrete hazard and Kaplan-Meier", "AG-06": "observational linear probability model", "AG-07": "randomized intention-to-treat", "AG-08": "pod-clustered difference-in-differences", "AG-09": "identification abstention", "AG-10": "deterministic sponsor return bridge", "AG-11": "seeded scenario simulation",
+    "AG-01": "integer-cent accounting bridge", "AG-02": "fixed-cohort retention bridge", "AG-03": "mapped-parent concentration", "AG-04": "QoE normalization", "AG-05": "discrete hazard and Kaplan-Meier", "AG-06": "observational linear probability model", "AG-07": "randomized intention-to-treat", "AG-08": "collapsed pod-delta difference-in-differences", "AG-09": "identification abstention", "AG-10": "deterministic sponsor return bridge", "AG-11": "seeded scenario simulation",
     "HX-01": "integer-cent usage economics bridge", "HX-02": "fixed-cohort selection audit", "HX-03": "cash runway and burn bridge", "HX-04": "stage-history reconstruction", "HX-05": "tiered beta-binomial model", "HX-06": "randomized intention-to-treat", "HX-07": "identification abstention", "HX-08": "integer-share ownership bridge", "HX-09": "class-aware preference waterfall simulation",
 }
 

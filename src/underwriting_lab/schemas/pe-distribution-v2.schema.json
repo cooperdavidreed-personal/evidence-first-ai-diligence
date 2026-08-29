@@ -2,15 +2,52 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Underwriting PE distribution v2",
   "type": "object", "additionalProperties": false,
-  "required": ["schema_version", "draws", "moic_quantiles", "xirr_quantiles", "probability_below_one", "correlation_structure_sha256", "path_receipt_sha256s", "receipt_sha256"],
+  "required": ["schema_version", "seed", "draws", "moic_quantiles", "xirr_quantiles", "probability_below_one", "probability_covenant_breach", "probability_payment_default", "base_engine_inputs", "correlation_structure", "correlation_structure_sha256", "path_receipt_sha256s", "path_records", "receipt_sha256"],
   "properties": {
     "schema_version": {"const": "underwriting.pe-distribution/v2"},
+    "seed": {"type": "integer"},
     "draws": {"type": "integer", "minimum": 100},
     "moic_quantiles": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$"}},
     "xirr_quantiles": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$"}},
     "probability_below_one": {"type": "string", "pattern": "^(0(\\.[0-9]+)?|1(\\.0+)?)$"},
+    "probability_covenant_breach": {"type": "string", "pattern": "^(0(\\.[0-9]+)?|1(\\.0+)?)$"},
+    "probability_payment_default": {"type": "string", "pattern": "^(0(\\.[0-9]+)?|1(\\.0+)?)$"},
+    "base_engine_inputs": {"type": "object"},
+    "correlation_structure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "common_factor", "drivers", "bounds"],
+      "properties": {
+        "schema_version": {"const": "underwriting.pe-correlation-structure/v2"},
+        "common_factor": {"type": "string", "minLength": 1},
+        "drivers": {"type": "object", "minProperties": 4},
+        "bounds": {"type": "object", "minProperties": 4}
+      }
+    },
     "correlation_structure_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "path_receipt_sha256s": {"type": "array", "minItems": 100, "items": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+    "path_records": {
+      "type": "array", "minItems": 100,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["path_id", "drivers", "engine_inputs_sha256", "result_receipt_sha256", "gross_moic", "gross_xirr", "xirr_status", "ending_debt_cents", "minimum_liquidity_cents", "first_covenant_breach_month", "payment_default", "reconciliation", "receipt_sha256"],
+        "properties": {
+          "path_id": {"type": "string", "pattern": "^DISTRIBUTION_[0-9]{5}$"},
+          "drivers": {"type": "object", "additionalProperties": {"type": "string"}, "minProperties": 4},
+          "engine_inputs_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "result_receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "gross_moic": {"type": "string"},
+          "gross_xirr": {"type": "string"},
+          "xirr_status": {"enum": ["IDENTIFIED", "TOTAL_LOSS_BOUNDARY"]},
+          "ending_debt_cents": {"type": "integer", "minimum": 0},
+          "minimum_liquidity_cents": {"type": "integer"},
+          "first_covenant_breach_month": {"type": ["integer", "null"], "minimum": 1},
+          "payment_default": {"type": "boolean"},
+          "reconciliation": {"type": "object", "additionalProperties": {"type": "integer"}},
+          "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    },
     "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
   }
 }

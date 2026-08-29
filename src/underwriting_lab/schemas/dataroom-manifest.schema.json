@@ -10,7 +10,7 @@
     "case_id": {"enum": ["atlasgrid", "helios"]},
     "synthetic": {"const": true},
     "disclosure": {"const": "SYNTHETIC — NOT INVESTMENT ADVICE"},
-    "contract_version": {"const": "underwriting-econometrics/v1"},
+    "contract_version": {"const": "underwriting-econometrics/v2"},
     "cutoff": {"type": "string", "format": "date-time"},
     "seed_commitment": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "generator": {"const": "underwriting_lab.generator/v1"},

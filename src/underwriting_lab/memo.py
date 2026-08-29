@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from html import escape
 import json
+from decimal import Decimal
 from pathlib import Path
 import re
 from typing import Any
@@ -18,11 +19,11 @@ def _money(cents: int) -> str:
 
 
 def _percent(decimal: str) -> str:
-    return f"{float(decimal) * 100:.2f}%"
+    return f"{Decimal(decimal) * 100:.2f}%"
 
 
 def _multiple(decimal: str) -> str:
-    return f"{float(decimal):.2f}x"
+    return f"{Decimal(decimal):.2f}x"
 
 
 def _packet(case: dict[str, Any]) -> dict[str, Any]:
@@ -43,12 +44,17 @@ def _packet(case: dict[str, Any]) -> dict[str, Any]:
             key: {
                 "scenario_id": engine[key]["scenario_id"],
                 "engine_inputs_sha256": engine[key]["engine_inputs_sha256"],
+                "engine_inputs": engine[key]["engine_inputs"],
                 "result_receipt_sha256": engine[key]["receipt_sha256"],
                 "sources_and_uses": engine[key]["sources_and_uses"],
                 "ending_debt_cents": engine[key]["debt_schedule"]["ending_debt_cents"],
                 "minimum_liquidity_cents": engine[key]["debt_schedule"]["minimum_liquidity_cents"],
                 "first_covenant_breach_month": engine[key]["debt_schedule"]["first_covenant_breach_month"],
                 "has_payment_default": engine[key]["debt_schedule"]["has_payment_default"],
+                "debt_schedule": engine[key]["debt_schedule"],
+                "arr_cents_by_month": engine[key]["arr_cents_by_month"],
+                "revenue_cents_by_month": engine[key]["revenue_cents_by_month"],
+                "sponsor_cash_flows": engine[key]["sponsor_cash_flows"],
                 "exit_enterprise_value_cents": engine[key]["exit_enterprise_value_cents"],
                 "exit_equity_value_cents": engine[key]["exit_equity_value_cents"],
                 "earnout_cents": engine[key]["earnout_cents"],
@@ -59,6 +65,7 @@ def _packet(case: dict[str, Any]) -> dict[str, Any]:
         },
         "maximum_bid_cents": engine["maximum_bid_cents"],
         "distribution": engine["distribution"],
+        "sensitivities": engine["sensitivities"],
         "sensitivity_receipt_sha256": engine["sensitivities"]["receipt_sha256"],
         "value_creation": case["valueCreation"],
         "value_creation_bridge": bridge,
@@ -72,6 +79,7 @@ def _packet(case: dict[str, Any]) -> dict[str, Any]:
             }
             for item in case["analyses"]
         ],
+        "temporal_scan": case["temporalScan"],
     }
     body["packet_sha256"] = digest(body)
     return body
@@ -84,6 +92,25 @@ def _memo_markdown(packet: dict[str, Any]) -> str:
     downside = packet["scenarios"]["downside"]
     bridge = packet["value_creation_bridge"]
     uses = selected["sources_and_uses"]
+    distribution = packet["distribution"]
+    operating = selected["engine_inputs"]["operating"]
+    transaction = selected["engine_inputs"]["transaction"]
+    selected_annual = [item for item in selected["debt_schedule"]["months"] if item["month"] % 12 == 0]
+    downside_annual = {item["month"]: item for item in downside["debt_schedule"]["months"] if item["month"] % 12 == 0}
+    matrix = packet["sensitivities"]["entry_exit_matrix"]
+    pure_human_value = sum(
+        item["exit_equity_delta_cents"]
+        for item in bridge["standalone"]
+        if item["credit_classification"] == "HUMAN_JUDGMENT"
+    )
+    mixed_value = sum(
+        item["exit_equity_delta_cents"]
+        for item in bridge["standalone"]
+        if item["credit_classification"] != "HUMAN_JUDGMENT"
+    )
+    start_revenue = int(operating["starting_ltm_revenue_cents"])
+    start_ebitda = int(operating["starting_normalized_ebitda_cents"])
+    entry_ev = selected["sources_and_uses"]["uses_cents"]["cash_enterprise_value"]
     lines = [
         f"# {packet['company']} — illustrative investment committee memorandum",
         "",
@@ -91,7 +118,7 @@ def _memo_markdown(packet: dict[str, Any]) -> str:
         "",
         f"**Provisional posture:** `{decision['decision']}`  ",
         f"**Workflow state:** `{decision['status']}` / `{decision['signature_status']}`  ",
-        f"**Knowledge cutoff:** `{decision['as_of']}`  ",
+        f"**Knowledge cutoff:** `{decision['as_of']}`",
         f"**Packet receipt:** `{packet['packet_sha256']}`",
         "",
         "## Recommendation",
@@ -113,6 +140,53 @@ def _memo_markdown(packet: dict[str, Any]) -> str:
         f"- Funded term debt at face: **{_money(int(selected['sources_and_uses']['non_sponsor_sources_cents']['funded_term_debt_net_oid']) + int(selected['sources_and_uses']['uses_cents']['financing_fees']))}**; the undrawn revolver remains liquidity capacity, not a source.",
         f"- Selected contingent earnout paid in the modeled base case: **{_money(selected['earnout_cents'])}**; downside payout: **{_money(downside['earnout_cents'])}**.",
         "",
+        "## Operating case and valuation bridge",
+        "",
+        "| Metric | Entry / LTM | Exit / year 5 | Underwriting implication |",
+        "|---|---:|---:|---|",
+        f"| ARR | {_money(int(operating['starting_arr_cents']))} | {_money(int(selected['arr_cents_by_month'][-1]))} | Full-cohort retention, not active-only retention, anchors the path. |",
+        f"| Revenue | {_money(start_revenue)} | {_money(int(selected['revenue_cents_by_month'][-1]) * 12)} | Monthly exit revenue is annualized for comparability. |",
+        f"| Normalized / lender EBITDA | {_money(start_ebitda)} | {_money(int(selected['debt_schedule']['months'][-1]['trailing_lender_ebitda_cents']))} | Entry earnings are normalized from QoE; exit uses the lender schedule. |",
+        f"| Gross margin | {Decimal(operating['gross_margin']) * 100:.2f}% | Scenario path | Fully burdened costs remain included. |",
+        f"| Entry EV / normalized EBITDA | {Decimal(entry_ev) / Decimal(start_ebitda):.2f}x | — | Price discipline is tested against normalized, not seller-adjusted, EBITDA. |",
+        f"| Entry EV / LTM revenue | {Decimal(entry_ev) / Decimal(start_revenue):.2f}x | — | Revenue multiple is a cross-check, not the return engine. |",
+        f"| Exit EV / lender EBITDA | — | {transaction['exit_multiple']}x | Exit multiple is a human scenario assumption. |",
+        "",
+        "## Leverage, liquidity, and covenant workpaper",
+        "",
+        "| Year | Selected debt | Selected liquidity | Selected leverage | Selected headroom | Downside debt | Downside headroom |",
+        "|---:|---:|---:|---:|---:|---:|---:|",
+        *[
+            f"| {item['month'] // 12} | {_money(item['ending_term_cents'] + item['ending_revolver_cents'])} | {_money(item['ending_cash_cents'])} | {Decimal(item['gross_leverage']):.2f}x | {Decimal(item['covenant_headroom']):.2f}x | {_money(downside_annual[item['month']]['ending_term_cents'] + downside_annual[item['month']]['ending_revolver_cents'])} | {Decimal(downside_annual[item['month']]['covenant_headroom']):.2f}x |"
+            for item in selected_annual
+        ],
+        "",
+        "## Sensitivity and distributional downside",
+        "",
+        "The named downside is a deterministic stress case. The conditional distribution is a separate set of 1,000 correlated scenario paths—not a forecast—and must not be read as investment accuracy.",
+        "",
+        "| Conditional path statistic | p10 | p50 | p90 |",
+        "|---|---:|---:|---:|",
+        f"| Gross MOIC | {_multiple(distribution['moic_quantiles'][0])} | {_multiple(distribution['moic_quantiles'][1])} | {_multiple(distribution['moic_quantiles'][2])} |",
+        f"| Gross IRR | {_percent(distribution['xirr_quantiles'][0])} | {_percent(distribution['xirr_quantiles'][1])} | {_percent(distribution['xirr_quantiles'][2])} |",
+        "",
+        f"- Probability below 1.0x MOIC: **{_percent(distribution['probability_below_one'])}**.",
+        f"- Probability of a modeled covenant breach: **{_percent(distribution['probability_covenant_breach'])}**.",
+        f"- Probability of modeled payment default: **{_percent(distribution['probability_payment_default'])}**.",
+        f"- Named downside floor: **{_percent(downside['gross_xirr'])} IRR / {_multiple(downside['gross_moic'])} MOIC**; distributional p10: **{_percent(distribution['xirr_quantiles'][0])} / {_multiple(distribution['moic_quantiles'][0])}**.",
+        "",
+        "### Entry value × exit multiple sensitivity",
+        "",
+        "| Entry / exit | 5.5x | 6.5x | 7.5x |",
+        "|---|---:|---:|---:|",
+        *[
+            "| " + entry_label + " | " + " | ".join(
+                f"{_percent(next(item for item in matrix if item['assumption_label'] == f'{entry_label} / {exit_label}')['gross_xirr'])} / {_multiple(next(item for item in matrix if item['assumption_label'] == f'{entry_label} / {exit_label}')['gross_moic'])}"
+                for exit_label in ("5.5x", "6.5x", "7.5x")
+            ) + " |"
+            for entry_label in ("$200M", "$210M", "$220M")
+        ],
+        "",
         "## Underwriting thesis and counterthesis",
         "",
         packet["thesis"]["statement"],
@@ -128,6 +202,16 @@ def _memo_markdown(packet: dict[str, Any]) -> str:
         *[f"- {item}" for item in packet["thesis"]["falsifiers"]],
         *[f"- OPEN: {item}" for item in packet["thesis"]["requests"]],
         "",
+        "### Risk, mitigant, owner, and consequence",
+        "",
+        "| Risk / open item | Mitigant or required proof | Owner | Failure consequence |",
+        "|---|---|---|---|",
+        "| Cancellation-for-convenience exposure | Contract sample tied to billed and live ARR definitions | Deal team / counsel | Reduce price or tighten earnout eligibility |",
+        "| Parent concentration | Legal-parent map tied to master agreements | Commercial diligence lead | Retain HOLD; concentration-conditioned terms |",
+        "| Seller add-backs and lender EBITDA | QoE support plus lender-definition bridge | CFO / QoE lead | Reduce debt capacity and maximum bid |",
+        "| Renewal economics | Safer renewal design and replicated measurement | CRO | Zero broad price-led upside credit |",
+        "| Downside leverage | Monthly covenant and liquidity rerun | Financing lead | Reduce funded debt or entry value |",
+        "",
         "## Evidence-to-model credit",
         "",
         "| Evidence | Observed | Model mapping | Credit class | Decision response |",
@@ -140,6 +224,7 @@ def _memo_markdown(packet: dict[str, Any]) -> str:
         "## Value creation",
         "",
         f"Combined modeled exit-equity impact is **{_money(bridge['combined_exit_equity_delta_cents'])}**, equal to **{_money(bridge['sum_standalone_exit_equity_delta_cents'])}** of standalone effects plus an explicit **{_money(bridge['interaction_residual_cents'])}** interaction residual.",
+        f"Of the standalone value, **{_money(pure_human_value)}** is pure human judgment and **{_money(mixed_value)}** is mixed synthetic-causal and human judgment. No value-creation total is presented as an identified real-world effect.",
         "",
         "| Initiative | Credit class | Implementation cost | Exit EBITDA | Exit debt | Exit equity | IRR impact |",
         "|---|---|---:|---:|---:|---:|---:|",
@@ -213,6 +298,14 @@ def build_ic_packet_from_case(case: dict[str, Any], output_dir: str | Path) -> d
     validate_workbench_case(case)
     if case.get("caseId") != "atlasgrid" or "peEngine" not in case:
         raise ValueError("ic_packet_requires_atlasgrid_pe_v2")
+    failed = [
+        f"{receipt['analysis_id']}:{diagnostic['name']}"
+        for receipt in case["analyses"]
+        for diagnostic in receipt["diagnostics"]
+        if diagnostic["status"] == "FAIL"
+    ]
+    if failed:
+        raise ValueError(f"ic_packet_blocked_failed_diagnostic:{','.join(failed)}")
     destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
     packet = _packet(case)

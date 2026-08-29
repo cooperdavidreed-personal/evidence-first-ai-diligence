@@ -4,6 +4,7 @@ import csv
 import math
 from collections import defaultdict
 from dataclasses import replace
+from datetime import datetime
 from decimal import Decimal, ROUND_HALF_EVEN
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,7 @@ import numpy as np
 from scipy.stats import beta
 
 from .contracts import (
+    CUTOFF,
     UnderwritingError,
     analysis_receipt,
     digest,
@@ -23,6 +25,8 @@ from .contracts import (
 )
 from .v2_core import DecisionState, DiagnosticRole, derive_decision_state
 from .finance import npv_cents
+from .experiments import collapsed_pod_delta, difference_in_means
+from .metric_registry import build_case_metric_contract
 from .pe_engine import (
     PEOperatingAssumptions,
     PETransactionAssumptions,
@@ -33,6 +37,7 @@ from .pe_engine import (
     simulate_pe_distribution,
     solve_maximum_bid,
 )
+from .temporal import scan_temporal_artifacts
 
 
 def _manifest(manifest_path: Path) -> tuple[Path, dict[str, Any], dict[str, dict[str, Any]]]:
@@ -258,11 +263,8 @@ def _thesis_graph(result: dict[str, Any]) -> dict[str, Any]:
 def _mean_difference(
     outcome: np.ndarray, treatment: np.ndarray
 ) -> tuple[float, float, float, float]:
-    treated = outcome[treatment == 1]
-    control = outcome[treatment == 0]
-    effect = float(treated.mean() - control.mean())
-    se = math.sqrt(float(treated.var(ddof=1) / len(treated) + control.var(ddof=1) / len(control)))
-    return effect, se, effect - 1.96 * se, effect + 1.96 * se
+    estimate = difference_in_means(outcome, treatment)
+    return estimate.effect, estimate.standard_error, estimate.low, estimate.high
 
 
 def _slope(y: np.ndarray, x: np.ndarray) -> tuple[float, float]:
@@ -348,18 +350,8 @@ def _venture_waterfall(
 
 
 def _did(rows: list[dict[str, str]], field: str) -> tuple[float, float]:
-    by_pod: dict[str, dict[str, list[float]]] = defaultdict(lambda: {"pre": [], "post": []})
-    treatment: dict[str, int] = {}
-    for row in rows:
-        pod = row["pod_id"]
-        treatment[pod] = int(row["treated"])
-        by_pod[pod]["post" if int(row["post"]) else "pre"].append(float(row[field]))
-    deltas = {pod: np.mean(values["post"]) - np.mean(values["pre"]) for pod, values in by_pod.items()}
-    treated = np.array([value for pod, value in deltas.items() if treatment[pod] == 1])
-    control = np.array([value for pod, value in deltas.items() if treatment[pod] == 0])
-    effect = float(treated.mean() - control.mean())
-    se = math.sqrt(float(treated.var(ddof=1) / len(treated) + control.var(ddof=1) / len(control)))
-    return effect, se
+    estimate = collapsed_pod_delta(rows, field)
+    return estimate.effect, estimate.standard_error
 
 
 def _pretrend_gap(rows: list[dict[str, str]], field: str) -> tuple[float, float]:
@@ -392,7 +384,37 @@ def _atlasgrid(
     pnl = _rows(root, artifacts["monthly-pnl"])
     forecast = _rows(root, artifacts["forecast"])
     qoe = _rows(root, artifacts["qoe-bridge"])
-    pricing = _rows(root, artifacts["pricing-experiment"])
+    pricing_all = _rows(root, artifacts["pricing-experiment"])
+    cutoff_instant = datetime.fromisoformat(CUTOFF.replace("Z", "+00:00"))
+    pricing = [
+        row
+        for row in pricing_all
+        if datetime.fromisoformat(row["observed_at"].replace("Z", "+00:00"))
+        <= cutoff_instant
+    ]
+    excluded_pricing = [row for row in pricing_all if row not in pricing]
+    temporal_scan: dict[str, Any] = {
+        "schema_version": "underwriting.temporal-scan-receipt/v1",
+        "cutoff": CUTOFF,
+        "fields_scanned": [
+            {
+                "artifact_id": "pricing-experiment",
+                "field": "observed_at",
+                "classification": "EVIDENCE",
+            }
+        ],
+        "included_rows": len(pricing),
+        "excluded_rows": len(excluded_pricing),
+        "excluded_locators": [
+            f"pricing-experiment:{row['account_id']}:observed_at"
+            for row in excluded_pricing
+        ],
+        "max_eligible_instant": max(row["observed_at"] for row in pricing),
+        "status": "PASS_WITH_DECLARED_EXCLUSIONS"
+        if excluded_pricing
+        else "PASS",
+    }
+    temporal_scan["receipt_sha256"] = digest(temporal_scan)
     rollout = _rows(root, artifacts["support-rollout"])
     debt_terms_document = read_json(root / artifacts["debt-terms"]["path"])
     months = sorted({row["month"] for row in customers})
@@ -447,7 +469,11 @@ def _atlasgrid(
     treatment = np.array([int(row["treatment"]) for row in pricing])
     renewal = np.array([int(row["renewed"]) for row in pricing], dtype=float)
     realized = np.array([float(row["realized_increase_pct"]) for row in pricing])
-    rct_effect, rct_se, rct_low, rct_high = _mean_difference(renewal, treatment)
+    rct_estimate = difference_in_means(renewal, treatment)
+    rct_effect = rct_estimate.effect
+    rct_se = rct_estimate.standard_error
+    rct_low = rct_estimate.low
+    rct_high = rct_estimate.high
     naive_slope, naive_se = _slope(renewal, realized)
     first_stage, first_stage_se, first_stage_low, first_stage_high = _mean_difference(
         realized, treatment
@@ -712,14 +738,14 @@ def _atlasgrid(
             population=f"{len(pricing)} synthetic renewal-eligible accounts",
             inputs=[_input(artifacts["pricing-experiment"])],
             outputs=[_output("renewal_itt", quantize(rct_effect * 100), "percentage_points")],
-            assumptions=["Synthetic seeded 1:1 assignment; no cross-account interference."],
-            diagnostics=[_diagnostic("assignment_mechanism", "seeded_account_randomization", "REPORTED"), _diagnostic("confidence_interval", f"[{quantize(rct_low * 100)}, {quantize(rct_high * 100)}]", "REPORTED"), _diagnostic("standard_error", quantize(rct_se * 100), "REPORTED"), _diagnostic("risk_score_smd", quantize(pricing_smd), "PASS" if abs(pricing_smd) <= 0.15 else "FAIL")],
+            assumptions=["Synthetic seeded Bernoulli(p=0.5) assignment; realized arm counts need not be exactly equal; no cross-account interference."],
+            diagnostics=[_diagnostic("assignment_mechanism", "seeded_bernoulli_p_0_5", "REPORTED"), _diagnostic("treatment_count", rct_estimate.treated_count), _diagnostic("control_count", rct_estimate.control_count), _diagnostic("post_cutoff_exclusion", len(excluded_pricing), "PASS" if len(excluded_pricing) == 1 else "FAIL"), _diagnostic("confidence_interval", f"[{quantize(rct_low * 100)}, {quantize(rct_high * 100)}]", "REPORTED"), _diagnostic("standard_error", quantize(rct_se * 100), "REPORTED"), _diagnostic("risk_score_smd", quantize(pricing_smd), "PASS" if abs(pricing_smd) <= 0.15 else "FAIL")],
         ),
         analysis_receipt(
             analysis_id="AG-08",
             question="What is the synthetic support-automation effect?",
             classification="CAUSAL_SYNTHETIC_ONLY",
-            method="Pod-level difference-in-differences with pod-clustered delta uncertainty",
+            method="Collapsed pod-level pre/post deltas with treated-versus-control two-sample uncertainty",
             population="40 synthetic customer-success pods; 12 pre and 12 post months",
             inputs=[_input(artifacts["support-rollout"])],
             outputs=[_output("resolution_att", quantize(did_resolution), "hours"), _output("gross_churn_att", quantize(did_churn), "basis_points")],
@@ -770,9 +796,9 @@ def _atlasgrid(
                 _input(artifacts["billing-ledger"]),
                 _input(artifacts["customer-month"]),
             ],
-            outputs=[_output("p10_moic", quantize(moic_q[0]), "multiple"), _output("p50_moic", quantize(moic_q[1]), "multiple"), _output("p90_moic", quantize(moic_q[2]), "multiple"), _output("probability_below_1x", quantize(pe_distribution.probability_below_one * 100), "percent")],
+            outputs=[_output("p10_moic", quantize(moic_q[0]), "multiple"), _output("p50_moic", quantize(moic_q[1]), "multiple"), _output("p90_moic", quantize(moic_q[2]), "multiple"), _output("probability_below_1x", quantize(pe_distribution.probability_below_one * 100), "percent"), _output("probability_covenant_breach", quantize(pe_distribution.probability_covenant_breach * 100), "percent"), _output("probability_payment_default", quantize(pe_distribution.probability_payment_default * 100), "percent")],
             assumptions=["Correlated ARR retention, new ARR, gross margin, and exit-multiple draws are disclosed conditional scenario inputs, not forecasts; every draw reruns the complete monthly cash and debt engine."],
-            diagnostics=[_diagnostic("draws", draws), _diagnostic("ordered_quantiles", "true", "PASS" if moic_q[0] <= moic_q[1] <= moic_q[2] else "FAIL"), _diagnostic("correlation_digest", pe_distribution.correlation_structure_sha256, "REPORTED"), _diagnostic("path_reconciliation", len(pe_distribution.path_receipt_sha256s), "PASS" if len(pe_distribution.path_receipt_sha256s) == draws else "FAIL")],
+            diagnostics=[_diagnostic("draws", draws), _diagnostic("ordered_quantiles", "true", "PASS" if moic_q[0] <= moic_q[1] <= moic_q[2] else "FAIL"), _diagnostic("correlation_digest", pe_distribution.correlation_structure_sha256, "PASS" if pe_distribution.correlation_structure_sha256 == digest(pe_distribution.correlation_structure) else "FAIL"), _diagnostic("path_reconciliation", len(pe_distribution.path_records), "PASS" if len(pe_distribution.path_records) == draws and all(all(int(value) == 0 for value in record["reconciliation"].values()) for record in pe_distribution.path_records) else "FAIL")],
         ),
     ]
     _bind_specs(receipts, manifest)
@@ -836,7 +862,7 @@ def _atlasgrid(
         "attribution": "Cooper David Reed — illustrative IC",
         "status": "DECISION_RECORD_INCOMPLETE",
         "signature_status": "PENDING_FOUNDER_SIGNATURE",
-        "as_of": "2026-08-31T23:59:59Z",
+        "as_of": CUTOFF,
         "rationale": "The asking price does not compensate for definition quality, concentration, fully burdened margins, or leverage fragility. A restructured entry with the same debt quantum clears the declared return hurdles.",
         "conditions": ["Validate cancellation-for-convenience exposure", "Tie parent accounts to master agreements", "Cap earnout against verified live ARR"],
         "open_conditions": 3,
@@ -904,6 +930,7 @@ def _atlasgrid(
         ],
         "lineage": lineages,
         "artifacts": list(artifacts.values()),
+        "temporalScan": temporal_scan,
     }
 
 
@@ -1161,7 +1188,7 @@ def _helios(
         "attribution": "Cooper David Reed — illustrative IC",
         "status": "DECISION_RECORD_INCOMPLETE",
         "signature_status": "PENDING_FOUNDER_SIGNATURE",
-        "as_of": "2026-08-31T23:59:59Z",
+        "as_of": CUTOFF,
         "rationale": "Invest at the proposed valuation only with milestone-based funding tied to ordinary-cohort retention, verified pipeline conversion, and gross-margin progression.",
         "conditions": ["Ordinary-cohort NRR at or above 105%", "Pipeline stage-history audit complete", "Gross margin at or above 70%", "Optimizer RCT effect replicated", "18-month post-close runway"],
         "open_conditions": 5,
@@ -1232,12 +1259,15 @@ def analyze_room(manifest_path: str | Path, output: str | Path) -> Path:
         result = _helios(root, manifest, artifacts)
     else:
         raise UnderwritingError("case_id_invalid")
-    result["schema_version"] = "underwriting.workbench-case/v1"
+    result["schema_version"] = "underwriting.workbench-case/v2"
     result["manifest_sha256"] = manifest["manifest_sha256"]
+    result.setdefault("evidenceMappings", [])
+    result["temporalScan"] = scan_temporal_artifacts(root, manifest)
     result["scenarioBook"] = _scenario_book(
         case_id, result["scenarios"], result["returnsDistribution"]
     )
     result["thesisGraph"] = _thesis_graph(result)
+    result.update(build_case_metric_contract(result))
     result["analysis_sha256"] = digest(result)
     destination = Path(output)
     write_json(destination, result)

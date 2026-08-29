@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Underwriting workbench case v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "caseId", "company", "caseType", "synthetic", "investmentAdjudication", "workflowDisposition", "disclosure", "decision", "summaryMetrics", "thesis", "falsifierStates", "analyses", "distributionLineage", "scenarios", "returnsDistribution", "evidenceMappings", "valueCreation", "lineage", "artifacts", "temporalScan", "manifest_sha256", "scenarioBook", "thesisGraph", "sourceLocators", "formulaRegistry", "metricRegistry", "renderManifest", "analysis_sha256"],
+  "properties": {
+    "schema_version": {"const": "underwriting.workbench-case/v2"},
+    "caseId": {"enum": ["atlasgrid", "helios"]},
+    "company": {"type": "string", "minLength": 1},
+    "caseType": {"type": "string", "minLength": 1},
+    "synthetic": {"const": true},
+    "investmentAdjudication": {"const": "PENDING_HUMAN"},
+    "workflowDisposition": {"type": "string", "minLength": 1},
+    "disclosure": {"const": "SYNTHETIC — NOT INVESTMENT ADVICE"},
+    "decision": {"type": "object"},
+    "summaryMetrics": {"type": "array", "minItems": 1},
+    "thesis": {"type": "object"},
+    "falsifierStates": {"type": "array"},
+    "analyses": {"type": "array", "minItems": 1},
+    "distributionLineage": {"type": "string"},
+    "scenarios": {"type": "array", "minItems": 1},
+    "returnsDistribution": {"type": "object"},
+    "peEngine": {"type": "object"},
+    "valueCreationBridge": {"type": "object"},
+    "evidenceMappings": {"type": "array"},
+    "valueCreation": {"type": "array"},
+    "lineage": {"type": "array", "minItems": 1},
+    "artifacts": {"type": "array", "minItems": 1},
+    "temporalScan": {"type": "object"},
+    "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "scenarioBook": {"type": "object"},
+    "thesisGraph": {"type": "object"},
+    "sourceLocators": {"type": "array", "minItems": 1},
+    "formulaRegistry": {"type": "array"},
+    "metricRegistry": {"type": "array", "minItems": 1},
+    "renderManifest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "metric_ids", "formula_sample_metric_ids"],
+      "properties": {
+        "schema_version": {"const": "underwriting.render-manifest/v2"},
+        "metric_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "formula_sample_metric_ids": {"type": "array", "maxItems": 10, "uniqueItems": true, "items": {"type": "string"}}
+      }
+    },
+    "analysis_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

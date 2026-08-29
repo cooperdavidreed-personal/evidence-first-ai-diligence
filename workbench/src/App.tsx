@@ -1,19 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import rawData from "./data/cases.json";
+import {assertWorkbenchData} from "./data-contract";
 import { PEUnderwritingRoom, PEValueCreation } from "./pe";
 import { ThesisGraphView } from "./thesis-graph";
 import type { Analysis, CaseData, Lineage, Metric, WorkbenchData } from "./types";
-
-function assertWorkbenchData(value: unknown): asserts value is WorkbenchData {
-  if (!value || typeof value !== "object" || !("cases" in value) || !Array.isArray(value.cases)) {
-    throw new Error("workbench_data_invalid");
-  }
-  for (const candidate of value.cases) {
-    if (!candidate || typeof candidate !== "object" || !("caseId" in candidate) || !("analysis_sha256" in candidate)) {
-      throw new Error("workbench_case_invalid");
-    }
-  }
-}
 
 const dataCandidate: unknown = rawData;
 assertWorkbenchData(dataCandidate);
@@ -35,6 +25,10 @@ function EvidenceDrawer({caseData, metric, onClose}: {caseData: CaseData; metric
     };
   }, []);
   const nodes = metric.lineage.map((id) => caseData.lineage.find((item) => item.node_id === id)).filter(Boolean) as Lineage[];
+  const registered = metric.registry ?? caseData.metricRegistry.find((item) => item.metric_id === metric.metric_id);
+  const formula = registered?.formula_id ? caseData.formulaRegistry.find((item) => item.formula_id === registered.formula_id) : undefined;
+  const operands = formula?.operand_ids.map((id) => caseData.metricRegistry.find((item) => item.metric_id === id)).filter(Boolean) ?? [];
+  const locators = registered?.source_locator_ids.map((id) => caseData.sourceLocators.find((item) => item.locator_id === id)).filter(Boolean) ?? [];
   return (
     <dialog ref={dialogRef} className="drawer" aria-labelledby="drawer-title" onCancel={onClose}>
       <div className="drawer-head">
@@ -47,6 +41,9 @@ function EvidenceDrawer({caseData, metric, onClose}: {caseData: CaseData; metric
       <p className="drawer-value">{metric.value}</p>
       <p className="method-tag">{displayClass(metric.classification)}</p>
       <p className="drawer-detail">{metric.detail}</p>
+      {registered && <dl className="method-grid registry-detail"><div><dt>Exact value / quantum</dt><dd>{registered.value} · {registered.quantum} {registered.unit}</dd></div><div><dt>Period / state</dt><dd>{registered.period} · {registered.state}</dd></div><div><dt>Governing receipt</dt><dd><code>{registered.governing_receipt_sha256}</code></dd></div><div><dt>Downstream</dt><dd>{registered.downstream_ids.join(", ") || "No downstream binding"}</dd></div></dl>}
+      {formula && <section className="formula-inspection"><span>Formula</span><strong>{formula.formula_id} · {formula.operation}</strong><ol>{operands.map((item) => <li key={item!.metric_id}><code>{item!.metric_id}</code> = {item!.value} {item!.unit}</li>)}</ol></section>}
+      {locators.length > 0 && <section className="locator-inspection"><span>Precise source locators</span>{locators.map((item) => <article key={item!.locator_id}><strong>{item!.artifact_path}</strong><code>{item!.locator_kind}: {item!.selector}</code><small>{item!.period} · {item!.retained_excerpt}</small><code>{item!.artifact_sha256}</code></article>)}</section>}
       <ol className="lineage-flow">
         {nodes.map((node) => {
           const artifact = caseData.artifacts.find((item) => item.artifact_id === node.artifact_id);
@@ -172,7 +169,7 @@ function EconometricLab({caseData}: {caseData: CaseData}) {
   const [mode, setMode] = useState<"identified" | "naive">("identified");
   const visible = mode === "identified" ? identified : associative;
   const paired = caseData.caseId === "atlasgrid"
-    ? {naive: "Realized-price slope", naiveValue: caseData.analyses.find((item) => item.analysis_id === "AG-06")?.outputs[0]?.value ?? "n/a", adjusted: "Randomized offer ITT", adjustedValue: caseData.analyses.find((item) => item.analysis_id === "AG-07")?.outputs[0]?.value ?? "n/a", unit: "percentage points"}
+    ? {naive: "Observational offer-scale association", naiveValue: caseData.analyses.find((item) => item.analysis_id === "AG-06")?.outputs.find((item) => item.name === "implied_offer_scale_association")?.value ?? "n/a", adjusted: "Randomized offer ITT", adjustedValue: caseData.analyses.find((item) => item.analysis_id === "AG-07")?.outputs[0]?.value ?? "n/a", unit: "percentage points · same offer scale"}
     : {naive: "Pooled NRR", naiveValue: caseData.analyses.find((item) => item.analysis_id === "HX-02")?.outputs[0]?.value ?? "n/a", adjusted: "Ordinary-cohort NRR", adjustedValue: caseData.analyses.find((item) => item.analysis_id === "HX-02")?.outputs[1]?.value ?? "n/a", unit: "percent"};
   return (
     <div className="view-stack">
@@ -237,8 +234,18 @@ export default function App() {
   const [drawerMetric, setDrawerMetric] = useState<Metric | null>(null);
   const [drawerTrigger, setDrawerTrigger] = useState<HTMLElement | null>(null);
   const workspaceRef = useRef<HTMLElement>(null);
+  const initializedRef = useRef(false);
   const caseData = useMemo(() => data.cases.find((item) => item.caseId === caseId) ?? data.cases[0], [caseId]);
+  const openRegisteredMetric = (metric: Metric, trigger: HTMLElement) => {
+    const registry = caseData.metricRegistry.find((item) => item.metric_id === metric.metric_id);
+    setDrawerTrigger(trigger);
+    setDrawerMetric(registry ? {...metric, value: registry.display_value, classification: registry.classification, registry} : metric);
+  };
   useEffect(() => {
+    if (!initializedRef.current) {
+      initializedRef.current = true;
+      return;
+    }
     if (typeof workspaceRef.current?.scrollIntoView === "function") {
       workspaceRef.current.scrollIntoView({block: "start"});
     }
@@ -259,11 +266,11 @@ export default function App() {
       </div>
       <nav className="view-nav" aria-label="Workbench views">{views.map((item, index) => <button key={item} aria-current={view === item ? "page" : undefined} onClick={() => setView(item)}><span>0{index + 1}</span>{item}</button>)}</nav>
       <main id="workspace" tabIndex={-1} ref={workspaceRef}>
-        {view === "IC Snapshot" && <Snapshot caseData={caseData} openMetric={(metric, trigger) => {setDrawerTrigger(trigger); setDrawerMetric(metric);}} />}
+        {view === "IC Snapshot" && <Snapshot caseData={caseData} openMetric={openRegisteredMetric} />}
         {view === "Thesis & Evidence" && <ThesisEvidence caseData={caseData} />}
         {view === "Econometric Lab" && <EconometricLab caseData={caseData} />}
-        {view === "Underwriting Room" && <UnderwritingRoom caseData={caseData} openMetric={(metric, trigger) => {setDrawerTrigger(trigger); setDrawerMetric(metric);}} />}
-        {view === "Value Creation" && <ValueCreation caseData={caseData} openMetric={(metric, trigger) => {setDrawerTrigger(trigger); setDrawerMetric(metric);}} />}
+        {view === "Underwriting Room" && <UnderwritingRoom caseData={caseData} openMetric={openRegisteredMetric} />}
+        {view === "Value Creation" && <ValueCreation caseData={caseData} openMetric={openRegisteredMetric} />}
       </main>
       <footer><span>Local synthetic reference implementation</span><span>Manifest <code>{caseData.manifest_sha256.slice(0, 16)}…</code></span><span>No runtime model, network, or investment authority</span></footer>
       {drawerMetric && <EvidenceDrawer caseData={caseData} metric={drawerMetric} onClose={() => {setDrawerMetric(null); requestAnimationFrame(() => drawerTrigger?.focus());}} />}

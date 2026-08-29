@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from pathlib import Path
 
 from underwriting_lab.analysis import analyze_room
@@ -37,9 +38,20 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
 
     markdown = artifacts["memo"].read_text(encoding="utf-8")
     assert "`REPRICE`" in markdown
-    assert "22.91%" in markdown
-    assert "$213.9M" in markdown
+    assert "22.57%" in markdown
+    assert "$212.4M" in markdown
     assert "Synthetic causal estimates recover planted assignment mechanisms only" in markdown
+    for section in [
+        "## Operating case and valuation bridge",
+        "## Leverage, liquidity, and covenant workpaper",
+        "## Sensitivity and distributional downside",
+        "### Risk, mitigant, owner, and consequence",
+        "## Value creation",
+        "## Receipt appendix",
+    ]:
+        assert section in markdown
+    assert "Probability below 1.0x MOIC" in markdown
+    assert "Probability of a modeled covenant breach" in markdown
     html = artifacts["html"].read_text(encoding="utf-8")
     assert "@page{size:letter" in html
     assert packet_digest in html
@@ -54,3 +66,24 @@ def test_ic_packet_is_byte_deterministic(tmp_path: Path) -> None:
     second = build_ic_packet_from_case(case, tmp_path / "second")
     for key in first:
         assert first[key].read_bytes() == second[key].read_bytes()
+
+
+def test_ic_packet_fails_closed_on_failed_diagnostic(tmp_path: Path) -> None:
+    room = tmp_path / "atlasgrid"
+    manifest = generate_room("atlasgrid", 20260828, room)
+    analysis_path = analyze_room(manifest, room / "analysis.json")
+    case = json.loads(analysis_path.read_text(encoding="utf-8"))
+    tampered = deepcopy(case)
+    ag10 = next(item for item in tampered["analyses"] if item["analysis_id"] == "AG-10")
+    diagnostic = next(item for item in ag10["diagnostics"] if item["name"] == "xirr_npv_residual")
+    diagnostic["status"] = "FAIL"
+    ag10.pop("receipt_sha256")
+    ag10["receipt_sha256"] = digest(ag10)
+    tampered.pop("analysis_sha256")
+    tampered["analysis_sha256"] = digest(tampered)
+    try:
+        build_ic_packet_from_case(tampered, tmp_path / "blocked")
+    except ValueError as exc:
+        assert "ic_packet_blocked_failed_diagnostic:AG-10:xirr_npv_residual" in str(exc)
+    else:  # pragma: no cover - fail-closed assertion
+        raise AssertionError("memo generation accepted a failed diagnostic")

@@ -26,6 +26,7 @@ async function assertBoundedAndAccessible(page: Page) {
 for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
   test(`${caseName} complete keyboard, interaction, visual, and accessibility flow`, async ({page}, testInfo: TestInfo) => {
     await page.goto("/");
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
     await page.getByRole("button", {name: new RegExp(caseName)}).click();
     await expect(page.getByRole("heading", {name: caseName})).toBeVisible();
     await expect(page.getByText("SYNTHETIC — NOT INVESTMENT ADVICE")).toBeVisible();
@@ -47,6 +48,25 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
         await page.getByRole("button", {name: "Association / abstention"}).click();
         await expect(page.getByLabel("Naive versus adjusted comparison")).toBeVisible();
         await page.getByRole("button", {name: "Identified synthetic effect"}).click();
+      }
+      if (view === "Thesis & Evidence") {
+        const graph = page.getByRole("tree", {name: "Evidence to decision dependency graph"});
+        if (testInfo.project.name === "desktop") {
+          await expect(graph).toBeVisible();
+          const selectedNode = graph.locator(".dag-node.evidence").first();
+          await selectedNode.click();
+          expect(await graph.locator(".dag-node.active").count()).toBeGreaterThan(1);
+          expect(await graph.locator(".dag-node.muted").count()).toBeGreaterThan(0);
+          await page.getByRole("button", {name: "Clear path"}).click();
+        } else {
+          await expect(graph).toBeHidden();
+          const dependencyList = page.getByRole("list", {name: "Thesis dependency list"});
+          await expect(dependencyList).toBeVisible();
+          const initialCount = await dependencyList.getByRole("listitem").count();
+          await dependencyList.getByRole("button").first().click();
+          expect(await dependencyList.getByRole("listitem").count()).toBeLessThan(initialCount);
+          await page.getByRole("button", {name: "Clear path"}).click();
+        }
       }
       if (view === "Underwriting Room") {
         if (caseName === "AtlasGrid Systems") {
@@ -80,7 +100,12 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
       await assertBoundedAndAccessible(page);
       const slug = view.toLowerCase().replaceAll(" ", "-").replaceAll("&", "and");
       const caseSlug = caseName.toLowerCase().replaceAll(" ", "-");
-      await page.screenshot({path: `../dist/visual-evidence/${testInfo.project.name}-${caseSlug}-${slug}.png`, fullPage: true});
+      await page.evaluate(() => {
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+        window.scrollTo({top: 0, left: 0, behavior: "instant"});
+      });
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+      await page.screenshot({path: `../dist/visual-evidence/${testInfo.project.name}-${caseSlug}-${slug}.png`, fullPage: false, animations: "disabled"});
     }
   });
 }

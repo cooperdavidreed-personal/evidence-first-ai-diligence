@@ -253,6 +253,7 @@ dd { margin: 0; font-size: 12px; line-height: 1.5; }
 .dag-shell { margin-top: 20px; border: 1px solid var(--hairline); background: #f8f6f0; }
 .dag-column-labels { display: grid; grid-template-columns: repeat(3, 1fr); padding: 10px 28px; border-bottom: 1px solid var(--hairline); color: var(--muted); font: 700 9px var(--mono); text-transform: uppercase; }
 .dag-scroll { overflow: auto; }
+.dag-mobile-list { display: none; }
 .thesis-dag { display: block; min-width: 1040px; width: 100%; }
 .dag-edges line { stroke: var(--cobalt); stroke-width: 1.4; opacity: .55; }
 .dag-edges line.muted { opacity: .08; }
@@ -279,6 +280,13 @@ dd { margin: 0; font-size: 12px; line-height: 1.5; }
 .drawer-value { margin: 25px 0 4px; font: 500 44px Georgia, ui-serif, serif; }
 .method-tag { display: inline-block; margin: 0 0 28px; padding: 5px 7px; background: var(--cobalt-soft); color: var(--cobalt); font: 650 9px var(--mono); }
 .drawer-detail { margin: -16px 0 24px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.registry-detail { margin-bottom: 20px; }
+.formula-inspection, .locator-inspection { display: grid; gap: 8px; padding: 16px 0; border-top: 1px solid var(--hairline); }
+.formula-inspection > span, .locator-inspection > span { color: var(--muted); font: 650 9px var(--mono); text-transform: uppercase; }
+.formula-inspection ol { margin: 0; padding-left: 20px; }
+.formula-inspection li { margin: 5px 0; font-size: 11px; }
+.locator-inspection article { display: grid; gap: 4px; padding: 10px; background: #f2efe7; }
+.locator-inspection small { color: var(--muted); line-height: 1.45; }
 .lineage-flow { margin: 0; padding: 0; list-style: none; counter-reset: lineage; }
 .lineage-flow li { counter-increment: lineage; display: grid; gap: 5px; padding: 18px 0 18px 30px; border-top: 1px solid var(--hairline); position: relative; }
 .lineage-flow li::before { content: counter(lineage, decimal-leading-zero); position: absolute; left: 0; color: var(--cobalt); font: 650 10px var(--mono); }
@@ -314,6 +322,11 @@ footer { display: flex; justify-content: space-between; gap: 20px; padding: 18px
 
 @media (max-width: 600px) {
   .app-shell { border-inline: 0; }
+  .dag-scroll { display: none; }
+  .dag-mobile-list { display: grid; gap: 1px; margin: 0; padding: 0; list-style: none; background: var(--hairline); }
+  .dag-mobile-list button { width: 100%; display: grid; gap: 4px; padding: 12px 14px; border: 0; background: var(--surface); text-align: left; }
+  .dag-mobile-list span, .dag-mobile-list small { color: var(--muted); font: 700 8px var(--mono); text-transform: uppercase; }
+  .dag-mobile-list button[aria-pressed="true"] { box-shadow: inset 3px 0 0 var(--cobalt); background: var(--cobalt-soft); }
   .topbar { min-height: auto; }
   .brand { padding: 12px 16px; }
   .case-switch button { padding: 10px 12px; font-size: 11px; }

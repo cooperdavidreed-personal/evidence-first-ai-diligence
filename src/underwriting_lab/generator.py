@@ -10,6 +10,7 @@ from typing import Any, Iterable
 import numpy as np
 
 from .contracts import CONTRACT_VERSION, CUTOFF, digest, sha256_file, write_json
+from .experiments import atlasgrid_experiment_fixture
 from .specs import analysis_specs
 
 
@@ -48,7 +49,7 @@ def _artifact(case_root: Path, relative: str, schema: str, rows: int) -> dict[st
     }
 
 
-def _month_label(index: int, *, start_year: int = 2021, start_month: int = 9) -> str:
+def _month_label(index: int, *, start_year: int = 2021, start_month: int = 8) -> str:
     raw = start_month - 1 + index
     return f"{start_year + raw // 12:04d}-{raw % 12 + 1:02d}"
 
@@ -56,7 +57,6 @@ def _month_label(index: int, *, start_year: int = 2021, start_month: int = 9) ->
 def _atlasgrid(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]]:
     entity_rng = _rng(seed, "atlasgrid/entities")
     event_rng = _rng(seed, "atlasgrid/events")
-    experiment_rng = _rng(seed, "atlasgrid/experiments")
     parent_count = 220
     entity_count = 1600
     parent_weights = entity_rng.dirichlet(np.linspace(1.5, 0.35, parent_count))
@@ -78,7 +78,7 @@ def _atlasgrid(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, A
         hazard = 0.0028 + max(0, -float(health[idx])) * 0.0016 + (0.001 if segment == "Mid-market" else 0)
         churn = 60
         for month in range(start + 6, 60):
-            if event_rng.random() < hazard + max(0, month - 47) * 0.00008:
+            if event_rng.random() < hazard + max(0, month - 47) * 0.00020:
                 churn = month
                 break
         churn_months.append(churn)
@@ -217,44 +217,12 @@ def _atlasgrid(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, A
     rows = _write_csv(case_root / "data/qoe_bridge.csv", list(addbacks[0]), addbacks)
     artifacts.append(_artifact(case_root, "data/qoe_bridge.csv", "atlasgrid.qoe-bridge/v1", rows))
 
-    pricing_rows: list[dict[str, Any]] = []
-    for idx in range(800):
-        treatment = int(experiment_rng.random() < 0.5)
-        risk = float(experiment_rng.normal(0, 1))
-        realized = max(0.0, 8.0 * treatment - 1.8 * risk + experiment_rng.normal(0, 0.9))
-        renewal_probability = 0.93 - 0.05 * treatment - 0.035 * max(risk, 0)
-        renewed = int(experiment_rng.random() < renewal_probability)
-        pricing_rows.append(
-            {
-                "account_id": f"AG-R{idx + 1:04d}",
-                "treatment": treatment,
-                "risk_score": f"{risk:.6f}",
-                "realized_increase_pct": f"{realized:.6f}",
-                "renewed": renewed,
-            }
-        )
+    pricing_rows, pod_rows = atlasgrid_experiment_fixture(
+        seed, include_post_cutoff_sentinel=True
+    )
     rows = _write_csv(case_root / "data/pricing_experiment.csv", list(pricing_rows[0]), pricing_rows)
-    artifacts.append(_artifact(case_root, "data/pricing_experiment.csv", "atlasgrid.pricing-experiment/v1", rows))
+    artifacts.append(_artifact(case_root, "data/pricing_experiment.csv", "atlasgrid.pricing-experiment/v2", rows))
 
-    pod_rows: list[dict[str, Any]] = []
-    treated_pods = set(int(item) for item in experiment_rng.permutation(40)[:20])
-    for pod in range(40):
-        treated = int(pod in treated_pods)
-        pod_effect = float(experiment_rng.normal(0, 1.2))
-        for month in range(24):
-            post = int(month >= 12)
-            resolution = 23.0 + pod_effect - 4.8 * treated * post + 0.05 * month + experiment_rng.normal(0, 0.7)
-            churn_bps = 92 + pod_effect * 2 - 16 * treated * post + experiment_rng.normal(0, 5)
-            pod_rows.append(
-                {
-                    "pod_id": f"AG-S{pod + 1:02d}",
-                    "period": month - 12,
-                    "treated": treated,
-                    "post": post,
-                    "resolution_hours": f"{resolution:.6f}",
-                    "gross_churn_bps": f"{churn_bps:.6f}",
-                }
-            )
     rows = _write_csv(case_root / "data/support_rollout.csv", list(pod_rows[0]), pod_rows)
     artifacts.append(_artifact(case_root, "data/support_rollout.csv", "atlasgrid.support-rollout/v1", rows))
 
@@ -363,7 +331,7 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
             support_cost = cogs - compute_cost - telemetry_cost
             month_rows.append(
                 {
-                    "month": _month_label(month, start_year=2023, start_month=9),
+                    "month": _month_label(month, start_year=2023, start_month=8),
                     "customer_id": customer_id,
                     "cohort_index": cohort,
                     "design_partner": design_partner,
@@ -386,7 +354,7 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
 
     monthly: list[dict[str, Any]] = []
     for month in range(36):
-        label = _month_label(month, start_year=2023, start_month=9)
+        label = _month_label(month, start_year=2023, start_month=8)
         current = [row for row in month_rows if row["month"] == label]
         revenue = sum(int(row["revenue_cents"]) for row in current)
         cogs = sum(int(row["cogs_cents"]) for row in current)

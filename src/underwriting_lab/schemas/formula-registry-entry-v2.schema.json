@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Underwriting formula registry entry v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["formula_id", "operation", "operand_ids", "output_metric_id", "output_unit", "formula_sha256"],
+  "properties": {
+    "formula_id": {"type": "string", "minLength": 1},
+    "operation": {"enum": ["ADD", "SUBTRACT", "MULTIPLY", "DIVIDE", "MIN", "MAX"]},
+    "operand_ids": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "output_metric_id": {"type": "string", "minLength": 1},
+    "output_unit": {"type": "string", "minLength": 1},
+    "formula_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

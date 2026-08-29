@@ -36,6 +36,49 @@ export interface Metric {
   detail: string;
   classification: Classification;
   lineage: string[];
+  registry?: TypedMetricRecord;
+}
+
+export interface SourceLocator {
+  locator_id: string;
+  artifact_id: string;
+  artifact_path: string;
+  artifact_sha256: string;
+  locator_kind: "CSV_COLUMN_SET" | "JSON_FIELDS" | "TEXT_RANGE";
+  selector: string;
+  period: string;
+  analysis_id: string;
+  retained_excerpt: string;
+  locator_sha256: string;
+}
+
+export interface FormulaEntry {
+  formula_id: string;
+  operation: "ADD" | "SUBTRACT" | "MULTIPLY" | "DIVIDE" | "MIN" | "MAX";
+  operand_ids: string[];
+  output_metric_id: string;
+  output_unit: string;
+  formula_sha256: string;
+}
+
+export interface TypedMetricRecord {
+  metric_id: string;
+  label: string;
+  value: string;
+  display_value: string;
+  unit: string;
+  quantum: string;
+  currency: string | null;
+  period: string;
+  classification: Classification;
+  source_locator_ids: string[];
+  formula_id: string | null;
+  operand_ids: string[];
+  assumption_ids: string[];
+  downstream_ids: string[];
+  governing_receipt_sha256: string;
+  state: "CURRENT" | "STALE";
+  metric_sha256: string;
 }
 
 export interface Lineage {
@@ -156,11 +199,18 @@ export interface PEEngine {
   downside: PECaseResult;
   maximum_bid_cents: number;
   distribution: {
+    seed: number;
     draws: number;
     moic_quantiles: string[];
     xirr_quantiles: string[];
     probability_below_one: string;
+    probability_covenant_breach: string;
+    probability_payment_default: string;
+    base_engine_inputs: Record<string, unknown>;
+    correlation_structure: Record<string, unknown>;
     correlation_structure_sha256: string;
+    path_receipt_sha256s: string[];
+    path_records: Array<Record<string, unknown>>;
     receipt_sha256: string;
   };
   sensitivities: {
@@ -224,6 +274,7 @@ export interface ThesisGraph {
 }
 
 export interface CaseData {
+  schema_version: "underwriting.workbench-case/v2";
   caseId: string;
   company: string;
   caseType: string;
@@ -272,11 +323,30 @@ export interface CaseData {
   valueCreationBridge?: PEValueCreationBridge;
   peEngine?: PEEngine;
   evidenceMappings?: EvidenceMapping[];
+  sourceLocators: SourceLocator[];
+  formulaRegistry: FormulaEntry[];
+  metricRegistry: TypedMetricRecord[];
+  renderManifest: {
+    schema_version: "underwriting.render-manifest/v2";
+    metric_ids: string[];
+    formula_sample_metric_ids: string[];
+  };
+  temporalScan: {
+    schema_version: string;
+    cutoff: string;
+    fields_scanned: Array<{artifact_id: string; field: string; classification: string}>;
+    included_rows: number;
+    excluded_rows: number;
+    excluded_locators: string[];
+    max_eligible_instant: string;
+    status: string;
+    receipt_sha256: string;
+  };
   lineage: Lineage[];
   artifacts: Array<{artifact_id: string; path: string; schema: string; rows: number; sha256: string}>;
 }
 
 export interface WorkbenchData {
-  schema_version: string;
+  schema_version: "underwriting.workbench-data/v2";
   cases: CaseData[];
 }

@@ -12,7 +12,7 @@ export default defineConfig({
   },
   projects: [
     {name: "desktop", use: {viewport: {width: 1440, height: 900}}},
-    {name: "mobile", use: {viewport: {width: 390, height: 844}, deviceScaleFactor: 3, isMobile: true, hasTouch: true}},
+    {name: "mobile", use: {viewport: {width: 390, height: 844}, deviceScaleFactor: 1, isMobile: true, hasTouch: true}},
   ],
   webServer: {
     command: "pnpm dev --host 127.0.0.1 --port 4173",

@@ -10,8 +10,8 @@ from ic_evidence_lab.canonical import canonical_json
 from jsonschema import Draft202012Validator
 
 
-CONTRACT_VERSION = "underwriting-econometrics/v1"
-CUTOFF = "2026-08-31T23:59:59Z"
+CONTRACT_VERSION = "underwriting-econometrics/v2"
+CUTOFF = "2026-08-29T00:00:00Z"
 CLASSIFICATIONS = {
     "ACCOUNTING_IDENTITY",
     "DESCRIPTIVE",
@@ -82,6 +82,14 @@ def _validate_hashed_v2_document(document: dict[str, Any], schema_name: str) -> 
         raise UnderwritingError(f"v2_receipt_digest_mismatch:{schema_name}")
 
 
+def _validate_named_hash(document: dict[str, Any], schema_name: str, field: str) -> None:
+    validate_v2_document(document, schema_name)
+    body = dict(document)
+    expected = body.pop(field, None)
+    if expected != digest(body):
+        raise UnderwritingError(f"v2_digest_mismatch:{schema_name}:{field}")
+
+
 def _validate_pe_payload(case: dict[str, Any]) -> None:
     engine = case.get("peEngine")
     if engine is None:
@@ -99,9 +107,47 @@ def _validate_pe_payload(case: dict[str, Any]) -> None:
             result["debt_schedule"], "debt-schedule-v2.schema.json"
         )
         _validate_hashed_v2_document(result, "pe-case-result-v2.schema.json")
-    _validate_hashed_v2_document(
-        engine["distribution"], "pe-distribution-v2.schema.json"
-    )
+    distribution = engine["distribution"]
+    _validate_hashed_v2_document(distribution, "pe-distribution-v2.schema.json")
+    if distribution["correlation_structure_sha256"] != digest(distribution["correlation_structure"]):
+        raise UnderwritingError("pe_distribution_correlation_digest_mismatch")
+    records = distribution["path_records"]
+    result_hashes = distribution["path_receipt_sha256s"]
+    if len(records) != distribution["draws"] or len(result_hashes) != distribution["draws"]:
+        raise UnderwritingError("pe_distribution_path_count_mismatch")
+    for record, result_hash in zip(records, result_hashes, strict=True):
+        body = dict(record)
+        expected = body.pop("receipt_sha256")
+        if expected != digest(body):
+            raise UnderwritingError("pe_distribution_path_digest_mismatch")
+        if record["result_receipt_sha256"] != result_hash:
+            raise UnderwritingError("pe_distribution_result_binding_mismatch")
+        if any(int(value) != 0 for value in record["reconciliation"].values()):
+            raise UnderwritingError("pe_distribution_path_reconciliation_failed")
+        if record["xirr_status"] == "TOTAL_LOSS_BOUNDARY" and (
+            Decimal(record["gross_moic"]) != 0 or Decimal(record["gross_xirr"]) != -1
+        ):
+            raise UnderwritingError("pe_distribution_total_loss_boundary_mismatch")
+    quantile_indices = [
+        int((Decimal(len(records) - 1) * probability).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN))
+        for probability in (Decimal("0.10"), Decimal("0.50"), Decimal("0.90"))
+    ]
+    moics = sorted(Decimal(record["gross_moic"]) for record in records)
+    xirrs = sorted(Decimal(record["gross_xirr"]) for record in records)
+    if [format(moics[index], "f") for index in quantile_indices] != distribution["moic_quantiles"]:
+        raise UnderwritingError("pe_distribution_moic_quantile_mismatch")
+    if [format(xirrs[index], "f") for index in quantile_indices] != distribution["xirr_quantiles"]:
+        raise UnderwritingError("pe_distribution_xirr_quantile_mismatch")
+    denominator = Decimal(len(records))
+    probabilities = {
+        "probability_below_one": Decimal(sum(value < 1 for value in moics)) / denominator,
+        "probability_covenant_breach": Decimal(sum(record["first_covenant_breach_month"] is not None for record in records)) / denominator,
+        "probability_payment_default": Decimal(sum(bool(record["payment_default"]) for record in records)) / denominator,
+    }
+    for name, value in probabilities.items():
+        expected = value.quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN)
+        if Decimal(distribution[name]) != expected:
+            raise UnderwritingError(f"pe_distribution_probability_mismatch:{name}")
     sensitivity = engine.get("sensitivities")
     if not isinstance(sensitivity, dict):
         raise UnderwritingError("pe_sensitivity_book_missing")
@@ -116,6 +162,86 @@ def _validate_pe_payload(case: dict[str, Any]) -> None:
     _validate_hashed_v2_document(
         bridge, "pe-value-creation-bridge-v2.schema.json"
     )
+
+
+def _validate_metric_contract(case: dict[str, Any]) -> None:
+    artifacts = {item["artifact_id"]: item for item in case["artifacts"]}
+    analyses = {item["analysis_id"] for item in case["analyses"]}
+    locators: dict[str, dict[str, Any]] = {}
+    for locator in case["sourceLocators"]:
+        _validate_named_hash(locator, "source-locator-v2.schema.json", "locator_sha256")
+        locator_id = locator["locator_id"]
+        if locator_id in locators:
+            raise UnderwritingError("source_locator_duplicate")
+        locators[locator_id] = locator
+        artifact = artifacts.get(locator["artifact_id"])
+        if artifact is None or artifact["path"] != locator["artifact_path"] or artifact["sha256"] != locator["artifact_sha256"]:
+            raise UnderwritingError("source_locator_artifact_mismatch")
+        if locator["analysis_id"] not in analyses:
+            raise UnderwritingError("source_locator_analysis_orphan")
+
+    metrics: dict[str, dict[str, Any]] = {}
+    for metric in case["metricRegistry"]:
+        _validate_named_hash(metric, "typed-metric-v2.schema.json", "metric_sha256")
+        metric_id = metric["metric_id"]
+        if metric_id in metrics:
+            raise UnderwritingError("metric_registry_duplicate")
+        metrics[metric_id] = metric
+        if not set(metric["source_locator_ids"]).issubset(locators):
+            raise UnderwritingError("metric_source_locator_orphan")
+        if not metric["source_locator_ids"] and not metric["operand_ids"] and not metric["assumption_ids"]:
+            raise UnderwritingError("metric_provenance_missing")
+
+    formulas: dict[str, dict[str, Any]] = {}
+    for formula in case["formulaRegistry"]:
+        _validate_named_hash(formula, "formula-registry-entry-v2.schema.json", "formula_sha256")
+        formula_id = formula["formula_id"]
+        if formula_id in formulas:
+            raise UnderwritingError("formula_registry_duplicate")
+        formulas[formula_id] = formula
+        if formula["output_metric_id"] not in metrics or not set(formula["operand_ids"]).issubset(metrics):
+            raise UnderwritingError("formula_metric_orphan")
+        output = metrics[formula["output_metric_id"]]
+        if output["formula_id"] != formula_id or output["operand_ids"] != formula["operand_ids"]:
+            raise UnderwritingError("formula_output_binding_mismatch")
+        left, right = (Decimal(metrics[item]["value"]) for item in formula["operand_ids"])
+        operation = formula["operation"]
+        if operation == "ADD":
+            expected = left + right
+        elif operation == "SUBTRACT":
+            expected = left - right
+        elif operation == "MULTIPLY":
+            expected = left * right
+        elif operation == "DIVIDE":
+            if right == 0:
+                raise UnderwritingError("formula_division_by_zero")
+            expected = left / right
+        elif operation == "MIN":
+            expected = min(left, right)
+        else:
+            expected = max(left, right)
+        if Decimal(output["value"]) != expected:
+            raise UnderwritingError(f"formula_value_mismatch:{formula_id}")
+
+    render_ids = case["renderManifest"]["metric_ids"]
+    if not set(render_ids).issubset(metrics):
+        raise UnderwritingError("render_manifest_metric_orphan")
+    sample_ids = case["renderManifest"]["formula_sample_metric_ids"]
+    if not set(sample_ids).issubset(metrics):
+        raise UnderwritingError("formula_sample_metric_orphan")
+    if any(metrics[item]["formula_id"] is None for item in sample_ids):
+        raise UnderwritingError("formula_sample_not_derived")
+    if case["caseId"] == "atlasgrid" and len(sample_ids) != 10:
+        raise UnderwritingError("atlasgrid_formula_sample_requires_ten")
+
+
+def validate_workbench_data(document: dict[str, Any]) -> None:
+    validate_v2_document(document, "workbench-data-v2.schema.json")
+    case_ids = [case["caseId"] for case in document["cases"]]
+    if sorted(case_ids) != ["atlasgrid", "helios"]:
+        raise UnderwritingError("workbench_requires_exactly_atlasgrid_and_helios")
+    for case in document["cases"]:
+        validate_workbench_case(case)
 
 
 def analysis_receipt(
@@ -186,6 +312,14 @@ def lineage_item(
 
 
 def validate_workbench_case(case: dict[str, Any]) -> None:
+    is_v2 = case.get("schema_version") == "underwriting.workbench-case/v2"
+    if is_v2:
+        validate_v2_document(case, "workbench-case-v2.schema.json")
+        _validate_hashed_v2_document(case["temporalScan"], "temporal-scan-v1.schema.json")
+        if case["temporalScan"]["cutoff"] != CUTOFF or case["decision"].get("as_of") != CUTOFF:
+            raise UnderwritingError("temporal_cutoff_mismatch")
+        if any(receipt["cutoff"] != CUTOFF for receipt in case["analyses"]):
+            raise UnderwritingError("analysis_cutoff_mismatch")
     _validate_pe_payload(case)
     body = dict(case)
     expected = body.pop("analysis_sha256", None)
@@ -257,3 +391,5 @@ def validate_workbench_case(case: dict[str, Any]) -> None:
             raise UnderwritingError("scenario_lineage_invalid")
     if case["distributionLineage"] not in lineage:
         raise UnderwritingError("distribution_lineage_invalid")
+    if is_v2:
+        _validate_metric_contract(case)

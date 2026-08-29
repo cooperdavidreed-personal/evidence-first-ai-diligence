@@ -215,6 +215,17 @@ def test_distribution_recomputes_complete_paths_with_declared_correlation() -> N
     assert list(first.xirr_quantiles) == sorted(first.xirr_quantiles)
     assert len(first.path_receipt_sha256s) == 100
     assert len(set(first.path_receipt_sha256s)) == 100
+    assert len(first.path_records) == 100
+    assert first.correlation_structure_sha256 == digest(first.correlation_structure)
+    for record, result_sha256 in zip(first.path_records, first.path_receipt_sha256s, strict=True):
+        record_body = dict(record)
+        record_sha256 = record_body.pop("receipt_sha256")
+        assert record_sha256 == digest(record_body)
+        assert record["result_receipt_sha256"] == result_sha256
+        assert all(value == 0 for value in record["reconciliation"].values())
+        if record["xirr_status"] == "TOTAL_LOSS_BOUNDARY":
+            assert record["gross_moic"] == "0.0000"
+            assert record["gross_xirr"] == "-1"
 
 
 def test_sensitivity_book_recomputes_each_cell_and_is_monotone() -> None:

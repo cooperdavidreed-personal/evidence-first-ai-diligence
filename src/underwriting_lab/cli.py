@@ -7,9 +7,10 @@ from pathlib import Path
 from ic_evidence_lab.canonical import canonical_json
 
 from .analysis import analyze_room
-from .contracts import UnderwritingError, validate_workbench_case
+from .contracts import UnderwritingError, validate_workbench_data
 from .generator import CASE_IDS, generate_room
 from .memo import build_ic_packet
+from .verification import build_estimator_coverage_ledger
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -28,6 +29,9 @@ def _parser() -> argparse.ArgumentParser:
     memo = subparsers.add_parser("build-memo", help="build a deterministic AtlasGrid IC memo and appendix")
     memo.add_argument("--analysis", required=True)
     memo.add_argument("--out-dir", required=True)
+    coverage = subparsers.add_parser("verify-estimator-coverage", help="run the fixed AtlasGrid interval-coverage policy")
+    coverage.add_argument("--case", required=True, choices=["atlasgrid"])
+    coverage.add_argument("--out", required=True)
     return parser
 
 
@@ -46,15 +50,19 @@ def main(argv: list[str] | None = None) -> int:
             artifacts = build_ic_packet(args.analysis, args.out_dir)
             print(json.dumps({"status": "PRODUCED", "artifacts": {key: value.as_posix() for key, value in artifacts.items()}}, sort_keys=True))
             return 0
+        if args.command == "verify-estimator-coverage":
+            result = build_estimator_coverage_ledger(args.out)
+            print(json.dumps({"status": "PRODUCED", "coverage": result.as_posix()}, sort_keys=True))
+            return 0
         cases = [json.loads(Path(path).read_text(encoding="utf-8")) for path in args.cases]
         case_ids = [case["caseId"] for case in cases]
         if sorted(case_ids) != ["atlasgrid", "helios"]:
             raise UnderwritingError("workbench_requires_exactly_atlasgrid_and_helios")
-        for case in cases:
-            validate_workbench_case(case)
+        document = {"schema_version": "underwriting.workbench-data/v2", "cases": cases}
+        validate_workbench_data(document)
         destination = Path(args.out)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(canonical_json({"schema_version": "underwriting.workbench-data/v1", "cases": cases}) + b"\n")
+        destination.write_bytes(canonical_json(document) + b"\n")
         print(json.dumps({"status": "PRODUCED", "cases": len(cases), "output": destination.as_posix()}, sort_keys=True))
         return 0
     except (UnderwritingError, ValueError, OSError, KeyError) as exc:

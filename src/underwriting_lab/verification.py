@@ -1,13 +1,21 @@
 from __future__ import annotations
 
+import hashlib
 import math
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 from .analysis import analyze_room
 from .contracts import digest, read_json, write_json
+from .experiments import (
+    atlasgrid_experiment_fixture,
+    collapsed_pod_delta,
+    difference_in_means,
+)
 from .generator import generate_room
 
 
@@ -360,6 +368,101 @@ def build_recovery_ledger(output: str | Path) -> Path:
         },
     }
     ledger["ledger_sha256"] = digest(ledger)
+    destination = Path(output)
+    write_json(destination, ledger)
+    return destination
+
+
+def _coverage_seed(index: int) -> int:
+    material = f"underwriting-econometrics/v2:atlasgrid-coverage:{index:04d}".encode()
+    return int.from_bytes(hashlib.sha256(material).digest()[:16], "big")
+
+
+def _wilson(covered: int, simulations: int) -> tuple[float, float]:
+    z = 1.96
+    probability = covered / simulations
+    denominator = 1 + z * z / simulations
+    center = (probability + z * z / (2 * simulations)) / denominator
+    radius = z * math.sqrt(
+        probability * (1 - probability) / simulations
+        + z * z / (4 * simulations * simulations)
+    ) / denominator
+    return center - radius, center + radius
+
+
+def build_estimator_coverage_ledger(output: str | Path) -> Path:
+    simulations = 500
+    seeds = [_coverage_seed(index) for index in range(simulations)]
+    if len(set(seeds)) != simulations:
+        raise ValueError("coverage_seed_collision")
+    endpoint_values: dict[str, list[tuple[float, float, float]]] = {
+        "AG-07.renewal_itt": [],
+        "AG-08.resolution_att": [],
+        "AG-08.gross_churn_att": [],
+    }
+    truths = {
+        "AG-07.renewal_itt": -0.05,
+        "AG-08.resolution_att": -4.8,
+        "AG-08.gross_churn_att": -16.0,
+    }
+    for seed in seeds:
+        pricing, support = atlasgrid_experiment_fixture(seed)
+        treatment = np.array([int(row["treatment"]) for row in pricing])
+        renewal = np.array([float(row["renewed"]) for row in pricing])
+        renewal_estimate = difference_in_means(renewal, treatment)
+        resolution_estimate = collapsed_pod_delta(support, "resolution_hours")
+        churn_estimate = collapsed_pod_delta(support, "gross_churn_bps")
+        for endpoint, estimate in (
+            ("AG-07.renewal_itt", renewal_estimate),
+            ("AG-08.resolution_att", resolution_estimate),
+            ("AG-08.gross_churn_att", churn_estimate),
+        ):
+            endpoint_values[endpoint].append((estimate.effect, estimate.low, estimate.high))
+
+    endpoints: list[dict[str, Any]] = []
+    failed = False
+    for endpoint, values in endpoint_values.items():
+        truth = truths[endpoint]
+        covered = sum(low <= truth <= high for _, low, high in values)
+        coverage = covered / simulations
+        lower, upper = _wilson(covered, simulations)
+        status = "PASS" if 0.92 <= coverage <= 0.98 else "FAIL"
+        failed = failed or status == "FAIL"
+        endpoints.append(
+            {
+                "endpoint": endpoint,
+                "truth": format(truth, ".6f"),
+                "simulations": simulations,
+                "valid": simulations,
+                "covered": covered,
+                "missed": simulations - covered,
+                "empirical_coverage": format(coverage, ".6f"),
+                "monte_carlo_standard_error": format(
+                    math.sqrt(coverage * (1 - coverage) / simulations), ".6f"
+                ),
+                "wilson_95_interval": [format(lower, ".6f"), format(upper, ".6f")],
+                "mean_estimate": format(
+                    sum(value[0] for value in values) / simulations, ".6f"
+                ),
+                "status": status,
+            }
+        )
+    ledger: dict[str, Any] = {
+        "schema_version": "underwriting.estimator-coverage-ledger/v1",
+        "purpose": "Frequentist interval coverage on planted synthetic effects; not real-world investment accuracy.",
+        "policy": {
+            "simulations": simulations,
+            "nominal_coverage": "0.95",
+            "inclusive_acceptance_band": ["0.92", "0.98"],
+            "seed_derivation": "first_128_bits_sha256(underwriting-econometrics/v2:atlasgrid-coverage:{index:04d})",
+            "seed_commitment": digest([str(seed) for seed in seeds]),
+            "rerolls": 0,
+            "excluded": 0,
+        },
+        "endpoints": endpoints,
+        "status": "FAIL" if failed else "PASS",
+    }
+    ledger["receipt_sha256"] = digest(ledger)
     destination = Path(output)
     write_json(destination, ledger)
     return destination

@@ -2,6 +2,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import App from "./App";
+import rawData from "./data/cases.json";
+import {assertWorkbenchData} from "./data-contract";
 
 describe("Underwriting Intelligence Lab", () => {
   it("renders all five investment views and synthetic disclosure", () => {
@@ -27,7 +29,7 @@ describe("Underwriting Intelligence Lab", () => {
     render(<App />);
     await user.click(screen.getByRole("button", {name: /Inspect lineage for Repriced return/}));
     expect(screen.getByRole("dialog", {name: "Repriced return"})).toBeInTheDocument();
-    expect(screen.getByText(/data\/debt_terms.json/)).toBeInTheDocument();
+    expect(screen.getAllByText(/data\/debt_terms.json/).length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", {name: "Close lineage"}));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
@@ -55,5 +57,17 @@ describe("Underwriting Intelligence Lab", () => {
     await user.click(screen.getByRole("button", {name: /inspect ↗/i}));
     expect(screen.getByRole("dialog", {name: "Combined value-creation impact"})).toBeInTheDocument();
     expect(screen.getByText(/Standalone sum/)).toBeInTheDocument();
+  });
+
+  it("binds every rendered PE finance element to the registry", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", {name: /Underwriting Room/}));
+    const candidate: unknown = rawData;
+    assertWorkbenchData(candidate);
+    const registered = new Set(candidate.cases.find((item) => item.caseId === "atlasgrid")!.metricRegistry.map((item) => item.metric_id));
+    const visibleIds = [...document.querySelectorAll<HTMLElement>("[data-metric-id]")].map((item) => item.dataset.metricId!);
+    expect(visibleIds.length).toBeGreaterThan(70);
+    expect(visibleIds.every((id) => registered.has(id))).toBe(true);
   });
 });

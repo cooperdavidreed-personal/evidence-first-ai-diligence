@@ -10,6 +10,7 @@ from .contracts import UnderwritingError, digest
 
 CENT = Decimal("1")
 RATE_QUANTUM = Decimal("0.0000000001")
+XIRR_QUANTUM = Decimal("0.00000000000001")
 
 
 def _cents(value: int, field: str) -> int:
@@ -448,7 +449,9 @@ def xirr(cash_flows: Sequence[DatedCashFlow]) -> Decimal:
         midpoint = (low + high) / 2
         midpoint_npv = npv_cents(midpoint, ordered)
         if abs(midpoint_npv) <= Decimal(1):
-            return midpoint.quantize(RATE_QUANTUM, rounding=ROUND_HALF_EVEN)
+            # Retain enough precision for the one-cent NPV oracle on institutional
+            # transaction sizes; display rounding happens only at presentation.
+            return midpoint.quantize(XIRR_QUANTUM, rounding=ROUND_HALF_EVEN)
         if low_npv * midpoint_npv <= 0:
             high = midpoint
         else:

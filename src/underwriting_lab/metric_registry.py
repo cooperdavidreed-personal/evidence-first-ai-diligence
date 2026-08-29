@@ -1,0 +1,274 @@
+from __future__ import annotations
+
+from decimal import Decimal
+import re
+from typing import Any
+
+from .contracts import UnderwritingError, digest
+
+
+def _decimal(value: int | str | Decimal) -> str:
+    return format(Decimal(str(value)), "f")
+
+
+def _metric(
+    *,
+    metric_id: str,
+    label: str,
+    value: int | str | Decimal,
+    display_value: str,
+    unit: str,
+    quantum: str,
+    period: str,
+    classification: str,
+    locator_ids: list[str],
+    receipt_sha256: str,
+    formula_id: str | None = None,
+    operand_ids: list[str] | None = None,
+    assumption_ids: list[str] | None = None,
+    downstream_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    body: dict[str, Any] = {
+        "metric_id": metric_id,
+        "label": label,
+        "value": _decimal(value),
+        "display_value": display_value,
+        "unit": unit,
+        "quantum": quantum,
+        "currency": "USD" if unit == "cents" else None,
+        "period": period,
+        "classification": classification,
+        "source_locator_ids": locator_ids,
+        "formula_id": formula_id,
+        "operand_ids": operand_ids or [],
+        "assumption_ids": assumption_ids or [],
+        "downstream_ids": downstream_ids or [],
+        "governing_receipt_sha256": receipt_sha256,
+        "state": "CURRENT",
+    }
+    body["metric_sha256"] = digest(body)
+    return body
+
+
+def _formula(
+    formula_id: str,
+    operation: str,
+    operands: list[str],
+    output_metric_id: str,
+    output_unit: str,
+) -> dict[str, Any]:
+    body = {
+        "formula_id": formula_id,
+        "operation": operation,
+        "operand_ids": operands,
+        "output_metric_id": output_metric_id,
+        "output_unit": output_unit,
+    }
+    body["formula_sha256"] = digest(body)
+    return body
+
+
+def _money(cents: int) -> str:
+    value = Decimal(cents) / Decimal(100_000_000)
+    return f"${value.quantize(Decimal('0.1'))}M".replace(".0M", "M")
+
+
+def _percent(decimal_value: str) -> str:
+    return f"{(Decimal(decimal_value) * 100).quantize(Decimal('0.1'))}%"
+
+
+def _multiple(decimal_value: str) -> str:
+    return f"{Decimal(decimal_value).quantize(Decimal('0.01'))}x"
+
+
+def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
+    """Compile stable source, metric, formula, and render inventories.
+
+    The registry contains exact values. Formatting is retained separately so the
+    browser never has to infer an underwriting value from presentation text.
+    """
+
+    locator_by_lineage: dict[str, str] = {}
+    source_locators: list[dict[str, Any]] = []
+    artifacts = {item["artifact_id"]: item for item in case["artifacts"]}
+    for item in case["lineage"]:
+        artifact = artifacts[item["artifact_id"]]
+        locator_id = f"locator-{item['node_id']}"
+        locator_by_lineage[item["node_id"]] = locator_id
+        body = {
+            "locator_id": locator_id,
+            "artifact_id": item["artifact_id"],
+            "artifact_path": artifact["path"],
+            "artifact_sha256": artifact["sha256"],
+            "locator_kind": "JSON_FIELDS" if artifact["path"].endswith(".json") else "CSV_COLUMN_SET",
+            "selector": item["field"],
+            "period": case["decision"].get("as_of", "NOT_APPLICABLE"),
+            "analysis_id": item["analysis_id"],
+            "retained_excerpt": f"Fields {item['field']} under retained artifact digest.",
+        }
+        body["locator_sha256"] = digest(body)
+        source_locators.append(body)
+
+    metrics: list[dict[str, Any]] = []
+    formulas: list[dict[str, Any]] = []
+    render_ids: list[str] = []
+
+    def add(**kwargs: Any) -> None:
+        item = _metric(**kwargs)
+        metrics.append(item)
+        render_ids.append(item["metric_id"])
+
+    for summary in case["summaryMetrics"]:
+        lineage_ids = summary["lineage"]
+        match = re.search(r"-?[0-9]+(?:\.[0-9]+)?", summary["value"])
+        try:
+            numeric = Decimal(match.group(0)) if match else None
+        except Exception as exc:  # pragma: no cover - contract fail closed
+            raise UnderwritingError(f"summary_metric_not_numeric:{summary['metric_id']}") from exc
+        if numeric is None:
+            raise UnderwritingError(f"summary_metric_not_numeric:{summary['metric_id']}")
+        add(
+            metric_id=summary["metric_id"], label=summary["label"], value=numeric,
+            display_value=summary["value"], unit="display_native", quantum="0.01",
+            period=case["decision"].get("as_of", "NOT_APPLICABLE"),
+            classification=summary["classification"],
+            locator_ids=[locator_by_lineage[item] for item in lineage_ids],
+            receipt_sha256=case["analysis_sha256"] if "analysis_sha256" in case else case["manifest_sha256"],
+            downstream_ids=["decision"],
+        )
+
+    engine = case.get("peEngine")
+    if engine is not None:
+        for scenario_key in ("ask", "selected", "downside"):
+            result = engine[scenario_key]
+            scenario_id = result["scenario_id"]
+            receipt = result["receipt_sha256"]
+            base = f"{case['caseId']}-{scenario_id}"
+            sources = result["sources_and_uses"]
+            transaction = result["engine_inputs"]["transaction"]
+            debt = result["debt_schedule"]
+            period = f"{result['engine_inputs']['close_date']} through month 60"
+            common = {
+                "period": period,
+                "classification": "SCENARIO",
+                "locator_ids": [locator_by_lineage["ag-reprice"]],
+                "receipt_sha256": receipt,
+                "assumption_ids": [f"{scenario_id}.engine_inputs"],
+                "downstream_ids": ["decision"],
+            }
+
+            def add_cents(metric_id: str, label: str, value: int, display: str | None = None, **extra: Any) -> None:
+                add(metric_id=metric_id, label=label, value=value, display_value=display or _money(value), unit="cents", quantum="1", **common, **extra)
+
+            add_cents(f"{base}-entry", "Upfront EV", sources["uses_cents"]["cash_enterprise_value"])
+            add_cents(f"{base}-max-bid", "Maximum bid", engine["maximum_bid_cents"])
+            threshold = int(transaction.get("earnout_threshold_arr_cents") or 0)
+            cap = int(transaction.get("earnout_cap_cents") or 0)
+            add_cents(f"{base}-earnout-threshold", "Earnout threshold", threshold)
+            add_cents(f"{base}-earnout-cap", "Earnout cap", cap)
+            add(
+                metric_id=f"{base}-earnout-terms", label="Earnout threshold / cap", value=threshold,
+                display_value=f"{_money(threshold)} / {_money(cap)}", unit="cents_pair", quantum="1",
+                **common,
+            )
+            add_cents(f"{base}-debt-funded", "Funded term debt", int(transaction["funded_term_face_cents"]))
+            for side, values in (("uses", sources["uses_cents"]), ("sources", sources["non_sponsor_sources_cents"])):
+                for name, value in values.items():
+                    add_cents(f"{base}-{side}-{name}", name.replace("_", " "), int(value))
+            add_cents(f"{base}-sources-sponsor-equity", "Sponsor equity", sources["sponsor_equity_cents"])
+            add_cents(f"{base}-total-uses", "Total uses", sources["total_uses_cents"])
+            add_cents(f"{base}-total-sources", "Total sources", sources["total_sources_cents"])
+            add_cents(f"{base}-undrawn-revolver", "Undrawn revolver", sources["undrawn_revolver_commitment_cents"])
+            add_cents(f"{base}-sources-reconcile", "Reconciliation", sources["total_sources_cents"] - sources["total_uses_cents"], "$0 residual")
+            add_cents(f"{base}-exit-debt", "Exit debt", debt["ending_debt_cents"])
+            add_cents(f"{base}-min-liquidity", "Minimum liquidity", debt["minimum_liquidity_cents"])
+            min_headroom = min(Decimal(item["covenant_headroom"]) for item in debt["months"])
+            add(metric_id=f"{base}-min-headroom", label="Minimum headroom", value=min_headroom, display_value=_multiple(str(min_headroom)), unit="turns", quantum="0.01", **common)
+            add_cents(f"{base}-exit-ev", "Exit enterprise value", result["exit_enterprise_value_cents"])
+            final_cash = debt["months"][-1]["ending_cash_cents"]
+            add_cents(f"{base}-exit-cash", "Exit cash", final_cash)
+            add_cents(f"{base}-exit-equity", "Exit equity", result["exit_equity_value_cents"])
+            add(metric_id=f"{base}-gross-irr", label="Gross IRR", value=result["gross_xirr"], display_value=_percent(result["gross_xirr"]), unit="decimal_rate", quantum="0.0001", **common)
+            add(metric_id=f"{base}-gross-moic", label="Gross MOIC", value=result["gross_moic"], display_value=_multiple(result["gross_moic"]), unit="multiple", quantum="0.0001", **common)
+            add_cents(f"{base}-earnout", "Earnout paid", result["earnout_cents"])
+
+            for month in debt["months"]:
+                month_id = f"{base}-month-{month['month']:02d}"
+                for field in ("ending_cash_cents", "ending_term_cents", "ending_revolver_cents", "cash_interest_cents", "optional_sweep_cents"):
+                    add_cents(f"{month_id}-{field}", field.replace("_cents", "").replace("_", " "), month[field])
+                for field in ("gross_leverage", "covenant_headroom"):
+                    add(metric_id=f"{month_id}-{field}", label=field.replace("_", " "), value=month[field], display_value=_multiple(month[field]), unit="turns", quantum="0.01", **common)
+
+            # Ten exact browser-recomputable binary identities are carried by
+            # the selected state; the same outputs remain receipt-bound in Python.
+            if scenario_key == "selected":
+                formula_specs = [
+                    ("uses-1", "ADD", f"{base}-uses-cash_enterprise_value", f"{base}-uses-transaction_fees", sources["uses_cents"]["cash_enterprise_value"] + sources["uses_cents"]["transaction_fees"]),
+                    ("uses-2", "ADD", f"{base}-formula-uses-1", f"{base}-uses-financing_fees", sources["uses_cents"]["cash_enterprise_value"] + sources["uses_cents"]["transaction_fees"] + sources["uses_cents"]["financing_fees"]),
+                    ("uses-3", "ADD", f"{base}-formula-uses-2", f"{base}-uses-minimum_cash", sources["total_uses_cents"]),
+                    ("sources-1", "ADD", f"{base}-sources-funded_term_debt_net_oid", f"{base}-sources-seller_rollover", sources["non_sponsor_sources_cents"]["funded_term_debt_net_oid"] + sources["non_sponsor_sources_cents"]["seller_rollover"]),
+                    ("sources-2", "ADD", f"{base}-formula-sources-1", f"{base}-sources-sponsor-equity", sources["total_sources_cents"]),
+                    ("exit-debt", "ADD", f"{base}-month-60-ending_term_cents", f"{base}-month-60-ending_revolver_cents", debt["ending_debt_cents"]),
+                    ("exit-net", "SUBTRACT", f"{base}-exit-ev", f"{base}-exit-debt", result["exit_enterprise_value_cents"] - debt["ending_debt_cents"]),
+                    ("exit-equity", "ADD", f"{base}-formula-exit-net", f"{base}-exit-cash", result["exit_equity_value_cents"]),
+                    ("sources-less-uses", "SUBTRACT", f"{base}-total-sources", f"{base}-total-uses", 0),
+                    ("liquidity-headroom", "SUBTRACT", f"{base}-min-liquidity", f"{base}-uses-minimum_cash", debt["minimum_liquidity_cents"] - sources["uses_cents"]["minimum_cash"]),
+                ]
+                for short_id, operation, left, right, value in formula_specs:
+                    output_id = f"{base}-formula-{short_id}"
+                    formula_id = f"formula-{short_id}"
+                    add_cents(output_id, short_id.replace("-", " "), value, formula_id=formula_id, operand_ids=[left, right])
+                    formulas.append(_formula(formula_id, operation, [left, right], output_id, "cents"))
+
+        distribution = engine["distribution"]
+        distribution_common = {
+            "period": "conditional close-through-exit paths", "classification": "SCENARIO",
+            "locator_ids": [locator_by_lineage["ag-distribution"]],
+            "receipt_sha256": distribution["receipt_sha256"],
+            "assumption_ids": ["pe-correlation-structure"], "downstream_ids": ["decision"],
+        }
+        for index, value in enumerate(distribution["moic_quantiles"]):
+            add(metric_id=f"{case['caseId']}-distribution-{index}", label=f"{['p10', 'p50', 'p90'][index]} conditional MOIC", value=value, display_value=_multiple(value), unit="multiple", quantum="0.01", **distribution_common)
+
+        for cell in engine["sensitivities"]["one_way"] + engine["sensitivities"]["entry_exit_matrix"]:
+            common = {
+                "period": "close through month 60", "classification": "SCENARIO",
+                "locator_ids": [locator_by_lineage["ag-reprice"]],
+                "receipt_sha256": cell["receipt_sha256"],
+                "assumption_ids": [cell["cell_id"]], "downstream_ids": ["decision"],
+            }
+            prefix = f"{case['caseId']}-{cell['cell_id']}"
+            add(metric_id=f"{prefix}-irr", label="Gross IRR", value=cell["gross_xirr"], display_value=_percent(cell["gross_xirr"]), unit="decimal_rate", quantum="0.0001", **common)
+            add(metric_id=f"{prefix}-moic", label="Gross MOIC", value=cell["gross_moic"], display_value=_multiple(cell["gross_moic"]), unit="multiple", quantum="0.0001", **common)
+            add(metric_id=f"{prefix}-debt", label="Exit debt", value=cell["ending_debt_cents"], display_value=_money(cell["ending_debt_cents"]), unit="cents", quantum="1", **common)
+            add(metric_id=f"{prefix}-headroom", label="Minimum headroom", value=cell["minimum_covenant_headroom"], display_value=_multiple(cell["minimum_covenant_headroom"]), unit="turns", quantum="0.01", **common)
+            add(metric_id=f"{prefix}-matrix", label=cell["assumption_label"], value=cell["gross_xirr"], display_value=f"{_percent(cell['gross_xirr'])} / {_multiple(cell['gross_moic'])}", unit="return_pair", quantum="0.0001", **common)
+
+        bridge = case["valueCreationBridge"]
+        bridge_common = {
+            "period": "close through month 60", "classification": "SCENARIO",
+            "locator_ids": [locator_by_lineage["ag-nrr"], locator_by_lineage["ag-support"], locator_by_lineage["ag-margin"]],
+            "receipt_sha256": bridge["receipt_sha256"], "assumption_ids": ["value-creation-book"],
+            "downstream_ids": ["decision"],
+        }
+        add(metric_id="atlasgrid-value-combined", label="Combined value-creation impact", value=bridge["combined_exit_equity_delta_cents"], display_value=_money(bridge["combined_exit_equity_delta_cents"]), unit="cents", quantum="1", **bridge_common)
+        for lever in bridge["standalone"]:
+            for field in ("exit_ebitda_delta_cents", "exit_debt_delta_cents", "exit_equity_delta_cents", "implementation_cost_cents"):
+                add(metric_id=f"atlasgrid-value-{lever['lever_id']}-{field}", label=f"{lever['label']} {field}", value=lever[field], display_value=_money(lever[field]), unit="cents", quantum="1", **bridge_common)
+
+    metric_ids = [item["metric_id"] for item in metrics]
+    if len(metric_ids) != len(set(metric_ids)):
+        raise UnderwritingError("metric_registry_duplicate")
+    formula_ids = [item["formula_id"] for item in formulas]
+    if len(formula_ids) != len(set(formula_ids)):
+        raise UnderwritingError("formula_registry_duplicate")
+    return {
+        "sourceLocators": source_locators,
+        "formulaRegistry": formulas,
+        "metricRegistry": metrics,
+        "renderManifest": {
+            "schema_version": "underwriting.render-manifest/v2",
+            "metric_ids": render_ids,
+            "formula_sample_metric_ids": [item["output_metric_id"] for item in formulas[:10]],
+        },
+    }

@@ -80,6 +80,7 @@ class PECaseResult:
     earnout_cents: int
     gross_moic: Decimal
     gross_xirr: Decimal
+    xirr_status: str
     operating_assumptions: PEOperatingAssumptions
     transaction_assumptions: PETransactionAssumptions
     close_date: date
@@ -109,6 +110,7 @@ class PECaseResult:
             "earnout_cents": self.earnout_cents,
             "gross_moic": format(self.gross_moic, "f"),
             "gross_xirr": format(self.gross_xirr, "f"),
+            "xirr_status": self.xirr_status,
         }
         body["receipt_sha256"] = digest(body)
         return body
@@ -116,22 +118,34 @@ class PECaseResult:
 
 @dataclass(frozen=True)
 class PEDistribution:
+    seed: int
     draws: int
     moic_quantiles: tuple[Decimal, Decimal, Decimal]
     xirr_quantiles: tuple[Decimal, Decimal, Decimal]
     probability_below_one: Decimal
+    probability_covenant_breach: Decimal
+    probability_payment_default: Decimal
+    base_engine_inputs: dict[str, object]
+    correlation_structure: dict[str, object]
     correlation_structure_sha256: str
     path_receipt_sha256s: tuple[str, ...]
+    path_records: tuple[dict[str, object], ...]
 
     def receipt(self) -> dict[str, object]:
         body: dict[str, object] = {
             "schema_version": "underwriting.pe-distribution/v2",
+            "seed": self.seed,
             "draws": self.draws,
             "moic_quantiles": [format(item, "f") for item in self.moic_quantiles],
             "xirr_quantiles": [format(item, "f") for item in self.xirr_quantiles],
             "probability_below_one": format(self.probability_below_one, "f"),
+            "probability_covenant_breach": format(self.probability_covenant_breach, "f"),
+            "probability_payment_default": format(self.probability_payment_default, "f"),
+            "base_engine_inputs": self.base_engine_inputs,
+            "correlation_structure": self.correlation_structure,
             "correlation_structure_sha256": self.correlation_structure_sha256,
             "path_receipt_sha256s": list(self.path_receipt_sha256s),
+            "path_records": list(self.path_records),
         }
         body["receipt_sha256"] = digest(body)
         return body
@@ -549,7 +563,15 @@ def run_pe_case(
     gross_moic = (Decimal(total_proceeds) / Decimal(total_invested)).quantize(
         Decimal("0.0001"), rounding=ROUND_HALF_EVEN
     )
-    gross_xirr = xirr(cash_flows)
+    # A zero-proceeds path has no interior XIRR root. Preserve the conventional
+    # total-loss boundary (-100%) and type it explicitly; never reroll or silently
+    # discard an adverse draw from a return distribution.
+    if total_proceeds == 0:
+        gross_xirr = Decimal("-1")
+        xirr_status = "TOTAL_LOSS_BOUNDARY"
+    else:
+        gross_xirr = xirr(cash_flows)
+        xirr_status = "IDENTIFIED"
     inputs = _engine_inputs(scenario_id, operating, transaction, close_date)
     return PECaseResult(
         scenario_id=scenario_id,
@@ -564,6 +586,7 @@ def run_pe_case(
         earnout_cents=earnout,
         gross_moic=gross_moic,
         gross_xirr=gross_xirr,
+        xirr_status=xirr_status,
         operating_assumptions=operating,
         transaction_assumptions=transaction,
         close_date=close_date,
@@ -631,6 +654,7 @@ def simulate_pe_distribution(
     moics: list[Decimal] = []
     xirrs: list[Decimal] = []
     receipt_hashes: list[str] = []
+    path_records: list[dict[str, object]] = []
     for draw in range(draws):
         common = Decimal(str(rng.gauss(0, 1)))
         idiosyncratic = [Decimal(str(rng.gauss(0, 1))) for _ in range(4)]
@@ -662,7 +686,33 @@ def simulate_pe_distribution(
         )
         moics.append(path.gross_moic)
         xirrs.append(path.gross_xirr)
-        receipt_hashes.append(path.receipt()["receipt_sha256"])
+        path_receipt = path.receipt()
+        result_receipt_sha256 = str(path_receipt["receipt_sha256"])
+        receipt_hashes.append(result_receipt_sha256)
+        debt_receipt = path.debt_schedule.receipt()
+        reconciliation = debt_receipt["reconciliation"]
+        first_breach = path.debt_schedule.first_covenant_breach_month
+        record_body: dict[str, object] = {
+            "path_id": f"DISTRIBUTION_{draw:05d}",
+            "drivers": {
+                "full_cohort_nrr": format(nrr, "f"),
+                "annual_new_arr_rate": format(new_arr, "f"),
+                "gross_margin": format(gross_margin, "f"),
+                "exit_multiple": format(exit_multiple, "f"),
+            },
+            "engine_inputs_sha256": path.engine_inputs_sha256,
+            "result_receipt_sha256": result_receipt_sha256,
+            "gross_moic": format(path.gross_moic, "f"),
+            "gross_xirr": format(path.gross_xirr, "f"),
+            "xirr_status": path.xirr_status,
+            "ending_debt_cents": path.debt_schedule.ending_debt_cents,
+            "minimum_liquidity_cents": path.debt_schedule.minimum_liquidity_cents,
+            "first_covenant_breach_month": first_breach,
+            "payment_default": path.debt_schedule.has_payment_default,
+            "reconciliation": reconciliation,
+        }
+        record_body["receipt_sha256"] = digest(record_body)
+        path_records.append(record_body)
     moic_quantiles = (
         _quantile(moics, Decimal("0.10")),
         _quantile(moics, Decimal("0.50")),
@@ -674,12 +724,20 @@ def simulate_pe_distribution(
         _quantile(xirrs, Decimal("0.90")),
     )
     return PEDistribution(
+        seed=seed,
         draws=draws,
         moic_quantiles=moic_quantiles,
         xirr_quantiles=xirr_quantiles,
         probability_below_one=(Decimal(sum(item < 1 for item in moics)) / Decimal(draws)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN),
+        probability_covenant_breach=(Decimal(sum(record["first_covenant_breach_month"] is not None for record in path_records)) / Decimal(draws)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN),
+        probability_payment_default=(Decimal(sum(bool(record["payment_default"]) for record in path_records)) / Decimal(draws)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN),
+        base_engine_inputs=_engine_inputs(
+            "DISTRIBUTION_BASE", operating, transaction, date(2026, 8, 29)
+        ),
+        correlation_structure=correlation_structure,
         correlation_structure_sha256=digest(correlation_structure),
         path_receipt_sha256s=tuple(receipt_hashes),
+        path_records=tuple(path_records),
     )
 
 

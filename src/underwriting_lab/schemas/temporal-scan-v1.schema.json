@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Underwriting temporal scan receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "cutoff", "fields_scanned", "included_rows", "excluded_rows", "excluded_locators", "max_eligible_instant", "status", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "underwriting.temporal-scan-receipt/v1"},
+    "cutoff": {"type": "string", "format": "date-time"},
+    "fields_scanned": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["artifact_id", "field", "classification"], "properties": {"artifact_id": {"type": "string"}, "field": {"type": "string"}, "classification": {"enum": ["EVIDENCE_MONTH", "EVIDENCE_INSTANT", "PROJECTED_RELATIVE", "RELATIVE_PERIOD", "DURATION"]}}}},
+    "included_rows": {"type": "integer", "minimum": 0},
+    "excluded_rows": {"type": "integer", "minimum": 0},
+    "excluded_locators": {"type": "array", "items": {"type": "string"}},
+    "max_eligible_instant": {"type": "string"},
+    "status": {"enum": ["PASS", "PASS_WITH_DECLARED_EXCLUSIONS", "FAIL"]},
+    "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

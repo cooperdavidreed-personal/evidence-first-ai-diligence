@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Underwriting workbench data v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "cases"],
+  "properties": {
+    "schema_version": {"const": "underwriting.workbench-data/v2"},
+    "cases": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "object"}}
+  }
+}
