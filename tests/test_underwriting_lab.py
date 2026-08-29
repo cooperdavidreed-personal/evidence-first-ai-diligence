@@ -145,6 +145,8 @@ def test_atlasgrid_displayed_returns_bind_to_cash_flow_engine(generated: dict[st
     assert len(bridge["standalone"]) == len(case["valueCreation"]) == 3
     assert all(item["implementation_cost_cents"] >= 0 for item in bridge["standalone"])
     assert all(item["credit_classification"] for item in bridge["standalone"])
+    ag09_lever = next(item for item in bridge["standalone"] if "AG-09" in item["source_analysis_ids"])
+    assert ag09_lever["credit_classification"] == "HUMAN_JUDGMENT"
     assert all("no standalone value" not in item["value"].lower() for item in case["valueCreation"])
 
     mappings = {item["mapping_id"]: dict(item) for item in case["evidenceMappings"]}

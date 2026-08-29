@@ -5,7 +5,7 @@
 **Provisional posture:** `REPRICE`  
 **Workflow state:** `DECISION_RECORD_INCOMPLETE` / `PENDING_FOUNDER_SIGNATURE`  
 **Knowledge cutoff:** `2026-08-29T00:00:00Z`
-**Packet receipt:** `584688ef75b766d2f906ba5597eb4374c169cc5ff790b08719870c96a8794696`
+**Packet receipt:** `d3029cd1425772cdbb82c7fff4969fd4dc3914c424042eac11e3af9ccb4e2551`
 
 ## Recommendation
 
@@ -83,6 +83,17 @@ Mission-critical grid software can support an attractive control investment, but
 - Price realization after renewal test
 - Support automation with identified synthetic effect
 
+### Team judgment — synthetic room only
+
+No person-level management conclusion is identified from this synthetic data room. The observations below describe retained operating evidence and explicit diligence gaps, not reference-checked executive assessment.
+
+| Dimension | Assessment |
+|---|---|
+| Observable operating strengths | Synthetic operating teams retained monthly customer, billing, support, and P&L records sufficient for definition-level diligence. Synthetic support leadership executed a randomized pod rollout with measured operational outcomes. |
+| Unproven capabilities | Management's ability to sustain complete-cohort retention under a redesigned renewal architecture. Finance's ability to close parent-account, credit, customer-success cost, and lender-EBITDA definition gaps. |
+| Key-person risk | OPEN — the synthetic room contains no org chart, succession evidence, references, or person-level performance record; CRO and CFO execution dependency remains unverified. |
+| Required hires / capacity | Value-creation PMO lead with source-to-KPI accountability. Revenue-operations owner for parent-level retention and contract-definition governance. |
+
 ### Falsifiers and open diligence
 
 - Full-cohort NRR below 95%
@@ -124,13 +135,23 @@ Of the standalone value, **$66.2M** is pure human judgment and **$16.3M** is mix
 | Support automation | MIXED_CAUSAL_SYNTHETIC_AND_HUMAN_JUDGMENT | $2M | $1.9M | -$3.8M | $16.3M | 1.32% |
 | Delivery cost reset | HUMAN_JUDGMENT | $2.5M | $1.9M | -$4.4M | $17M | 1.42% |
 
+### Ownership cadence and board control
+
+| Phase | Timing | Accountable owner | Required milestone | Board KPI | Stop rule |
+|---|---|---|---|---|---|
+| Pre-close | Before signing | Deal lead / counsel | Resolve termination rights, parent mapping, QoE support, and lender EBITDA definitions. | Four open diligence conditions adjudicated | Remain HOLD or reprice terms if any condition changes ARR, EBITDA, or debt capacity. |
+| Day 1 | Close + 1 day | CFO / value-creation PMO | Lock the complete-cohort, fully burdened margin, and covenant-EBITDA data dictionary. | One signed metric dictionary with monthly close owner | No board target credit until definitions reconcile to the retained room. |
+| Day 30 | Close + 30 days | CFO | Launch parent-account contribution ledger and delivery-cost baseline. | 100% billed ARR mapped to legal parent and contribution margin | Freeze delivery-cost initiative if ledger coverage is below 95%. |
+| Day 100 | Close + 100 days | CRO / Chief Customer Officer | Deploy segment renewal playbooks and the next support-automation cohort. | Complete-cohort NRR, renewal loss, resolution time, and gross churn | Zero renewal upside credit if churn worsens or support pretrends fail. |
+| Year 1 | Quarterly through month 12 | Board / operating partner | Re-underwrite price, leverage, and the value bridge from realized monthly data. | ARR, burdened margin, cash conversion, leverage, liquidity, and initiative value | Reduce leverage or operating-case credit when downside headroom is not preserved. |
+
 ## Analytical boundary
 
 This packet is generated from a fictional, deterministic data room. Synthetic causal estimates recover planted assignment mechanisms only. Conditional simulations are scenario distributions, not forecasts. The record is unsigned, the diligence conditions remain open, and no investment authority is delegated to the software.
 
 ## Receipt appendix
 
-- Case analysis: `52078e0c01f7d54a18655760e0ce77f4394c19036640206c715a24b73150ab60`
+- Case analysis: `dc12763f8769ae4d0deff83960d21096e4f4f0584e44ba36aa04fe8f4ced63ec`
 - ASK result: `0457b93e7b4d8bf3f3b3de35d91b9f680d2b344698c42231c9d351015df9a9c9`
 - SELECTED result: `7847d33c4b461ff498611398749c8b032176a973f2b4af2fe41531272df760a0`
 - DOWNSIDE result: `34bb0d9450c938ffe12a576a249a21b6621d5dfcd6b56a188143170a7dbb10be`

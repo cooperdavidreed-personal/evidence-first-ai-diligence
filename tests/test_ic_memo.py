@@ -46,12 +46,16 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
         "## Leverage, liquidity, and covenant workpaper",
         "## Sensitivity and distributional downside",
         "### Risk, mitigant, owner, and consequence",
+        "### Team judgment — synthetic room only",
         "## Value creation",
+        "### Ownership cadence and board control",
         "## Receipt appendix",
     ]:
         assert section in markdown
     assert "Probability below 1.0x MOIC" in markdown
     assert "Probability of a modeled covenant breach" in markdown
+    for phase in ("Pre-close", "Day 1", "Day 30", "Day 100", "Year 1"):
+        assert f"| {phase} |" in markdown
     html = artifacts["html"].read_text(encoding="utf-8")
     assert "@page{size:letter" in html
     assert packet_digest in html

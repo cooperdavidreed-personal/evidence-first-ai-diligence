@@ -90,7 +90,7 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
       }
       if (view === "Value Creation") {
         const evidence = caseName === "AtlasGrid Systems"
-          ? page.getByRole("button", {name: /inspect ↗/i}).first()
+          ? page.getByRole("button", {name: /Inspect lineage for Renewal architecture exit_equity_delta_cents/}).first()
           : page.getByRole("button", {name: "Inspect baseline evidence ↗"}).first();
         await evidence.click();
         await expect(page.getByRole("dialog")).toBeVisible();

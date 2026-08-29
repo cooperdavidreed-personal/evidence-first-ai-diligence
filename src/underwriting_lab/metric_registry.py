@@ -252,9 +252,11 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
             "downstream_ids": ["decision"],
         }
         add(metric_id="atlasgrid-value-combined", label="Combined value-creation impact", value=bridge["combined_exit_equity_delta_cents"], display_value=_money(bridge["combined_exit_equity_delta_cents"]), unit="cents", quantum="1", **bridge_common)
+        add(metric_id="atlasgrid-value-interaction", label="Value-creation interaction residual", value=bridge["interaction_residual_cents"], display_value=_money(bridge["interaction_residual_cents"]), unit="cents", quantum="1", **bridge_common)
         for lever in bridge["standalone"]:
             for field in ("exit_ebitda_delta_cents", "exit_debt_delta_cents", "exit_equity_delta_cents", "implementation_cost_cents"):
                 add(metric_id=f"atlasgrid-value-{lever['lever_id']}-{field}", label=f"{lever['label']} {field}", value=lever[field], display_value=_money(lever[field]), unit="cents", quantum="1", **bridge_common)
+            add(metric_id=f"atlasgrid-value-{lever['lever_id']}-gross_xirr_delta", label=f"{lever['label']} gross IRR impact", value=lever["gross_xirr_delta"], display_value=_percent(lever["gross_xirr_delta"]), unit="decimal_rate", quantum="0.0001", **bridge_common)
 
     metric_ids = [item["metric_id"] for item in metrics]
     if len(metric_ids) != len(set(metric_ids)):

@@ -39,6 +39,8 @@ def _packet(case: dict[str, Any]) -> dict[str, Any]:
         "decision": case["decision"],
         "summary_metrics": case["summaryMetrics"],
         "thesis": case["thesis"],
+        "team_assessment": case["teamAssessment"],
+        "ownership_cadence": case["ownershipCadence"],
         "evidence_mappings": case["evidenceMappings"],
         "scenarios": {
             key: {
@@ -197,6 +199,17 @@ def _memo_markdown(packet: dict[str, Any]) -> str:
         "",
         *[f"- {item}" for item in packet["thesis"]["drivers"]],
         "",
+        "### Team judgment — synthetic room only",
+        "",
+        "No person-level management conclusion is identified from this synthetic data room. The observations below describe retained operating evidence and explicit diligence gaps, not reference-checked executive assessment.",
+        "",
+        "| Dimension | Assessment |",
+        "|---|---|",
+        f"| Observable operating strengths | {' '.join(packet['team_assessment']['strengths'])} |",
+        f"| Unproven capabilities | {' '.join(packet['team_assessment']['unproven'])} |",
+        f"| Key-person risk | {packet['team_assessment']['key_person_risk']} |",
+        f"| Required hires / capacity | {' '.join(packet['team_assessment']['required_hires'])} |",
+        "",
         "### Falsifiers and open diligence",
         "",
         *[f"- {item}" for item in packet["thesis"]["falsifiers"]],
@@ -231,6 +244,15 @@ def _memo_markdown(packet: dict[str, Any]) -> str:
         *[
             f"| {item['label']} | {item['credit_classification']} | {_money(item['implementation_cost_cents'])} | {_money(item['exit_ebitda_delta_cents'])} | {_money(item['exit_debt_delta_cents'])} | {_money(item['exit_equity_delta_cents'])} | {_percent(item['gross_xirr_delta'])} |"
             for item in bridge["standalone"]
+        ],
+        "",
+        "### Ownership cadence and board control",
+        "",
+        "| Phase | Timing | Accountable owner | Required milestone | Board KPI | Stop rule |",
+        "|---|---|---|---|---|---|",
+        *[
+            f"| {item['phase']} | {item['timing']} | {item['owner']} | {item['milestone']} | {item['kpi']} | {item['stop_rule']} |"
+            for item in packet["ownership_cadence"]
         ],
         "",
         "## Analytical boundary",

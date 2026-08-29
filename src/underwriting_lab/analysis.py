@@ -903,6 +903,28 @@ def _atlasgrid(
             "falsifiers": ["Full-cohort NRR below 95%", "Top parent above 15%", "Normalized EBITDA below $20M", "Downside covenant breach inside 18 months"],
             "requests": ["Master agreement and termination-right sample", "Customer-parent legal mapping", "QoE support for each add-back", "Lender definition of covenant EBITDA"],
         },
+        "teamAssessment": {
+            "strengths": [
+                "Synthetic operating teams retained monthly customer, billing, support, and P&L records sufficient for definition-level diligence.",
+                "Synthetic support leadership executed a randomized pod rollout with measured operational outcomes.",
+            ],
+            "unproven": [
+                "Management's ability to sustain complete-cohort retention under a redesigned renewal architecture.",
+                "Finance's ability to close parent-account, credit, customer-success cost, and lender-EBITDA definition gaps.",
+            ],
+            "key_person_risk": "OPEN — the synthetic room contains no org chart, succession evidence, references, or person-level performance record; CRO and CFO execution dependency remains unverified.",
+            "required_hires": [
+                "Value-creation PMO lead with source-to-KPI accountability.",
+                "Revenue-operations owner for parent-level retention and contract-definition governance.",
+            ],
+        },
+        "ownershipCadence": [
+            {"phase": "Pre-close", "timing": "Before signing", "owner": "Deal lead / counsel", "milestone": "Resolve termination rights, parent mapping, QoE support, and lender EBITDA definitions.", "kpi": "Four open diligence conditions adjudicated", "stop_rule": "Remain HOLD or reprice terms if any condition changes ARR, EBITDA, or debt capacity."},
+            {"phase": "Day 1", "timing": "Close + 1 day", "owner": "CFO / value-creation PMO", "milestone": "Lock the complete-cohort, fully burdened margin, and covenant-EBITDA data dictionary.", "kpi": "One signed metric dictionary with monthly close owner", "stop_rule": "No board target credit until definitions reconcile to the retained room."},
+            {"phase": "Day 30", "timing": "Close + 30 days", "owner": "CFO", "milestone": "Launch parent-account contribution ledger and delivery-cost baseline.", "kpi": "100% billed ARR mapped to legal parent and contribution margin", "stop_rule": "Freeze delivery-cost initiative if ledger coverage is below 95%."},
+            {"phase": "Day 100", "timing": "Close + 100 days", "owner": "CRO / Chief Customer Officer", "milestone": "Deploy segment renewal playbooks and the next support-automation cohort.", "kpi": "Complete-cohort NRR, renewal loss, resolution time, and gross churn", "stop_rule": "Zero renewal upside credit if churn worsens or support pretrends fail."},
+            {"phase": "Year 1", "timing": "Quarterly through month 12", "owner": "Board / operating partner", "milestone": "Re-underwrite price, leverage, and the value bridge from realized monthly data.", "kpi": "ARR, burdened margin, cash conversion, leverage, liquidity, and initiative value", "stop_rule": "Reduce leverage or operating-case credit when downside headroom is not preserved."},
+        ],
         "falsifierStates": [
             {"label": "Full-cohort NRR below 95%", "status": "CLEAR" if full_nrr >= 0.95 else "TRIGGERED", "observed": f"{quantize(full_nrr * 100)}%", "lineage": ["ag-nrr"]},
             {"label": "Top parent above 15%", "status": "TRIGGERED" if top_parent_concentration > 0.15 else "CLEAR", "observed": f"{quantize(top_parent_concentration * 100)}%", "lineage": ["ag-concentration"]},
@@ -1225,6 +1247,19 @@ def _helios(
             "falsifiers": ["Ordinary-cohort NRR below 100%", "Pipeline conversion below 20%", "Gross margin below 65%", "Runway below 12 months post-close"],
             "requests": ["Full stage-history export", "Design-partner contract sample", "Cloud-cost unit ledger", "Preference and pro-rata side letters"],
         },
+        "teamAssessment": {
+            "strengths": ["Synthetic product and finance teams retain customer-level usage, cost, pipeline-history, and experiment records."],
+            "unproven": ["Repeatable enterprise selling outside design partners.", "Operating discipline across provider-cost shocks and preference-heavy financing."],
+            "key_person_risk": "OPEN — no synthetic org chart, succession record, references, or person-level performance evidence is present.",
+            "required_hires": ["Finance leader for usage-margin and runway control.", "Enterprise revenue-operations owner for stage-history governance."],
+        },
+        "ownershipCadence": [
+            {"phase": "Pre-close", "timing": "Before signing", "owner": "Deal lead", "milestone": "Verify cap table, preferences, side letters, and milestone definitions.", "kpi": "All financing operands reconciled", "stop_rule": "Do not fund with unresolved ownership or waterfall terms."},
+            {"phase": "Day 1", "timing": "Funding date", "owner": "CEO / CFO", "milestone": "Lock usage-margin, runway, and ordinary-cohort definitions.", "kpi": "Signed operating metric dictionary", "stop_rule": "Do not release milestone capital on non-reconciled metrics."},
+            {"phase": "Day 30", "timing": "Close + 30 days", "owner": "CFO", "milestone": "Install weekly runway and provider-cost forecast.", "kpi": "Cash, committed spend, gross margin", "stop_rule": "Escalate if runway falls below financing plan."},
+            {"phase": "Day 100", "timing": "Close + 100 days", "owner": "CRO / CTO", "milestone": "Reconcile pipeline history and optimizer adoption economics.", "kpi": "Ordinary-cohort NRR, conversion, cost savings", "stop_rule": "Hold second tranche if milestones are not independently evidenced."},
+            {"phase": "Year 1", "timing": "Quarterly through month 12", "owner": "Board", "milestone": "Re-underwrite ownership, runway, and exit cases.", "kpi": "Dilution, runway, margin, milestone state", "stop_rule": "Replan financing before the declared runway floor."},
+        ],
         "falsifierStates": [
             {"label": "Ordinary-cohort NRR below 100%", "status": "CLEAR" if ordinary_nrr >= 1 else "TRIGGERED", "observed": f"{quantize(ordinary_nrr * 100)}%", "lineage": ["hx-nrr"]},
             {"label": "Pipeline conversion below 20%", "status": "OPEN", "observed": "Stage-history audit flags inflation; conversion not matured", "lineage": ["hx-pipeline"]},

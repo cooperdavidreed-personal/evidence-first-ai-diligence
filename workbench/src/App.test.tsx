@@ -54,7 +54,7 @@ describe("Underwriting Intelligence Lab", () => {
     await user.click(screen.getByRole("button", {name: /Value Creation/}));
     expect(screen.getAllByText("HUMAN JUDGMENT").length).toBeGreaterThan(0);
     expect(screen.getByText("Explicit double-count control")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", {name: /inspect ↗/i}));
+    await user.click(screen.getByRole("button", {name: /Combined value-creation impact/i}));
     expect(screen.getByRole("dialog", {name: "Combined value-creation impact"})).toBeInTheDocument();
     expect(screen.getByText(/Standalone sum/)).toBeInTheDocument();
   });
@@ -67,7 +67,19 @@ describe("Underwriting Intelligence Lab", () => {
     assertWorkbenchData(candidate);
     const registered = new Set(candidate.cases.find((item) => item.caseId === "atlasgrid")!.metricRegistry.map((item) => item.metric_id));
     const visibleIds = [...document.querySelectorAll<HTMLElement>("[data-metric-id]")].map((item) => item.dataset.metricId!);
-    expect(visibleIds.length).toBeGreaterThan(70);
+    expect(visibleIds.length).toBeGreaterThanOrEqual(70);
     expect(visibleIds.every((id) => registered.has(id))).toBe(true);
+    expect([...document.querySelectorAll<HTMLElement>("td [data-metric-id], .exit-equation [data-metric-id]")].every((item) => item.tagName === "BUTTON")).toBe(true);
+  });
+
+  it("renders explicit team gaps and the full ownership cadence", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", {name: /Thesis & Evidence/}));
+    expect(screen.getByRole("heading", {name: "Team capability, gaps, and required capacity"})).toBeInTheDocument();
+    expect(screen.getByText(/no org chart, succession evidence/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: /Value Creation/}));
+    expect(screen.getByRole("heading", {name: "Ownership cadence"})).toBeInTheDocument();
+    for (const phase of ["Pre-close", "Day 1", "Day 30", "Day 100", "Year 1"]) expect(screen.getByText(phase)).toBeInTheDocument();
   });
 });

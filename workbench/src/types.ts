@@ -312,6 +312,20 @@ export interface CaseData {
     falsifiers: string[];
     requests: string[];
   };
+  teamAssessment: {
+    strengths: string[];
+    unproven: string[];
+    key_person_risk: string;
+    required_hires: string[];
+  };
+  ownershipCadence: Array<{
+    phase: "Pre-close" | "Day 1" | "Day 30" | "Day 100" | "Year 1";
+    timing: string;
+    owner: string;
+    milestone: string;
+    kpi: string;
+    stop_rule: string;
+  }>;
   falsifierStates?: FalsifierState[];
   analyses: Analysis[];
   scenarios: Scenario[];

@@ -30,6 +30,10 @@ function validateCase(candidate: unknown): asserts candidate is CaseData {
   for (const key of ["metricRegistry", "formulaRegistry", "sourceLocators", "lineage", "artifacts", "analyses"] as const) {
     if (!array(candidate[key])) throw new Error(`workbench_case_array_missing:${key}`);
   }
+  if (!record(candidate.teamAssessment) || !array(candidate.teamAssessment.strengths) || !array(candidate.teamAssessment.unproven) || !array(candidate.teamAssessment.required_hires) || typeof candidate.teamAssessment.key_person_risk !== "string") throw new Error("team_assessment_invalid");
+  if (!array(candidate.ownershipCadence) || candidate.ownershipCadence.length !== 5) throw new Error("ownership_cadence_invalid");
+  const cadence = candidate.ownershipCadence as Array<Record<string, unknown>>;
+  if (cadence.map((item) => item.phase).join(",") !== "Pre-close,Day 1,Day 30,Day 100,Year 1" || cadence.some((item) => ["timing", "owner", "milestone", "kpi", "stop_rule"].some((key) => typeof item[key] !== "string" || !item[key]))) throw new Error("ownership_cadence_sequence_invalid");
   if (!record(candidate.renderManifest) || candidate.renderManifest.schema_version !== "underwriting.render-manifest/v2") throw new Error("render_manifest_invalid");
   const metricRegistry = candidate.metricRegistry as TypedMetricRecord[];
   const formulaRegistry = candidate.formulaRegistry as FormulaEntry[];

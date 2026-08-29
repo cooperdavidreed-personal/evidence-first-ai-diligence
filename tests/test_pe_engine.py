@@ -150,6 +150,23 @@ def test_pe_receipt_is_bound_and_evidence_input_changes_propagate() -> None:
     assert changed.gross_xirr != first.gross_xirr
 
 
+def test_total_loss_path_is_retained_as_typed_xirr_boundary() -> None:
+    result = run_pe_case(
+        scenario_id="TOTAL_LOSS",
+        operating=_base_operating(),
+        transaction=replace(
+            _transaction(30_000_000_000, exit_multiple="6.5", earnout=False),
+            funded_term_face_cents=20_000_000_000,
+            exit_multiple=Decimal("1.0"),
+        ),
+    )
+    assert result.exit_equity_value_cents == 0
+    assert result.gross_moic == 0
+    assert result.gross_xirr == Decimal("-1")
+    assert result.xirr_status == "TOTAL_LOSS_BOUNDARY"
+    assert result.receipt()["xirr_status"] == "TOTAL_LOSS_BOUNDARY"
+
+
 def test_earnout_threshold_partial_cap_and_close_relative_dates() -> None:
     base_transaction = _transaction(
         21_000_000_000, exit_multiple="6.5", earnout=False

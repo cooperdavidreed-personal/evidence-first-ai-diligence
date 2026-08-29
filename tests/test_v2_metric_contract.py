@@ -26,6 +26,10 @@ def test_v2_case_has_complete_metric_formula_and_locator_contract(atlasgrid_v2: 
     assert len(atlasgrid_v2["renderManifest"]["formula_sample_metric_ids"]) == 10
     assert len(atlasgrid_v2["metricRegistry"]) > 1_000
     assert atlasgrid_v2["temporalScan"]["excluded_rows"] == 1
+    assert [item["phase"] for item in atlasgrid_v2["ownershipCadence"]] == [
+        "Pre-close", "Day 1", "Day 30", "Day 100", "Year 1"
+    ]
+    assert "OPEN" in atlasgrid_v2["teamAssessment"]["key_person_risk"]
 
 
 def test_formula_tamper_fails_after_rebinding_outer_digests(atlasgrid_v2: dict) -> None:
