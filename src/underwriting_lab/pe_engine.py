@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import date
 from decimal import Decimal, ROUND_HALF_EVEN, localcontext
+import random
+from typing import Sequence
 from .contracts import UnderwritingError, digest
 from .finance import (
     DatedCashFlow,
@@ -30,6 +32,7 @@ class PEOperatingAssumptions:
     capex_as_revenue: Decimal
     working_capital_as_incremental_revenue: Decimal
     cash_tax_rate: Decimal
+    implementation_costs_by_month: tuple[tuple[int, int], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -92,6 +95,86 @@ class PECaseResult:
         return body
 
 
+@dataclass(frozen=True)
+class PEDistribution:
+    draws: int
+    moic_quantiles: tuple[Decimal, Decimal, Decimal]
+    xirr_quantiles: tuple[Decimal, Decimal, Decimal]
+    probability_below_one: Decimal
+    correlation_structure_sha256: str
+    path_receipt_sha256s: tuple[str, ...]
+
+    def receipt(self) -> dict[str, object]:
+        body: dict[str, object] = {
+            "schema_version": "underwriting.pe-distribution/v2",
+            "draws": self.draws,
+            "moic_quantiles": [format(item, "f") for item in self.moic_quantiles],
+            "xirr_quantiles": [format(item, "f") for item in self.xirr_quantiles],
+            "probability_below_one": format(self.probability_below_one, "f"),
+            "correlation_structure_sha256": self.correlation_structure_sha256,
+            "path_receipt_sha256s": list(self.path_receipt_sha256s),
+        }
+        body["receipt_sha256"] = digest(body)
+        return body
+
+
+@dataclass(frozen=True)
+class PEValueLever:
+    lever_id: str
+    label: str
+    nrr_delta: Decimal = Decimal("0")
+    new_arr_rate_delta: Decimal = Decimal("0")
+    gross_margin_delta: Decimal = Decimal("0")
+    opex_growth_delta: Decimal = Decimal("0")
+    implementation_costs_by_month: tuple[tuple[int, int], ...] = ()
+
+
+@dataclass(frozen=True)
+class PEValueLeverResult:
+    lever_id: str
+    label: str
+    exit_ebitda_delta_cents: int
+    exit_debt_delta_cents: int
+    exit_equity_delta_cents: int
+    gross_xirr_delta: Decimal
+    gross_moic_delta: Decimal
+    result_receipt_sha256: str
+
+
+@dataclass(frozen=True)
+class PEValueCreationBridge:
+    base_receipt_sha256: str
+    standalone: tuple[PEValueLeverResult, ...]
+    combined_receipt_sha256: str
+    combined_exit_equity_delta_cents: int
+    sum_standalone_exit_equity_delta_cents: int
+    interaction_residual_cents: int
+    combined_gross_xirr_delta: Decimal
+    combined_gross_moic_delta: Decimal
+
+    def receipt(self) -> dict[str, object]:
+        body: dict[str, object] = {
+            "schema_version": "underwriting.pe-value-creation-bridge/v2",
+            "base_receipt_sha256": self.base_receipt_sha256,
+            "standalone": [
+                {
+                    **asdict(item),
+                    "gross_xirr_delta": format(item.gross_xirr_delta, "f"),
+                    "gross_moic_delta": format(item.gross_moic_delta, "f"),
+                }
+                for item in self.standalone
+            ],
+            "combined_receipt_sha256": self.combined_receipt_sha256,
+            "combined_exit_equity_delta_cents": self.combined_exit_equity_delta_cents,
+            "sum_standalone_exit_equity_delta_cents": self.sum_standalone_exit_equity_delta_cents,
+            "interaction_residual_cents": self.interaction_residual_cents,
+            "combined_gross_xirr_delta": format(self.combined_gross_xirr_delta, "f"),
+            "combined_gross_moic_delta": format(self.combined_gross_moic_delta, "f"),
+        }
+        body["receipt_sha256"] = digest(body)
+        return body
+
+
 def _monthly_factor(annual_rate: Decimal) -> Decimal:
     if annual_rate <= -1:
         raise UnderwritingError("annual_rate_out_of_domain")
@@ -115,6 +198,11 @@ def build_operating_case(
     starting_monthly_ebitda = Decimal(assumptions.starting_normalized_ebitda_cents) / Decimal(12)
     opex = monthly_revenue * assumptions.gross_margin - starting_monthly_ebitda
     previous_revenue = monthly_revenue
+    implementation_costs = dict(assumptions.implementation_costs_by_month)
+    if len(implementation_costs) != len(assumptions.implementation_costs_by_month):
+        raise UnderwritingError("implementation_cost_month_duplicate")
+    if any(month < 1 or month > months or cost < 0 for month, cost in implementation_costs.items()):
+        raise UnderwritingError("implementation_cost_invalid")
     result: list[OperatingMonth] = []
     arr_path: list[int] = []
     revenue_path: list[int] = []
@@ -124,7 +212,7 @@ def build_operating_case(
         revenue = monthly_revenue
         opex *= opex_factor
         gross_profit = revenue * assumptions.gross_margin
-        ebitda = gross_profit - opex
+        ebitda = gross_profit - opex - Decimal(implementation_costs.get(month, 0))
         capex = revenue * assumptions.capex_as_revenue
         incremental_revenue = revenue - previous_revenue
         working_capital = incremental_revenue * assumptions.working_capital_as_incremental_revenue
@@ -298,4 +386,160 @@ def solve_maximum_bid(
         low_cents=low_cents,
         high_cents=high_cents,
         clears_hurdles=clears,
+    )
+
+
+def _quantile(values: list[Decimal], probability: Decimal) -> Decimal:
+    ordered = sorted(values)
+    index = round_cents(Decimal(len(ordered) - 1) * probability)
+    return ordered[index]
+
+
+def simulate_pe_distribution(
+    *,
+    operating: PEOperatingAssumptions,
+    transaction: PETransactionAssumptions,
+    seed: int,
+    draws: int,
+) -> PEDistribution:
+    if draws < 100:
+        raise UnderwritingError("pe_distribution_draws_below_minimum")
+    rng = random.Random(seed)
+    correlation_structure = {
+        "schema_version": "underwriting.pe-correlation-structure/v2",
+        "common_factor": "standard_normal",
+        "drivers": {
+            "full_cohort_nrr": {"common_loading": "0.020", "idiosyncratic_loading": "0.005"},
+            "annual_new_arr_rate": {"common_loading": "0.020", "idiosyncratic_loading": "0.010"},
+            "gross_margin": {"common_loading": "0.010", "idiosyncratic_loading": "0.005"},
+            "exit_multiple": {"common_loading": "0.400", "idiosyncratic_loading": "0.350"},
+        },
+        "bounds": {
+            "full_cohort_nrr": ["0.94", "1.04"],
+            "annual_new_arr_rate": ["0.08", "0.16"],
+            "gross_margin": ["0.70", "0.78"],
+            "exit_multiple": ["5.00", "8.50"],
+        },
+    }
+    moics: list[Decimal] = []
+    xirrs: list[Decimal] = []
+    receipt_hashes: list[str] = []
+    for draw in range(draws):
+        common = Decimal(str(rng.gauss(0, 1)))
+        idiosyncratic = [Decimal(str(rng.gauss(0, 1))) for _ in range(4)]
+        nrr = min(
+            Decimal("1.04"),
+            max(Decimal("0.94"), operating.full_cohort_nrr + common * Decimal("0.020") + idiosyncratic[0] * Decimal("0.005")),
+        )
+        new_arr = min(
+            Decimal("0.16"),
+            max(Decimal("0.08"), operating.annual_new_arr_rate + common * Decimal("0.020") + idiosyncratic[1] * Decimal("0.010")),
+        )
+        gross_margin = min(
+            Decimal("0.78"),
+            max(Decimal("0.70"), operating.gross_margin + common * Decimal("0.010") + idiosyncratic[2] * Decimal("0.005")),
+        )
+        exit_multiple = min(
+            Decimal("8.50"),
+            max(Decimal("5.00"), transaction.exit_multiple + common * Decimal("0.400") + idiosyncratic[3] * Decimal("0.350")),
+        )
+        path = run_pe_case(
+            scenario_id=f"DISTRIBUTION_{draw:05d}",
+            operating=replace(
+                operating,
+                full_cohort_nrr=nrr,
+                annual_new_arr_rate=new_arr,
+                gross_margin=gross_margin,
+            ),
+            transaction=replace(transaction, exit_multiple=exit_multiple),
+        )
+        moics.append(path.gross_moic)
+        xirrs.append(path.gross_xirr)
+        receipt_hashes.append(path.receipt()["receipt_sha256"])
+    moic_quantiles = (
+        _quantile(moics, Decimal("0.10")),
+        _quantile(moics, Decimal("0.50")),
+        _quantile(moics, Decimal("0.90")),
+    )
+    xirr_quantiles = (
+        _quantile(xirrs, Decimal("0.10")),
+        _quantile(xirrs, Decimal("0.50")),
+        _quantile(xirrs, Decimal("0.90")),
+    )
+    return PEDistribution(
+        draws=draws,
+        moic_quantiles=moic_quantiles,
+        xirr_quantiles=xirr_quantiles,
+        probability_below_one=(Decimal(sum(item < 1 for item in moics)) / Decimal(draws)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN),
+        correlation_structure_sha256=digest(correlation_structure),
+        path_receipt_sha256s=tuple(receipt_hashes),
+    )
+
+
+def _apply_levers(
+    operating: PEOperatingAssumptions,
+    levers: Sequence[PEValueLever],
+) -> PEOperatingAssumptions:
+    costs: dict[int, int] = dict(operating.implementation_costs_by_month)
+    for lever in levers:
+        for month, cost in lever.implementation_costs_by_month:
+            costs[month] = costs.get(month, 0) + cost
+    return replace(
+        operating,
+        full_cohort_nrr=operating.full_cohort_nrr + sum((item.nrr_delta for item in levers), Decimal(0)),
+        annual_new_arr_rate=operating.annual_new_arr_rate + sum((item.new_arr_rate_delta for item in levers), Decimal(0)),
+        gross_margin=operating.gross_margin + sum((item.gross_margin_delta for item in levers), Decimal(0)),
+        annual_opex_growth_rate=operating.annual_opex_growth_rate + sum((item.opex_growth_delta for item in levers), Decimal(0)),
+        implementation_costs_by_month=tuple(sorted(costs.items())),
+    )
+
+
+def build_value_creation_bridge(
+    *,
+    operating: PEOperatingAssumptions,
+    transaction: PETransactionAssumptions,
+    levers: Sequence[PEValueLever],
+) -> PEValueCreationBridge:
+    if len(levers) < 3 or len(levers) > 5 or len({item.lever_id for item in levers}) != len(levers):
+        raise UnderwritingError("value_creation_lever_count_or_identity_invalid")
+    base = run_pe_case(scenario_id="VALUE_BASE", operating=operating, transaction=transaction)
+    base_receipt = base.receipt()
+    base_exit_ebitda = sum(item.ebitda_cents for item in base.operating_months[-12:])
+    standalone: list[PEValueLeverResult] = []
+    for lever in levers:
+        result = run_pe_case(
+            scenario_id=f"VALUE_{lever.lever_id}",
+            operating=_apply_levers(operating, [lever]),
+            transaction=transaction,
+        )
+        result_receipt = result.receipt()
+        standalone.append(
+            PEValueLeverResult(
+                lever_id=lever.lever_id,
+                label=lever.label,
+                exit_ebitda_delta_cents=sum(item.ebitda_cents for item in result.operating_months[-12:]) - base_exit_ebitda,
+                exit_debt_delta_cents=result.debt_schedule.ending_debt_cents - base.debt_schedule.ending_debt_cents,
+                exit_equity_delta_cents=result.exit_equity_value_cents - base.exit_equity_value_cents,
+                gross_xirr_delta=result.gross_xirr - base.gross_xirr,
+                gross_moic_delta=result.gross_moic - base.gross_moic,
+                result_receipt_sha256=str(result_receipt["receipt_sha256"]),
+            )
+        )
+    combined = run_pe_case(
+        scenario_id="VALUE_COMBINED",
+        operating=_apply_levers(operating, levers),
+        transaction=transaction,
+    )
+    combined_receipt = combined.receipt()
+    combined_delta = combined.exit_equity_value_cents - base.exit_equity_value_cents
+    standalone_sum = sum(item.exit_equity_delta_cents for item in standalone)
+    return PEValueCreationBridge(
+        base_receipt_sha256=str(base_receipt["receipt_sha256"]),
+        standalone=tuple(standalone),
+        combined_receipt_sha256=str(combined_receipt["receipt_sha256"]),
+        combined_exit_equity_delta_cents=combined_delta,
+        sum_standalone_exit_equity_delta_cents=standalone_sum,
+        interaction_residual_cents=combined_delta - standalone_sum,
+        combined_gross_xirr_delta=combined.gross_xirr - base.gross_xirr,
+        combined_gross_moic_delta=combined.gross_moic - base.gross_moic,
     )

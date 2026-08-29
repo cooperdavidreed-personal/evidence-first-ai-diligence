@@ -237,8 +237,9 @@ def _atlasgrid(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, A
     artifacts.append(_artifact(case_root, "data/pricing_experiment.csv", "atlasgrid.pricing-experiment/v1", rows))
 
     pod_rows: list[dict[str, Any]] = []
+    treated_pods = set(int(item) for item in experiment_rng.permutation(40)[:20])
     for pod in range(40):
-        treated = int(pod < 20)
+        treated = int(pod in treated_pods)
         pod_effect = float(experiment_rng.normal(0, 1.2))
         for month in range(24):
             post = int(month >= 12)
@@ -258,60 +259,37 @@ def _atlasgrid(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, A
     artifacts.append(_artifact(case_root, "data/support_rollout.csv", "atlasgrid.support-rollout/v1", rows))
 
     debt_terms = {
-        "schema_version": "atlasgrid.debt-terms/v1",
+        "schema_version": "atlasgrid.debt-terms/v2",
         "ask_enterprise_value_cents": 24_000_000_000,
-        "repriced_enterprise_value_cents": 21_000_000_000,
-        "entry_debt_cents": 12_000_000_000,
-        "exit_debt_base_cents": 6_000_000_000,
-        "exit_debt_downside_cents": 8_000_000_000,
-        "base_exit_ebitda_cents": 3_500_000_000,
-        "downside_exit_ebitda_cents": 2_800_000_000,
-        "base_exit_multiple": "9.00",
-        "downside_exit_multiple": "7.50",
+        "selected_upfront_enterprise_value_cents": 21_000_000_000,
+        "funded_term_face_cents": 12_000_000_000,
+        "term_oid_rate": "0.02",
+        "transaction_fee_rate": "0.02",
+        "financing_fee_rate": "0.02",
+        "seller_rollover_cents": 0,
+        "minimum_cash_cents": 300_000_000,
+        "revolver_commitment_cents": 2_000_000_000,
+        "annual_cash_rate": "0.09",
+        "annual_pik_rate": "0.00",
+        "annual_mandatory_amortization_rate": "0.01",
+        "sweep_rate": "0.75",
+        "maximum_gross_leverage": "5.25",
+        "base_exit_multiple": "6.50",
+        "downside_exit_multiple": "5.00",
         "gross_irr_hurdle_pct": "22.00",
         "moic_hurdle": "2.00",
-        "hold_years": 5,
-        "monte_carlo": {
-            "draws": 20000,
-            "exit_ebitda_mean_cents": 3_250_000_000,
-            "exit_ebitda_sd_cents": 520_000_000,
-            "exit_ebitda_floor_cents": 1_400_000_000,
-            "exit_multiple_mean": "8.30",
-            "exit_multiple_sd": "1.15",
-            "exit_multiple_floor": "4.50",
-            "exit_multiple_cap": "12.00",
-            "exit_debt_mean_cents": 6_800_000_000,
-            "exit_debt_sd_cents": 1_050_000_000,
-            "exit_debt_floor_cents": 2_000_000_000
-        },
+        "hold_months": 60,
+        "earnout": {
+            "metric": "verified_live_arr_cents_month_24",
+            "threshold_cents": 8_800_000_000,
+            "cap_cents": 2_000_000_000,
+            "full_payout_at_percent_of_threshold": "120.00",
+            "payment_month": 25,
+            "funding": "additional_sponsor_equity"
+        }
     }
     write_json(case_root / "data/debt_terms.json", debt_terms)
-    artifacts.append(_artifact(case_root, "data/debt_terms.json", "atlasgrid.debt-terms/v1", 1))
-    debt_rows: list[dict[str, Any]] = []
-    for scenario, exit_debt, opening_ebitda, growth in (("base", 6_000_000_000, 3_000_000_000, 0.04), ("downside", 8_000_000_000, 2_400_000_000, 0.01)):
-        opening_debt = debt_terms["entry_debt_cents"]
-        annual_paydown = (opening_debt - exit_debt) // 5
-        for year in range(1, 6):
-            ending_debt = opening_debt - annual_paydown
-            ebitda = int(opening_ebitda * (1 + growth) ** (year - 1))
-            leverage = ending_debt / ebitda
-            covenant = 4.25 if year <= 2 else 3.75
-            debt_rows.append(
-                {
-                    "scenario": scenario,
-                    "year": year,
-                    "opening_debt_cents": opening_debt,
-                    "mandatory_paydown_cents": annual_paydown,
-                    "ending_debt_cents": ending_debt,
-                    "covenant_ebitda_cents": ebitda,
-                    "net_leverage": f"{leverage:.6f}",
-                    "maximum_net_leverage": f"{covenant:.2f}",
-                    "covenant_status": "BREACH" if leverage > covenant else "PASS",
-                }
-            )
-            opening_debt = ending_debt
-    rows = _write_csv(case_root / "data/debt_schedule.csv", list(debt_rows[0]), debt_rows)
-    artifacts.append(_artifact(case_root, "data/debt_schedule.csv", "atlasgrid.debt-schedule/v1", rows))
+    artifacts.append(_artifact(case_root, "data/debt_terms.json", "atlasgrid.debt-terms/v2", 1))
     base_label, end_label = _month_label(47), _month_label(59)
     base_entities = {row["entity_id"] for row in month_rows if row["month"] == base_label and int(row["mrr_cents"]) > 0}
     ending_active = {row["entity_id"]: int(row["mrr_cents"]) for row in month_rows if row["month"] == end_label and int(row["mrr_cents"]) > 0}
@@ -502,11 +480,25 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
     artifacts.append(_artifact(case_root, "data/market_assumptions.json", "helios.market-assumptions/v1", 1))
 
     experiment_rows: list[dict[str, Any]] = []
+    baselines = experiment_rng.normal(0, 0.17, 120)
+    noises = experiment_rng.normal(0, 0.08, 120)
+    treated_customers: set[int] | None = None
+    for _ in range(1_000):
+        candidate = set(int(item) for item in experiment_rng.permutation(120)[:60])
+        treated_values = np.array([baselines[idx] for idx in candidate])
+        control_values = np.array([baselines[idx] for idx in range(120) if idx not in candidate])
+        pooled_sd = math.sqrt((treated_values.var(ddof=1) + control_values.var(ddof=1)) / 2)
+        balance_smd = (treated_values.mean() - control_values.mean()) / pooled_sd
+        if abs(balance_smd) <= 0.15:
+            treated_customers = candidate
+            break
+    if treated_customers is None:
+        raise RuntimeError("optimizer_assignment_balance_not_found")
     for idx in range(120):
-        treatment = int(idx < 60)
-        baseline = float(experiment_rng.normal(0, 0.17))
+        treatment = int(idx in treated_customers)
+        baseline = float(baselines[idx])
         effect = -0.11 * treatment
-        outcome = baseline + effect + float(experiment_rng.normal(0, 0.08))
+        outcome = baseline + effect + float(noises[idx])
         experiment_rows.append(
             {
                 "customer_id": f"HX-X{idx + 1:03d}",

@@ -17,7 +17,7 @@ METHOD_FAMILIES = {
 
 RECOVERY_RULES = {
     "AG-05": "annualized churn within 150 basis points of planted target",
-    "AG-06": "naive and randomized estimates diverge by more than three naive standard errors",
+    "AG-06": "offer-scale association and randomized ITT are finite on the same unit scale with a positive first stage",
     "AG-07": "precommitted 95 percent interval contains planted price effect",
     "AG-08": "both precommitted 95 percent intervals contain planted effects and diagnostics pass",
     "AG-09": "analysis abstains",

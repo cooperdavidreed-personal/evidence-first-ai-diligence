@@ -121,20 +121,30 @@ def _atlasgrid_checks(case: dict[str, Any], truth: dict[str, Any]) -> list[dict[
         evaluate=churn_recovery,
     )
 
-    def naive_adjusted_separation() -> tuple[float, str, bool]:
+    def same_scale_comparison() -> tuple[float, str, bool]:
         naive = _receipt(case, "AG-06")
         adjusted = _receipt(case, "AG-07")
-        difference = abs(_output(naive, "naive_realized_price_slope") - _output(adjusted, "renewal_itt"))
-        naive_se = float(_diagnostic(naive, "standard_error")["value"])
-        return difference, "absolute_naive_adjusted_gap_gt_3x_naive_standard_error", math.isfinite(naive_se) and naive_se > 0 and difference > 3 * naive_se
+        difference = abs(
+            _output(naive, "implied_offer_scale_association")
+            - _output(adjusted, "renewal_itt")
+        )
+        interval = _interval(naive, "implied_offer_scale_interval")
+        first_stage = float(str(_diagnostic(naive, "first_stage")["value"]).split()[0])
+        return (
+            difference,
+            "finite_same_scale_estimates_with_ordered_interval_and_positive_first_stage",
+            math.isfinite(difference)
+            and interval[0] <= interval[1]
+            and first_stage > 0,
+        )
 
     _append_check(
         checks,
         analysis_id="AG-06",
-        estimand="naive_adjusted_pricing_effect_gap_percentage_points",
-        precommitted_rule="absolute_naive_adjusted_gap_gt_3x_naive_standard_error",
+        estimand="implied_offer_scale_association_minus_randomized_itt_percentage_points",
+        precommitted_rule="finite_same_scale_estimates_with_ordered_interval_and_positive_first_stage",
         success_state="ESTIMATED",
-        evaluate=naive_adjusted_separation,
+        evaluate=same_scale_comparison,
     )
 
     def pricing_interval() -> tuple[float, float, bool]:

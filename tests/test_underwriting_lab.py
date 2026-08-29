@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 from importlib import resources
 from pathlib import Path
 
@@ -109,6 +110,40 @@ def test_atlasgrid_contract_gates(generated: dict[str, tuple[Path, dict]]) -> No
     assert ag08_diagnostics["pretrend_slope_gap"]["status"] == "PASS"
     assert receipts["AG-09"]["state"] == "ABSTAIN"
     assert receipts["AG-10"]["diagnostics"][0]["status"] == "PASS"
+
+
+def test_atlasgrid_displayed_returns_bind_to_cash_flow_engine(generated: dict[str, tuple[Path, dict]]) -> None:
+    _, case = generated["atlasgrid"]
+    engine = case["peEngine"]
+    receipt = {item["name"]: item["value"] for item in next(
+        item for item in case["analyses"] if item["analysis_id"] == "AG-10"
+    )["outputs"]}
+    for scenario in ("ask", "selected", "downside"):
+        body = dict(engine[scenario])
+        expected = body.pop("receipt_sha256")
+        assert expected == digest(body)
+        assert body["sources_and_uses"]["total_sources_cents"] == body["sources_and_uses"]["total_uses_cents"]
+        assert body["debt_schedule"]["ending_debt_cents"] == (
+            body["debt_schedule"]["months"][-1]["ending_term_cents"]
+            + body["debt_schedule"]["months"][-1]["ending_revolver_cents"]
+        )
+    assert Decimal(receipt["ask_irr"]) == (Decimal(engine["ask"]["gross_xirr"]) * 100).quantize(Decimal("0.01"))
+    assert Decimal(receipt["reprice_irr"]) == (Decimal(engine["selected"]["gross_xirr"]) * 100).quantize(Decimal("0.01"))
+    assert Decimal(receipt["downside_irr"]) == (Decimal(engine["downside"]["gross_xirr"]) * 100).quantize(Decimal("0.01"))
+    assert Decimal(engine["ask"]["gross_xirr"]) < Decimal("0.22")
+    assert Decimal(engine["selected"]["gross_xirr"]) >= Decimal("0.22")
+    assert Decimal(engine["selected"]["gross_moic"]) >= Decimal("2.00")
+    assert Decimal(engine["downside"]["gross_xirr"]) >= Decimal("0.05")
+    assert Decimal(engine["downside"]["gross_moic"]) >= Decimal("1.25")
+    bridge = dict(case["valueCreationBridge"])
+    bridge_digest = bridge.pop("receipt_sha256")
+    assert bridge_digest == digest(bridge)
+    assert bridge["combined_exit_equity_delta_cents"] == (
+        bridge["sum_standalone_exit_equity_delta_cents"]
+        + bridge["interaction_residual_cents"]
+    )
+    assert len(bridge["standalone"]) == len(case["valueCreation"]) == 3
+    assert all("no standalone value" not in item["value"].lower() for item in case["valueCreation"])
 
 
 def test_helios_contract_gates(generated: dict[str, tuple[Path, dict]]) -> None:

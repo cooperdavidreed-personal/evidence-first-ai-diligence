@@ -5,7 +5,10 @@ from underwriting_lab.contracts import digest
 from underwriting_lab.pe_engine import (
     PEOperatingAssumptions,
     PETransactionAssumptions,
+    PEValueLever,
+    build_value_creation_bridge,
     run_pe_case,
+    simulate_pe_distribution,
     solve_maximum_bid,
 )
 
@@ -136,3 +139,59 @@ def test_pe_receipt_is_bound_and_evidence_input_changes_propagate() -> None:
     assert changed.engine_inputs_sha256 != first.engine_inputs_sha256
     assert changed.exit_enterprise_value_cents != first.exit_enterprise_value_cents
     assert changed.gross_xirr != first.gross_xirr
+
+
+def test_distribution_recomputes_complete_paths_with_declared_correlation() -> None:
+    transaction = _transaction(21_000_000_000, exit_multiple="6.5", earnout=True)
+    first = simulate_pe_distribution(
+        operating=_base_operating(), transaction=transaction, seed=41, draws=100
+    )
+    repeat = simulate_pe_distribution(
+        operating=_base_operating(), transaction=transaction, seed=41, draws=100
+    )
+    changed = simulate_pe_distribution(
+        operating=_base_operating(), transaction=transaction, seed=42, draws=100
+    )
+    assert first.receipt() == repeat.receipt()
+    assert first.receipt() != changed.receipt()
+    assert list(first.moic_quantiles) == sorted(first.moic_quantiles)
+    assert list(first.xirr_quantiles) == sorted(first.xirr_quantiles)
+    assert len(first.path_receipt_sha256s) == 100
+    assert len(set(first.path_receipt_sha256s)) == 100
+
+
+def test_value_creation_bridge_reconciles_standalone_and_interaction_value() -> None:
+    bridge = build_value_creation_bridge(
+        operating=_base_operating(),
+        transaction=_transaction(21_000_000_000, exit_multiple="6.5", earnout=True),
+        levers=[
+            PEValueLever(
+                "renewal",
+                "Renewal architecture",
+                nrr_delta=Decimal("0.015"),
+                implementation_costs_by_month=((1, 75_000_000), (2, 75_000_000)),
+            ),
+            PEValueLever(
+                "support",
+                "Support automation",
+                nrr_delta=Decimal("0.005"),
+                gross_margin_delta=Decimal("0.010"),
+                implementation_costs_by_month=((1, 100_000_000), (2, 100_000_000)),
+            ),
+            PEValueLever(
+                "delivery",
+                "Delivery cost reset",
+                gross_margin_delta=Decimal("0.015"),
+                implementation_costs_by_month=((3, 125_000_000), (4, 125_000_000)),
+            ),
+        ],
+    )
+    assert len(bridge.standalone) == 3
+    assert bridge.combined_exit_equity_delta_cents == (
+        bridge.sum_standalone_exit_equity_delta_cents + bridge.interaction_residual_cents
+    )
+    assert bridge.combined_exit_equity_delta_cents > 0
+    assert bridge.combined_gross_xirr_delta > 0
+    receipt = bridge.receipt()
+    expected = receipt.pop("receipt_sha256")
+    assert expected == digest(receipt)

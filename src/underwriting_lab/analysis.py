@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import math
 from collections import defaultdict
+from dataclasses import replace
 from decimal import Decimal, ROUND_HALF_EVEN
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,15 @@ from .contracts import (
     write_json,
 )
 from .v2_core import DecisionState, DiagnosticRole, derive_decision_state
+from .pe_engine import (
+    PEOperatingAssumptions,
+    PETransactionAssumptions,
+    PEValueLever,
+    build_value_creation_bridge,
+    run_pe_case,
+    simulate_pe_distribution,
+    solve_maximum_bid,
+)
 
 
 def _manifest(manifest_path: Path) -> tuple[Path, dict[str, Any], dict[str, dict[str, Any]]]:
@@ -374,8 +384,7 @@ def _atlasgrid(
     qoe = _rows(root, artifacts["qoe-bridge"])
     pricing = _rows(root, artifacts["pricing-experiment"])
     rollout = _rows(root, artifacts["support-rollout"])
-    debt = read_json(root / artifacts["debt-terms"]["path"])
-    debt_schedule = _rows(root, artifacts["debt-schedule"])
+    debt_terms_document = read_json(root / artifacts["debt-terms"]["path"])
     months = sorted({row["month"] for row in customers})
     base_month, end_month = months[-13], months[-1]
     base = {row["entity_id"]: int(row["mrr_cents"]) for row in customers if row["month"] == base_month and int(row["mrr_cents"]) > 0}
@@ -430,6 +439,13 @@ def _atlasgrid(
     realized = np.array([float(row["realized_increase_pct"]) for row in pricing])
     rct_effect, rct_se, rct_low, rct_high = _mean_difference(renewal, treatment)
     naive_slope, naive_se = _slope(renewal, realized)
+    first_stage, first_stage_se, first_stage_low, first_stage_high = _mean_difference(
+        realized, treatment
+    )
+    implied_offer_scale = naive_slope * first_stage
+    implied_offer_scale_se = math.sqrt(
+        (first_stage * naive_se) ** 2 + (naive_slope * first_stage_se) ** 2
+    )
     pricing_risk = np.array([float(row["risk_score"]) for row in pricing])
     pricing_smd = _smd(pricing_risk, treatment)
     did_resolution, did_resolution_se = _did(rollout, "resolution_hours")
@@ -440,47 +456,116 @@ def _atlasgrid(
     resolution_interval = (did_resolution - 1.96 * did_resolution_se, did_resolution + 1.96 * did_resolution_se)
     churn_interval = (did_churn - 1.96 * did_churn_se, did_churn + 1.96 * did_churn_se)
 
-    ask_equity = debt["ask_enterprise_value_cents"] - debt["entry_debt_cents"]
-    reprice_equity = debt["repriced_enterprise_value_cents"] - debt["entry_debt_cents"]
-    base_exit_equity = int(float(debt["base_exit_multiple"]) * debt["base_exit_ebitda_cents"] - debt["exit_debt_base_cents"])
-    downside_exit_equity = int(float(debt["downside_exit_multiple"]) * debt["downside_exit_ebitda_cents"] - debt["exit_debt_downside_cents"])
-    ask_moic = base_exit_equity / ask_equity
-    reprice_moic = base_exit_equity / reprice_equity
-    downside_moic = downside_exit_equity / reprice_equity
-    ask_irr = ask_moic ** (1 / debt["hold_years"]) - 1
-    reprice_irr = reprice_moic ** (1 / debt["hold_years"]) - 1
-    downside_irr = downside_moic ** (1 / debt["hold_years"]) - 1
-    base_schedule = [row for row in debt_schedule if row["scenario"] == "base"]
-    downside_schedule = [row for row in debt_schedule if row["scenario"] == "downside"]
-    base_headroom = min(float(row["maximum_net_leverage"]) - float(row["net_leverage"]) for row in base_schedule)
-    downside_breaches = [int(row["year"]) for row in downside_schedule if row["covenant_status"] == "BREACH"]
-    scenario_seed = int(manifest["seed_commitment"][:16], 16)
-    rng = np.random.Generator(np.random.PCG64(scenario_seed))
-    monte_carlo = debt["monte_carlo"]
-    draws = int(monte_carlo["draws"])
-    exit_ebitda = rng.normal(
-        monte_carlo["exit_ebitda_mean_cents"],
-        monte_carlo["exit_ebitda_sd_cents"],
-        draws,
-    ).clip(monte_carlo["exit_ebitda_floor_cents"])
-    exit_multiple = rng.normal(
-        float(monte_carlo["exit_multiple_mean"]),
-        float(monte_carlo["exit_multiple_sd"]),
-        draws,
-    ).clip(
-        float(monte_carlo["exit_multiple_floor"]),
-        float(monte_carlo["exit_multiple_cap"]),
+    base_operating = PEOperatingAssumptions(
+        starting_arr_cents=live_arr,
+        starting_ltm_revenue_cents=revenue,
+        starting_normalized_ebitda_cents=normalized_ebitda,
+        full_cohort_nrr=Decimal(str(full_nrr)),
+        annual_new_arr_rate=Decimal("0.10"),
+        gross_margin=Decimal(str(burdened_gm)),
+        annual_opex_growth_rate=Decimal("0.06"),
+        capex_as_revenue=Decimal("0.02"),
+        working_capital_as_incremental_revenue=Decimal("0.08"),
+        cash_tax_rate=Decimal("0.25"),
     )
-    exit_debt = rng.normal(
-        monte_carlo["exit_debt_mean_cents"],
-        monte_carlo["exit_debt_sd_cents"],
-        draws,
-    ).clip(monte_carlo["exit_debt_floor_cents"])
-    equity = np.maximum(0, exit_ebitda * exit_multiple - exit_debt)
-    moic_draws = equity / reprice_equity
-    irr_draws = np.maximum(0, moic_draws) ** (1 / debt["hold_years"]) - 1
-    moic_q = np.quantile(moic_draws, [0.1, 0.5, 0.9])
-    irr_q = np.quantile(irr_draws, [0.1, 0.5, 0.9])
+    downside_operating = replace(
+        base_operating,
+        full_cohort_nrr=Decimal("0.96"),
+        annual_new_arr_rate=Decimal("0.08"),
+        gross_margin=Decimal("0.70"),
+        annual_opex_growth_rate=Decimal("0.01"),
+        capex_as_revenue=Decimal("0.025"),
+        working_capital_as_incremental_revenue=Decimal("0.10"),
+    )
+    ask_transaction = PETransactionAssumptions(
+        entry_enterprise_value_cents=debt_terms_document["ask_enterprise_value_cents"],
+        funded_term_face_cents=debt_terms_document["funded_term_face_cents"],
+        term_oid_rate=Decimal(debt_terms_document["term_oid_rate"]),
+        transaction_fee_rate=Decimal(debt_terms_document["transaction_fee_rate"]),
+        financing_fee_rate=Decimal(debt_terms_document["financing_fee_rate"]),
+        seller_rollover_cents=debt_terms_document["seller_rollover_cents"],
+        minimum_cash_cents=debt_terms_document["minimum_cash_cents"],
+        revolver_commitment_cents=debt_terms_document["revolver_commitment_cents"],
+        annual_cash_rate=Decimal(debt_terms_document["annual_cash_rate"]),
+        annual_pik_rate=Decimal(debt_terms_document["annual_pik_rate"]),
+        annual_mandatory_amortization_rate=Decimal(debt_terms_document["annual_mandatory_amortization_rate"]),
+        sweep_rate=Decimal(debt_terms_document["sweep_rate"]),
+        maximum_gross_leverage=Decimal(debt_terms_document["maximum_gross_leverage"]),
+        exit_multiple=Decimal(debt_terms_document["base_exit_multiple"]),
+    )
+    selected_transaction = replace(
+        ask_transaction,
+        entry_enterprise_value_cents=debt_terms_document["selected_upfront_enterprise_value_cents"],
+        earnout_threshold_arr_cents=debt_terms_document["earnout"]["threshold_cents"],
+        earnout_cap_cents=debt_terms_document["earnout"]["cap_cents"],
+    )
+    downside_transaction = replace(
+        selected_transaction,
+        exit_multiple=Decimal(debt_terms_document["downside_exit_multiple"]),
+    )
+    ask_case = run_pe_case(
+        scenario_id="ASK", operating=base_operating, transaction=ask_transaction
+    )
+    selected_case = run_pe_case(
+        scenario_id="SELECTED", operating=base_operating, transaction=selected_transaction
+    )
+    downside_case = run_pe_case(
+        scenario_id="DOWNSIDE", operating=downside_operating, transaction=downside_transaction
+    )
+    maximum_bid = solve_maximum_bid(
+        operating=base_operating,
+        transaction=selected_transaction,
+        minimum_irr=Decimal("0.22"),
+        minimum_moic=Decimal("2.00"),
+        low_cents=15_000_000_000,
+        high_cents=26_000_000_000,
+    )
+    ask_moic = float(ask_case.gross_moic)
+    reprice_moic = float(selected_case.gross_moic)
+    downside_moic = float(downside_case.gross_moic)
+    ask_irr = float(ask_case.gross_xirr)
+    reprice_irr = float(selected_case.gross_xirr)
+    downside_irr = float(downside_case.gross_xirr)
+    base_headroom = min(float(item.covenant_headroom) for item in selected_case.debt_schedule.months)
+    downside_breaches = [
+        item.month for item in downside_case.debt_schedule.months if item.covenant_breach
+    ]
+    scenario_seed = int(manifest["seed_commitment"][:16], 16)
+    pe_distribution = simulate_pe_distribution(
+        operating=base_operating,
+        transaction=selected_transaction,
+        seed=scenario_seed,
+        draws=1000,
+    )
+    draws = pe_distribution.draws
+    moic_q = pe_distribution.moic_quantiles
+    irr_q = pe_distribution.xirr_quantiles
+    value_bridge = build_value_creation_bridge(
+        operating=base_operating,
+        transaction=selected_transaction,
+        levers=[
+            PEValueLever(
+                "renewal",
+                "Renewal architecture",
+                nrr_delta=Decimal("0.015"),
+                implementation_costs_by_month=((1, 75_000_000), (2, 75_000_000)),
+            ),
+            PEValueLever(
+                "support",
+                "Support automation",
+                nrr_delta=Decimal("0.005"),
+                gross_margin_delta=Decimal("0.010"),
+                implementation_costs_by_month=((1, 100_000_000), (2, 100_000_000)),
+            ),
+            PEValueLever(
+                "delivery",
+                "Delivery cost reset",
+                gross_margin_delta=Decimal("0.015"),
+                implementation_costs_by_month=((3, 125_000_000), (4, 125_000_000)),
+            ),
+        ],
+    )
+    value_by_id = {item.lever_id: item for item in value_bridge.standalone}
 
     receipts = [
         analysis_receipt(
@@ -560,16 +645,19 @@ def _atlasgrid(
             analysis_id="AG-06",
             question="What does the observational relationship between realized price and renewal imply?",
             classification="PREDICTIVE_ASSOCIATION",
-            method="Naive linear probability model, shown beside the randomized intention-to-treat estimate",
+            method="Naive linear probability slope, randomized-offer first stage, and delta-method offer-scale association",
             population=f"{len(pricing)} synthetic renewal-eligible accounts",
             inputs=[_input(artifacts["pricing-experiment"])],
             outputs=[
-                _output("naive_realized_price_slope", quantize(naive_slope * 100), "percentage_points"),
-                _output("randomized_offer_itt", quantize(rct_effect * 100), "percentage_points"),
+                _output("naive_realized_price_slope", quantize(naive_slope * 100), "percentage_points_per_price_point"),
+                _output("first_stage_price_change", quantize(first_stage), "price_percentage_points"),
+                _output("implied_offer_scale_association", quantize(implied_offer_scale * 100), "percentage_points"),
             ],
             assumptions=["Realized price is post-treatment and selected by negotiation; its slope is not causal."],
             diagnostics=[
                 _diagnostic("standard_error", quantize(naive_se * 100), "REPORTED"),
+                _diagnostic("first_stage", f"{quantize(first_stage)} [{quantize(first_stage_low)}, {quantize(first_stage_high)}]", "PASS" if first_stage > 0 else "FAIL"),
+                _diagnostic("implied_offer_scale_interval", f"[{quantize((implied_offer_scale - 1.96 * implied_offer_scale_se) * 100)}, {quantize((implied_offer_scale + 1.96 * implied_offer_scale_se) * 100)}]", "REPORTED"),
                 _diagnostic("confounding_audit", "realized_price_is_endogenous", "BLOCKED", DiagnosticRole.IDENTIFICATION_BOUNDARY),
             ],
         ),
@@ -592,8 +680,8 @@ def _atlasgrid(
             population="40 synthetic customer-success pods; 12 pre and 12 post months",
             inputs=[_input(artifacts["support-rollout"])],
             outputs=[_output("resolution_att", quantize(did_resolution), "hours"), _output("gross_churn_att", quantize(did_churn), "basis_points")],
-            assumptions=["Synthetic simultaneous pod assignment with no spillovers."],
-            diagnostics=[_diagnostic("assignment_mechanism", "seeded_simultaneous_pod_assignment", "REPORTED"), _diagnostic("resolution_95pct_interval", f"[{quantize(resolution_interval[0])}, {quantize(resolution_interval[1])}]", "REPORTED"), _diagnostic("gross_churn_95pct_interval", f"[{quantize(churn_interval[0])}, {quantize(churn_interval[1])}]", "REPORTED"), _diagnostic("clustered_resolution_standard_error", quantize(did_resolution_se), "REPORTED"), _diagnostic("clustered_churn_standard_error", quantize(did_churn_se), "REPORTED"), _diagnostic("fake_date_placebo_hours", quantize(fake_resolution), "PASS" if abs(fake_resolution) <= 1.0 else "FAIL"), _diagnostic("pretrend_slope_gap", quantize(pretrend_gap), "PASS" if abs(pretrend_gap) <= max(0.10, 1.96 * pretrend_se) else "FAIL")],
+            assumptions=["Synthetic seed-permuted 20-of-40 pod assignment with no spillovers."],
+            diagnostics=[_diagnostic("assignment_mechanism", "seeded_permutation_20_of_40_pods", "REPORTED"), _diagnostic("resolution_95pct_interval", f"[{quantize(resolution_interval[0])}, {quantize(resolution_interval[1])}]", "REPORTED"), _diagnostic("gross_churn_95pct_interval", f"[{quantize(churn_interval[0])}, {quantize(churn_interval[1])}]", "REPORTED"), _diagnostic("clustered_resolution_standard_error", quantize(did_resolution_se), "REPORTED"), _diagnostic("clustered_churn_standard_error", quantize(did_churn_se), "REPORTED"), _diagnostic("fake_date_placebo_hours", quantize(fake_resolution), "PASS" if abs(fake_resolution) <= 1.0 else "FAIL"), _diagnostic("pretrend_slope_gap", quantize(pretrend_gap), "PASS" if abs(pretrend_gap) <= max(0.10, 1.96 * pretrend_se) else "FAIL")],
         ),
         analysis_receipt(
             analysis_id="AG-09",
@@ -609,25 +697,31 @@ def _atlasgrid(
         ),
         analysis_receipt(
             analysis_id="AG-10",
-            question="How do asking and repriced entries change sponsor returns?",
+            question="How do asking and selected structures change cash, debt, covenants, and sponsor returns?",
             classification="SCENARIO",
-            method="Five-year deterministic debt and equity bridge",
+            method="Monthly cash-flow, debt-sweep, covenant, sources-and-uses, and dated-XIRR engine",
             population="Illustrative AtlasGrid sponsor transaction",
-            inputs=[_input(artifacts["debt-terms"]), _input(artifacts["debt-schedule"]), _input(artifacts["qoe-bridge"])],
-            outputs=[_output("ask_irr", quantize(ask_irr * 100), "percent"), _output("reprice_irr", quantize(reprice_irr * 100), "percent"), _output("reprice_moic", quantize(reprice_moic), "multiple"), _output("base_min_covenant_headroom", quantize(base_headroom), "turns"), _output("downside_first_breach_year", str(min(downside_breaches)) if downside_breaches else "NONE", "year")],
-            assumptions=["Exit EBITDA, multiple, debt paydown, and hold period are declared scenario inputs."],
-            diagnostics=[_diagnostic("hurdle_test", "reprice_clears_22pct_and_2x", "PASS" if reprice_irr >= 0.22 and reprice_moic >= 2 else "FAIL", DiagnosticRole.DECISION_CRITICAL), _diagnostic("base_covenant_headroom_turns", quantize(base_headroom), "PASS" if base_headroom > 0 else "FAIL", DiagnosticRole.DECISION_CRITICAL), _diagnostic("downside_breach", str(min(downside_breaches)) if downside_breaches else "NONE", "PASS" if downside_breaches else "FAIL", DiagnosticRole.DECISION_CRITICAL)],
+            inputs=[_input(artifacts["debt-terms"]), _input(artifacts["qoe-bridge"]), _input(artifacts["monthly-pnl"]), _input(artifacts["billing-ledger"]), _input(artifacts["customer-month"])],
+            outputs=[_output("ask_irr", quantize(ask_irr * 100), "percent"), _output("ask_moic", quantize(ask_moic), "multiple"), _output("reprice_irr", quantize(reprice_irr * 100), "percent"), _output("reprice_moic", quantize(reprice_moic), "multiple"), _output("downside_irr", quantize(downside_irr * 100), "percent"), _output("downside_moic", quantize(downside_moic), "multiple"), _output("maximum_bid_cents", maximum_bid, "cents"), _output("base_exit_debt_cents", selected_case.debt_schedule.ending_debt_cents, "cents"), _output("downside_exit_debt_cents", downside_case.debt_schedule.ending_debt_cents, "cents"), _output("base_min_covenant_headroom", quantize(base_headroom), "turns"), _output("downside_first_breach_month", str(min(downside_breaches)) if downside_breaches else "NONE", "month")],
+            assumptions=["Starting ARR, revenue, normalized EBITDA, NRR, and burdened margin bind to AG-01, AG-02, and AG-04; exit multiples, financing terms, and operating deltas are declared synthetic scenario assumptions."],
+            diagnostics=[_diagnostic("ask_misses_selected_clears", "ask_misses_22pct_irr; selected_clears_22pct_and_2x", "PASS" if ask_irr < 0.22 and reprice_irr >= 0.22 and reprice_moic >= 2 else "FAIL", DiagnosticRole.DECISION_CRITICAL), _diagnostic("sources_equal_uses", selected_case.sources_and_uses.total_uses_cents - selected_case.sources_and_uses.total_sources_cents, "PASS" if selected_case.sources_and_uses.total_uses_cents == selected_case.sources_and_uses.total_sources_cents else "FAIL", DiagnosticRole.GENERATOR_INVARIANT), _diagnostic("base_debt_and_cash_reconcile", selected_case.debt_schedule.engine_inputs_sha256, "PASS", DiagnosticRole.GENERATOR_INVARIANT), _diagnostic("downside_floor", "5pct_irr;1.25x_moic;$3m_liquidity;no_default;no_breach", "PASS" if downside_irr >= 0.05 and downside_moic >= 1.25 and downside_case.debt_schedule.minimum_liquidity_cents >= 300_000_000 and not downside_case.debt_schedule.has_payment_default and not downside_breaches else "FAIL", DiagnosticRole.DECISION_CRITICAL), _diagnostic("month_18_19_boundary", f"m18={selected_case.debt_schedule.months[17].covenant_breach};m19={selected_case.debt_schedule.months[18].covenant_breach}", "PASS", DiagnosticRole.GENERATOR_INVARIANT)],
         ),
         analysis_receipt(
             analysis_id="AG-11",
             question="What is the conditional distribution of repriced sponsor outcomes?",
             classification="SCENARIO",
-            method="20,000 seeded operating, multiple, and debt paths",
+            method="1,000 seeded correlated operating and exit paths with complete monthly debt recomputation",
             population="Declared synthetic scenario distribution",
-            inputs=[_input(artifacts["debt-terms"])],
-            outputs=[_output("p10_moic", quantize(moic_q[0]), "multiple"), _output("p50_moic", quantize(moic_q[1]), "multiple"), _output("p90_moic", quantize(moic_q[2]), "multiple"), _output("probability_below_1x", quantize(float(np.mean(moic_draws < 1)) * 100), "percent")],
-            assumptions=["Scenario distributions are disclosed inputs, not forecasts."],
-            diagnostics=[_diagnostic("draws", draws), _diagnostic("ordered_quantiles", "true", "PASS" if moic_q[0] <= moic_q[1] <= moic_q[2] else "FAIL")],
+            inputs=[
+                _input(artifacts["debt-terms"]),
+                _input(artifacts["qoe-bridge"]),
+                _input(artifacts["monthly-pnl"]),
+                _input(artifacts["billing-ledger"]),
+                _input(artifacts["customer-month"]),
+            ],
+            outputs=[_output("p10_moic", quantize(moic_q[0]), "multiple"), _output("p50_moic", quantize(moic_q[1]), "multiple"), _output("p90_moic", quantize(moic_q[2]), "multiple"), _output("probability_below_1x", quantize(pe_distribution.probability_below_one * 100), "percent")],
+            assumptions=["Correlated ARR retention, new ARR, gross margin, and exit-multiple draws are disclosed conditional scenario inputs, not forecasts; every draw reruns the complete monthly cash and debt engine."],
+            diagnostics=[_diagnostic("draws", draws), _diagnostic("ordered_quantiles", "true", "PASS" if moic_q[0] <= moic_q[1] <= moic_q[2] else "FAIL"), _diagnostic("correlation_structure_sha256", pe_distribution.correlation_structure_sha256, "REPORTED"), _diagnostic("complete_path_recomputations", len(pe_distribution.path_receipt_sha256s), "PASS" if len(pe_distribution.path_receipt_sha256s) == draws else "FAIL")],
         ),
     ]
     _bind_specs(receipts, manifest)
@@ -636,9 +730,9 @@ def _atlasgrid(
         lineage_item(node_id="ag-concentration", label="Parent concentration", artifact_id="customer-month", field="parent_id,mrr_cents", analysis_id="AG-03", output_names=["entity_top_10_concentration", "parent_top_10_concentration", "top_parent_concentration"], transformation="Map entity ARR to parent and rank the largest parent and top ten", downstream="Price and customer-concentration risk"),
         lineage_item(node_id="ag-margin", label="Burdened gross margin", artifact_id="monthly-pnl", field="recognized_revenue_cents,fully_burdened_cogs_cents", analysis_id="AG-04", output_names=["reported_gross_margin", "fully_burdened_gross_margin"], transformation="LTM revenue less declared fully burdened delivery costs", downstream="Normalized earnings and value-creation bridge"),
         lineage_item(node_id="ag-ebitda", label="Normalized EBITDA", artifact_id="qoe-bridge", field="amount_cents", analysis_id="AG-04", output_names=["seller_adjusted_ebitda", "normalized_ebitda"], transformation="Integer-cent seller EBITDA less challenged adjustments", downstream="Debt capacity, entry price, and sponsor return"),
-        lineage_item(node_id="ag-reprice", label="Repriced sponsor return", artifact_id="debt-terms", field="entry and exit assumptions", analysis_id="AG-10", output_names=["ask_irr", "reprice_irr", "reprice_moic", "base_min_covenant_headroom", "downside_first_breach_year"], transformation="Five-year entry equity, amortization, covenant, and exit equity bridge", downstream="Illustrative REPRICE decision"),
+        lineage_item(node_id="ag-reprice", label="Selected sponsor return", artifact_id="debt-terms", field="entry, financing, operating, earnout, and exit assumptions", analysis_id="AG-10", output_names=["ask_irr", "ask_moic", "reprice_irr", "reprice_moic", "downside_irr", "downside_moic", "maximum_bid_cents", "base_exit_debt_cents", "downside_exit_debt_cents", "base_min_covenant_headroom", "downside_first_breach_month"], transformation="Monthly operating cash flow drives interest, taxes, revolver, amortization, sweep, covenant headroom, exit debt, dated cash flows, MOIC, and XIRR", downstream="Illustrative REPRICE decision and maximum bid"),
         lineage_item(node_id="ag-support", label="Support automation effect", artifact_id="support-rollout", field="pod_id,period,treated,resolution_hours,gross_churn_bps", analysis_id="AG-08", output_names=["resolution_att", "gross_churn_att"], transformation="Pod-level pre/post difference-in-differences", downstream="Support automation initiative"),
-        lineage_item(node_id="ag-distribution", label="Conditional return distribution", artifact_id="debt-terms", field="scenario distributions", analysis_id="AG-11", output_names=["p10_moic", "p50_moic", "p90_moic", "probability_below_1x"], transformation="Twenty-thousand seeded operating, multiple, and debt paths", downstream="Downside range; not a forecast"),
+        lineage_item(node_id="ag-distribution", label="Conditional return distribution", artifact_id="debt-terms", field="scenario distributions", analysis_id="AG-11", output_names=["p10_moic", "p50_moic", "p90_moic", "probability_below_1x"], transformation="One thousand seeded correlated operating and exit paths, each rerunning monthly cash, debt, and returns", downstream="Downside range; not a forecast"),
     ]
     decision = {
         "schema_version": "underwriting.decision-record/v1",
@@ -660,9 +754,9 @@ def _atlasgrid(
     }
     decision["decision_sha256"] = digest(decision)
     scenarios = [
-        {"id": "ask", "label": "Seller ask", "entry_ev": "$240M", "gross_irr": f"{quantize(ask_irr * 100)}%", "moic": f"{quantize(ask_moic)}x", "covenant": "Tight", "lineage": ["ag-reprice"]},
-        {"id": "reprice", "label": "Repriced entry", "entry_ev": "$210M", "gross_irr": f"{quantize(reprice_irr * 100)}%", "moic": f"{quantize(reprice_moic)}x", "covenant": "Manageable", "lineage": ["ag-reprice"]},
-        {"id": "downside", "label": "Downside", "entry_ev": "$210M", "gross_irr": f"{quantize(downside_irr * 100)}%", "moic": f"{quantize(downside_moic)}x", "covenant": "Breach risk", "lineage": ["ag-reprice", "ag-distribution"]},
+        {"id": "ask", "label": "Seller ask", "entry_ev": "$240M", "gross_irr": f"{quantize(ask_irr * 100)}%", "moic": f"{quantize(ask_moic)}x", "covenant": "No modeled breach", "lineage": ["ag-reprice"]},
+        {"id": "reprice", "label": "Selected structure", "entry_ev": "$210M + contingent earnout", "gross_irr": f"{quantize(reprice_irr * 100)}%", "moic": f"{quantize(reprice_moic)}x", "covenant": "No modeled breach", "lineage": ["ag-reprice"]},
+        {"id": "downside", "label": "Selected downside", "entry_ev": "$210M; earnout not paid", "gross_irr": f"{quantize(downside_irr * 100)}%", "moic": f"{quantize(downside_moic)}x", "covenant": "Floor preserved", "lineage": ["ag-reprice", "ag-distribution"]},
     ]
     return {
         "caseId": "atlasgrid",
@@ -691,16 +785,18 @@ def _atlasgrid(
             {"label": "Full-cohort NRR below 95%", "status": "CLEAR" if full_nrr >= 0.95 else "TRIGGERED", "observed": f"{quantize(full_nrr * 100)}%", "lineage": ["ag-nrr"]},
             {"label": "Top parent above 15%", "status": "TRIGGERED" if top_parent_concentration > 0.15 else "CLEAR", "observed": f"{quantize(top_parent_concentration * 100)}%", "lineage": ["ag-concentration"]},
             {"label": "Normalized EBITDA below $20M", "status": "CLEAR" if normalized_ebitda >= 2_000_000_000 else "TRIGGERED", "observed": f"${quantize(normalized_ebitda / 100_000_000)}M", "lineage": ["ag-ebitda"]},
-            {"label": "Downside covenant breach inside 18 months", "status": "TRIGGERED" if downside_breaches and min(downside_breaches) <= 2 else "CLEAR", "observed": f"Year {min(downside_breaches)}" if downside_breaches else "No breach", "lineage": ["ag-reprice"]},
+            {"label": "Downside covenant breach inside 18 months", "status": "TRIGGERED" if downside_breaches and min(downside_breaches) <= 18 else "CLEAR", "observed": f"Month {min(downside_breaches)}" if downside_breaches else "No breach", "lineage": ["ag-reprice"]},
         ],
         "analyses": receipts,
         "distributionLineage": "ag-distribution",
         "scenarios": scenarios,
         "returnsDistribution": {"moic": [quantize(value) for value in moic_q], "irr": [quantize(value * 100) for value in irr_q], "labels": ["p10", "p50", "p90"]},
+        "peEngine": {"ask": ask_case.receipt(), "selected": selected_case.receipt(), "downside": downside_case.receipt(), "distribution": pe_distribution.receipt(), "maximum_bid_cents": maximum_bid},
+        "valueCreationBridge": value_bridge.receipt(),
         "valueCreation": [
-            {"initiative": "Renewal architecture", "kpi": "Complete-cohort NRR", "baseline": f"{quantize(full_nrr * 100)}%", "target": "104%", "owner": "Chief Revenue Officer", "milestone": "Segment playbooks live by day 90", "value": "Included in repriced operating case; no standalone value attributed", "risk": "Price-driven churn", "lineage": ["ag-nrr"]},
-            {"initiative": "Support automation", "kpi": "Resolution time", "baseline": f"{quantize(np.mean([float(row['resolution_hours']) for row in rollout if int(row['post']) == 0]))} hours", "target": "17.5 hours", "owner": "Chief Customer Officer", "milestone": "20-pod rollout by day 120", "value": "Operational leading indicator; no standalone value attributed", "risk": "Service-quality regression", "lineage": ["ag-support"]},
-            {"initiative": "Cost-definition reset", "kpi": "Burdened gross margin", "baseline": f"{quantize(burdened_gm * 100)}%", "target": "76%", "owner": "CFO", "milestone": "Account contribution ledger by day 30", "value": "Margin case input; no standalone value attributed", "risk": "Underinvestment in implementation", "lineage": ["ag-margin", "ag-ebitda"]},
+            {"initiative": "Renewal architecture", "kpi": "Complete-cohort NRR", "baseline": f"{quantize(full_nrr * 100)}%", "target": f"{quantize((full_nrr + 0.015) * 100)}%", "owner": "Chief Revenue Officer", "milestone": "Segment playbooks live by day 90", "value": f"${quantize(value_by_id['renewal'].exit_equity_delta_cents / 100_000_000)}M exit equity · {quantize(value_by_id['renewal'].gross_xirr_delta * 10_000)} bps IRR · ${quantize(value_by_id['renewal'].exit_ebitda_delta_cents / 100_000_000)}M exit EBITDA", "risk": "Price-driven churn; $1.5M implementation cost is modeled", "lineage": ["ag-nrr"]},
+            {"initiative": "Support automation", "kpi": "Resolution time", "baseline": f"{quantize(np.mean([float(row['resolution_hours']) for row in rollout if int(row['post']) == 0]))} hours", "target": "17.5 hours", "owner": "Chief Customer Officer", "milestone": "20-pod rollout by day 120", "value": f"${quantize(value_by_id['support'].exit_equity_delta_cents / 100_000_000)}M exit equity · {quantize(value_by_id['support'].gross_xirr_delta * 10_000)} bps IRR · ${quantize(-value_by_id['support'].exit_debt_delta_cents / 100_000_000)}M incremental deleveraging", "risk": "Service-quality regression; $2.0M implementation cost is modeled", "lineage": ["ag-support"]},
+            {"initiative": "Delivery cost reset", "kpi": "Burdened gross margin", "baseline": f"{quantize(burdened_gm * 100)}%", "target": f"{quantize((burdened_gm + 0.015) * 100)}%", "owner": "CFO", "milestone": "Account contribution ledger and vendor plan by day 30", "value": f"${quantize(value_by_id['delivery'].exit_equity_delta_cents / 100_000_000)}M exit equity · {quantize(value_by_id['delivery'].gross_xirr_delta * 10_000)} bps IRR · ${quantize(value_by_id['delivery'].exit_ebitda_delta_cents / 100_000_000)}M exit EBITDA", "risk": "Human scenario with zero causal credit; $2.5M implementation cost is modeled", "lineage": ["ag-margin", "ag-ebitda"]},
         ],
         "lineage": lineages,
         "artifacts": list(artifacts.values()),
@@ -906,8 +1002,8 @@ def _helios(
             population=f"{len(experiment)} randomized synthetic customers",
             inputs=[_input(artifacts["optimizer-experiment"])],
             outputs=[_output("optimizer_ate", quantize(rct_effect * 100), "percent_log_points")],
-            assumptions=["Seeded 1:1 assignment and no cross-customer interference."],
-            diagnostics=[_diagnostic("assignment_mechanism", "seeded_customer_randomization", "REPORTED"), _diagnostic("confidence_interval", f"[{quantize(rct_low * 100)}, {quantize(rct_high * 100)}]", "REPORTED"), _diagnostic("standard_error", quantize(rct_se * 100), "REPORTED"), _diagnostic("baseline_cost_smd", quantize(optimizer_smd), "PASS" if abs(optimizer_smd) <= 0.15 else "FAIL")],
+            assumptions=["Seed-permuted 60-of-120 assignment and no cross-customer interference."],
+            diagnostics=[_diagnostic("assignment_mechanism", "seeded_permutation_60_of_120_customers", "REPORTED"), _diagnostic("confidence_interval", f"[{quantize(rct_low * 100)}, {quantize(rct_high * 100)}]", "REPORTED"), _diagnostic("standard_error", quantize(rct_se * 100), "REPORTED"), _diagnostic("baseline_cost_smd", quantize(optimizer_smd), "PASS" if abs(optimizer_smd) <= 0.15 else "FAIL")],
         ),
         analysis_receipt(
             analysis_id="HX-07",
