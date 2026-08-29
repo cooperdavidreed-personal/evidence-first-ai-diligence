@@ -64,6 +64,32 @@ def test_recovery_evaluator_fails_closed_on_missing_truth_parameter(
     assert optimizer["failure_reason"] == "optimizer_ate_log_cost"
 
 
+def test_recovery_evaluator_fails_closed_on_wrong_effect_sign(
+    verification_cases: dict[str, tuple[dict, dict, Path]],
+) -> None:
+    case, truth, _ = verification_cases["atlasgrid"]
+    tampered = deepcopy(case)
+    receipt = next(item for item in tampered["analyses"] if item["analysis_id"] == "AG-07")
+    next(item for item in receipt["outputs"] if item["name"] == "renewal_itt")["value"] = "5.00"
+    check = next(item for item in evaluate_recovery("atlasgrid", tampered, truth) if item["analysis_id"] == "AG-07")
+    assert check["status"] == "FAILED_RECOVERY"
+
+
+def test_pipeline_weighted_residual_must_match_truth_cents(
+    verification_cases: dict[str, tuple[dict, dict, Path]],
+) -> None:
+    case, truth, _ = verification_cases["helios"]
+    tampered = deepcopy(case)
+    receipt = next(item for item in tampered["analyses"] if item["analysis_id"] == "HX-04")
+    next(item for item in receipt["outputs"] if item["name"] == "weighted_pipeline_inflation_cents")["value"] = "1"
+    check = next(
+        item
+        for item in evaluate_recovery("helios", tampered, truth)
+        if item["analysis_id"] == "HX-04" and item["estimand"] == "weighted_pipeline_inflation_cents"
+    )
+    assert check["status"] == "FAILED_RECOVERY"
+
+
 def test_runtime_analysis_has_no_verification_truth_dependency() -> None:
     source = (Path(__file__).parents[1] / "src" / "underwriting_lab" / "analysis.py").read_text(encoding="utf-8")
     forbidden = {

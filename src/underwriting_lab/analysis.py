@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import math
 from collections import defaultdict
+from decimal import Decimal, ROUND_HALF_EVEN
 from pathlib import Path
 from typing import Any
 
@@ -375,7 +376,9 @@ def _atlasgrid(
     for row in ending_rows:
         parent_values[row["parent_id"]] += int(row["mrr_cents"])
     entity_concentration = sum(entity_values[:10]) / ending_total
-    parent_concentration = sum(sorted(parent_values.values(), reverse=True)[:10]) / ending_total
+    ranked_parent_values = sorted(parent_values.values(), reverse=True)
+    top_parent_concentration = ranked_parent_values[0] / ending_total
+    parent_concentration = sum(ranked_parent_values[:10]) / ending_total
     ltm = pnl[-12:]
     revenue = sum(int(row["recognized_revenue_cents"]) for row in ltm)
     reported_cogs = sum(int(row["reported_cogs_cents"]) for row in ltm)
@@ -384,6 +387,7 @@ def _atlasgrid(
     burdened_gm = 1 - burdened_cogs / revenue
     seller_ebitda = int(qoe[0]["amount_cents"])
     normalized_ebitda = sum(int(row["amount_cents"]) for row in qoe)
+    pnl_normalized_ebitda = sum(int(row["normalized_ebitda_cents"]) for row in ltm)
     ltm_months = set(months[-12:])
     ltm_billing = [row for row in billing if row["month"] in ltm_months]
     net_subscription_billing = sum(int(row["net_invoice_cents"]) for row in ltm_billing)
@@ -496,6 +500,7 @@ def _atlasgrid(
             outputs=[
                 _output("entity_top_10_concentration", quantize(entity_concentration * 100), "percent"),
                 _output("parent_top_10_concentration", quantize(parent_concentration * 100), "percent"),
+                _output("top_parent_concentration", quantize(top_parent_concentration * 100), "percent"),
             ],
             assumptions=["Parent mapping is frozen in the synthetic customer master."],
             diagnostics=[
@@ -521,7 +526,7 @@ def _atlasgrid(
             ],
             assumptions=["Credits and customer-success costs remain classified as operating delivery costs."],
             diagnostics=[
-                _diagnostic("qoe_schedule_to_normalized_ebitda", "exact", "PASS" if sum(int(row["amount_cents"]) for row in qoe) == normalized_ebitda else "FAIL"),
+                _diagnostic("qoe_schedule_to_pnl_normalized_ebitda", normalized_ebitda - pnl_normalized_ebitda, "PASS" if normalized_ebitda == pnl_normalized_ebitda else "FAIL"),
                 _diagnostic("seller_normalization_delta_cents", seller_ebitda - normalized_ebitda, "PASS" if seller_ebitda > normalized_ebitda else "FAIL"),
             ],
         ),
@@ -572,7 +577,7 @@ def _atlasgrid(
             population="40 synthetic customer-success pods; 12 pre and 12 post months",
             inputs=[_input(artifacts["support-rollout"])],
             outputs=[_output("resolution_att", quantize(did_resolution), "hours"), _output("gross_churn_att", quantize(did_churn), "basis_points")],
-            assumptions=["Synthetic staggered assignment with no spillovers."],
+            assumptions=["Synthetic simultaneous pod assignment with no spillovers."],
             diagnostics=[_diagnostic("assignment_mechanism", "seeded_simultaneous_pod_assignment", "REPORTED"), _diagnostic("resolution_95pct_interval", f"[{quantize(resolution_interval[0])}, {quantize(resolution_interval[1])}]", "REPORTED"), _diagnostic("gross_churn_95pct_interval", f"[{quantize(churn_interval[0])}, {quantize(churn_interval[1])}]", "REPORTED"), _diagnostic("clustered_resolution_standard_error", quantize(did_resolution_se), "REPORTED"), _diagnostic("clustered_churn_standard_error", quantize(did_churn_se), "REPORTED"), _diagnostic("fake_date_placebo_hours", quantize(fake_resolution), "PASS" if abs(fake_resolution) <= 1.0 else "FAIL"), _diagnostic("pretrend_slope_gap", quantize(pretrend_gap), "PASS" if abs(pretrend_gap) <= max(0.10, 1.96 * pretrend_se) else "FAIL")],
         ),
         analysis_receipt(
@@ -613,7 +618,7 @@ def _atlasgrid(
     _bind_specs(receipts, manifest)
     lineages = [
         lineage_item(node_id="ag-nrr", label="Full-cohort NRR", artifact_id="customer-month", field="entity_id,month,mrr_cents", analysis_id="AG-02", output_names=["full_cohort_grr", "full_cohort_nrr", "active_only_nrr"], transformation="Frozen base cohort ARR bridge including churned entities", downstream="Retention thesis and renewal initiative"),
-        lineage_item(node_id="ag-concentration", label="Parent concentration", artifact_id="customer-month", field="parent_id,mrr_cents", analysis_id="AG-03", output_names=["entity_top_10_concentration", "parent_top_10_concentration"], transformation="Map entity ARR to parent and rank the top ten", downstream="Price and customer-concentration risk"),
+        lineage_item(node_id="ag-concentration", label="Parent concentration", artifact_id="customer-month", field="parent_id,mrr_cents", analysis_id="AG-03", output_names=["entity_top_10_concentration", "parent_top_10_concentration", "top_parent_concentration"], transformation="Map entity ARR to parent and rank the largest parent and top ten", downstream="Price and customer-concentration risk"),
         lineage_item(node_id="ag-margin", label="Burdened gross margin", artifact_id="monthly-pnl", field="recognized_revenue_cents,fully_burdened_cogs_cents", analysis_id="AG-04", output_names=["reported_gross_margin", "fully_burdened_gross_margin"], transformation="LTM revenue less declared fully burdened delivery costs", downstream="Normalized earnings and value-creation bridge"),
         lineage_item(node_id="ag-ebitda", label="Normalized EBITDA", artifact_id="qoe-bridge", field="amount_cents", analysis_id="AG-04", output_names=["seller_adjusted_ebitda", "normalized_ebitda"], transformation="Integer-cent seller EBITDA less challenged adjustments", downstream="Debt capacity, entry price, and sponsor return"),
         lineage_item(node_id="ag-reprice", label="Repriced sponsor return", artifact_id="debt-terms", field="entry and exit assumptions", analysis_id="AG-10", output_names=["ask_irr", "reprice_irr", "reprice_moic", "base_min_covenant_headroom", "downside_first_breach_year"], transformation="Five-year entry equity, amortization, covenant, and exit equity bridge", downstream="Illustrative REPRICE decision"),
@@ -669,7 +674,7 @@ def _atlasgrid(
         },
         "falsifierStates": [
             {"label": "Full-cohort NRR below 95%", "status": "CLEAR" if full_nrr >= 0.95 else "TRIGGERED", "observed": f"{quantize(full_nrr * 100)}%", "lineage": ["ag-nrr"]},
-            {"label": "Top parent above 15%", "status": "TRIGGERED" if parent_concentration > 0.15 else "CLEAR", "observed": f"{quantize(parent_concentration * 100)}%", "lineage": ["ag-concentration"]},
+            {"label": "Top parent above 15%", "status": "TRIGGERED" if top_parent_concentration > 0.15 else "CLEAR", "observed": f"{quantize(top_parent_concentration * 100)}%", "lineage": ["ag-concentration"]},
             {"label": "Normalized EBITDA below $20M", "status": "CLEAR" if normalized_ebitda >= 2_000_000_000 else "TRIGGERED", "observed": f"${quantize(normalized_ebitda / 100_000_000)}M", "lineage": ["ag-ebitda"]},
             {"label": "Downside covenant breach inside 18 months", "status": "TRIGGERED" if downside_breaches and min(downside_breaches) <= 2 else "CLEAR", "observed": f"Year {min(downside_breaches)}" if downside_breaches else "No breach", "lineage": ["ag-reprice"]},
         ],
@@ -713,6 +718,7 @@ def _helios(
     component_cogs = sum(int(row["compute_cost_cents"]) + int(row["telemetry_cost_cents"]) + int(row["support_cost_cents"]) for row in customers if row["month"] in {item["month"] for item in ltm})
     recent_burn = np.mean([int(row["net_burn_cents"]) for row in pnl[-3:]])
     runway = cap["cash_at_cutoff_cents"] / recent_burn
+    post_close_runway = (cap["cash_at_cutoff_cents"] + cap["new_money_cents"]) / recent_burn
     prior_revenue = sum(int(row["revenue_cents"]) for row in pnl[-24:-12])
     net_new_arr = max(1, revenue - prior_revenue)
     burn_multiple = sum(int(row["net_burn_cents"]) for row in ltm) / net_new_arr
@@ -725,7 +731,7 @@ def _helios(
     monthly_gross_profit_per_customer = (revenue - cogs) / 12 / ending_active
     cac_payback = cac / monthly_gross_profit_per_customer
 
-    stage_probability = {int(key): float(value) for key, value in market_assumptions["stage_probabilities"].items()}
+    stage_probability = {int(key): Decimal(value) for key, value in market_assumptions["stage_probabilities"].items()}
     history_by_opportunity: dict[str, list[dict[str, str]]] = defaultdict(list)
     for row in stage_history:
         history_by_opportunity[row["opportunity_id"]].append(row)
@@ -735,9 +741,9 @@ def _helios(
             latest = max(rows, key=lambda item: int(item["observation_index"]))
             historical_stage[opportunity_id] = int(latest["stage"])
     eligible_pipeline = [row for row in pipeline if row["opportunity_id"] in historical_stage]
-    actual_weighted = sum(int(row["amount_cents"]) * stage_probability[historical_stage[row["opportunity_id"]]] for row in eligible_pipeline)
-    reported_weighted = sum(int(row["amount_cents"]) * stage_probability[int(row["reported_stage"])] for row in eligible_pipeline)
-    pipeline_inflation = reported_weighted - actual_weighted
+    actual_weighted = sum(Decimal(int(row["amount_cents"])) * stage_probability[historical_stage[row["opportunity_id"]]] for row in eligible_pipeline)
+    reported_weighted = sum(Decimal(int(row["amount_cents"])) * stage_probability[int(row["reported_stage"])] for row in eligible_pipeline)
+    pipeline_inflation = (reported_weighted - actual_weighted).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN)
     inflated_count = sum(int(row["reported_stage"]) > historical_stage[row["opportunity_id"]] for row in eligible_pipeline)
     insufficient_history = len(pipeline) - len(eligible_pipeline)
 
@@ -845,6 +851,7 @@ def _helios(
             outputs=[
                 _output("burn_multiple", quantize(burn_multiple), "multiple"),
                 _output("runway", quantize(runway), "months"),
+                _output("post_close_runway", quantize(post_close_runway), "months"),
                 _output("cac", quantize(cac / 100), "usd"),
                 _output("cac_payback", quantize(cac_payback), "months"),
             ],
@@ -861,7 +868,7 @@ def _helios(
             method="Historical stage-probability weighted pipeline recomputation",
             population=f"{len(pipeline)} synthetic opportunities",
             inputs=[_input(artifacts["pipeline"]), _input(artifacts["stage-history"]), _input(artifacts["market-assumptions"])],
-            outputs=[_output("inflated_opportunities", inflated_count, "count"), _output("weighted_pipeline_inflation", quantize(pipeline_inflation / 100_000_000), "million_usd")],
+            outputs=[_output("inflated_opportunities", inflated_count, "count"), _output("weighted_pipeline_inflation", quantize(pipeline_inflation / Decimal(100_000_000)), "million_usd"), _output("weighted_pipeline_inflation_cents", int(pipeline_inflation), "cents")],
             assumptions=["Stage probabilities are fixed and printed with denominators."],
             diagnostics=[_diagnostic("eligible_opportunities", len(eligible_pipeline), "PASS" if eligible_pipeline else "FAIL"), _diagnostic("insufficient_history", insufficient_history, "REPORTED"), _diagnostic("reconciliation_state", "reported_stage_exceeds_observed_history" if inflated_count else "reconciled", "REPORTED")],
         ),
@@ -926,10 +933,10 @@ def _helios(
     lineages = [
         lineage_item(node_id="hx-nrr", label="Go-forward NRR", artifact_id="customer-month", field="customer_id,month,revenue_cents,design_partner", analysis_id="HX-02", output_names=["pooled_nrr", "ordinary_nrr"], transformation="Frozen cohort bridge with design partners separately identified", downstream="Growth durability and financing milestones"),
         lineage_item(node_id="hx-margin", label="Blended gross margin", artifact_id="monthly-pnl", field="revenue_cents,cogs_cents", analysis_id="HX-01", output_names=["ltm_revenue", "ltm_cogs", "gross_margin"], transformation="Integer-cent LTM revenue less compute, telemetry, and support costs", downstream="Runway and margin milestones"),
-        lineage_item(node_id="hx-runway", label="Runway", artifact_id="monthly-pnl", field="net_burn_cents", analysis_id="HX-03", output_names=["burn_multiple", "runway"], transformation="Cash divided by recent average net burn; LTM burn divided by net new ARR", downstream="Tranche timing and financing risk"),
+        lineage_item(node_id="hx-runway", label="Runway", artifact_id="monthly-pnl", field="net_burn_cents", analysis_id="HX-03", output_names=["burn_multiple", "runway", "post_close_runway"], transformation="Pre-close and post-money cash divided by recent average net burn; LTM burn divided by net new ARR", downstream="Tranche timing and financing risk"),
         lineage_item(node_id="hx-tam", label="Modeled TAM survey evidence", artifact_id="market-survey", field="tier,adopted", analysis_id="HX-05", output_names=["modeled_tam"], transformation="Tier-level beta-binomial adoption medians", downstream="Market-size range with data-thin abstention"),
         lineage_item(node_id="hx-tam-assumptions", label="Modeled TAM universe assumptions", artifact_id="market-assumptions", field="universe_counts,tier_mid_spend_cents", analysis_id="HX-05", output_names=["modeled_tam"], transformation="Multiply tier adoption medians by declared universe counts and spend assumptions", downstream="Market-size scenario; not a market fact"),
-        lineage_item(node_id="hx-pipeline", label="Pipeline stage-history audit", artifact_id="stage-history", field="opportunity_id,observation_index,stage", analysis_id="HX-04", output_names=["inflated_opportunities", "weighted_pipeline_inflation"], transformation="Compare reported stage with the latest eligible history, then reweight using declared probabilities", downstream="Milestone financing and forecast governance"),
+        lineage_item(node_id="hx-pipeline", label="Pipeline stage-history audit", artifact_id="stage-history", field="opportunity_id,observation_index,stage", analysis_id="HX-04", output_names=["inflated_opportunities", "weighted_pipeline_inflation", "weighted_pipeline_inflation_cents"], transformation="Compare reported stage with the latest eligible history, then reweight using declared probabilities", downstream="Milestone financing and forecast governance"),
         lineage_item(node_id="hx-ownership", label="Series C ownership", artifact_id="cap-table", field="new_money_cents,pre_money_cents,shares", analysis_id="HX-08", output_names=["new_shares", "series_c_ownership"], transformation="Integer-share post-money capitalization bridge", downstream="Illustrative investment terms"),
         lineage_item(node_id="hx-return", label="Series C return distribution", artifact_id="cap-table", field="new_money_cents,preference,ownership", analysis_id="HX-09", output_names=["p10_moic", "p50_moic", "p90_moic", "probability_below_1x", "probability_at_least_3x"], transformation="Twenty-thousand seeded exit, dilution, and preference paths", downstream="Conditional venture outcome range; not a forecast"),
     ]
@@ -947,7 +954,7 @@ def _helios(
         "metric_pairs": [
             {"metric": "Ordinary-cohort NRR", "threshold": ">=105%", "observed": f"{quantize(ordinary_nrr * 100)}%", "status": "CLEARS" if ordinary_nrr >= 1.05 else "MISSES"},
             {"metric": "Gross margin", "threshold": ">=70%", "observed": f"{quantize(gross_margin * 100)}%", "status": "CLEARS" if gross_margin >= 0.70 else "MISSES"},
-            {"metric": "Runway", "threshold": ">=18 months", "observed": f"{quantize(runway)} months", "status": "CLEARS" if runway >= 18 else "MISSES"},
+            {"metric": "Post-close runway", "threshold": ">=18 months", "observed": f"{quantize(post_close_runway)} months", "status": "CLEARS" if post_close_runway >= 18 else "MISSES"},
         ],
         "verification_sources": ["HX-01", "HX-02", "HX-03", "HX-04", "HX-06", "HX-09"],
         "failure_consequences": ["Do not release the second tranche", "Retain HOLD until milestone evidence and founder adjudication"],
@@ -980,7 +987,7 @@ def _helios(
             {"label": "Ordinary-cohort NRR below 100%", "status": "CLEAR" if ordinary_nrr >= 1 else "TRIGGERED", "observed": f"{quantize(ordinary_nrr * 100)}%", "lineage": ["hx-nrr"]},
             {"label": "Pipeline conversion below 20%", "status": "OPEN", "observed": "Stage-history audit flags inflation; conversion not matured", "lineage": ["hx-pipeline"]},
             {"label": "Gross margin below 65%", "status": "CLEAR" if gross_margin >= 0.65 else "TRIGGERED", "observed": f"{quantize(gross_margin * 100)}%", "lineage": ["hx-margin"]},
-            {"label": "Runway below 12 months post-close", "status": "CLEAR" if runway >= 12 else "TRIGGERED", "observed": f"{quantize(runway)} months pre-close", "lineage": ["hx-runway"]},
+            {"label": "Runway below 12 months post-close", "status": "CLEAR" if post_close_runway >= 12 else "TRIGGERED", "observed": f"{quantize(post_close_runway)} months post-close", "lineage": ["hx-runway"]},
         ],
         "analyses": receipts,
         "distributionLineage": "hx-return",

@@ -227,13 +227,13 @@ def test_committed_recovery_ledger_is_bound_and_passes() -> None:
     expected = body.pop("ledger_sha256")
     assert expected == digest(body)
     assert ledger["summary"] == {
-        "checks": 42,
+        "checks": 45,
         "failed": 0,
-        "passed": 42,
+        "passed": 45,
         "runs": 6,
         "state_counts": {
             "ABSTENTION_CONFIRMED": 9,
-            "ESTIMATED": 9,
+            "ESTIMATED": 12,
             "FAILED_RECOVERY": 0,
             "INTERVAL_CONTAINS_TRUTH": 24,
         },

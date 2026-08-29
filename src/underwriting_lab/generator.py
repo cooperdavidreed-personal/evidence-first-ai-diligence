@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import math
+from decimal import Decimal, ROUND_HALF_EVEN
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -433,9 +434,11 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
     rows = _write_csv(case_root / "data/monthly_pnl.csv", list(monthly[0]), monthly)
     artifacts.append(_artifact(case_root, "data/monthly_pnl.csv", "helios.monthly-pnl/v1", rows))
 
+    stage_probabilities = {"1": "0.08", "2": "0.16", "3": "0.32", "4": "0.52", "5": "0.74", "6": "0.88"}
     pipeline_rows: list[dict[str, Any]] = []
     stage_history_rows: list[dict[str, Any]] = []
     inflated_opportunity_ids: list[str] = []
+    pipeline_weighted_inflation_cents = Decimal(0)
     for idx in range(320):
         actual_stage = int(entity_rng.integers(1, 6))
         inflated = int(idx < 48)
@@ -444,6 +447,10 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
         if inflated:
             inflated_opportunity_ids.append(opportunity_id)
         amount = int(max(250_000, entity_rng.lognormal(math.log(3_500_000), 0.7)))
+        if idx < 312:
+            pipeline_weighted_inflation_cents += Decimal(amount) * (
+                Decimal(stage_probabilities[str(reported_stage)]) - Decimal(stage_probabilities[str(actual_stage)])
+            )
         pipeline_rows.append(
             {
                 "opportunity_id": opportunity_id,
@@ -485,7 +492,7 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
     artifacts.append(_artifact(case_root, "data/market_survey.csv", "helios.market-survey/v1", rows))
     market_assumptions = {
         "schema_version": "helios.market-assumptions/v1",
-        "stage_probabilities": {"1": "0.08", "2": "0.16", "3": "0.32", "4": "0.52", "5": "0.74", "6": "0.88"},
+        "stage_probabilities": stage_probabilities,
         "universe_counts": [5000, 7500, 9500, 11000, 8000],
         "tier_mid_spend_cents": [240000000, 192000000, 144000000, 96000000, 48000000],
         "adoption_prior": "Beta(1,1)",
@@ -552,6 +559,7 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
         "market_adoption_rates": [str(value) for value in adoption_rates],
         "pipeline_inflated_count": 48,
         "pipeline_inflated_opportunity_ids": inflated_opportunity_ids,
+        "pipeline_weighted_inflation_cents": str(pipeline_weighted_inflation_cents.quantize(Decimal("1"), rounding=ROUND_HALF_EVEN)),
         "customer_count": customer_count,
         "distortions": ["design_partner_selection", "pipeline_inflation", "survivor_comparables"],
     }

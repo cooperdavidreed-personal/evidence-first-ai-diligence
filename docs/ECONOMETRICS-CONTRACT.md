@@ -36,8 +36,11 @@ prohibited.
 ## Runtime and verification states
 
 Runtime states are `REPORTED`, `DIAGNOSTIC_BLOCKED`, `ABSTAIN`, and
-`NOT_APPLICABLE`. Verification states are `RECOVERED_WITHIN_TOLERANCE`,
-`TOLERANCE_FAIL`, `ABSTENTION_CONFIRMED`, and `ABSTENTION_MISSED`.
+`NOT_APPLICABLE`. The v2 verification ledger uses `ESTIMATED`,
+`INTERVAL_CONTAINS_TRUTH`, `ABSTENTION_CONFIRMED`, and `FAILED_RECOVERY`.
+`FAILED_RECOVERY` is fail-closed and includes tolerance failures, malformed or
+missing truth/intervals, and missed abstentions. This post-review taxonomy
+clarification changes no frozen estimator or tolerance.
 
 A material tolerance failure, missed abstention, unexplained accounting
 residual, orphan operand, or stale upstream digest maps to `HOLD`. Runtime
@@ -50,7 +53,7 @@ The generator creates approximately 1,600 customer entities mapped to parent
 accounts, contracts, prices, recurring revenue, implementations, usage,
 support, invoices, collections, credit memos, a monthly P&L, QoE bridge,
 management forecast, debt schedule, covenants, a renewal-price experiment, and
-a staggered support-automation rollout.
+a simultaneous pod-level support-automation assignment with pre/post periods.
 
 The reporting layer plants six recoverable distortions:
 

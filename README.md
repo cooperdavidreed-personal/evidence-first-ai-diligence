@@ -57,7 +57,7 @@ The existing `ic-evidence-lab` CLI and evidence-kernel behavior remain intact.
 - Verification truth lives outside the runtime case directory and is not serialized into the React payload.
 - Analysis receipts declare question, population, cutoff, method, outputs, uncertainty or diagnostics, assumptions, classification, and input digests.
 - Scenario books, thesis graphs, decisions, and receipts are independently hash-bound.
-- Six seeded recovery runs test 15 precommitted synthetic recovery checks. This is estimator recovery against planted synthetic truth—not backtested investment performance.
+- Six seeded recovery runs test 15 precommitted checks per seed set: six AtlasGrid checks and nine Helios checks, for 45 total recovery checks. This is estimator recovery against planted synthetic truth—not backtested investment performance.
 - `NOT_IDENTIFIED` analyses abstain rather than convert correlation into causal claims.
 
 See [Underwriting Architecture](docs/UNDERWRITING-ARCHITECTURE.md), [Product Contract](docs/UNDERWRITING-PRODUCT-CONTRACT.md), [Econometrics Contract](docs/ECONOMETRICS-CONTRACT.md), and [Build Provenance](docs/BUILD-PROVENANCE.md).

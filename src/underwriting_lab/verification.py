@@ -142,13 +142,13 @@ def _atlasgrid_checks(case: dict[str, Any], truth: dict[str, Any]) -> list[dict[
         estimate = _output(receipt, "renewal_itt")
         planted_truth = float(truth["price_rct_ate"]) * 100
         low, high = _interval(receipt)
-        return estimate, planted_truth, low <= planted_truth <= high
+        return estimate, planted_truth, estimate * planted_truth > 0 and low <= planted_truth <= high
 
     _append_check(
         checks,
         analysis_id="AG-07",
         estimand="renewal_offer_itt_percentage_points",
-        precommitted_rule="truth_inside_95pct_interval",
+        precommitted_rule="estimate_sign_matches_truth_and_truth_inside_95pct_interval",
         success_state="INTERVAL_CONTAINS_TRUTH",
         evaluate=pricing_interval,
     )
@@ -167,13 +167,13 @@ def _atlasgrid_checks(case: dict[str, Any], truth: dict[str, Any]) -> list[dict[
             estimate = _output(receipt, output_name)
             planted_truth = float(truth[truth_name])
             low, high = _interval(receipt, interval_name)
-            return estimate, planted_truth, low <= planted_truth <= high
+            return estimate, planted_truth, estimate * planted_truth > 0 and low <= planted_truth <= high
 
         _append_check(
             checks,
             analysis_id="AG-08",
             estimand=estimand,
-            precommitted_rule="truth_inside_95pct_interval",
+            precommitted_rule="estimate_sign_matches_truth_and_truth_inside_95pct_interval",
             success_state="INTERVAL_CONTAINS_TRUTH",
             evaluate=support_interval,
         )
@@ -212,6 +212,23 @@ def _helios_checks(case: dict[str, Any], truth: dict[str, Any]) -> list[dict[str
         precommitted_rule="exact_count_equals_verification_truth",
         success_state="ESTIMATED",
         evaluate=pipeline_recovery,
+    )
+
+    def pipeline_residual_recovery() -> tuple[int, int, bool]:
+        raw_estimate = _output(_receipt(case, "HX-04"), "weighted_pipeline_inflation_cents")
+        estimate = int(raw_estimate)
+        if estimate != raw_estimate:
+            raise ValueError("weighted_pipeline_inflation_not_integer_cents")
+        planted_truth = int(truth["pipeline_weighted_inflation_cents"])
+        return estimate, planted_truth, estimate == planted_truth
+
+    _append_check(
+        checks,
+        analysis_id="HX-04",
+        estimand="weighted_pipeline_inflation_cents",
+        precommitted_rule="exact_weighted_residual_equals_verification_truth_cents",
+        success_state="ESTIMATED",
+        evaluate=pipeline_residual_recovery,
     )
 
     for tier in range(1, 5):
@@ -255,13 +272,13 @@ def _helios_checks(case: dict[str, Any], truth: dict[str, Any]) -> list[dict[str
         estimate = _output(receipt, "optimizer_ate")
         planted_truth = float(truth["optimizer_ate_log_cost"]) * 100
         low, high = _interval(receipt)
-        return estimate, planted_truth, low <= planted_truth <= high
+        return estimate, planted_truth, estimate * planted_truth > 0 and low <= planted_truth <= high
 
     _append_check(
         checks,
         analysis_id="HX-06",
         estimand="optimizer_ate_percent_log_points",
-        precommitted_rule="truth_inside_95pct_interval",
+        precommitted_rule="estimate_sign_matches_truth_and_truth_inside_95pct_interval",
         success_state="INTERVAL_CONTAINS_TRUTH",
         evaluate=optimizer_interval,
     )

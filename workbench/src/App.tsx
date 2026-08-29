@@ -186,7 +186,9 @@ function UnderwritingRoom({caseData, openMetric}: {caseData: CaseData; openMetri
     metric_id: `${caseData.caseId}-${item.id}-${field}`,
     label: `${item.label} ${label}`,
     value: item[field],
-    detail: `Receipt-bound ${label.toLowerCase()} for the named ${item.label} scenario.`,
+    detail: field === "covenant"
+      ? `Receipt-linked qualitative constraint label for the named ${item.label} scenario.`
+      : `Receipt-bound ${label.toLowerCase()} for the named ${item.label} scenario.`,
     classification: "SCENARIO",
     lineage: item.lineage?.length ? item.lineage : [caseData.distributionLineage],
   });
@@ -231,7 +233,7 @@ export default function App() {
       <header className="topbar">
         <div className="brand"><span className="brand-mark">UIL</span><div><strong>Underwriting Intelligence Lab</strong><small>Evidence → economics → action</small></div></div>
         <div className="case-switch" aria-label="Select investment case">{data.cases.map((item) => <button key={item.caseId} aria-pressed={item.caseId === caseId} onClick={() => {setCaseId(item.caseId); setView("IC Snapshot");}}><span>{item.caseType}</span>{item.company}</button>)}</div>
-        <div className="local-state"><span className="status-dot" />Local candidate · verification pending</div>
+        <div className="local-state"><span className="status-dot" />Local verified candidate · founder review pending</div>
       </header>
       <div className="case-masthead">
         <div><p className="kicker">{caseData.caseType} · illustrative case</p><h1>{caseData.company}</h1></div>

@@ -15,7 +15,8 @@ No API-key or paid fallback route is authorized. No provider output is case evid
 | Reference-pattern red team | Grok | `HELD_PROVIDER` after retry ceiling | Partial output retained as nonauthoritative advisory evidence; not used as verified research |
 | Investment/econometrics review of `360e129` | Claude | `QUALITY_SHORT` | Truth leakage, stage-history, decision-integrity, falsifier, lineage, and recovery findings became mandatory repair work |
 | Critical/high repair pass | Codex | `LOCALLY VERIFIED` | Exact repaired commit is submitted to Claude only after deterministic acceptance |
-| Independent final acceptance | Claude | `PENDING` | Required before `PORTFOLIO_CANDIDATE_READY_FOR_FOUNDER_REVIEW` |
+| Independent final acceptance of `7e55e45` | Claude | `ACCEPTED_FOR_FOUNDER_REVIEW` | Exact-commit acceptance retained; no public or enterprise claim follows |
+| Successor medium-polish delta review | Claude | `PENDING` | Required because the candidate bytes changed after the accepted commit |
 
 Durable provider stdout, state events, and episode receipts live in the excluded local mission directory, not the proposed public package.
 
