@@ -4,6 +4,11 @@
 /dist/
 /evidence/
 /state/
+/workbench/node_modules/
+/workbench/dist/
+/workbench/test-results/
+/workbench/playwright-report/
+/workbench/*.tsbuildinfo
 __pycache__/
 *.pyc
 *.mp4

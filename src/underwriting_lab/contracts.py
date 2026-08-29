@@ -97,12 +97,74 @@ def analysis_receipt(
 
 
 def lineage_item(
-    *, node_id: str, label: str, artifact_id: str, field: str, analysis_id: str
-) -> dict[str, str]:
+    *,
+    node_id: str,
+    label: str,
+    artifact_id: str,
+    field: str,
+    analysis_id: str,
+    output_names: list[str],
+    transformation: str,
+    downstream: str,
+) -> dict[str, Any]:
     return {
         "node_id": node_id,
         "label": label,
         "artifact_id": artifact_id,
         "field": field,
         "analysis_id": analysis_id,
+        "output_names": output_names,
+        "transformation": transformation,
+        "downstream": downstream,
     }
+
+
+def validate_workbench_case(case: dict[str, Any]) -> None:
+    body = dict(case)
+    expected = body.pop("analysis_sha256", None)
+    if expected != digest(body):
+        raise UnderwritingError("analysis_digest_mismatch")
+    artifacts = {item["artifact_id"]: item for item in case["artifacts"]}
+    analyses = {item["analysis_id"]: item for item in case["analyses"]}
+    if len(artifacts) != len(case["artifacts"]) or len(analyses) != len(case["analyses"]):
+        raise UnderwritingError("workbench_identifier_duplicate")
+    decision = dict(case["decision"])
+    decision_digest = decision.pop("decision_sha256", None)
+    if decision_digest != digest(decision):
+        raise UnderwritingError("decision_digest_mismatch")
+    for receipt in case["analyses"]:
+        receipt_body = dict(receipt)
+        receipt_digest = receipt_body.pop("receipt_sha256", None)
+        if receipt_digest != digest(receipt_body):
+            raise UnderwritingError("analysis_receipt_digest_mismatch")
+    scenario = dict(case["scenarioBook"])
+    scenario_digest = scenario.pop("scenario_sha256", None)
+    if scenario_digest != digest(scenario):
+        raise UnderwritingError("scenario_digest_mismatch")
+    graph = dict(case["thesisGraph"])
+    graph_digest = graph.pop("graph_sha256", None)
+    if graph_digest != digest(graph):
+        raise UnderwritingError("thesis_graph_digest_mismatch")
+    graph_nodes = {node["node_id"] for node in case["thesisGraph"]["nodes"]}
+    if len(graph_nodes) != len(case["thesisGraph"]["nodes"]):
+        raise UnderwritingError("thesis_graph_node_duplicate")
+    if any(edge["from"] not in graph_nodes or edge["to"] not in graph_nodes for edge in case["thesisGraph"]["edges"]):
+        raise UnderwritingError("thesis_graph_edge_orphan")
+    lineage = {item["node_id"]: item for item in case["lineage"]}
+    if len(lineage) != len(case["lineage"]):
+        raise UnderwritingError("lineage_node_duplicate")
+    for item in lineage.values():
+        if item["artifact_id"] not in artifacts or item["analysis_id"] not in analyses:
+            raise UnderwritingError("lineage_reference_orphan")
+        receipt = analyses[item["analysis_id"]]
+        input_ids = {source["artifact_id"] for source in receipt["inputs"]}
+        output_names = {output["name"] for output in receipt["outputs"]}
+        if item["artifact_id"] not in input_ids or not set(item["output_names"]).issubset(output_names):
+            raise UnderwritingError("lineage_operand_unbound")
+        if not item["transformation"] or not item["downstream"]:
+            raise UnderwritingError("lineage_explanation_missing")
+    for metric in case["summaryMetrics"]:
+        if not metric["lineage"] or not set(metric["lineage"]).issubset(lineage):
+            raise UnderwritingError("headline_lineage_invalid")
+    if case["distributionLineage"] not in lineage:
+        raise UnderwritingError("distribution_lineage_invalid")

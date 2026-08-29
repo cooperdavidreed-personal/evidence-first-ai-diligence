@@ -59,6 +59,21 @@ def _diagnostic(name: str, value: float | str, status: str = "PASS") -> dict[str
     return {"name": name, "value": str(value), "status": status}
 
 
+def _bind_specs(receipts: list[dict[str, Any]], manifest: dict[str, Any]) -> None:
+    specs = {item["analysis_id"]: item for item in manifest["analysis_specs"]}
+    for receipt in receipts:
+        spec = specs.get(receipt["analysis_id"])
+        if spec is None:
+            raise UnderwritingError("analysis_spec_missing")
+        spec_body = dict(spec)
+        expected = spec_body.pop("spec_sha256")
+        if expected != digest(spec_body):
+            raise UnderwritingError("analysis_spec_digest_mismatch")
+        receipt.pop("receipt_sha256")
+        receipt["spec_sha256"] = expected
+        receipt["receipt_sha256"] = digest(receipt)
+
+
 def _metric(
     metric_id: str,
     label: str,
@@ -79,6 +94,118 @@ def _metric(
     }
 
 
+def _scenario_book(case_id: str, scenarios: list[dict[str, str]], distribution: dict[str, Any]) -> dict[str, Any]:
+    book: dict[str, Any] = {
+        "schema_version": "underwriting.scenario-book/v1",
+        "case_id": case_id,
+        "scenarios": scenarios,
+        "distribution": distribution,
+    }
+    book["scenario_sha256"] = digest(book)
+    return book
+
+
+def _thesis_graph(result: dict[str, Any]) -> dict[str, Any]:
+    nodes: list[dict[str, Any]] = [
+        {
+            "node_id": "decision",
+            "kind": "DECISION",
+            "label": result["decision"]["decision"],
+            "status": result["decision"]["status"],
+            "references": [result["decision"]["decision_sha256"]],
+        }
+    ]
+    edges: list[dict[str, str]] = []
+    for item in result["lineage"]:
+        nodes.append(
+            {
+                "node_id": f'evidence-{item["node_id"]}',
+                "kind": "EVIDENCE",
+                "label": item["label"],
+                "status": "BOUND",
+                "references": [item["artifact_id"], item["analysis_id"]],
+            }
+        )
+    for metric in result["summaryMetrics"]:
+        metric_node = f'metric-{metric["metric_id"]}'
+        nodes.append(
+            {
+                "node_id": metric_node,
+                "kind": "ESTIMATE",
+                "label": f'{metric["label"]}: {metric["value"]}',
+                "status": metric["classification"],
+                "references": metric["lineage"],
+            }
+        )
+        for lineage_id in metric["lineage"]:
+            edges.append(
+                {
+                    "from": f"evidence-{lineage_id}",
+                    "to": metric_node,
+                    "relationship": "SUPPORTS",
+                }
+            )
+        edges.append({"from": metric_node, "to": "decision", "relationship": "INFORMS"})
+    for index, falsifier in enumerate(result["thesis"]["falsifiers"], start=1):
+        node_id = f"falsifier-{index}"
+        nodes.append(
+            {
+                "node_id": node_id,
+                "kind": "FALSIFIER",
+                "label": falsifier,
+                "status": "OPEN",
+                "references": [],
+            }
+        )
+        edges.append({"from": node_id, "to": "decision", "relationship": "CHALLENGES"})
+    for index, scenario in enumerate(result["scenarios"], start=1):
+        node_id = f"scenario-{index}"
+        nodes.append(
+            {
+                "node_id": node_id,
+                "kind": "SCENARIO",
+                "label": scenario["label"],
+                "status": scenario["covenant"],
+                "references": [scenario["id"]],
+            }
+        )
+        edges.append({"from": node_id, "to": "decision", "relationship": "STRESSES"})
+    for index, initiative in enumerate(result["valueCreation"], start=1):
+        node_id = f"initiative-{index}"
+        nodes.append(
+            {
+                "node_id": node_id,
+                "kind": "INITIATIVE",
+                "label": initiative["initiative"],
+                "status": "PROPOSED",
+                "references": [initiative["kpi"], initiative["owner"]],
+            }
+        )
+        edges.append({"from": "decision", "to": node_id, "relationship": "CONDITIONS"})
+    for index, analysis in enumerate(result["analyses"], start=1):
+        if not analysis["assumptions"]:
+            continue
+        node_id = f"assumption-{index}"
+        nodes.append(
+            {
+                "node_id": node_id,
+                "kind": "ASSUMPTION",
+                "label": analysis["assumptions"][0],
+                "status": "DECLARED",
+                "references": [analysis["analysis_id"]],
+            }
+        )
+        edges.append({"from": node_id, "to": "decision", "relationship": "CONSTRAINS"})
+    graph: dict[str, Any] = {
+        "schema_version": "underwriting.thesis-graph/v1",
+        "case_id": result["caseId"],
+        "nodes": nodes,
+        "edges": edges,
+    }
+    graph["graph_sha256"] = digest(graph)
+    return graph
+
+
 def _mean_difference(
     outcome: np.ndarray, treatment: np.ndarray
 ) -> tuple[float, float, float, float]:
@@ -96,6 +223,79 @@ def _slope(y: np.ndarray, x: np.ndarray) -> tuple[float, float]:
     variance = float((residuals @ residuals) / (len(y) - design.shape[1]))
     covariance = variance * np.linalg.inv(design.T @ design)
     return float(beta_hat[1]), math.sqrt(float(covariance[1, 1]))
+
+
+def _smd(values: np.ndarray, treatment: np.ndarray) -> float:
+    treated = values[treatment == 1]
+    control = values[treatment == 0]
+    pooled = math.sqrt(float((treated.var(ddof=1) + control.var(ddof=1)) / 2))
+    return 0.0 if pooled == 0 else float((treated.mean() - control.mean()) / pooled)
+
+
+def _kaplan_meier(durations: list[int], events: list[bool], horizons: tuple[int, ...]) -> dict[int, float]:
+    survival = 1.0
+    results: dict[int, float] = {}
+    for month in range(1, max(horizons) + 1):
+        at_risk = sum(duration >= month for duration in durations)
+        failures = sum(duration == month and event for duration, event in zip(durations, events, strict=True))
+        if at_risk:
+            survival *= 1 - failures / at_risk
+        if month in horizons:
+            results[month] = survival
+    return results
+
+
+def _venture_waterfall(
+    exits: np.ndarray,
+    dilution: np.ndarray,
+    cap: dict[str, Any],
+    new_shares: int,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    pre_shares = cap["common_shares"] + cap["option_pool_shares"] + cap["series_a_shares"] + cap["series_b_shares"]
+    total_post = pre_shares + new_shares
+    base = {
+        "a": cap["series_a_shares"] / total_post,
+        "b": cap["series_b_shares"] / total_post,
+        "c": new_shares / total_post,
+    }
+    allocations = {name: np.zeros(len(exits)) for name in ("a", "b", "c", "common")}
+    for index, exit_value in enumerate(exits):
+        scale = 1 - float(dilution[index])
+        a_share, b_share, c_share = base["a"] * scale, base["b"] * scale, base["c"] * scale
+        common_share = 1 - a_share - b_share - c_share
+        c_pref = min(float(exit_value), float(cap["new_money_cents"]))
+        remaining = float(exit_value) - c_pref
+        b_pref = min(remaining, float(cap["series_b_preference_cents"]))
+        remaining -= b_pref
+        a_pref = min(remaining, float(cap["series_a_preference_cents"]))
+        remaining -= a_pref
+        pref_alloc = {"c": c_pref, "b": b_pref, "a": a_pref, "common": remaining}
+
+        remaining = float(exit_value)
+        b_convert_pref = min(remaining, float(cap["series_b_preference_cents"]))
+        remaining -= b_convert_pref
+        a_takes_pref = a_share * float(exit_value) < float(cap["series_a_preference_cents"])
+        a_convert_pref = min(remaining, float(cap["series_a_preference_cents"])) if a_takes_pref else 0.0
+        remaining -= a_convert_pref
+        weights = {"a": 0.0 if a_takes_pref else a_share, "b": b_share, "c": c_share, "common": common_share}
+        weight_total = sum(weights.values())
+        convert_alloc = {
+            name: (a_convert_pref if name == "a" else b_convert_pref if name == "b" else 0.0)
+            + (remaining * weight / weight_total if weight_total else 0.0)
+            for name, weight in weights.items()
+        }
+        b_cap = float(cap["series_b_preference_cents"]) * float(cap["series_b_participating_cap"])
+        excess = max(0.0, convert_alloc["b"] - b_cap)
+        if excess:
+            convert_alloc["b"] = b_cap
+            non_b_weight = weight_total - weights["b"]
+            for name in ("a", "c", "common"):
+                if non_b_weight:
+                    convert_alloc[name] += excess * weights[name] / non_b_weight
+        chosen = convert_alloc if convert_alloc["c"] > pref_alloc["c"] else pref_alloc
+        for name in allocations:
+            allocations[name][index] = chosen[name]
+    return allocations["a"], allocations["b"], allocations["c"], allocations["common"]
 
 
 def _did(rows: list[dict[str, str]], field: str) -> tuple[float, float]:
@@ -118,17 +318,21 @@ def _atlasgrid(
 ) -> dict[str, Any]:
     customers = _rows(root, artifacts["customer-month"])
     masters = _rows(root, artifacts["customer-master"])
+    billing = _rows(root, artifacts["billing-ledger"])
     pnl = _rows(root, artifacts["monthly-pnl"])
+    forecast = _rows(root, artifacts["forecast"])
     qoe = _rows(root, artifacts["qoe-bridge"])
     pricing = _rows(root, artifacts["pricing-experiment"])
     rollout = _rows(root, artifacts["support-rollout"])
     debt = read_json(root / artifacts["debt-terms"]["path"])
+    debt_schedule = _rows(root, artifacts["debt-schedule"])
     months = sorted({row["month"] for row in customers})
     base_month, end_month = months[-13], months[-1]
     base = {row["entity_id"]: int(row["mrr_cents"]) for row in customers if row["month"] == base_month and int(row["mrr_cents"]) > 0}
     ending_rows = [row for row in customers if row["month"] == end_month]
     ending = {row["entity_id"]: int(row["mrr_cents"]) for row in ending_rows}
     full_nrr = sum(ending.get(key, 0) for key in base) / sum(base.values())
+    full_grr = sum(min(ending.get(key, 0), value) for key, value in base.items()) / sum(base.values())
     survivors = [key for key in base if ending.get(key, 0) > 0]
     active_nrr = sum(ending[key] for key in survivors) / sum(base[key] for key in survivors)
     ending_total = sum(int(row["mrr_cents"]) for row in ending_rows)
@@ -146,17 +350,39 @@ def _atlasgrid(
     burdened_gm = 1 - burdened_cogs / revenue
     seller_ebitda = int(qoe[0]["amount_cents"])
     normalized_ebitda = sum(int(row["amount_cents"]) for row in qoe)
-    churn_events = len({row["entity_id"] for row in customers if int(row["active"]) == 0})
+    ltm_months = set(months[-12:])
+    ltm_billing = [row for row in billing if row["month"] in ltm_months]
+    net_subscription_billing = sum(int(row["net_invoice_cents"]) for row in ltm_billing)
+    pnl_net_subscription = sum(int(row["subscription_revenue_cents"]) - int(row["credits_cents"]) for row in ltm)
+    ending_billing = [row for row in billing if row["month"] == end_month]
+    live_arr = sum(int(row["live_arr_cents"]) for row in ending_billing)
+    booked_arr = sum(int(row["booked_arr_cents"]) for row in ending_billing)
+    implementation_dependent_arr = sum(int(row["booked_arr_cents"]) - int(row["live_arr_cents"]) for row in ending_billing)
+    management_forecast = next(row for row in forecast if row["scenario"] == "management" and row["year"] == "5")
+    base_forecast = next(row for row in forecast if row["scenario"] == "base" and row["year"] == "5")
+    by_entity: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for row in customers:
+        by_entity[row["entity_id"]].append(row)
+    durations = [sum(int(row["active"]) for row in rows) for rows in by_entity.values()]
+    events = [any(int(row["active"]) == 0 for row in rows) for rows in by_entity.values()]
+    churn_events = sum(events)
+    active_exposure = sum(durations)
+    monthly_hazard = churn_events / active_exposure
+    annualized_churn = 1 - (1 - monthly_hazard) ** 12
+    survival = _kaplan_meier(durations, events, (12, 36, 60))
     at_risk = len(masters)
-    annualized_churn = churn_events / at_risk / 5
 
     treatment = np.array([int(row["treatment"]) for row in pricing])
     renewal = np.array([int(row["renewed"]) for row in pricing], dtype=float)
     realized = np.array([float(row["realized_increase_pct"]) for row in pricing])
     rct_effect, rct_se, rct_low, rct_high = _mean_difference(renewal, treatment)
     naive_slope, naive_se = _slope(renewal, realized)
+    pricing_risk = np.array([float(row["risk_score"]) for row in pricing])
+    pricing_smd = _smd(pricing_risk, treatment)
     did_resolution, did_resolution_se = _did(rollout, "resolution_hours")
     did_churn, did_churn_se = _did(rollout, "gross_churn_bps")
+    fake_rollout = [dict(row, post="1" if int(row["period"]) >= -6 else "0") for row in rollout if int(row["period"]) < 0]
+    fake_resolution, _ = _did(fake_rollout, "resolution_hours")
 
     ask_equity = debt["ask_enterprise_value_cents"] - debt["entry_debt_cents"]
     reprice_equity = debt["repriced_enterprise_value_cents"] - debt["entry_debt_cents"]
@@ -168,12 +394,32 @@ def _atlasgrid(
     ask_irr = ask_moic ** (1 / debt["hold_years"]) - 1
     reprice_irr = reprice_moic ** (1 / debt["hold_years"]) - 1
     downside_irr = downside_moic ** (1 / debt["hold_years"]) - 1
+    base_schedule = [row for row in debt_schedule if row["scenario"] == "base"]
+    downside_schedule = [row for row in debt_schedule if row["scenario"] == "downside"]
+    base_headroom = min(float(row["maximum_net_leverage"]) - float(row["net_leverage"]) for row in base_schedule)
+    downside_breaches = [int(row["year"]) for row in downside_schedule if row["covenant_status"] == "BREACH"]
     scenario_seed = int(manifest["seed_commitment"][:16], 16)
     rng = np.random.Generator(np.random.PCG64(scenario_seed))
-    draws = 20_000
-    exit_ebitda = rng.normal(3_250_000_000, 520_000_000, draws).clip(1_400_000_000)
-    exit_multiple = rng.normal(8.3, 1.15, draws).clip(4.5, 12.0)
-    exit_debt = rng.normal(6_800_000_000, 1_050_000_000, draws).clip(2_000_000_000)
+    monte_carlo = debt["monte_carlo"]
+    draws = int(monte_carlo["draws"])
+    exit_ebitda = rng.normal(
+        monte_carlo["exit_ebitda_mean_cents"],
+        monte_carlo["exit_ebitda_sd_cents"],
+        draws,
+    ).clip(monte_carlo["exit_ebitda_floor_cents"])
+    exit_multiple = rng.normal(
+        float(monte_carlo["exit_multiple_mean"]),
+        float(monte_carlo["exit_multiple_sd"]),
+        draws,
+    ).clip(
+        float(monte_carlo["exit_multiple_floor"]),
+        float(monte_carlo["exit_multiple_cap"]),
+    )
+    exit_debt = rng.normal(
+        monte_carlo["exit_debt_mean_cents"],
+        monte_carlo["exit_debt_sd_cents"],
+        draws,
+    ).clip(monte_carlo["exit_debt_floor_cents"])
     equity = np.maximum(0, exit_ebitda * exit_multiple - exit_debt)
     moic_draws = equity / reprice_equity
     irr_draws = np.maximum(0, moic_draws) ** (1 / 5) - 1
@@ -182,26 +428,93 @@ def _atlasgrid(
 
     receipts = [
         analysis_receipt(
+            analysis_id="AG-01",
+            question="Do billing, live ARR, booked ARR, and recognized revenue reconcile?",
+            classification="ACCOUNTING_IDENTITY",
+            method="Integer-cent invoice, credit, ARR-definition, and P&L bridge",
+            population="Synthetic AtlasGrid LTM billing ledger and five-year forecast",
+            inputs=[_input(artifacts["billing-ledger"]), _input(artifacts["monthly-pnl"]), _input(artifacts["forecast"])],
+            outputs=[_output("live_arr", live_arr, "cents"), _output("booked_arr", booked_arr, "cents"), _output("implementation_dependent_arr", implementation_dependent_arr, "cents"), _output("management_year_5_revenue", management_forecast["revenue_cents"], "cents"), _output("base_year_5_revenue", base_forecast["revenue_cents"], "cents")],
+            assumptions=["Booked ARR may include implementation-dependent amounts; live ARR requires current billing."],
+            diagnostics=[_diagnostic("billing_to_pnl_subscription", "exact", "PASS" if net_subscription_billing == pnl_net_subscription else "FAIL"), _diagnostic("booked_arr_definition_gap_cents", booked_arr - live_arr, "PASS" if booked_arr > live_arr else "FAIL")],
+        ),
+        analysis_receipt(
             analysis_id="AG-02",
             question="How much does active-only reporting overstate LTM net retention?",
             classification="DESCRIPTIVE",
             method="Fixed-cohort ARR bridge including churned entities",
             population=f"{len(base)} entities active at {base_month}",
             inputs=[_input(artifacts["customer-month"])],
-            outputs=[_output("full_cohort_nrr", quantize(full_nrr * 100), "percent"), _output("active_only_nrr", quantize(active_nrr * 100), "percent")],
+            outputs=[_output("full_cohort_grr", quantize(full_grr * 100), "percent"), _output("full_cohort_nrr", quantize(full_nrr * 100), "percent"), _output("active_only_nrr", quantize(active_nrr * 100), "percent")],
             assumptions=["Cohort membership is frozen at the base month."],
             diagnostics=[_diagnostic("selection_bias_bps", quantize((active_nrr - full_nrr) * 10_000), "PASS" if active_nrr - full_nrr >= 0.05 else "FAIL")],
+        ),
+        analysis_receipt(
+            analysis_id="AG-03",
+            question="How much does subsidiary-level reporting understate concentration?",
+            classification="DESCRIPTIVE",
+            method="Top-10 revenue concentration under entity and mapped-parent definitions",
+            population=f"{len(ending_rows)} synthetic entities active at {end_month}",
+            inputs=[_input(artifacts["customer-month"]), _input(artifacts["customer-master"])],
+            outputs=[
+                _output("entity_top_10_concentration", quantize(entity_concentration * 100), "percent"),
+                _output("parent_top_10_concentration", quantize(parent_concentration * 100), "percent"),
+            ],
+            assumptions=["Parent mapping is frozen in the synthetic customer master."],
+            diagnostics=[
+                _diagnostic(
+                    "definition_gap_bps",
+                    quantize((parent_concentration - entity_concentration) * 10_000),
+                    "PASS" if parent_concentration - entity_concentration >= 0.15 else "FAIL",
+                )
+            ],
+        ),
+        analysis_receipt(
+            analysis_id="AG-04",
+            question="How do fully burdened costs and challenged add-backs change earnings quality?",
+            classification="ACCOUNTING_IDENTITY",
+            method="LTM revenue-to-margin reconciliation and seller-to-normalized EBITDA bridge",
+            population="Synthetic AtlasGrid LTM P&L and QoE schedule",
+            inputs=[_input(artifacts["monthly-pnl"]), _input(artifacts["qoe-bridge"])],
+            outputs=[
+                _output("reported_gross_margin", quantize(reported_gm * 100), "percent"),
+                _output("fully_burdened_gross_margin", quantize(burdened_gm * 100), "percent"),
+                _output("seller_adjusted_ebitda", seller_ebitda, "cents"),
+                _output("normalized_ebitda", normalized_ebitda, "cents"),
+            ],
+            assumptions=["Credits and customer-success costs remain classified as operating delivery costs."],
+            diagnostics=[
+                _diagnostic("integer_cent_reconciliation", "exact"),
+                _diagnostic("seller_normalization_delta_cents", seller_ebitda - normalized_ebitda),
+            ],
         ),
         analysis_receipt(
             analysis_id="AG-05",
             question="What is the observed annualized logo-churn hazard?",
             classification="PREDICTIVE_ASSOCIATION",
-            method="Discrete-time event-rate summary with declared covariate limitation",
+            method="Exposure-weighted discrete monthly hazard with Kaplan-Meier cohort survival",
             population=f"{at_risk} synthetic customer entities over 60 months",
             inputs=[_input(artifacts["customer-month"]), _input(artifacts["customer-master"])],
-            outputs=[_output("annualized_logo_churn", quantize(annualized_churn * 100), "percent")],
+            outputs=[_output("monthly_logo_hazard", quantize(monthly_hazard * 100), "percent"), _output("annualized_logo_churn", quantize(annualized_churn * 100), "percent"), _output("survival_12_month", quantize(survival[12] * 100), "percent"), _output("survival_36_month", quantize(survival[36] * 100), "percent"), _output("survival_60_month", quantize(survival[60] * 100), "percent")],
             assumptions=["Customer health and pricing are endogenous; this estimate is not causal."],
-            diagnostics=[_diagnostic("standard_error", quantize(math.sqrt(max(annualized_churn * (1 - annualized_churn) / at_risk, 0)) * 100), "REPORTED"), _diagnostic("event_count", churn_events, "PASS" if churn_events >= 200 else "FAIL")],
+            diagnostics=[_diagnostic("standard_error", quantize(math.sqrt(max(monthly_hazard * (1 - monthly_hazard) / active_exposure, 0)) * 100), "REPORTED"), _diagnostic("event_count", churn_events, "PASS" if churn_events >= 200 else "FAIL"), _diagnostic("active_month_exposure", active_exposure)],
+        ),
+        analysis_receipt(
+            analysis_id="AG-06",
+            question="What does the observational relationship between realized price and renewal imply?",
+            classification="PREDICTIVE_ASSOCIATION",
+            method="Naive linear probability model, shown beside the randomized intention-to-treat estimate",
+            population=f"{len(pricing)} synthetic renewal-eligible accounts",
+            inputs=[_input(artifacts["pricing-experiment"])],
+            outputs=[
+                _output("naive_realized_price_slope", quantize(naive_slope * 100), "percentage_points"),
+                _output("randomized_offer_itt", quantize(rct_effect * 100), "percentage_points"),
+            ],
+            assumptions=["Realized price is post-treatment and selected by negotiation; its slope is not causal."],
+            diagnostics=[
+                _diagnostic("standard_error", quantize(naive_se * 100), "REPORTED"),
+                _diagnostic("confounding_audit", "realized_price_is_endogenous", "BLOCKED"),
+            ],
         ),
         analysis_receipt(
             analysis_id="AG-07",
@@ -212,18 +525,18 @@ def _atlasgrid(
             inputs=[_input(artifacts["pricing-experiment"])],
             outputs=[_output("renewal_itt", quantize(rct_effect * 100), "percentage_points")],
             assumptions=["Synthetic seeded 1:1 assignment; no cross-account interference."],
-            diagnostics=[_diagnostic("assignment_mechanism", "seeded_parent_account_randomization"), _diagnostic("confidence_interval", f"[{quantize(rct_low * 100)}, {quantize(rct_high * 100)}]", "PASS" if rct_low <= -0.05 <= rct_high else "FAIL"), _diagnostic("standard_error", quantize(rct_se * 100))],
+            diagnostics=[_diagnostic("assignment_mechanism", "seeded_parent_account_randomization"), _diagnostic("confidence_interval", f"[{quantize(rct_low * 100)}, {quantize(rct_high * 100)}]", "PASS" if rct_low <= -0.05 <= rct_high else "FAIL"), _diagnostic("standard_error", quantize(rct_se * 100)), _diagnostic("risk_score_smd", quantize(pricing_smd), "PASS" if abs(pricing_smd) <= 0.20 else "FAIL")],
         ),
         analysis_receipt(
             analysis_id="AG-08",
             question="What is the synthetic support-automation effect?",
             classification="CAUSAL_SYNTHETIC_ONLY",
-            method="Pod-level pre/post difference-in-differences",
+            method="Pod-level difference-in-differences with pod-clustered delta uncertainty",
             population="40 synthetic customer-success pods; 12 pre and 12 post months",
             inputs=[_input(artifacts["support-rollout"])],
             outputs=[_output("resolution_att", quantize(did_resolution), "hours"), _output("gross_churn_att", quantize(did_churn), "basis_points")],
             assumptions=["Synthetic staggered assignment with no spillovers."],
-            diagnostics=[_diagnostic("assignment_mechanism", "seeded_pod_rollout"), _diagnostic("standard_error", quantize(did_resolution_se)), _diagnostic("placebo", "preperiod_frozen_before_treatment", "PASS" if did_resolution < 0 and did_churn < 0 else "FAIL")],
+            diagnostics=[_diagnostic("assignment_mechanism", "seeded_pod_rollout"), _diagnostic("clustered_standard_error", quantize(did_resolution_se)), _diagnostic("fake_date_placebo_hours", quantize(fake_resolution), "PASS" if abs(fake_resolution) <= 1.0 else "FAIL"), _diagnostic("pretrend", "parallel_within_1_hour", "PASS" if abs(fake_resolution) <= 1.0 else "FAIL")],
         ),
         analysis_receipt(
             analysis_id="AG-09",
@@ -243,10 +556,10 @@ def _atlasgrid(
             classification="SCENARIO",
             method="Five-year deterministic debt and equity bridge",
             population="Illustrative AtlasGrid sponsor transaction",
-            inputs=[_input(artifacts["debt-terms"]), _input(artifacts["qoe-bridge"])],
-            outputs=[_output("ask_irr", quantize(ask_irr * 100), "percent"), _output("reprice_irr", quantize(reprice_irr * 100), "percent"), _output("reprice_moic", quantize(reprice_moic), "multiple")],
+            inputs=[_input(artifacts["debt-terms"]), _input(artifacts["debt-schedule"]), _input(artifacts["qoe-bridge"])],
+            outputs=[_output("ask_irr", quantize(ask_irr * 100), "percent"), _output("reprice_irr", quantize(reprice_irr * 100), "percent"), _output("reprice_moic", quantize(reprice_moic), "multiple"), _output("base_min_covenant_headroom", quantize(base_headroom), "turns"), _output("downside_first_breach_year", str(min(downside_breaches)) if downside_breaches else "NONE", "year")],
             assumptions=["Exit EBITDA, multiple, debt paydown, and hold period are declared scenario inputs."],
-            diagnostics=[_diagnostic("hurdle_test", "reprice_clears_22pct_and_2x", "PASS" if reprice_irr >= 0.22 and reprice_moic >= 2 else "FAIL")],
+            diagnostics=[_diagnostic("hurdle_test", "reprice_clears_22pct_and_2x", "PASS" if reprice_irr >= 0.22 and reprice_moic >= 2 else "FAIL"), _diagnostic("base_covenant_headroom_turns", quantize(base_headroom), "PASS" if base_headroom > 0 else "FAIL"), _diagnostic("downside_breach", str(min(downside_breaches)) if downside_breaches else "NONE", "PASS" if downside_breaches else "FAIL")],
         ),
         analysis_receipt(
             analysis_id="AG-11",
@@ -260,19 +573,22 @@ def _atlasgrid(
             diagnostics=[_diagnostic("draws", draws), _diagnostic("ordered_quantiles", "true", "PASS" if moic_q[0] <= moic_q[1] <= moic_q[2] else "FAIL")],
         ),
     ]
+    _bind_specs(receipts, manifest)
     lineages = [
-        lineage_item(node_id="ag-nrr", label="Full-cohort NRR", artifact_id="customer-month", field="mrr_cents", analysis_id="AG-02"),
-        lineage_item(node_id="ag-concentration", label="Parent concentration", artifact_id="customer-month", field="parent_id,mrr_cents", analysis_id="AG-03"),
-        lineage_item(node_id="ag-margin", label="Burdened gross margin", artifact_id="monthly-pnl", field="recognized_revenue_cents,fully_burdened_cogs_cents", analysis_id="AG-04"),
-        lineage_item(node_id="ag-ebitda", label="Normalized EBITDA", artifact_id="qoe-bridge", field="amount_cents", analysis_id="AG-04"),
-        lineage_item(node_id="ag-reprice", label="Repriced sponsor return", artifact_id="debt-terms", field="entry and exit assumptions", analysis_id="AG-10"),
+        lineage_item(node_id="ag-nrr", label="Full-cohort NRR", artifact_id="customer-month", field="entity_id,month,mrr_cents", analysis_id="AG-02", output_names=["full_cohort_grr", "full_cohort_nrr", "active_only_nrr"], transformation="Frozen base cohort ARR bridge including churned entities", downstream="Retention thesis and renewal initiative"),
+        lineage_item(node_id="ag-concentration", label="Parent concentration", artifact_id="customer-month", field="parent_id,mrr_cents", analysis_id="AG-03", output_names=["entity_top_10_concentration", "parent_top_10_concentration"], transformation="Map entity ARR to parent and rank the top ten", downstream="Price and customer-concentration risk"),
+        lineage_item(node_id="ag-margin", label="Burdened gross margin", artifact_id="monthly-pnl", field="recognized_revenue_cents,fully_burdened_cogs_cents", analysis_id="AG-04", output_names=["reported_gross_margin", "fully_burdened_gross_margin"], transformation="LTM revenue less declared fully burdened delivery costs", downstream="Normalized earnings and value-creation bridge"),
+        lineage_item(node_id="ag-ebitda", label="Normalized EBITDA", artifact_id="qoe-bridge", field="amount_cents", analysis_id="AG-04", output_names=["seller_adjusted_ebitda", "normalized_ebitda"], transformation="Integer-cent seller EBITDA less challenged adjustments", downstream="Debt capacity, entry price, and sponsor return"),
+        lineage_item(node_id="ag-reprice", label="Repriced sponsor return", artifact_id="debt-terms", field="entry and exit assumptions", analysis_id="AG-10", output_names=["ask_irr", "reprice_irr", "reprice_moic", "base_min_covenant_headroom", "downside_first_breach_year"], transformation="Five-year entry equity, amortization, covenant, and exit equity bridge", downstream="Illustrative REPRICE decision"),
+        lineage_item(node_id="ag-support", label="Support automation effect", artifact_id="support-rollout", field="pod_id,period,treated,resolution_hours,gross_churn_bps", analysis_id="AG-08", output_names=["resolution_att", "gross_churn_att"], transformation="Pod-level pre/post difference-in-differences", downstream="Support automation initiative"),
+        lineage_item(node_id="ag-distribution", label="Conditional return distribution", artifact_id="debt-terms", field="scenario distributions", analysis_id="AG-11", output_names=["p10_moic", "p50_moic", "p90_moic", "probability_below_1x"], transformation="Twenty-thousand seeded operating, multiple, and debt paths", downstream="Downside range; not a forecast"),
     ]
     decision = {
         "schema_version": "underwriting.decision-record/v1",
         "decision": "REPRICE",
         "attribution": "Cooper David Reed — illustrative IC",
         "status": "DECISION_RECORD_WELL_FORMED",
-        "rationale": "The asking price does not compensate for definition quality, concentration, fully burdened margins, or leverage fragility. A $210M enterprise value with the same debt quantum clears the declared return hurdles.",
+        "rationale": "The asking price does not compensate for definition quality, concentration, fully burdened margins, or leverage fragility. A restructured entry with the same debt quantum clears the declared return hurdles.",
         "conditions": ["Validate cancellation-for-convenience exposure", "Tie parent accounts to master agreements", "Cap earnout against verified live ARR"],
         "open_conditions": 3,
     }
@@ -287,6 +603,8 @@ def _atlasgrid(
         "company": "AtlasGrid Systems",
         "caseType": "PE / Growth Equity",
         "synthetic": True,
+        "investmentAdjudication": "PENDING_HUMAN",
+        "workflowDisposition": "HOLD",
         "disclosure": manifest["disclosure"],
         "decision": decision,
         "summaryMetrics": [
@@ -304,12 +622,13 @@ def _atlasgrid(
             "requests": ["Master agreement and termination-right sample", "Customer-parent legal mapping", "QoE support for each add-back", "Lender definition of covenant EBITDA"],
         },
         "analyses": receipts,
+        "distributionLineage": "ag-distribution",
         "scenarios": scenarios,
         "returnsDistribution": {"moic": [quantize(value) for value in moic_q], "irr": [quantize(value * 100) for value in irr_q], "labels": ["p10", "p50", "p90"]},
         "valueCreation": [
-            {"initiative": "Renewal architecture", "kpi": "Complete-cohort NRR", "baseline": f"{quantize(full_nrr * 100)}%", "target": "104%", "owner": "Chief Revenue Officer", "milestone": "Segment playbooks live by day 90", "value": "$26M EV bridge", "risk": "Price-driven churn"},
-            {"initiative": "Support automation", "kpi": "Resolution time", "baseline": "23.0 hours", "target": "17.5 hours", "owner": "Chief Customer Officer", "milestone": "20-pod rollout by day 120", "value": "$9M EV bridge", "risk": "Service-quality regression"},
-            {"initiative": "Cost-definition reset", "kpi": "Burdened gross margin", "baseline": f"{quantize(burdened_gm * 100)}%", "target": "76%", "owner": "CFO", "milestone": "Account contribution ledger by day 30", "value": "$18M EV bridge", "risk": "Underinvestment in implementation"},
+            {"initiative": "Renewal architecture", "kpi": "Complete-cohort NRR", "baseline": f"{quantize(full_nrr * 100)}%", "target": "104%", "owner": "Chief Revenue Officer", "milestone": "Segment playbooks live by day 90", "value": "$26M EV bridge", "risk": "Price-driven churn", "lineage": ["ag-nrr"]},
+            {"initiative": "Support automation", "kpi": "Resolution time", "baseline": "23.0 hours", "target": "17.5 hours", "owner": "Chief Customer Officer", "milestone": "20-pod rollout by day 120", "value": "$9M EV bridge", "risk": "Service-quality regression", "lineage": ["ag-support"]},
+            {"initiative": "Cost-definition reset", "kpi": "Burdened gross margin", "baseline": f"{quantize(burdened_gm * 100)}%", "target": "76%", "owner": "CFO", "milestone": "Account contribution ledger by day 30", "value": "$18M EV bridge", "risk": "Underinvestment in implementation", "lineage": ["ag-margin", "ag-ebitda"]},
         ],
         "lineage": lineages,
         "artifacts": list(artifacts.values()),
@@ -320,12 +639,13 @@ def _helios(
     root: Path, manifest: dict[str, Any], artifacts: dict[str, dict[str, Any]]
 ) -> dict[str, Any]:
     customers = _rows(root, artifacts["customer-month"])
-    masters = _rows(root, artifacts["customer-master"])
     pnl = _rows(root, artifacts["monthly-pnl"])
     pipeline = _rows(root, artifacts["pipeline"])
     survey = _rows(root, artifacts["market-survey"])
     experiment = _rows(root, artifacts["optimizer-experiment"])
     cap = read_json(root / artifacts["cap-table"]["path"])
+    market_assumptions = read_json(root / artifacts["market-assumptions"]["path"])
+    venture_scenarios = read_json(root / artifacts["venture-scenarios"]["path"])
     months = sorted({row["month"] for row in customers})
     base_month, end_month = months[-13], months[-1]
     base_rows = [row for row in customers if row["month"] == base_month and int(row["revenue_cents"]) > 0]
@@ -337,13 +657,22 @@ def _helios(
     revenue = sum(int(row["revenue_cents"]) for row in ltm)
     cogs = sum(int(row["cogs_cents"]) for row in ltm)
     gross_margin = 1 - cogs / revenue
+    component_cogs = sum(int(row["compute_cost_cents"]) + int(row["telemetry_cost_cents"]) + int(row["support_cost_cents"]) for row in customers if row["month"] in {item["month"] for item in ltm})
     recent_burn = np.mean([int(row["net_burn_cents"]) for row in pnl[-3:]])
     runway = cap["cash_at_cutoff_cents"] / recent_burn
     prior_revenue = sum(int(row["revenue_cents"]) for row in pnl[-24:-12])
     net_new_arr = max(1, revenue - prior_revenue)
     burn_multiple = sum(int(row["net_burn_cents"]) for row in ltm) / net_new_arr
+    if int(pnl[-1]["ending_cash_cents"]) != cap["cash_at_cutoff_cents"]:
+        raise UnderwritingError("cash_rollforward_cap_table_mismatch")
+    ltm_sales_marketing = sum(int(row["sales_marketing_cents"]) for row in ltm)
+    ltm_new_customers = sum(int(row["new_customers"]) for row in ltm)
+    cac = ltm_sales_marketing / max(1, ltm_new_customers)
+    ending_active = max(1, sum(int(row["active"]) for row in end_rows.values()))
+    monthly_gross_profit_per_customer = (revenue - cogs) / 12 / ending_active
+    cac_payback = cac / monthly_gross_profit_per_customer
 
-    stage_probability = {1: 0.08, 2: 0.16, 3: 0.32, 4: 0.52, 5: 0.74, 6: 0.88}
+    stage_probability = {int(key): float(value) for key, value in market_assumptions["stage_probabilities"].items()}
     actual_weighted = sum(int(row["amount_cents"]) * stage_probability[int(row["actual_stage"])] for row in pipeline)
     reported_weighted = sum(int(row["amount_cents"]) * stage_probability[int(row["reported_stage"])] for row in pipeline)
     pipeline_inflation = reported_weighted - actual_weighted
@@ -351,8 +680,8 @@ def _helios(
 
     market_outputs: list[dict[str, str]] = []
     market_diagnostics: list[dict[str, str]] = []
-    universe_counts = [5_000, 7_500, 9_500, 11_000, 8_000]
-    tier_mid_spend = [240_000_000, 192_000_000, 144_000_000, 96_000_000, 48_000_000]
+    universe_counts = market_assumptions["universe_counts"]
+    tier_mid_spend = market_assumptions["tier_mid_spend_cents"]
     tam_draws: list[float] = []
     for tier in range(1, 6):
         tier_rows = [row for row in survey if int(row["tier"]) == tier]
@@ -374,6 +703,8 @@ def _helios(
 
     treatment = np.array([int(row["treatment"]) for row in experiment])
     outcome = np.array([float(row["outcome_log_cost_change"]) for row in experiment])
+    baseline_cost = np.array([float(row["baseline_log_cost"]) for row in experiment])
+    optimizer_smd = _smd(baseline_cost, treatment)
     rct_effect, rct_se, rct_low, rct_high = _mean_difference(outcome, treatment)
     pre_shares = cap["common_shares"] + cap["option_pool_shares"] + cap["series_a_shares"] + cap["series_b_shares"]
     post_money = cap["pre_money_cents"] + cap["new_money_cents"]
@@ -385,20 +716,48 @@ def _helios(
 
     scenario_seed = int(manifest["seed_commitment"][:16], 16)
     rng = np.random.Generator(np.random.PCG64(scenario_seed))
-    draws = 20_000
-    failure = rng.random(draws) < 0.38
-    exits = rng.lognormal(math.log(65_000_000_000), 0.88, draws)
-    exits[failure] = rng.uniform(0, 6_000_000_000, int(failure.sum()))
-    dilution = rng.beta(8, 24, draws) * 0.45
-    ownership = series_c_ownership * (1 - dilution)
-    preference = np.full(draws, cap["new_money_cents"], dtype=float)
-    proceeds = np.minimum(exits, np.maximum(preference, exits * ownership))
+    draws = int(venture_scenarios["draws"])
+    failure = rng.random(draws) < float(venture_scenarios["failure_probability"])
+    exits = rng.lognormal(
+        math.log(venture_scenarios["success_exit_log_mean_cents"]),
+        float(venture_scenarios["success_exit_log_sigma"]),
+        draws,
+    )
+    exits[failure] = rng.uniform(
+        venture_scenarios["failure_exit_floor_cents"],
+        venture_scenarios["failure_exit_cap_cents"],
+        int(failure.sum()),
+    )
+    dilution = rng.beta(
+        float(venture_scenarios["dilution_beta_alpha"]),
+        float(venture_scenarios["dilution_beta_beta"]),
+        draws,
+    ) * float(venture_scenarios["dilution_cap"])
+    series_a_proceeds, series_b_proceeds, proceeds, common_proceeds = _venture_waterfall(
+        exits, dilution, cap, new_shares
+    )
+    waterfall_error = float(np.max(np.abs(series_a_proceeds + series_b_proceeds + proceeds + common_proceeds - exits)))
     moic = proceeds / cap["new_money_cents"]
     moic_q = np.quantile(moic, [0.1, 0.5, 0.9])
     loss_probability = float(np.mean(moic < 1))
     three_x_probability = float(np.mean(moic >= 3))
 
     receipts = [
+        analysis_receipt(
+            analysis_id="HX-01",
+            question="Do usage revenue, compute costs, and fully burdened gross margin reconcile?",
+            classification="ACCOUNTING_IDENTITY",
+            method="LTM integer-cent revenue and cost bridge",
+            population="Synthetic Helios LTM P&L",
+            inputs=[_input(artifacts["monthly-pnl"]), _input(artifacts["customer-month"])],
+            outputs=[
+                _output("ltm_revenue", revenue, "cents"),
+                _output("ltm_cogs", cogs, "cents"),
+                _output("gross_margin", quantize(gross_margin * 100), "percent"),
+            ],
+            assumptions=["Compute, telemetry, and customer-support costs remain in COGS."],
+            diagnostics=[_diagnostic("integer_cent_reconciliation", "exact", "PASS" if component_cogs == cogs else "FAIL"), _diagnostic("cash_rollforward_to_cap_table", "exact")],
+        ),
         analysis_receipt(
             analysis_id="HX-02",
             question="How much do hand-picked design partners inflate pooled NRR?",
@@ -411,12 +770,31 @@ def _helios(
             diagnostics=[_diagnostic("selection_bias_bps", quantize((pooled_nrr - ordinary_nrr) * 10_000), "PASS" if pooled_nrr - ordinary_nrr >= 0.04 else "FAIL")],
         ),
         analysis_receipt(
+            analysis_id="HX-03",
+            question="What do current burn efficiency and cash imply for financing risk?",
+            classification="ACCOUNTING_IDENTITY",
+            method="LTM burn multiple and three-month average cash-runway bridge",
+            population="Synthetic Helios P&L and capitalization at cutoff",
+            inputs=[_input(artifacts["monthly-pnl"]), _input(artifacts["cap-table"])],
+            outputs=[
+                _output("burn_multiple", quantize(burn_multiple), "multiple"),
+                _output("runway", quantize(runway), "months"),
+                _output("cac", quantize(cac / 100), "usd"),
+                _output("cac_payback", quantize(cac_payback), "months"),
+            ],
+            assumptions=["Recent three-month average net burn persists until the next financing."],
+            diagnostics=[
+                _diagnostic("positive_net_new_arr", net_new_arr, "PASS"),
+                _diagnostic("runway_floor", quantize(runway), "PASS" if runway >= 12 else "FAIL"),
+            ],
+        ),
+        analysis_receipt(
             analysis_id="HX-04",
             question="Does reported pipeline reconcile to actual stage history?",
             classification="DESCRIPTIVE",
             method="Historical stage-probability weighted pipeline recomputation",
             population=f"{len(pipeline)} synthetic opportunities",
-            inputs=[_input(artifacts["pipeline"])],
+            inputs=[_input(artifacts["pipeline"]), _input(artifacts["market-assumptions"])],
             outputs=[_output("inflated_opportunities", inflated_count, "count"), _output("weighted_pipeline_inflation", quantize(pipeline_inflation / 100_000_000), "million_usd")],
             assumptions=["Stage probabilities are fixed and printed with denominators."],
             diagnostics=[_diagnostic("inflated_roster_count", inflated_count, "PASS" if inflated_count == 48 else "FAIL")],
@@ -427,7 +805,7 @@ def _helios(
             classification="PREDICTIVE_ASSOCIATION",
             method="Independent beta-binomial posterior by predeclared market tier",
             population=f"{len(survey)} synthetic stratified survey respondents",
-            inputs=[_input(artifacts["market-survey"])],
+            inputs=[_input(artifacts["market-survey"]), _input(artifacts["market-assumptions"])],
             outputs=market_outputs + [_output("modeled_tam", quantize(tam / 100_000_000), "million_usd")],
             assumptions=["Beta(1,1) prior; finite universe and tier spend inputs are scenario assumptions."],
             diagnostics=market_diagnostics + [_diagnostic("credible_interval", "90_percent_by_tier"), _diagnostic("prior_sensitivity", "Beta(2,2) companion required")],
@@ -441,7 +819,7 @@ def _helios(
             inputs=[_input(artifacts["optimizer-experiment"])],
             outputs=[_output("optimizer_ate", quantize(rct_effect * 100), "percent_log_points")],
             assumptions=["Seeded 1:1 assignment and no cross-customer interference."],
-            diagnostics=[_diagnostic("assignment_mechanism", "seeded_customer_randomization"), _diagnostic("confidence_interval", f"[{quantize(rct_low * 100)}, {quantize(rct_high * 100)}]", "PASS" if rct_low <= -0.11 <= rct_high else "FAIL"), _diagnostic("standard_error", quantize(rct_se * 100))],
+            diagnostics=[_diagnostic("assignment_mechanism", "seeded_customer_randomization"), _diagnostic("confidence_interval", f"[{quantize(rct_low * 100)}, {quantize(rct_high * 100)}]", "PASS" if rct_low <= -0.11 <= rct_high else "FAIL"), _diagnostic("standard_error", quantize(rct_se * 100)), _diagnostic("baseline_cost_smd", quantize(optimizer_smd), "PASS" if abs(optimizer_smd) <= 0.20 else "FAIL")],
         ),
         analysis_receipt(
             analysis_id="HX-07",
@@ -472,18 +850,21 @@ def _helios(
             classification="SCENARIO",
             method="20,000 seeded exit, dilution, and preference-waterfall paths",
             population="Declared synthetic venture scenario distribution",
-            inputs=[_input(artifacts["cap-table"])],
-            outputs=[_output("p10_moic", quantize(moic_q[0]), "multiple"), _output("p50_moic", quantize(moic_q[1]), "multiple"), _output("p90_moic", quantize(moic_q[2]), "multiple"), _output("probability_below_1x", quantize(loss_probability * 100), "percent"), _output("probability_at_least_3x", quantize(three_x_probability * 100), "percent")],
+            inputs=[_input(artifacts["cap-table"]), _input(artifacts["venture-scenarios"])],
+            outputs=[_output("p10_moic", quantize(moic_q[0]), "multiple"), _output("p50_moic", quantize(moic_q[1]), "multiple"), _output("p90_moic", quantize(moic_q[2]), "multiple"), _output("probability_below_1x", quantize(loss_probability * 100), "percent"), _output("probability_at_least_3x", quantize(three_x_probability * 100), "percent"), _output("median_series_a_proceeds", quantize(float(np.median(series_a_proceeds)) / 100_000_000), "million_usd"), _output("median_series_b_proceeds", quantize(float(np.median(series_b_proceeds)) / 100_000_000), "million_usd")],
             assumptions=["Exit, timing, and future dilution distributions are disclosed scenario priors."],
-            diagnostics=[_diagnostic("draws", draws), _diagnostic("ordered_quantiles", "true", "PASS" if moic_q[0] <= moic_q[1] <= moic_q[2] else "FAIL")],
+            diagnostics=[_diagnostic("draws", draws), _diagnostic("ordered_quantiles", "true", "PASS" if moic_q[0] <= moic_q[1] <= moic_q[2] else "FAIL"), _diagnostic("waterfall_conservation_max_error_cents", quantize(waterfall_error), "PASS" if waterfall_error <= 0.01 else "FAIL")],
         ),
     ]
+    _bind_specs(receipts, manifest)
     lineages = [
-        lineage_item(node_id="hx-nrr", label="Go-forward NRR", artifact_id="customer-month", field="revenue_cents,design_partner", analysis_id="HX-02"),
-        lineage_item(node_id="hx-margin", label="Blended gross margin", artifact_id="monthly-pnl", field="revenue_cents,cogs_cents", analysis_id="HX-01"),
-        lineage_item(node_id="hx-runway", label="Runway", artifact_id="monthly-pnl", field="net_burn_cents", analysis_id="HX-03"),
-        lineage_item(node_id="hx-tam", label="Modeled TAM", artifact_id="market-survey", field="tier,adopted,annual_ai_spend_cents", analysis_id="HX-05"),
-        lineage_item(node_id="hx-return", label="Series C outcome", artifact_id="cap-table", field="new_money_cents,pre_money_cents", analysis_id="HX-09"),
+        lineage_item(node_id="hx-nrr", label="Go-forward NRR", artifact_id="customer-month", field="customer_id,month,revenue_cents,design_partner", analysis_id="HX-02", output_names=["pooled_nrr", "ordinary_nrr"], transformation="Frozen cohort bridge with design partners separately identified", downstream="Growth durability and financing milestones"),
+        lineage_item(node_id="hx-margin", label="Blended gross margin", artifact_id="monthly-pnl", field="revenue_cents,cogs_cents", analysis_id="HX-01", output_names=["ltm_revenue", "ltm_cogs", "gross_margin"], transformation="Integer-cent LTM revenue less compute, telemetry, and support costs", downstream="Runway and margin milestones"),
+        lineage_item(node_id="hx-runway", label="Runway", artifact_id="monthly-pnl", field="net_burn_cents", analysis_id="HX-03", output_names=["burn_multiple", "runway"], transformation="Cash divided by recent average net burn; LTM burn divided by net new ARR", downstream="Tranche timing and financing risk"),
+        lineage_item(node_id="hx-tam", label="Modeled TAM", artifact_id="market-survey", field="tier,adopted,annual_ai_spend_cents", analysis_id="HX-05", output_names=["modeled_tam"], transformation="Tier-level beta-binomial adoption medians times declared spend universe", downstream="Market-size range with data-thin abstention"),
+        lineage_item(node_id="hx-pipeline", label="Pipeline stage-history audit", artifact_id="pipeline", field="actual_stage,reported_stage,amount_cents", analysis_id="HX-04", output_names=["inflated_opportunities", "weighted_pipeline_inflation"], transformation="Reweight opportunities using declared stage probabilities", downstream="Milestone financing and forecast governance"),
+        lineage_item(node_id="hx-ownership", label="Series C ownership", artifact_id="cap-table", field="new_money_cents,pre_money_cents,shares", analysis_id="HX-08", output_names=["new_shares", "series_c_ownership"], transformation="Integer-share post-money capitalization bridge", downstream="Illustrative investment terms"),
+        lineage_item(node_id="hx-return", label="Series C return distribution", artifact_id="cap-table", field="new_money_cents,preference,ownership", analysis_id="HX-09", output_names=["p10_moic", "p50_moic", "p90_moic", "probability_below_1x", "probability_at_least_3x"], transformation="Twenty-thousand seeded exit, dilution, and preference paths", downstream="Conditional venture outcome range; not a forecast"),
     ]
     decision = {
         "schema_version": "underwriting.decision-record/v1",
@@ -492,7 +873,7 @@ def _helios(
         "status": "DECISION_RECORD_WELL_FORMED",
         "rationale": "Invest at the proposed valuation only with milestone-based funding tied to ordinary-cohort retention, verified pipeline conversion, and gross-margin progression.",
         "conditions": ["Ordinary-cohort NRR at or above 105%", "Pipeline stage-history audit complete", "Gross margin at or above 70%", "Optimizer RCT effect replicated", "18-month post-close runway"],
-        "open_conditions": 3,
+        "open_conditions": 5,
     }
     decision["decision_sha256"] = digest(decision)
     return {
@@ -500,10 +881,12 @@ def _helios(
         "company": "Helios Compute Control",
         "caseType": "VC / Growth",
         "synthetic": True,
+        "investmentAdjudication": "PENDING_HUMAN",
+        "workflowDisposition": "HOLD",
         "disclosure": manifest["disclosure"],
         "decision": decision,
         "summaryMetrics": [
-            _metric("hx-ownership", "Series C ownership", f"{quantize(series_c_ownership * 100)}%", "$40M on $160M pre-money", "ACCOUNTING_IDENTITY", ["hx-return"]),
+            _metric("hx-ownership", "Series C ownership", f"{quantize(series_c_ownership * 100)}%", "$40M on $160M pre-money", "ACCOUNTING_IDENTITY", ["hx-ownership"]),
             _metric("hx-nrr-metric", "Ordinary-cohort NRR", f"{quantize(ordinary_nrr * 100)}%", f"Pooled with design partners: {quantize(pooled_nrr * 100)}%", "DESCRIPTIVE", ["hx-nrr"]),
             _metric("hx-margin-metric", "Blended gross margin", f"{quantize(gross_margin * 100)}%", "LTM, including telemetry and support", "ACCOUNTING_IDENTITY", ["hx-margin"]),
             _metric("hx-runway-metric", "Runway", f"{quantize(runway)} mo", f"Burn multiple: {quantize(burn_multiple)}x", "ACCOUNTING_IDENTITY", ["hx-runway"]),
@@ -517,16 +900,17 @@ def _helios(
             "requests": ["Full stage-history export", "Design-partner contract sample", "Cloud-cost unit ledger", "Preference and pro-rata side letters"],
         },
         "analyses": receipts,
+        "distributionLineage": "hx-return",
         "scenarios": [
-            {"id": "base", "label": "Conditional base", "entry_ev": "$200M post", "gross_irr": "n/a", "moic": f"{quantize(moic_q[1])}x p50", "covenant": "3 conditions open"},
+            {"id": "base", "label": "Conditional base", "entry_ev": "$200M post", "gross_irr": "n/a", "moic": f"{quantize(moic_q[1])}x p50", "covenant": "5 conditions open"},
             {"id": "milestone", "label": "Milestones cleared", "entry_ev": "$200M post", "gross_irr": "n/a", "moic": f"{quantize(moic_q[2])}x p90", "covenant": "Second tranche released"},
             {"id": "downside", "label": "Preference downside", "entry_ev": "$200M post", "gross_irr": "n/a", "moic": f"{quantize(moic_q[0])}x p10", "covenant": "1x preference protection"},
         ],
         "returnsDistribution": {"moic": [quantize(value) for value in moic_q], "irr": [], "labels": ["p10", "p50", "p90"]},
         "valueCreation": [
-            {"initiative": "Ordinary-cohort engine", "kpi": "Non-design-partner NRR", "baseline": f"{quantize(ordinary_nrr * 100)}%", "target": "110%", "owner": "VP Revenue", "milestone": "Cohort playbooks by quarter 2", "value": "Retention-led valuation support", "risk": "Design-partner tactics do not transfer"},
-            {"initiative": "Cloud unit economics", "kpi": "Gross margin", "baseline": f"{quantize(gross_margin * 100)}%", "target": "74%", "owner": "CTO", "milestone": "Telemetry cost per managed dollar down 25%", "value": "Runway and multiple expansion", "risk": "Provider price changes"},
-            {"initiative": "Pipeline truth system", "kpi": "Stage conversion", "baseline": "History not summary", "target": "Forecast error <15%", "owner": "CRO", "milestone": "Stage governance by day 45", "value": "Financing-risk reduction", "risk": "Enterprise cycle elongation"},
+            {"initiative": "Ordinary-cohort engine", "kpi": "Non-design-partner NRR", "baseline": f"{quantize(ordinary_nrr * 100)}%", "target": "130%", "owner": "VP Revenue", "milestone": "Cohort playbooks by quarter 2", "value": "Retention-led valuation support", "risk": "Design-partner tactics do not transfer", "lineage": ["hx-nrr"]},
+            {"initiative": "Cloud unit economics", "kpi": "Gross margin", "baseline": f"{quantize(gross_margin * 100)}%", "target": "74%", "owner": "CTO", "milestone": "Telemetry cost per managed dollar down 25%", "value": "Runway and multiple expansion", "risk": "Provider price changes", "lineage": ["hx-margin", "hx-runway"]},
+            {"initiative": "Pipeline truth system", "kpi": "Stage conversion", "baseline": "History not summary", "target": "Forecast error <15%", "owner": "CRO", "milestone": "Stage governance by day 45", "value": "Financing-risk reduction", "risk": "Enterprise cycle elongation", "lineage": ["hx-pipeline"]},
         ],
         "lineage": lineages,
         "artifacts": list(artifacts.values()),
@@ -537,9 +921,18 @@ def analyze_room(manifest_path: str | Path, output: str | Path) -> Path:
     path = Path(manifest_path)
     root, manifest, artifacts = _manifest(path)
     case_id = manifest["case_id"]
-    result = _atlasgrid(root, manifest, artifacts) if case_id == "atlasgrid" else _helios(root, manifest, artifacts)
+    if case_id == "atlasgrid":
+        result = _atlasgrid(root, manifest, artifacts)
+    elif case_id == "helios":
+        result = _helios(root, manifest, artifacts)
+    else:
+        raise UnderwritingError("case_id_invalid")
     result["schema_version"] = "underwriting.workbench-case/v1"
     result["manifest_sha256"] = manifest["manifest_sha256"]
+    result["scenarioBook"] = _scenario_book(
+        case_id, result["scenarios"], result["returnsDistribution"]
+    )
+    result["thesisGraph"] = _thesis_graph(result)
     result["analysis_sha256"] = digest(result)
     destination = Path(output)
     write_json(destination, result)

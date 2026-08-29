@@ -7,7 +7,7 @@ from pathlib import Path
 from ic_evidence_lab.canonical import canonical_json
 
 from .analysis import analyze_room
-from .contracts import UnderwritingError
+from .contracts import UnderwritingError, validate_workbench_case
 from .generator import CASE_IDS, generate_room
 
 
@@ -40,8 +40,10 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         cases = [json.loads(Path(path).read_text(encoding="utf-8")) for path in args.cases]
         case_ids = [case["caseId"] for case in cases]
-        if sorted(case_ids) != sorted(set(case_ids)):
-            raise UnderwritingError("case_id_duplicate")
+        if sorted(case_ids) != ["atlasgrid", "helios"]:
+            raise UnderwritingError("workbench_requires_exactly_atlasgrid_and_helios")
+        for case in cases:
+            validate_workbench_case(case)
         destination = Path(args.out)
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(canonical_json({"schema_version": "underwriting.workbench-data/v1", "cases": cases}) + b"\n")

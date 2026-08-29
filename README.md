@@ -1,103 +1,71 @@
-# Evidence-First AI Diligence
+# Underwriting Intelligence Lab
 
-**Build investment-committee packets that show their work.**
+**An evidence-bound PE and VC underwriting workbench that shows where the numbers came from—and where judgment begins.**
 
-This local workflow connects candidate claims, counterevidence, retained source
-snapshots, unresolved questions, and content-addressed receipts. It helps a
-human reviewer inspect which declared citation bytes match, which source or
-calculation controls block, and which questions still require semantic and
-human adjudication.
-It does not make investment decisions or provide investment advice.
+This portfolio candidate combines a deterministic Python analytics layer with a static React investment-committee workbench. Two fully synthetic cases demonstrate the same governed workflow across control buyout and venture/growth underwriting:
 
-> **Status: LOCAL FOUNDATION — PRODUCT AND PRESENTATION REASSESSMENT**
+- **AtlasGrid Systems:** a 60-month vertical-SaaS buyout that exposes retention survivorship, parent-level concentration, underburdened gross margin, challenged EBITDA add-backs, and leverage fragility. Illustrative IC decision: `REPRICE`.
+- **Helios Compute Control:** an AI-infrastructure growth investment that separates design-partner performance from ordinary cohorts, recomputes pipeline, models tiered market adoption, reconciles dilution, and stress-tests venture outcomes. Illustrative IC decision: `INVEST`, subject to milestones.
 
-Current local evidence: 35 tests pass on Python 3.11, 3.12, and 3.13; all 24
-declared deterministic regression outcomes match; repeated packet outputs are
-byte-identical; and the released Evidence
-Gate and Release Gate 0.1.1 packages return `PASS` for the generated bundle.
-Hosted CI remains `NOT RUN`.
+> **Status: LOCAL PORTFOLIO CANDIDATE — FOUNDER REVIEW PENDING**
+>
+> Both companies and all underlying records are fictional. Every screen states `SYNTHETIC — NOT INVESTMENT ADVICE`. The workbench does not fetch private data, make autonomous investment decisions, or establish real-world investment accuracy. Hosted CI and public release are `NOT RUN`.
 
-## See the evidence fail and repair
+## What makes it substantive
 
-```bash
-python -m venv .venv
-.venv/bin/pip install -e .
+The application does not begin with a chat box or a generated memo. It begins with versioned data-room manifests, precommitted analysis specifications, exact accounting bridges, and explicit causal classifications. Each displayed headline number opens a lineage record binding the metric to an artifact, field, and analysis receipt.
 
-ic-evidence-lab run \
-  --case examples/vectorforge/case-before.json \
-  --out dist/before
+The workbench presents five shared views for both cases:
 
-ic-evidence-lab run \
-  --case examples/vectorforge/case-after.json \
-  --out dist/after
-```
+1. **IC Snapshot** — decision, terms, returns, decisive drivers, and falsifiers.
+2. **Thesis & Evidence** — thesis, counterthesis, contradictions, diligence requests, and lineage.
+3. **Econometric Lab** — estimand, population, method, uncertainty, diagnostics, and naive-versus-identified comparisons.
+4. **Underwriting Room** — scenario selection, sensitivities, capital mechanics, and seeded return distributions.
+5. **Value Creation** — evidence-linked initiatives, KPI baselines, owners, milestones, risks, and value bridges.
 
-The first case leaves a material growth claim unsupported. The corrected case
-adds retained evidence, deterministic calculations, counterevidence, and a
-post-cutoff source that must be rejected. Both runs preserve their limitations.
+## Run locally
 
-## Render the 80-second prototype visualization
-
-The source-bound prototype shows failure, retained `NO_CITATIONS`/`HOLD` states,
-corrected inputs, deterministic rerun, open questions, and the final release
-receipt. It is silent and caption-led; complete SRT and WebVTT files are checked
-against the storyboard.
-
-> **Quality verdict: `QUALITY SHORT`.** The media contract is reproducible, but
-> static slides do not demonstrate a convincing product interaction or
-> investment-review experience. This artifact must not be used as the public
-> portfolio demo.
+Python 3.11+ and Node 22+ are required. The application has no runtime backend or network dependency.
 
 ```bash
-uv sync --locked --extra demo
-uv run python scripts/render_demo.py --out dist/demo
-uv run python scripts/verify_demo.py --root dist/demo
+uv sync --locked --extra dev --extra quality
+bash scripts/verify-underwriting.sh
+
+cd workbench
+corepack pnpm install --frozen-lockfile
+corepack pnpm check
 ```
 
-Local verification requires H.264 at 1920×1080 and 30 fps, a duration between
-75 and 85 seconds, no audio track, matching captions, and a SHA-256-bound media
-manifest. Encoder and font versions may change the MP4 bytes.
+Or exercise the analytics interface directly:
 
-## What the project demonstrates
-
-- Typed claim, evidence, calculation, and packet contracts
-- Content-addressed, fixed-date source snapshots
-- Exact-quote checks without pretending they establish semantic truth
-- `Decimal` calculations for growth, margins, and ownership scenarios
-- Counterevidence, temporal-leakage, and prompt-injection failure states
-- Human-owned judgment and a narrow diligence workflow disposition
-- Optional integration with the released Daily AI Agent Toolkit through MCP
-
-These are local control results, not investment-accuracy or production claims.
-
-## Trust boundary
-
-```text
-untrusted retained sources
-          |
-          v
-candidate facts, calculations, and judgments
-          |
-          v
-deterministic local checks ----> explicit limitations
-          |
-          v
-human review and primary diligence
-          |
-          v
-packet plus hash-bound receipt
+```bash
+underwriting-lab generate --case atlasgrid --seed 20260828 --out dist/atlasgrid
+underwriting-lab analyze \
+  --manifest dist/atlasgrid/case/manifest.json \
+  --out dist/atlasgrid/analysis.json
+underwriting-lab build-workbench \
+  --cases dist/atlasgrid/analysis.json dist/helios/analysis.json \
+  --out workbench/src/data/cases.json
 ```
 
-The current slice performs no URL fetching, model calls, trading, cloud
-deployment, or automated investment recommendation. See
-[Architecture](docs/ARCHITECTURE.md), [Threat Model](docs/THREAT-MODEL.md), and
-[Career Claims](docs/CAREER-CLAIMS.md).
+The existing `ic-evidence-lab` CLI and evidence-kernel behavior remain intact.
 
-The [LangChain/LangSmith public pre-diligence contract](examples/langchain-public/README.md)
-shows how a recognizable private-market case remains bounded when source
-retention rights and private-company economics are unavailable.
+## Verification model
 
-## Authorship
+- Money is generated and reconciled in integer cents; presentation uses declared rounding.
+- The same seed produces byte-identical canonical data-room files and manifest digests.
+- Verification truth lives outside the runtime case directory and is not serialized into the React payload.
+- Analysis receipts declare question, population, cutoff, method, outputs, uncertainty or diagnostics, assumptions, classification, and input digests.
+- Scenario books, thesis graphs, decisions, and receipts are independently hash-bound.
+- Six seeded recovery runs test 15 precommitted synthetic recovery checks. This is estimator recovery against planted synthetic truth—not backtested investment performance.
+- `NOT_IDENTIFIED` analyses abstain rather than convert correlation into causal claims.
 
-The proposed public attribution is recorded in [AUTHORS.md](AUTHORS.md) and
-the project is licensed under [Apache-2.0](LICENSE).
+See [Underwriting Architecture](docs/UNDERWRITING-ARCHITECTURE.md), [Product Contract](docs/UNDERWRITING-PRODUCT-CONTRACT.md), [Econometrics Contract](docs/ECONOMETRICS-CONTRACT.md), and [Build Provenance](docs/BUILD-PROVENANCE.md).
+
+## Evidence kernel
+
+The accepted foundation still supports content-addressed evidence packets, exact-quote checks, counterevidence, temporal leakage controls, prompt-injection handling, and human-owned judgment. Its prior silent slide demo remains explicitly `QUALITY SHORT` and is not the portfolio demo. See [Architecture](docs/ARCHITECTURE.md), [Threat Model](docs/THREAT-MODEL.md), and [Career Claims](docs/CAREER-CLAIMS.md).
+
+## Authorship and license
+
+Cooper David Reed is the founder and lead implementer. Multi-model advisory work is disclosed in the technical provenance record, while Codex remained the sole filesystem writer. The project is licensed under [Apache-2.0](LICENSE).

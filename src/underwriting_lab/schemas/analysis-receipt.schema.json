@@ -4,7 +4,7 @@
   "title": "Underwriting analysis receipt",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "analysis_id", "question", "classification", "method", "population", "cutoff", "inputs", "outputs", "assumptions", "diagnostics", "state", "receipt_sha256"],
+  "required": ["schema_version", "analysis_id", "question", "classification", "method", "population", "cutoff", "inputs", "outputs", "assumptions", "diagnostics", "state", "spec_sha256", "receipt_sha256"],
   "properties": {
     "schema_version": {"const": "underwriting.analysis-receipt/v1"},
     "analysis_id": {"type": "string", "pattern": "^[A-Z]{2}-[0-9]{2}$"},
@@ -18,6 +18,7 @@
     "assumptions": {"type": "array", "items": {"type": "string"}},
     "diagnostics": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["name", "value", "status"], "properties": {"name": {"type": "string"}, "value": {"type": "string"}, "status": {"type": "string"}}}},
     "state": {"enum": ["REPORTED", "DIAGNOSTIC_BLOCKED", "ABSTAIN", "NOT_APPLICABLE"]},
+    "spec_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
   }
 }

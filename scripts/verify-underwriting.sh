@@ -12,3 +12,12 @@ uv run underwriting-lab analyze --manifest dist/underwriting/helios/case/manifes
 uv run underwriting-lab build-workbench \
   --cases dist/underwriting/atlasgrid/analysis.json dist/underwriting/helios/analysis.json \
   --out workbench/src/data/cases.json
+uv run python scripts/build_recovery_ledger.py
+
+cd workbench
+pnpm install --frozen-lockfile
+pnpm test
+pnpm build
+pnpm test:e2e
+cd ..
+uv run python scripts/build_visual_manifest.py

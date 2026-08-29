@@ -8,8 +8,34 @@
   "properties": {
     "schema_version": {"const": "underwriting.scenario-book/v1"},
     "case_id": {"enum": ["atlasgrid", "helios"]},
-    "scenarios": {"type": "array", "minItems": 3, "items": {"type": "object"}},
-    "distribution": {"type": "object"},
+    "scenarios": {
+      "type": "array",
+      "minItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "entry_ev", "gross_irr", "moic", "covenant"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "label": {"type": "string", "minLength": 1},
+          "entry_ev": {"type": "string", "minLength": 1},
+          "gross_irr": {"type": "string", "minLength": 1},
+          "moic": {"type": "string", "minLength": 1},
+          "covenant": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "distribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["labels", "moic", "irr"],
+      "properties": {
+        "labels": {"type": "array", "prefixItems": [{"const": "p10"}, {"const": "p50"}, {"const": "p90"}], "items": false},
+        "moic": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$"}},
+        "irr": {"type": "array", "maxItems": 3, "items": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$"}}
+      }
+    },
     "scenario_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
   }
 }

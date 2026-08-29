@@ -1,59 +1,36 @@
 # Local verification receipt
 
-Status: `VERIFIED_LOCAL — PUBLICATION AUTHORIZED; PERSONAL CLI AUTH PENDING`
+Status: `LOCAL CANDIDATE — INDEPENDENT REVIEW PENDING`
 
-Implementation commit tested:
-`1717abb1fbaf579ba2b8855f6e151d1043f60c68`
+Exact base: `f00c4ecdfe7691c23b24a8f7d1d0ab5408984909`
 
-Environment: macOS, Python 3.11, ffmpeg 8.1.2. Hosted CI on Ubuntu/macOS
-and Python 3.11–3.13 remains `NOT RUN` until the repository is pushed.
+Candidate head: recorded in the final mission receipt after the independent review and repair pass.
 
-## Results
+Environment: macOS, Python 3.11–3.13, Node 22, pnpm 11.19.0, Chrome. Hosted CI on Ubuntu/macOS remains `NOT RUN` until a separately authorized push.
 
-- Python tests: 20/20 passed.
-- Executable benchmark: 24/24 declared outcomes matched across eight families.
-- Public-tree scan: 70 candidate files, zero findings.
-- Repeated packet, memo, and receipt outputs: byte-identical.
-- Released `dailyaiagents-evidence-gate==0.1.1`: exact four-tool discovery and
-  three artifact-verification receipts returned `PASS` through MCP stdio.
-- Released `dailyaiagents-release-gate==0.1.1`: exact four-tool discovery and
-  the three-artifact release receipt returned `PASS` through MCP stdio.
-- Wheel and source distribution: built successfully.
-- Apache-2.0 license text matches the authoritative Apache source byte-for-byte;
-  wheel metadata and bundled license files agree.
-- Clean wheel install with the `toolkit` extra: CLI case, both MCP gates, and
-  the 24-case benchmark passed.
-- Static analysis: Ruff passed; Bandit found zero medium/high-severity issues.
-- Locked dependency audit: pip-audit found no known vulnerabilities.
-- Static Pages artifact: generated locally and visually inspected at 1440×900
-  and 390×844. No horizontal overflow was observed; proof links, skip link,
-  main landmark, table caption, focus affordances, and data favicon were present.
-- Portfolio demo: rendered and visually inspected across all seven scenes. The
-  machine check passed at exactly 80.0 seconds, H.264, 1920×1080, 30 fps,
-  `yuv420p`, with no audio stream and exact SRT/WebVTT caption copies.
-- Independent Claude delta review at commit `74813ad` returned
-  `ACCEPTABLE_RELEASE_CANDIDATE`. Its two durable-evidence findings—stale local
-  receipt and missing security CI—were closed in `393fbf4` and reverified.
-- LangChain/LangSmith case: contract-only, URL-only, and explicitly
-  `UNVERIFIED`; no third-party page bytes retained.
+## Current local results
 
-## Digests
+- Full Python suite: 52/52 passed independently on Python 3.11, 3.12, and 3.13.
+- Evidence-kernel deterministic regression: 24/24 declared outcomes matched.
+- Underwriting contract suite: 17/17 passed.
+- Seeded synthetic recovery ledger: 15/15 checks passed across six runs. This tests recovery against planted synthetic truth, not real-world investment accuracy.
+- React unit suite: 3/3 passed; TypeScript and Vite production build passed.
+- Playwright: 4/4 complete case/viewport flows passed. Each flow covers all five views, case/scenario switching, econometric toggles, sensitivity, keyboard lineage open/Escape/focus return, per-view root overflow, and per-view serious/critical axe scans.
+- Visual evidence: 20 current screenshots bind five views, two cases, and 1440×900 plus 390×844 viewports in `verification/visual-evidence.json`.
+- Public-tree scan: 122 candidate files, zero findings.
+- Ruff passed; Bandit found zero medium/high-severity issues.
+- Locked Python dependency audit and pnpm high-severity audit found no known vulnerabilities.
+- Wheel and source distribution built; a clean Python 3.11 wheel install discovered both CLIs and all packaged underwriting schemas.
+- Workbench compilation rejects stale top-level digests, nested receipt tampering, orphan lineage, and unbound outputs.
+- The prior static slide demo remains `QUALITY SHORT` and is not the portfolio demo.
 
-- Benchmark results (`verification/benchmark-results.json`):
-  `62897aa7ae036e6a41649f2f8dbe32c7aab84ffbe567b88f45369aa91c1f26bd`
-- Wheel:
-  `00f05e3a8c8bb957dd9515d47a2076264172e20eba6eae522ffca9b62609b65d`
-- Source distribution:
-  `d70dc0d5253ee9414868833f7c732fb71d1643a445f01739cd5cd925e264b37f`
-- Generated Pages index:
-  `2c50004e9bfcbaa8689004b4a4496393b2f9f42caea8726d1e1ac1a9dfc8ff7f`
-- Rendered demo video:
-  `edb5630f23133a6263905fb74c28f98dff4ab4a06354782811d5d74374bcf1fc`
+## Provider and review state
+
+- Claude product/econometrics advisory specifications: `PRODUCED` and frozen before result generation.
+- Grok reference red team: `HELD_PROVIDER` after the retry ceiling; partial output is not verified research or case evidence.
+- Claude investment/econometrics review: `PENDING`.
+- Claude final independent acceptance: `PENDING`.
 
 ## Boundaries
 
-These results establish local behavior of the named bytes. They do not prove
-semantic truth, investment accuracy, production reliability, public
-availability, hiring impact, AWS capability, or GH-600 readiness. Hosted CI,
-publication, final résumé wording, and human investment
-judgment remain separate gates.
+These results establish local behavior of the named synthetic bytes. They do not prove semantic truth, real diligence accuracy, production reliability, comprehensive WCAG compliance, public availability, hiring impact, investment performance, or enterprise adoption. CoreWeave, FinanceBench, FinRank, Fin-RATE, hosted CI, publication, résumé wording, and human investment adjudication remain `NOT RUN` or outside this mission.

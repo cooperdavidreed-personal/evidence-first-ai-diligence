@@ -1,22 +1,22 @@
 # Career claim proof matrix
 
-All wording is draft-only until the repository and evidence are anonymously
-accessible.
+All wording remains draft-only until the repository, workbench, and named verification artifacts are anonymously accessible. A local pass is not a public proof.
 
 | Candidate claim | Required proof | Current state |
 |---|---|---|
-| Produces an evidence packet and receipt | committed fixture plus clean run | `VERIFIED_LOCAL` |
-| Deterministic | two byte-identical clean runs | `VERIFIED_LOCAL` |
-| Runs locally without a model | credential-absent test and code audit | `VERIFIED_LOCAL` |
-| Makes no network calls during core gating | denied-socket test and dependency audit | `VERIFIED_LOCAL` |
-| Integrates Daily AI Agent Toolkit | exact 0.1.1 MCP discovery and receipt | `VERIFIED_LOCAL` |
-| Publicly available | anonymous repository and asset checks | `NOT PUBLISHED` |
-| Improves investment outcomes | independent longitudinal evidence | `DO NOT CLAIM` |
-| Has users or production adoption | dated public usage evidence | `DO NOT CLAIM YET` |
+| Built a shared PE/VC underwriting workbench | committed AtlasGrid and Helios cases, five shared views, reproducible local build | `VERIFIED_LOCAL` |
+| Bound displayed metrics to source and method lineage | fail-closed compiler, nested digests, clickable lineage, tamper tests | `VERIFIED_LOCAL` |
+| Applied econometric identification discipline | declared estimands, uncertainty, diagnostics, causal classes, abstentions, recovery ledger | `VERIFIED_LOCAL_SYNTHETIC` |
+| Modeled buyout and venture economics | exact accounting/debt/capitalization bridges and seeded scenarios | `VERIFIED_LOCAL_SYNTHETIC` |
+| Produced a portfolio-grade interface | responsive screenshots and automated interaction/a11y checks plus independent editorial review | `PENDING_INDEPENDENT_REVIEW` |
+| Used governed multi-model collaboration | provider receipts, one-writer enforcement, independent review | `PARTIAL — GROK HELD; CLAUDE FINAL PENDING` |
+| Preserved the evidence kernel | full suite and 24-case deterministic regression | `VERIFIED_LOCAL` |
+| Publicly available | anonymous repository and artifact checks | `NOT PUBLISHED` |
+| Improves investment outcomes | independent longitudinal evidence on real decisions | `DO NOT CLAIM` |
+| Enterprise-proven or production-adopted | dated external deployment and usage evidence | `DO NOT CLAIM` |
 
-Possible future résumé wording, only after every referenced metric is public:
+Potential résumé wording after public verification and founder approval:
 
-> Built an evidence-first AI diligence workbench that turns frozen public
-> sources into auditable claim ledgers and human-reviewed IC packets; measured
-> citation, numerical, temporal, abstention, and prompt-injection behavior on a
-> published benchmark of N cases.
+> Built an evidence-bound PE/VC underwriting workbench spanning synthetic SaaS buyout and AI-infrastructure growth cases; linked accounting, econometric, scenario, and value-creation outputs to content-addressed data and reproducible analysis receipts.
+
+Do not publish test denominators, performance language, “enterprise-grade,” or “investment accuracy” claims without a current public receipt that supports the exact words.
