@@ -13,6 +13,8 @@ license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 dependencies = [
     "jsonschema[format]==4.26.0",
+    "numpy>=2.3,<3",
+    "scipy>=1.16,<2",
 ]
 
 [project.urls]
@@ -32,9 +34,10 @@ quality = ["bandit==1.8.6", "pip-audit==2.9.0", "ruff==0.12.12"]
 
 [project.scripts]
 ic-evidence-lab = "ic_evidence_lab.cli:main"
+underwriting-lab = "underwriting_lab.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ic_evidence_lab"]
+packages = ["src/ic_evidence_lab", "src/underwriting_lab"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

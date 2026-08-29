@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cooperdavidreed-personal.github.io/evidence-first-ai-diligence/schemas/analysis-receipt.schema.json",
+  "title": "Underwriting analysis receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "analysis_id", "question", "classification", "method", "population", "cutoff", "inputs", "outputs", "assumptions", "diagnostics", "state", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "underwriting.analysis-receipt/v1"},
+    "analysis_id": {"type": "string", "pattern": "^[A-Z]{2}-[0-9]{2}$"},
+    "question": {"type": "string", "minLength": 10},
+    "classification": {"enum": ["ACCOUNTING_IDENTITY", "DESCRIPTIVE", "PREDICTIVE_ASSOCIATION", "CAUSAL_SYNTHETIC_ONLY", "SCENARIO", "NOT_IDENTIFIED", "HUMAN_JUDGMENT"]},
+    "method": {"type": "string", "minLength": 5},
+    "population": {"type": "string", "minLength": 5},
+    "cutoff": {"type": "string", "format": "date-time"},
+    "inputs": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["artifact_id", "sha256"], "properties": {"artifact_id": {"type": "string"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}}},
+    "outputs": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["name", "value", "unit"], "properties": {"name": {"type": "string"}, "value": {"type": "string"}, "unit": {"type": "string"}}}},
+    "assumptions": {"type": "array", "items": {"type": "string"}},
+    "diagnostics": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["name", "value", "status"], "properties": {"name": {"type": "string"}, "value": {"type": "string"}, "status": {"type": "string"}}}},
+    "state": {"enum": ["REPORTED", "DIAGNOSTIC_BLOCKED", "ABSTAIN", "NOT_APPLICABLE"]},
+    "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

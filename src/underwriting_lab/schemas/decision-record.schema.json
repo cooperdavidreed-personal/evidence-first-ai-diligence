@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cooperdavidreed-personal.github.io/evidence-first-ai-diligence/schemas/decision-record.schema.json",
+  "title": "Illustrative human decision record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "decision", "attribution", "status", "rationale", "conditions", "open_conditions", "decision_sha256"],
+  "properties": {
+    "schema_version": {"const": "underwriting.decision-record/v1"},
+    "decision": {"enum": ["REPRICE", "INVEST", "PASS"]},
+    "attribution": {"const": "Cooper David Reed — illustrative IC"},
+    "status": {"enum": ["DECISION_RECORD_WELL_FORMED", "DECISION_RECORD_INCOMPLETE"]},
+    "rationale": {"type": "string", "minLength": 30},
+    "conditions": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "open_conditions": {"type": "integer", "minimum": 0},
+    "decision_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

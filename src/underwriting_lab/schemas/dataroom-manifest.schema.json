@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cooperdavidreed-personal.github.io/evidence-first-ai-diligence/schemas/dataroom-manifest.schema.json",
+  "title": "Synthetic data-room manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "case_id", "synthetic", "disclosure", "contract_version", "cutoff", "seed_commitment", "generator", "artifacts", "manifest_sha256"],
+  "properties": {
+    "schema_version": {"const": "underwriting.dataroom-manifest/v1"},
+    "case_id": {"enum": ["atlasgrid", "helios"]},
+    "synthetic": {"const": true},
+    "disclosure": {"const": "SYNTHETIC — NOT INVESTMENT ADVICE"},
+    "contract_version": {"const": "underwriting-econometrics/v1"},
+    "cutoff": {"type": "string", "format": "date-time"},
+    "seed_commitment": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "generator": {"const": "underwriting_lab.generator/v1"},
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["artifact_id", "path", "schema", "rows", "sha256"],
+        "properties": {
+          "artifact_id": {"type": "string", "minLength": 1},
+          "path": {"type": "string", "pattern": "^data/"},
+          "schema": {"type": "string", "minLength": 3},
+          "rows": {"type": "integer", "minimum": 1},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cooperdavidreed-personal.github.io/evidence-first-ai-diligence/schemas/scenario-book.schema.json",
+  "title": "Underwriting scenario book",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "case_id", "scenarios", "distribution", "scenario_sha256"],
+  "properties": {
+    "schema_version": {"const": "underwriting.scenario-book/v1"},
+    "case_id": {"enum": ["atlasgrid", "helios"]},
+    "scenarios": {"type": "array", "minItems": 3, "items": {"type": "object"}},
+    "distribution": {"type": "object"},
+    "scenario_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
