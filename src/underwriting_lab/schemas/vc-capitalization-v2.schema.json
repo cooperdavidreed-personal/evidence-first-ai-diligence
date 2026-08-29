@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dailyaiagents.dev/schemas/vc-capitalization-v2.schema.json",
+  "title": "VC Capitalization v2",
+  "type": "object",
+  "required": ["schema_version", "holders", "preference_terms", "unissued_option_pool_shares", "reconciliation"],
+  "properties": {
+    "schema_version": {"const": "helios.capitalization/v2"},
+    "holders": {"type": "array", "minItems": 1},
+    "preference_terms": {"type": "array", "minItems": 1},
+    "unissued_option_pool_shares": {"type": "integer", "minimum": 0},
+    "reconciliation": {"type": "object"}
+  }
+}

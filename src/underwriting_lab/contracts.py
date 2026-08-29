@@ -164,6 +164,84 @@ def _validate_pe_payload(case: dict[str, Any]) -> None:
     )
 
 
+def _validate_vc_payload(case: dict[str, Any]) -> None:
+    engine = case.get("vcEngine")
+    if case.get("caseId") != "helios":
+        if engine is not None:
+            raise UnderwritingError("vc_engine_wrong_case")
+        return
+    if not isinstance(engine, dict):
+        raise UnderwritingError("vc_engine_missing")
+    results: list[dict[str, Any]] = []
+    expected_ids = {
+        "base": "BASE",
+        "milestone": "MILESTONE",
+        "downside": "DOWNSIDE",
+        "financing_shortfall": "FINANCING_SHORTFALL",
+    }
+    for key, scenario_id in expected_ids.items():
+        result = engine.get(key)
+        if not isinstance(result, dict) or result.get("scenario_id") != scenario_id:
+            raise UnderwritingError(f"vc_scenario_missing:{scenario_id}")
+        _validate_hashed_v2_document(result, "vc-case-result-v2.schema.json")
+        waterfall = result["waterfall"]
+        _validate_hashed_v2_document(waterfall, "vc-waterfall-v2.schema.json")
+        if sum(waterfall["class_proceeds_cents"].values()) + waterfall[
+            "common_proceeds_cents"
+        ] != waterfall["exit_value_cents"]:
+            raise UnderwritingError("vc_waterfall_conservation_failed")
+        funded_target = 0
+        previous_ending: int | None = None
+        for event in result["financing_events"]:
+            validate_v2_document(event, "vc-financing-event-v2.schema.json")
+            event_body = dict(event)
+            event_sha256 = event_body.pop("event_sha256")
+            if event_sha256 != digest(event_body):
+                raise UnderwritingError("vc_event_digest_mismatch")
+            if event["status"] == "FUNDED" and event["holder_id"] == "series-c-investor":
+                funded_target += event["new_money_cents"]
+        if funded_target != result["target_invested_cents"]:
+            raise UnderwritingError("vc_target_investment_reconciliation_failed")
+        for row in result["cash_by_month"]:
+            if previous_ending is not None and row["beginning_cash_cents"] != previous_ending:
+                raise UnderwritingError("vc_cash_opening_mismatch")
+            expected_ending = (
+                row["beginning_cash_cents"]
+                + row["financing_cash_cents"]
+                + row["operating_net_cash_flow_cents"]
+            )
+            if row["ending_cash_cents"] != expected_ending:
+                raise UnderwritingError("vc_cash_rollforward_failed")
+            previous_ending = row["ending_cash_cents"]
+        if Decimal(result["xirr_npv_residual_cents"]) > 1:
+            raise UnderwritingError("vc_xirr_npv_residual_failed")
+        results.append(result)
+    if len({item["engine_inputs_sha256"] for item in results}) != 4:
+        raise UnderwritingError("vc_scenario_input_digest_duplicate")
+    if len({item["receipt_sha256"] for item in results}) != 4:
+        raise UnderwritingError("vc_scenario_result_digest_duplicate")
+    distribution = engine["distribution"]
+    _validate_hashed_v2_document(distribution, "vc-distribution-v2.schema.json")
+    if distribution["base_result_receipt_sha256"] != engine["milestone"]["receipt_sha256"]:
+        raise UnderwritingError("vc_distribution_base_binding_mismatch")
+    records = distribution["path_records"]
+    if len(records) != distribution["draws"]:
+        raise UnderwritingError("vc_distribution_path_count_mismatch")
+    for record in records:
+        record_body = dict(record)
+        expected = record_body.pop("receipt_sha256")
+        if expected != digest(record_body):
+            raise UnderwritingError("vc_distribution_path_digest_mismatch")
+    quantile_indices = [
+        int((Decimal(len(records) - 1) * probability).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN))
+        for probability in (Decimal("0.10"), Decimal("0.50"), Decimal("0.90"))
+    ]
+    for field, output in (("gross_moic", "moic_quantiles"), ("gross_xirr", "xirr_quantiles")):
+        values = sorted(Decimal(record[field]) for record in records)
+        if [format(values[index], "f") for index in quantile_indices] != distribution[output]:
+            raise UnderwritingError(f"vc_distribution_quantile_mismatch:{field}")
+
+
 def _validate_metric_contract(case: dict[str, Any]) -> None:
     artifacts = {item["artifact_id"]: item for item in case["artifacts"]}
     analyses = {item["analysis_id"] for item in case["analyses"]}
@@ -231,8 +309,8 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
         raise UnderwritingError("formula_sample_metric_orphan")
     if any(metrics[item]["formula_id"] is None for item in sample_ids):
         raise UnderwritingError("formula_sample_not_derived")
-    if case["caseId"] == "atlasgrid" and len(sample_ids) != 10:
-        raise UnderwritingError("atlasgrid_formula_sample_requires_ten")
+    if case["caseId"] in {"atlasgrid", "helios"} and len(sample_ids) != 10:
+        raise UnderwritingError(f"{case['caseId']}_formula_sample_requires_ten")
 
 
 def validate_workbench_data(document: dict[str, Any]) -> None:
@@ -321,6 +399,7 @@ def validate_workbench_case(case: dict[str, Any]) -> None:
         if any(receipt["cutoff"] != CUTOFF for receipt in case["analyses"]):
             raise UnderwritingError("analysis_cutoff_mismatch")
     _validate_pe_payload(case)
+    _validate_vc_payload(case)
     body = dict(case)
     expected = body.pop("analysis_sha256", None)
     if expected != digest(body):

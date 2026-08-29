@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dailyaiagents.dev/schemas/vc-waterfall-v2.schema.json",
+  "title": "VC Waterfall v2",
+  "type": "object",
+  "required": ["schema_version", "exit_value_cents", "conversion_profile", "class_preference_cents", "class_residual_cents", "class_proceeds_cents", "common_proceeds_cents", "conservation_residual_cents", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "underwriting.vc-waterfall/v2"},
+    "exit_value_cents": {"type": "integer", "minimum": 0},
+    "conversion_profile": {"type": "object"},
+    "class_preference_cents": {"type": "object"},
+    "class_residual_cents": {"type": "object"},
+    "class_proceeds_cents": {"type": "object"},
+    "common_proceeds_cents": {"type": "integer", "minimum": 0},
+    "conservation_residual_cents": {"const": 0},
+    "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

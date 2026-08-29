@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dailyaiagents.dev/schemas/vc-financing-event-v2.schema.json",
+  "title": "VC Financing Event v2",
+  "type": "object",
+  "required": ["event_id", "event_type", "holder_id", "class_id", "actual_month", "date", "status", "new_money_cents", "new_shares", "fully_diluted_after", "event_sha256"],
+  "properties": {
+    "event_id": {"type": "string", "minLength": 1},
+    "event_type": {"enum": ["PRIMARY", "MILESTONE", "LATER_ROUND", "SHORTFALL"]},
+    "holder_id": {"type": "string", "minLength": 1},
+    "class_id": {"type": "string", "minLength": 1},
+    "actual_month": {"type": "integer", "minimum": 1},
+    "date": {"type": "string", "format": "date"},
+    "status": {"enum": ["FUNDED", "NOT_FUNDED"]},
+    "new_money_cents": {"type": "integer", "minimum": 0},
+    "new_shares": {"type": "integer", "minimum": 0},
+    "fully_diluted_after": {"type": "integer", "minimum": 1},
+    "event_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -258,6 +258,212 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
                 add(metric_id=f"atlasgrid-value-{lever['lever_id']}-{field}", label=f"{lever['label']} {field}", value=lever[field], display_value=_money(lever[field]), unit="cents", quantum="1", **bridge_common)
             add(metric_id=f"atlasgrid-value-{lever['lever_id']}-gross_xirr_delta", label=f"{lever['label']} gross IRR impact", value=lever["gross_xirr_delta"], display_value=_percent(lever["gross_xirr_delta"]), unit="decimal_rate", quantum="0.0001", **bridge_common)
 
+    vc_engine = case.get("vcEngine")
+    if vc_engine is not None:
+        for scenario_key in ("base", "milestone", "downside", "financing_shortfall"):
+            result = vc_engine[scenario_key]
+            scenario_id = result["scenario_id"]
+            prefix = f"helios-{scenario_id}"
+            receipt = result["receipt_sha256"]
+            common = {
+                "period": "projection origin through month 60",
+                "classification": "SCENARIO",
+                "locator_ids": [
+                    locator_by_lineage["hx-ownership"],
+                    locator_by_lineage["hx-runway"],
+                    locator_by_lineage["hx-return"],
+                ],
+                "receipt_sha256": receipt,
+                "assumption_ids": [f"{scenario_id}.engine_inputs"],
+                "downstream_ids": ["decision"],
+            }
+
+            def add_vc_cents(
+                metric_id: str,
+                label: str,
+                value: int,
+                display: str | None = None,
+                **extra: Any,
+            ) -> None:
+                add(
+                    metric_id=metric_id,
+                    label=label,
+                    value=value,
+                    display_value=display or _money(value),
+                    unit="cents",
+                    quantum="1",
+                    **common,
+                    **extra,
+                )
+
+            add_vc_cents(f"{prefix}-target-invested", "Series C funded capital", result["target_invested_cents"])
+            add_vc_cents(f"{prefix}-target-proceeds", "Series C exit proceeds", result["target_proceeds_cents"])
+            add_vc_cents(f"{prefix}-minimum-cash", "Minimum modeled cash", result["minimum_cash_cents"])
+            add_vc_cents(f"{prefix}-exit-value", "Exit equity value", result["waterfall"]["exit_value_cents"])
+            add(
+                metric_id=f"{prefix}-ownership",
+                label="Series C fully diluted ownership",
+                value=result["target_ownership"],
+                display_value=_percent(result["target_ownership"]),
+                unit="decimal_rate",
+                quantum="0.00000001",
+                **common,
+            )
+            add(
+                metric_id=f"{prefix}-gross-moic",
+                label="Series C gross MOIC",
+                value=result["gross_moic"],
+                display_value=_multiple(result["gross_moic"]),
+                unit="multiple",
+                quantum="0.0001",
+                **common,
+            )
+            add(
+                metric_id=f"{prefix}-gross-xirr",
+                label="Series C gross XIRR",
+                value=result["gross_xirr"],
+                display_value=_percent(result["gross_xirr"]),
+                unit="decimal_rate",
+                quantum="0.0001",
+                **common,
+            )
+            add(
+                metric_id=f"{prefix}-unissued-pool",
+                label="Unissued option pool",
+                value=result["unissued_pool_shares"],
+                display_value=f"{result['unissued_pool_shares']:,} shares",
+                unit="shares",
+                quantum="1",
+                **common,
+            )
+            target_holder = next(
+                item for item in result["holders"] if item["holder_id"] == "series-c-investor"
+            )
+            add(
+                metric_id=f"{prefix}-target-shares",
+                label="Series C investor shares",
+                value=target_holder["shares"],
+                display_value=f"{target_holder['shares']:,}",
+                unit="shares",
+                quantum="1",
+                **common,
+            )
+            for event in result["financing_events"]:
+                event_prefix = f"{prefix}-event-{event['event_id']}"
+                add_vc_cents(f"{event_prefix}-new-money", "Funded cash", event["new_money_cents"])
+                for field in (
+                    "new_shares",
+                    "pool_top_up_shares",
+                    "issued_shares_after",
+                    "unissued_pool_after",
+                    "fully_diluted_after",
+                ):
+                    add(
+                        metric_id=f"{event_prefix}-{field}",
+                        label=field.replace("_", " "),
+                        value=event[field],
+                        display_value=f"{event[field]:,}",
+                        unit="shares",
+                        quantum="1",
+                        **common,
+                    )
+            formula_months = {1, 12, 24, 36, 60} if scenario_key == "milestone" else set()
+            for row in result["cash_by_month"]:
+                month_prefix = f"{prefix}-month-{row['month']:02d}"
+                for field in (
+                    "beginning_cash_cents",
+                    "financing_cash_cents",
+                    "operating_net_cash_flow_cents",
+                    "ending_cash_cents",
+                ):
+                    add_vc_cents(
+                        f"{month_prefix}-{field}",
+                        field.replace("_cents", "").replace("_", " "),
+                        row[field],
+                    )
+                if row["month"] in formula_months:
+                    intermediate_id = f"{month_prefix}-cash-before-operations"
+                    first_formula = f"vc-formula-{scenario_id.lower()}-{row['month']:02d}-funding"
+                    second_formula = f"vc-formula-{scenario_id.lower()}-{row['month']:02d}-ending"
+                    intermediate_value = row["beginning_cash_cents"] + row["financing_cash_cents"]
+                    add_vc_cents(
+                        intermediate_id,
+                        "cash before operations",
+                        intermediate_value,
+                        formula_id=first_formula,
+                        operand_ids=[
+                            f"{month_prefix}-beginning_cash_cents",
+                            f"{month_prefix}-financing_cash_cents",
+                        ],
+                    )
+                    formulas.append(
+                        _formula(
+                            first_formula,
+                            "ADD",
+                            [
+                                f"{month_prefix}-beginning_cash_cents",
+                                f"{month_prefix}-financing_cash_cents",
+                            ],
+                            intermediate_id,
+                            "cents",
+                        )
+                    )
+                    ending_id = f"{month_prefix}-ending-cash-recomputed"
+                    add_vc_cents(
+                        ending_id,
+                        "ending cash recomputed",
+                        row["ending_cash_cents"],
+                        formula_id=second_formula,
+                        operand_ids=[intermediate_id, f"{month_prefix}-operating_net_cash_flow_cents"],
+                    )
+                    formulas.append(
+                        _formula(
+                            second_formula,
+                            "ADD",
+                            [intermediate_id, f"{month_prefix}-operating_net_cash_flow_cents"],
+                            ending_id,
+                            "cents",
+                        )
+                    )
+            waterfall = result["waterfall"]
+            add_vc_cents(f"{prefix}-waterfall-common", "Common proceeds", waterfall["common_proceeds_cents"])
+            for class_id, proceeds in waterfall["class_proceeds_cents"].items():
+                add_vc_cents(
+                    f"{prefix}-waterfall-{class_id.lower()}-proceeds",
+                    f"{class_id} proceeds",
+                    proceeds,
+                )
+
+        distribution = vc_engine["distribution"]
+        distribution_common = {
+            "period": "conditional close-through-exit paths",
+            "classification": "SCENARIO",
+            "locator_ids": [locator_by_lineage["hx-return"]],
+            "receipt_sha256": distribution["receipt_sha256"],
+            "assumption_ids": ["vc-distribution-priors"],
+            "downstream_ids": ["decision"],
+        }
+        for index, value in enumerate(distribution["moic_quantiles"]):
+            add(
+                metric_id=f"helios-distribution-moic-{index}",
+                label=f"{['p10', 'p50', 'p90'][index]} conditional MOIC",
+                value=value,
+                display_value=_multiple(value),
+                unit="multiple",
+                quantum="0.01",
+                **distribution_common,
+            )
+        for index, value in enumerate(distribution["xirr_quantiles"]):
+            add(
+                metric_id=f"helios-distribution-xirr-{index}",
+                label=f"{['p10', 'p50', 'p90'][index]} conditional XIRR",
+                value=value,
+                display_value=_percent(value),
+                unit="decimal_rate",
+                quantum="0.0001",
+                **distribution_common,
+            )
+
     metric_ids = [item["metric_id"] for item in metrics]
     if len(metric_ids) != len(set(metric_ids)):
         raise UnderwritingError("metric_registry_duplicate")

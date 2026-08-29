@@ -44,6 +44,20 @@
     "scenarios": {"type": "array", "minItems": 1},
     "returnsDistribution": {"type": "object"},
     "peEngine": {"type": "object"},
+    "vcEngine": {
+      "type": "object",
+      "required": ["base", "milestone", "downside", "financing_shortfall", "distribution", "milestone_contract", "exit_value_basis"],
+      "additionalProperties": false,
+      "properties": {
+        "base": {"type": "object"},
+        "milestone": {"type": "object"},
+        "downside": {"type": "object"},
+        "financing_shortfall": {"type": "object"},
+        "distribution": {"type": "object"},
+        "milestone_contract": {"type": "object"},
+        "exit_value_basis": {"const": "EQUITY_VALUE"}
+      }
+    },
     "valueCreationBridge": {"type": "object"},
     "evidenceMappings": {"type": "array"},
     "valueCreation": {"type": "array"},

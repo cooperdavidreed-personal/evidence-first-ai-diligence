@@ -247,7 +247,45 @@ def test_scenario_quantiles_and_case_specific_irr_shape(generated: dict[str, tup
         moic = [float(value) for value in case["scenarioBook"]["distribution"]["moic"]]
         assert moic == sorted(moic)
         irr = case["scenarioBook"]["distribution"]["irr"]
-        assert len(irr) == (3 if case_id == "atlasgrid" else 0)
+        assert len(irr) == 3
+
+
+def test_helios_scenarios_are_event_based_and_receipt_distinct(
+    generated: dict[str, tuple[Path, dict]],
+) -> None:
+    _, case = generated["helios"]
+    engine = case["vcEngine"]
+    results = [
+        engine["base"],
+        engine["milestone"],
+        engine["downside"],
+        engine["financing_shortfall"],
+    ]
+    assert len({item["engine_inputs_sha256"] for item in results}) == 4
+    assert len({item["receipt_sha256"] for item in results}) == 4
+    assert all(item["gross_xirr"] != "n/a" for item in results)
+    assert all(len(item["cash_by_month"]) == 60 for item in results)
+    assert len(case["renderManifest"]["formula_sample_metric_ids"]) == 10
+    milestone_event = next(
+        item
+        for item in engine["milestone"]["financing_events"]
+        if item["event_type"] == "MILESTONE"
+    )
+    assert milestone_event["status"] == "FUNDED"
+    base_event = next(
+        item
+        for item in engine["base"]["financing_events"]
+        if item["event_type"] == "MILESTONE"
+    )
+    assert base_event["status"] == "NOT_FUNDED"
+    bridge = next(
+        item
+        for item in engine["financing_shortfall"]["financing_events"]
+        if item["event_type"] == "SHORTFALL"
+    )
+    assert bridge["actual_month"] == engine["financing_shortfall"][
+        "first_cash_exhaustion_month_without_contingent_financing"
+    ]
 
 
 def test_classification_rules_fail_closed() -> None:

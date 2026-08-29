@@ -482,35 +482,125 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
     artifacts.append(_artifact(case_root, "data/optimizer_experiment.csv", "helios.optimizer-experiment/v1", rows))
 
     cap_table = {
-        "schema_version": "helios.cap-table/v1",
-        "common_shares": 6_100_000,
-        "option_pool_shares": 1_400_000,
-        "series_a_shares": 2_050_000,
-        "series_b_shares": 1_850_000,
-        "series_b_participating_cap": "2.00",
-        "new_money_cents": 4_000_000_000,
-        "pre_money_cents": 16_000_000_000,
-        "series_c_preference": "1x_non_participating",
+        "schema_version": "helios.capitalization/v2",
+        "as_of": CUTOFF,
         "cash_at_cutoff_cents": cutoff_cash,
-        "series_a_preference_cents": 1_200_000_000,
-        "series_b_preference_cents": 2_400_000_000,
+        "unissued_option_pool_shares": 1_400_000,
+        "holders": [
+            {"holder_id": "founders", "class_id": "COMMON", "issued_shares": 4_800_000},
+            {"holder_id": "employees", "class_id": "COMMON", "issued_shares": 1_300_000},
+            {"holder_id": "series-a-investor", "class_id": "SERIES_A", "issued_shares": 2_050_000},
+            {"holder_id": "series-b-investor", "class_id": "SERIES_B", "issued_shares": 1_850_000},
+        ],
+        "preference_terms": [
+            {
+                "class_id": "SERIES_A", "seniority": 3,
+                "invested_cents": 1_200_000_000, "preference_multiple": "1.00",
+                "participation": "NON_PARTICIPATING", "participation_cap_multiple": None,
+                "conversion_numerator": 1, "conversion_denominator": 1,
+            },
+            {
+                "class_id": "SERIES_B", "seniority": 2,
+                "invested_cents": 2_400_000_000, "preference_multiple": "1.00",
+                "participation": "CAPPED_PARTICIPATING", "participation_cap_multiple": "2.00",
+                "conversion_numerator": 1, "conversion_denominator": 1,
+            },
+        ],
+        "reconciliation": {
+            "issued_shares": 10_000_000,
+            "fully_diluted_shares": 11_400_000,
+            "residual_shares": 0,
+        },
     }
     write_json(case_root / "data/cap_table.json", cap_table)
-    artifacts.append(_artifact(case_root, "data/cap_table.json", "helios.cap-table/v1", 1))
+    artifacts.append(_artifact(case_root, "data/cap_table.json", "helios.capitalization/v2", 1))
+    def projected_cash_path(start_use: int, monthly_improvement: int) -> list[int]:
+        return [-(max(25_000_000, start_use - monthly_improvement * month)) for month in range(60)]
+
+    financing_plan = {
+        "schema_version": "helios.financing-plan/v2",
+        "projection_origin": "2026-08-29",
+        "target_holder_id": "series-c-investor",
+        "option_pool_target": "0.12",
+        "option_pool_refresh_borne_by": "PRE_MONEY_HOLDERS",
+        "price_rounding": "FLOOR_WHOLE_SHARES_WITH_APIC_REMAINDER",
+        "exit_value_basis": "EQUITY_VALUE",
+        "milestone_contract": {
+            "tranche_id": "series-c-tranche",
+            "amount_cents": 1_500_000_000,
+            "test_month": 12,
+            "evaluator": "BOARD_FINANCE_COMMITTEE",
+            "cure_period_days": 30,
+            "release_rule": "ALL_TESTS_PASS_AFTER_CURE",
+            "failure_consequence": "WITHHOLD_TRANCHE_AND_REUNDERWRITE_RUNWAY",
+            "tests": [
+                {"metric_id": "hx-nrr-metric", "period": "trailing_12_months", "operator": ">=", "threshold": "1.05", "evidence_locator": "hx-nrr"},
+                {"metric_id": "hx-margin-metric", "period": "trailing_3_months", "operator": ">=", "threshold": "0.70", "evidence_locator": "hx-margin"},
+                {"metric_id": "hx-pipeline-audit", "period": "as_of_test", "operator": "==", "threshold": "COMPLETE", "evidence_locator": "hx-pipeline"},
+                {"metric_id": "hx-optimizer-replication", "period": "pre_tranche", "operator": "==", "threshold": "REPLICATED", "evidence_locator": "hx-optimizer"},
+            ],
+        },
+        "scenario_books": [
+            {
+                "scenario_id": "BASE", "exit_month": 60, "exit_value_cents": 120_000_000_000,
+                "monthly_net_cash_flow_cents": projected_cash_path(105_000_000, 700_000),
+                "events": [
+                    {"event_id": "series-c-close", "scheduled_month": 1, "sequence": 10, "event_type": "PRIMARY", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 2_500_000_000, "pre_money_cents": 16_000_000_000, "price_rule": "PRE_MONEY", "pool_target": "0.12", "milestone_state": "NOT_APPLICABLE", "funded": True, "seniority": 1},
+                    {"event_id": "series-c-tranche", "scheduled_month": 12, "sequence": 20, "event_type": "MILESTONE", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 1_500_000_000, "pre_money_cents": None, "price_rule": "SAME_AS_SERIES_C", "pool_target": "0", "milestone_state": "FAIL", "funded": False, "seniority": 1},
+                    {"event_id": "series-d-base", "scheduled_month": 30, "sequence": 30, "event_type": "LATER_ROUND", "holder_id": "series-d-investor", "class_id": "SERIES_D", "new_money_cents": 2_000_000_000, "pre_money_cents": 45_000_000_000, "price_rule": "PRE_MONEY", "pool_target": "0", "milestone_state": "NOT_APPLICABLE", "funded": True, "seniority": 0},
+                ],
+            },
+            {
+                "scenario_id": "MILESTONE", "exit_month": 60, "exit_value_cents": 160_000_000_000,
+                "monthly_net_cash_flow_cents": projected_cash_path(95_000_000, 850_000),
+                "events": [
+                    {"event_id": "series-c-close", "scheduled_month": 1, "sequence": 10, "event_type": "PRIMARY", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 2_500_000_000, "pre_money_cents": 16_000_000_000, "price_rule": "PRE_MONEY", "pool_target": "0.12", "milestone_state": "NOT_APPLICABLE", "funded": True, "seniority": 1},
+                    {"event_id": "series-c-tranche", "scheduled_month": 12, "sequence": 20, "event_type": "MILESTONE", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 1_500_000_000, "pre_money_cents": None, "price_rule": "SAME_AS_SERIES_C", "pool_target": "0", "milestone_state": "PASS", "funded": True, "seniority": 1},
+                ],
+            },
+            {
+                "scenario_id": "DOWNSIDE", "exit_month": 60, "exit_value_cents": 35_000_000_000,
+                "monthly_net_cash_flow_cents": projected_cash_path(125_000_000, 0),
+                "events": [
+                    {"event_id": "series-c-close", "scheduled_month": 1, "sequence": 10, "event_type": "PRIMARY", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 2_500_000_000, "pre_money_cents": 16_000_000_000, "price_rule": "PRE_MONEY", "pool_target": "0.12", "milestone_state": "NOT_APPLICABLE", "funded": True, "seniority": 1},
+                    {"event_id": "series-c-tranche", "scheduled_month": 12, "sequence": 20, "event_type": "MILESTONE", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 1_500_000_000, "pre_money_cents": None, "price_rule": "SAME_AS_SERIES_C", "pool_target": "0", "milestone_state": "FAIL", "funded": False, "seniority": 1},
+                    {"event_id": "series-d-down", "scheduled_month": 18, "sequence": 30, "event_type": "LATER_ROUND", "holder_id": "series-d-investor", "class_id": "SERIES_D", "new_money_cents": 4_000_000_000, "pre_money_cents": 12_000_000_000, "price_rule": "PRE_MONEY", "pool_target": "0", "milestone_state": "NOT_APPLICABLE", "funded": True, "seniority": 0},
+                ],
+            },
+            {
+                "scenario_id": "FINANCING_SHORTFALL", "exit_month": 60, "exit_value_cents": 50_000_000_000,
+                "monthly_net_cash_flow_cents": projected_cash_path(125_000_000, 0),
+                "events": [
+                    {"event_id": "series-c-close", "scheduled_month": 1, "sequence": 10, "event_type": "PRIMARY", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 2_500_000_000, "pre_money_cents": 16_000_000_000, "price_rule": "PRE_MONEY", "pool_target": "0.12", "milestone_state": "NOT_APPLICABLE", "funded": True, "seniority": 1},
+                    {"event_id": "series-c-tranche", "scheduled_month": 12, "sequence": 20, "event_type": "MILESTONE", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 1_500_000_000, "pre_money_cents": None, "price_rule": "SAME_AS_SERIES_C", "pool_target": "0", "milestone_state": "FAIL", "funded": False, "seniority": 1},
+                    {"event_id": "series-c-bridge", "scheduled_month": 1, "sequence": 90, "event_type": "SHORTFALL", "holder_id": "bridge-investor", "class_id": "SERIES_BRIDGE", "new_money_cents": 3_500_000_000, "pre_money_cents": None, "price_rule": "DISCOUNT_TO_SERIES_C", "shortfall_discount": "0.25", "pool_target": "0", "milestone_state": "NOT_APPLICABLE", "funded": True, "seniority": 0},
+                ],
+            },
+        ],
+    }
+    write_json(case_root / "data/financing_plan.json", financing_plan)
+    artifacts.append(_artifact(case_root, "data/financing_plan.json", "helios.financing-plan/v2", 4))
     venture_scenarios = {
-        "schema_version": "helios.venture-scenarios/v1",
-        "draws": 20000,
-        "failure_probability": "0.38",
-        "success_exit_log_mean_cents": 65000000000,
-        "success_exit_log_sigma": "0.88",
-        "failure_exit_floor_cents": 0,
-        "failure_exit_cap_cents": 6000000000,
-        "dilution_beta_alpha": "8.00",
-        "dilution_beta_beta": "24.00",
-        "dilution_cap": "0.45"
+        "schema_version": "helios.venture-scenarios/v2",
+        "draws": 1000,
+        "distribution_seed_offset": 41,
+        "exit_value_multiple_low": "0.35",
+        "exit_value_multiple_high": "1.85",
+        "path_method": "FULL_EVENT_LEDGER_AND_EXACT_WATERFALL_REPLAY",
     }
     write_json(case_root / "data/venture_scenarios.json", venture_scenarios)
-    artifacts.append(_artifact(case_root, "data/venture_scenarios.json", "helios.venture-scenarios/v1", 1))
+    artifacts.append(_artifact(case_root, "data/venture_scenarios.json", "helios.venture-scenarios/v2", 1))
+    team_diligence = {
+        "schema_version": "helios.team-diligence/v2",
+        "roles": [
+            {"role": "CEO / founder", "strength": "Product insight is supported by design-partner problem definition.", "gap": "Commercial dependence and succession remain open.", "required_reference": "Two lost prospects and two non-design-partner customers", "evidence_state": "OPEN", "financing_consequence": "No tranche release without repeatability evidence."},
+            {"role": "CTO", "strength": "Optimizer experiment shows synthetic unit-cost improvement.", "gap": "Provider concentration and production replication remain open.", "required_reference": "Cloud-provider cost ledger and replication log", "evidence_state": "PARTIAL", "financing_consequence": "Optimizer effect receives no credit beyond the tested population."},
+            {"role": "CRO / revenue", "strength": "Pipeline stage history exists at opportunity level.", "gap": "Ordinary-customer repeatability is not established.", "required_reference": "Reference calls and stage-to-close cohort export", "evidence_state": "OPEN", "financing_consequence": "Withhold milestone capital if pipeline governance is incomplete."},
+            {"role": "Finance", "strength": "No dedicated capability is evidenced.", "gap": "Usage margin, runway, and financing controls need an accountable owner.", "required_reference": "Controller/CFO search plan and monthly close package", "evidence_state": "ABSENT", "financing_consequence": "Finance-lead hire is a closing condition."},
+        ],
+    }
+    write_json(case_root / "data/team_diligence.json", team_diligence)
+    artifacts.append(_artifact(case_root, "data/team_diligence.json", "helios.team-diligence/v2", 4))
     cim = """# Helios Compute Control — synthetic Series C memorandum\n\nSYNTHETIC — NOT INVESTMENT ADVICE\n\nHelios presents a control plane for enterprise GPU spend. The room contains customer usage, cohort, experiment, pipeline, market, cash, and ownership records required to test the conditional investment case.\n"""
     (case_root / "data/MEMORANDUM.md").write_text(cim, encoding="utf-8")
     artifacts.append(_artifact(case_root, "data/MEMORANDUM.md", "helios.memorandum/v1", 1))

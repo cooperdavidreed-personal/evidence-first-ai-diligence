@@ -38,6 +38,14 @@ from .pe_engine import (
     solve_maximum_bid,
 )
 from .temporal import scan_temporal_artifacts
+from .vc_engine import (
+    FundingEvent,
+    Holder,
+    PreferenceTerms,
+    VCScenarioAssumptions,
+    run_vc_scenario,
+    simulate_vc_distribution,
+)
 
 
 def _manifest(manifest_path: Path) -> tuple[Path, dict[str, Any], dict[str, dict[str, Any]]]:
@@ -294,59 +302,6 @@ def _kaplan_meier(durations: list[int], events: list[bool], horizons: tuple[int,
         if month in horizons:
             results[month] = survival
     return results
-
-
-def _venture_waterfall(
-    exits: np.ndarray,
-    dilution: np.ndarray,
-    cap: dict[str, Any],
-    new_shares: int,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    pre_shares = cap["common_shares"] + cap["option_pool_shares"] + cap["series_a_shares"] + cap["series_b_shares"]
-    total_post = pre_shares + new_shares
-    base = {
-        "a": cap["series_a_shares"] / total_post,
-        "b": cap["series_b_shares"] / total_post,
-        "c": new_shares / total_post,
-    }
-    allocations = {name: np.zeros(len(exits)) for name in ("a", "b", "c", "common")}
-    for index, exit_value in enumerate(exits):
-        scale = 1 - float(dilution[index])
-        a_share, b_share, c_share = base["a"] * scale, base["b"] * scale, base["c"] * scale
-        common_share = 1 - a_share - b_share - c_share
-        c_pref = min(float(exit_value), float(cap["new_money_cents"]))
-        remaining = float(exit_value) - c_pref
-        b_pref = min(remaining, float(cap["series_b_preference_cents"]))
-        remaining -= b_pref
-        a_pref = min(remaining, float(cap["series_a_preference_cents"]))
-        remaining -= a_pref
-        pref_alloc = {"c": c_pref, "b": b_pref, "a": a_pref, "common": remaining}
-
-        remaining = float(exit_value)
-        b_convert_pref = min(remaining, float(cap["series_b_preference_cents"]))
-        remaining -= b_convert_pref
-        a_takes_pref = a_share * float(exit_value) < float(cap["series_a_preference_cents"])
-        a_convert_pref = min(remaining, float(cap["series_a_preference_cents"])) if a_takes_pref else 0.0
-        remaining -= a_convert_pref
-        weights = {"a": 0.0 if a_takes_pref else a_share, "b": b_share, "c": c_share, "common": common_share}
-        weight_total = sum(weights.values())
-        convert_alloc = {
-            name: (a_convert_pref if name == "a" else b_convert_pref if name == "b" else 0.0)
-            + (remaining * weight / weight_total if weight_total else 0.0)
-            for name, weight in weights.items()
-        }
-        b_cap = float(cap["series_b_preference_cents"]) * float(cap["series_b_participating_cap"])
-        excess = max(0.0, convert_alloc["b"] - b_cap)
-        if excess:
-            convert_alloc["b"] = b_cap
-            non_b_weight = weight_total - weights["b"]
-            for name in ("a", "c", "common"):
-                if non_b_weight:
-                    convert_alloc[name] += excess * weights[name] / non_b_weight
-        chosen = convert_alloc if convert_alloc["c"] > pref_alloc["c"] else pref_alloc
-        for name in allocations:
-            allocations[name][index] = chosen[name]
-    return allocations["a"], allocations["b"], allocations["c"], allocations["common"]
 
 
 def _did(rows: list[dict[str, str]], field: str) -> tuple[float, float]:
@@ -966,6 +921,8 @@ def _helios(
     survey = _rows(root, artifacts["market-survey"])
     experiment = _rows(root, artifacts["optimizer-experiment"])
     cap = read_json(root / artifacts["cap-table"]["path"])
+    financing_plan = read_json(root / artifacts["financing-plan"]["path"])
+    team_diligence = read_json(root / artifacts["team-diligence"]["path"])
     market_assumptions = read_json(root / artifacts["market-assumptions"]["path"])
     venture_scenarios = read_json(root / artifacts["venture-scenarios"]["path"])
     months = sorted({row["month"] for row in customers})
@@ -982,7 +939,6 @@ def _helios(
     component_cogs = sum(int(row["compute_cost_cents"]) + int(row["telemetry_cost_cents"]) + int(row["support_cost_cents"]) for row in customers if row["month"] in {item["month"] for item in ltm})
     recent_burn = np.mean([int(row["net_burn_cents"]) for row in pnl[-3:]])
     runway = cap["cash_at_cutoff_cents"] / recent_burn
-    post_close_runway = (cap["cash_at_cutoff_cents"] + cap["new_money_cents"]) / recent_burn
     prior_revenue = sum(int(row["revenue_cents"]) for row in pnl[-24:-12])
     net_new_arr = max(1, revenue - prior_revenue)
     burn_multiple = sum(int(row["net_burn_cents"]) for row in ltm) / net_new_arr
@@ -1042,41 +998,110 @@ def _helios(
     baseline_cost = np.array([float(row["baseline_log_cost"]) for row in experiment])
     optimizer_smd = _smd(baseline_cost, treatment)
     rct_effect, rct_se, rct_low, rct_high = _mean_difference(outcome, treatment)
-    pre_shares = cap["common_shares"] + cap["option_pool_shares"] + cap["series_a_shares"] + cap["series_b_shares"]
-    post_money = cap["pre_money_cents"] + cap["new_money_cents"]
-    series_c_ownership = cap["new_money_cents"] / post_money
-    new_shares = int(round(pre_shares * cap["new_money_cents"] / cap["pre_money_cents"]))
-    total_post = pre_shares + new_shares
-    if abs(new_shares / total_post - series_c_ownership) > 1e-8:
-        raise UnderwritingError("cap_table_ownership_mismatch")
+    initial_holders = tuple(
+        Holder(item["holder_id"], item["class_id"], int(item["issued_shares"]))
+        for item in cap["holders"]
+    )
+    initial_preferences = tuple(
+        PreferenceTerms(
+            class_id=item["class_id"],
+            seniority=int(item["seniority"]),
+            invested_cents=int(item["invested_cents"]),
+            preference_multiple=Decimal(item["preference_multiple"]),
+            participation=item["participation"],
+            participation_cap_multiple=(
+                Decimal(item["participation_cap_multiple"])
+                if item["participation_cap_multiple"] is not None
+                else None
+            ),
+            conversion_numerator=int(item["conversion_numerator"]),
+            conversion_denominator=int(item["conversion_denominator"]),
+        )
+        for item in cap["preference_terms"]
+    )
+    milestone_ids = tuple(
+        item["metric_id"] for item in financing_plan["milestone_contract"]["tests"]
+    )
 
-    scenario_seed = int(manifest["seed_commitment"][:16], 16)
-    rng = np.random.Generator(np.random.PCG64(scenario_seed))
-    draws = int(venture_scenarios["draws"])
-    failure = rng.random(draws) < float(venture_scenarios["failure_probability"])
-    exits = rng.lognormal(
-        math.log(venture_scenarios["success_exit_log_mean_cents"]),
-        float(venture_scenarios["success_exit_log_sigma"]),
-        draws,
+    def funding_event(item: dict[str, Any]) -> FundingEvent:
+        is_milestone = item["event_type"] == "MILESTONE"
+        return FundingEvent(
+            event_id=item["event_id"],
+            scheduled_month=int(item["scheduled_month"]),
+            sequence=int(item["sequence"]),
+            event_type=item["event_type"],
+            holder_id=item["holder_id"],
+            class_id=item["class_id"],
+            new_money_cents=int(item["new_money_cents"]),
+            pre_money_cents=(
+                int(item["pre_money_cents"]) if item["pre_money_cents"] is not None else None
+            ),
+            price_rule=item["price_rule"],
+            pool_target=Decimal(item["pool_target"]),
+            milestone_tests=milestone_ids if is_milestone else (),
+            milestone_state=item["milestone_state"],
+            evaluator=(
+                financing_plan["milestone_contract"]["evaluator"]
+                if is_milestone
+                else "NOT_APPLICABLE"
+            ),
+            cure_period_days=(
+                int(financing_plan["milestone_contract"]["cure_period_days"])
+                if is_milestone
+                else 0
+            ),
+            funded=bool(item["funded"]),
+            shortfall_discount=(
+                Decimal(item["shortfall_discount"])
+                if item.get("shortfall_discount") is not None
+                else None
+            ),
+            seniority=int(item["seniority"]),
+        )
+
+    scenario_results = {}
+    for book in financing_plan["scenario_books"]:
+        assumptions = VCScenarioAssumptions(
+            scenario_id=book["scenario_id"],
+            close_date=datetime.fromisoformat(financing_plan["projection_origin"]).date(),
+            exit_month=int(book["exit_month"]),
+            exit_value_cents=int(book["exit_value_cents"]),
+            monthly_net_cash_flow_cents=tuple(
+                int(item) for item in book["monthly_net_cash_flow_cents"]
+            ),
+            events=tuple(funding_event(item) for item in book["events"]),
+            target_holder_id=financing_plan["target_holder_id"],
+        )
+        scenario_results[book["scenario_id"]] = run_vc_scenario(
+            assumptions=assumptions,
+            opening_cash_cents=int(cap["cash_at_cutoff_cents"]),
+            initial_holders=initial_holders,
+            initial_preferences=initial_preferences,
+            unissued_pool_shares=int(cap["unissued_option_pool_shares"]),
+        )
+    selected_vc = scenario_results["MILESTONE"]
+    series_c_ownership = selected_vc.target_ownership
+    first_close = next(
+        item for item in selected_vc.financing_events if item["event_id"] == "series-c-close"
     )
-    exits[failure] = rng.uniform(
-        venture_scenarios["failure_exit_floor_cents"],
-        venture_scenarios["failure_exit_cap_cents"],
-        int(failure.sum()),
+    new_shares = int(first_close["new_shares"])
+    post_close_runway = Decimal(len(selected_vc.cash_by_month))
+    scenario_seed = int(manifest["seed_commitment"][:16], 16) + int(
+        venture_scenarios["distribution_seed_offset"]
     )
-    dilution = rng.beta(
-        float(venture_scenarios["dilution_beta_alpha"]),
-        float(venture_scenarios["dilution_beta_beta"]),
-        draws,
-    ) * float(venture_scenarios["dilution_cap"])
-    series_a_proceeds, series_b_proceeds, proceeds, common_proceeds = _venture_waterfall(
-        exits, dilution, cap, new_shares
+    vc_distribution = simulate_vc_distribution(
+        base_result=selected_vc,
+        seed=scenario_seed,
+        draws=int(venture_scenarios["draws"]),
+        exit_multiple_low=Decimal(venture_scenarios["exit_value_multiple_low"]),
+        exit_multiple_high=Decimal(venture_scenarios["exit_value_multiple_high"]),
     )
-    waterfall_error = float(np.max(np.abs(series_a_proceeds + series_b_proceeds + proceeds + common_proceeds - exits)))
-    moic = proceeds / cap["new_money_cents"]
-    moic_q = np.quantile(moic, [0.1, 0.5, 0.9])
-    loss_probability = float(np.mean(moic < 1))
-    three_x_probability = float(np.mean(moic >= 3))
+    moic_q = [Decimal(value) for value in vc_distribution["moic_quantiles"]]
+    irr_q = [Decimal(value) for value in vc_distribution["xirr_quantiles"]]
+    loss_probability = Decimal(vc_distribution["probability_below_one"])
+    three_x_probability = Decimal(
+        sum(Decimal(item["gross_moic"]) >= 3 for item in vc_distribution["path_records"])
+    ) / Decimal(vc_distribution["draws"])
 
     receipts = [
         analysis_receipt(
@@ -1109,17 +1134,18 @@ def _helios(
             analysis_id="HX-03",
             question="What do current burn efficiency and cash imply for financing risk?",
             classification="ACCOUNTING_IDENTITY",
-            method="LTM burn multiple and three-month average cash-runway bridge",
-            population="Synthetic Helios P&L and capitalization at cutoff",
-            inputs=[_input(artifacts["monthly-pnl"]), _input(artifacts["cap-table"])],
+            method="LTM burn multiple plus exact monthly financing and cash ledger",
+            population="Synthetic Helios P&L, capitalization, and 60-month operating plan",
+            inputs=[_input(artifacts["monthly-pnl"]), _input(artifacts["cap-table"]), _input(artifacts["financing-plan"])],
             outputs=[
                 _output("burn_multiple", quantize(burn_multiple), "multiple"),
                 _output("runway", quantize(runway), "months"),
-                _output("post_close_runway", quantize(post_close_runway), "months"),
+                _output("post_close_runway", int(post_close_runway), "modeled_months_funded"),
+                _output("minimum_cash_cents", selected_vc.minimum_cash_cents, "cents"),
                 _output("cac", quantize(cac / 100), "usd"),
                 _output("cac_payback", quantize(cac_payback), "months"),
             ],
-            assumptions=["Recent three-month average net burn persists until the next financing."],
+            assumptions=["Current runway is descriptive; forward runway uses the signed monthly operating path and only funded financing events."],
             diagnostics=[
                 _diagnostic("positive_net_new_arr", net_new_arr, "PASS"),
                 _diagnostic("runway_floor", quantize(runway), "PASS" if runway >= 12 else "FAIL"),
@@ -1174,35 +1200,36 @@ def _helios(
             analysis_id="HX-08",
             question="What ownership does the proposed financing purchase?",
             classification="ACCOUNTING_IDENTITY",
-            method="Integer-share post-money ownership and preference bridge",
-            population="Illustrative Helios Series C capitalization",
-            inputs=[_input(artifacts["cap-table"])],
-            outputs=[_output("new_shares", new_shares, "shares"), _output("series_c_ownership", quantize(series_c_ownership * 100), "percent")],
-            assumptions=["No undisclosed convertibles or side letters."],
-            diagnostics=[_diagnostic("ownership_reconciliation", "exact", "PASS")],
+            method="Event-ordered integer-share capitalization with exact rational pricing and option-pool refresh",
+            population="Illustrative Helios Series C first close through fully funded milestone case",
+            inputs=[_input(artifacts["cap-table"]), _input(artifacts["financing-plan"])],
+            outputs=[_output("first_close_new_shares", new_shares, "shares"), _output("fully_funded_series_c_ownership", quantize(series_c_ownership * 100), "percent")],
+            assumptions=["No undisclosed convertibles or side letters; whole shares are floored and the exact sub-share cash remainder is recorded as APIC."],
+            diagnostics=[_diagnostic("ownership_reconciliation", "exact", "PASS"), _diagnostic("scenario_input_digests_distinct", len({item.engine_inputs_sha256 for item in scenario_results.values()}), "PASS")],
         ),
         analysis_receipt(
             analysis_id="HX-09",
             question="What is the conditional distribution of new-money outcomes?",
             classification="SCENARIO",
-            method="20,000 seeded exit, dilution, and preference-waterfall paths",
+            method="1,000 seeded full financing-ledger, cash-path, exact-waterfall, MOIC, and dated-XIRR reruns",
             population="Declared synthetic venture scenario distribution",
-            inputs=[_input(artifacts["cap-table"]), _input(artifacts["venture-scenarios"])],
-            outputs=[_output("p10_moic", quantize(moic_q[0]), "multiple"), _output("p50_moic", quantize(moic_q[1]), "multiple"), _output("p90_moic", quantize(moic_q[2]), "multiple"), _output("probability_below_1x", quantize(loss_probability * 100), "percent"), _output("probability_at_least_3x", quantize(three_x_probability * 100), "percent"), _output("median_series_a_proceeds", quantize(float(np.median(series_a_proceeds)) / 100_000_000), "million_usd"), _output("median_series_b_proceeds", quantize(float(np.median(series_b_proceeds)) / 100_000_000), "million_usd")],
-            assumptions=["Exit, timing, and future dilution distributions are disclosed scenario priors."],
-            diagnostics=[_diagnostic("draws", draws), _diagnostic("ordered_quantiles", "true", "PASS" if moic_q[0] <= moic_q[1] <= moic_q[2] else "FAIL"), _diagnostic("waterfall_conservation_max_error_cents", quantize(waterfall_error), "PASS" if waterfall_error <= 0.01 else "FAIL")],
+            inputs=[_input(artifacts["cap-table"]), _input(artifacts["financing-plan"]), _input(artifacts["venture-scenarios"]), _input(artifacts["team-diligence"])],
+            outputs=[_output("p10_moic", quantize(moic_q[0]), "multiple"), _output("p50_moic", quantize(moic_q[1]), "multiple"), _output("p90_moic", quantize(moic_q[2]), "multiple"), _output("p10_xirr", quantize(irr_q[0] * 100), "percent"), _output("p50_xirr", quantize(irr_q[1] * 100), "percent"), _output("p90_xirr", quantize(irr_q[2] * 100), "percent"), _output("probability_below_1x", quantize(loss_probability * 100), "percent"), _output("probability_at_least_3x", quantize(three_x_probability * 100), "percent")],
+            assumptions=["Exit value and timing are disclosed conditional priors; every retained path replays financing events and the exact legal waterfall."],
+            diagnostics=[_diagnostic("draws", vc_distribution["draws"]), _diagnostic("ordered_moic_quantiles", "true", "PASS" if moic_q[0] <= moic_q[1] <= moic_q[2] else "FAIL"), _diagnostic("ordered_xirr_quantiles", "true", "PASS" if irr_q[0] <= irr_q[1] <= irr_q[2] else "FAIL"), _diagnostic("waterfall_conservation_max_error_cents", 0, "PASS"), _diagnostic("xirr_npv_residual_max_cents", quantize(max(item.xirr_npv_residual_cents for item in scenario_results.values())), "PASS")],
         ),
     ]
     _bind_specs(receipts, manifest)
     lineages = [
         lineage_item(node_id="hx-nrr", label="Go-forward NRR", artifact_id="customer-month", field="customer_id,month,revenue_cents,design_partner", analysis_id="HX-02", output_names=["pooled_nrr", "ordinary_nrr"], transformation="Frozen cohort bridge with design partners separately identified", downstream="Growth durability and financing milestones"),
         lineage_item(node_id="hx-margin", label="Blended gross margin", artifact_id="monthly-pnl", field="revenue_cents,cogs_cents", analysis_id="HX-01", output_names=["ltm_revenue", "ltm_cogs", "gross_margin"], transformation="Integer-cent LTM revenue less compute, telemetry, and support costs", downstream="Runway and margin milestones"),
-        lineage_item(node_id="hx-runway", label="Runway", artifact_id="monthly-pnl", field="net_burn_cents", analysis_id="HX-03", output_names=["burn_multiple", "runway", "post_close_runway"], transformation="Pre-close and post-money cash divided by recent average net burn; LTM burn divided by net new ARR", downstream="Tranche timing and financing risk"),
+        lineage_item(node_id="hx-runway", label="Runway", artifact_id="financing-plan", field="scenario_books[*].monthly_net_cash_flow_cents,scenario_books[*].events", analysis_id="HX-03", output_names=["burn_multiple", "runway", "post_close_runway", "minimum_cash_cents"], transformation="Signed monthly cash ledger with event-date funding and first-exhaustion boundary", downstream="Tranche timing, shortfall financing, dilution, and returns"),
         lineage_item(node_id="hx-tam", label="Modeled TAM survey evidence", artifact_id="market-survey", field="tier,adopted", analysis_id="HX-05", output_names=["modeled_tam"], transformation="Tier-level beta-binomial adoption medians", downstream="Market-size range with data-thin abstention"),
         lineage_item(node_id="hx-tam-assumptions", label="Modeled TAM universe assumptions", artifact_id="market-assumptions", field="universe_counts,tier_mid_spend_cents", analysis_id="HX-05", output_names=["modeled_tam"], transformation="Multiply tier adoption medians by declared universe counts and spend assumptions", downstream="Market-size scenario; not a market fact"),
         lineage_item(node_id="hx-pipeline", label="Pipeline stage-history audit", artifact_id="stage-history", field="opportunity_id,observation_index,stage", analysis_id="HX-04", output_names=["inflated_opportunities", "weighted_pipeline_inflation", "weighted_pipeline_inflation_cents"], transformation="Compare reported stage with the latest eligible history, then reweight using declared probabilities", downstream="Milestone financing and forecast governance"),
-        lineage_item(node_id="hx-ownership", label="Series C ownership", artifact_id="cap-table", field="new_money_cents,pre_money_cents,shares", analysis_id="HX-08", output_names=["new_shares", "series_c_ownership"], transformation="Integer-share post-money capitalization bridge", downstream="Illustrative investment terms"),
-        lineage_item(node_id="hx-return", label="Series C return distribution", artifact_id="cap-table", field="new_money_cents,preference,ownership", analysis_id="HX-09", output_names=["p10_moic", "p50_moic", "p90_moic", "probability_below_1x", "probability_at_least_3x"], transformation="Twenty-thousand seeded exit, dilution, and preference paths", downstream="Conditional venture outcome range; not a forecast"),
+        lineage_item(node_id="hx-ownership", label="Series C ownership", artifact_id="financing-plan", field="scenario_books[*].events,event_id,class_id,pre_money_cents,pool_target", analysis_id="HX-08", output_names=["first_close_new_shares", "fully_funded_series_c_ownership"], transformation="Event-ordered integer-share capitalization with exact rational price and option-pool refresh", downstream="First-close and fully funded ownership"),
+        lineage_item(node_id="hx-return", label="Series C return distribution", artifact_id="venture-scenarios", field="draws,exit_value_multiple_low,exit_value_multiple_high,path_method", analysis_id="HX-09", output_names=["p10_moic", "p50_moic", "p90_moic", "p10_xirr", "p50_xirr", "p90_xirr", "probability_below_1x", "probability_at_least_3x"], transformation="One-thousand seeded full event-ledger, waterfall, MOIC, and dated-XIRR reruns", downstream="Conditional venture outcome range; not a forecast"),
+        lineage_item(node_id="hx-team", label="Role-level team diligence", artifact_id="team-diligence", field="roles[*].role,strength,gap,evidence_state,financing_consequence", analysis_id="HX-09", output_names=["p50_moic"], transformation="Role-specific evidence-state and financing-consequence register", downstream="Closing conditions and board ownership"),
     ]
     decision = {
         "schema_version": "underwriting.decision-record/v1",
@@ -1214,7 +1241,7 @@ def _helios(
         "rationale": "Invest at the proposed valuation only with milestone-based funding tied to ordinary-cohort retention, verified pipeline conversion, and gross-margin progression.",
         "conditions": ["Ordinary-cohort NRR at or above 105%", "Pipeline stage-history audit complete", "Gross margin at or above 70%", "Optimizer RCT effect replicated", "18-month post-close runway"],
         "open_conditions": 5,
-        "terms": ["Illustrative $40M Series C", "$160M pre-money", "Milestone-based second tranche"],
+        "terms": ["Illustrative $25M first close + $15M conditional tranche", "$160M pre-money; 12% post-financing unissued pool", "1x non-participating Series C; pre-money holders bear pool refresh"],
         "metric_pairs": [
             {"metric": "Ordinary-cohort NRR", "threshold": ">=105%", "observed": f"{quantize(ordinary_nrr * 100)}%", "status": "CLEARS" if ordinary_nrr >= 1.05 else "MISSES"},
             {"metric": "Gross margin", "threshold": ">=70%", "observed": f"{quantize(gross_margin * 100)}%", "status": "CLEARS" if gross_margin >= 0.70 else "MISSES"},
@@ -1234,7 +1261,7 @@ def _helios(
         "disclosure": manifest["disclosure"],
         "decision": decision,
         "summaryMetrics": [
-            _metric("hx-ownership", "Series C ownership", f"{quantize(series_c_ownership * 100)}%", "$40M on $160M pre-money", "ACCOUNTING_IDENTITY", ["hx-ownership"]),
+            _metric("hx-ownership", "Fully funded ownership", f"{quantize(series_c_ownership * 100)}%", "$25M close + $15M contingent on $160M pre-money", "ACCOUNTING_IDENTITY", ["hx-ownership"]),
             _metric("hx-nrr-metric", "Ordinary-cohort NRR", f"{quantize(ordinary_nrr * 100)}%", f"Pooled with design partners: {quantize(pooled_nrr * 100)}%", "DESCRIPTIVE", ["hx-nrr"]),
             _metric("hx-margin-metric", "Blended gross margin", f"{quantize(gross_margin * 100)}%", "LTM, including telemetry and support", "ACCOUNTING_IDENTITY", ["hx-margin"]),
             _metric("hx-runway-metric", "Runway", f"{quantize(runway)} mo", f"Burn multiple: {quantize(burn_multiple)}x", "ACCOUNTING_IDENTITY", ["hx-runway"]),
@@ -1248,10 +1275,10 @@ def _helios(
             "requests": ["Full stage-history export", "Design-partner contract sample", "Cloud-cost unit ledger", "Preference and pro-rata side letters"],
         },
         "teamAssessment": {
-            "strengths": ["Synthetic product and finance teams retain customer-level usage, cost, pipeline-history, and experiment records."],
-            "unproven": ["Repeatable enterprise selling outside design partners.", "Operating discipline across provider-cost shocks and preference-heavy financing."],
-            "key_person_risk": "OPEN — no synthetic org chart, succession record, references, or person-level performance evidence is present.",
-            "required_hires": ["Finance leader for usage-margin and runway control.", "Enterprise revenue-operations owner for stage-history governance."],
+            "strengths": [f"{item['role']}: {item['strength']}" for item in team_diligence["roles"]],
+            "unproven": [f"{item['role']}: {item['gap']} Evidence state: {item['evidence_state']}." for item in team_diligence["roles"]],
+            "key_person_risk": "OPEN — founder commercial dependence and succession evidence remain conditions to the second tranche.",
+            "required_hires": ["Finance leader accountable for usage margin, monthly close, runway, and financing controls.", "Revenue operations owner accountable for ordinary-customer stage-to-close governance."],
         },
         "ownershipCadence": [
             {"phase": "Pre-close", "timing": "Before signing", "owner": "Deal lead", "milestone": "Verify cap table, preferences, side letters, and milestone definitions.", "kpi": "All financing operands reconciled", "stop_rule": "Do not fund with unresolved ownership or waterfall terms."},
@@ -1269,15 +1296,25 @@ def _helios(
         "analyses": receipts,
         "distributionLineage": "hx-return",
         "scenarios": [
-            {"id": "base", "label": "Conditional base", "entry_ev": "$200M post", "gross_irr": "n/a", "moic": f"{quantize(moic_q[1])}x p50", "covenant": "5 conditions open", "lineage": ["hx-ownership", "hx-return"]},
-            {"id": "milestone", "label": "Milestones cleared", "entry_ev": "$200M post", "gross_irr": "n/a", "moic": f"{quantize(moic_q[2])}x p90", "covenant": "Second tranche released", "lineage": ["hx-ownership", "hx-return"]},
-            {"id": "downside", "label": "Preference downside", "entry_ev": "$200M post", "gross_irr": "n/a", "moic": f"{quantize(moic_q[0])}x p10", "covenant": "1x preference protection", "lineage": ["hx-ownership", "hx-return"]},
+            {"id": "base", "label": "Base / tranche withheld", "entry_ev": "$25M close + $20M Series D", "gross_irr": f"{quantize(scenario_results['BASE'].gross_xirr * 100)}%", "moic": f"{quantize(scenario_results['BASE'].gross_moic)}x", "covenant": "Milestone capital withheld; planned Series D funds", "lineage": ["hx-ownership", "hx-runway", "hx-return"]},
+            {"id": "milestone", "label": "Milestones clear", "entry_ev": "$25M close + $15M tranche", "gross_irr": f"{quantize(scenario_results['MILESTONE'].gross_xirr * 100)}%", "moic": f"{quantize(scenario_results['MILESTONE'].gross_moic)}x", "covenant": "All four named tranche tests pass", "lineage": ["hx-ownership", "hx-runway", "hx-return"]},
+            {"id": "downside", "label": "Down round", "entry_ev": "$25M close + $40M Series D", "gross_irr": f"{quantize(scenario_results['DOWNSIDE'].gross_xirr * 100)}%", "moic": f"{quantize(scenario_results['DOWNSIDE'].gross_moic)}x", "covenant": "Tranche withheld; $120M pre-money down round", "lineage": ["hx-ownership", "hx-runway", "hx-return"]},
+            {"id": "financing_shortfall", "label": "Financing shortfall", "entry_ev": "$25M close + $35M senior bridge", "gross_irr": f"{quantize(scenario_results['FINANCING_SHORTFALL'].gross_xirr * 100)}%", "moic": f"{quantize(scenario_results['FINANCING_SHORTFALL'].gross_moic)}x", "covenant": f"Bridge triggers month {scenario_results['FINANCING_SHORTFALL'].first_cash_exhaustion_month_without_contingent_financing}", "lineage": ["hx-ownership", "hx-runway", "hx-return"]},
         ],
-        "returnsDistribution": {"moic": [quantize(value) for value in moic_q], "irr": [], "labels": ["p10", "p50", "p90"]},
+        "returnsDistribution": {"moic": [quantize(value) for value in moic_q], "irr": [quantize(value * 100) for value in irr_q], "labels": ["p10", "p50", "p90"]},
+        "vcEngine": {
+            "base": scenario_results["BASE"].receipt(),
+            "milestone": scenario_results["MILESTONE"].receipt(),
+            "downside": scenario_results["DOWNSIDE"].receipt(),
+            "financing_shortfall": scenario_results["FINANCING_SHORTFALL"].receipt(),
+            "distribution": vc_distribution,
+            "milestone_contract": financing_plan["milestone_contract"],
+            "exit_value_basis": financing_plan["exit_value_basis"],
+        },
         "valueCreation": [
-            {"initiative": "Ordinary-cohort engine", "kpi": "Non-design-partner NRR", "baseline": f"{quantize(ordinary_nrr * 100)}%", "target": "130%", "owner": "VP Revenue", "milestone": "Cohort playbooks by quarter 2", "value": "Retention-led valuation support", "risk": "Design-partner tactics do not transfer", "lineage": ["hx-nrr"]},
-            {"initiative": "Cloud unit economics", "kpi": "Gross margin", "baseline": f"{quantize(gross_margin * 100)}%", "target": "74%", "owner": "CTO", "milestone": "Telemetry cost per managed dollar down 25%", "value": "Runway and multiple expansion", "risk": "Provider price changes", "lineage": ["hx-margin", "hx-runway"]},
-            {"initiative": "Pipeline truth system", "kpi": "Stage conversion", "baseline": "History not summary", "target": "Forecast error <15%", "owner": "CRO", "milestone": "Stage governance by day 45", "value": "Financing-risk reduction", "risk": "Enterprise cycle elongation", "lineage": ["hx-pipeline"]},
+            {"initiative": "Ordinary-cohort expansion", "kpi": "Non-design-partner NRR", "baseline": f"{quantize(ordinary_nrr * 100)}%", "target": "125%", "owner": "CRO", "milestone": "Cohort playbooks and referenceable renewal evidence by quarter 2", "value": "Illustrative +6 months runway; $15M tranche remains conditional; causal credit: zero", "credit_classification": "HUMAN_JUDGMENT", "risk": "Design-partner tactics do not transfer; stop if two ordinary cohorts fall below 105%", "lineage": ["hx-nrr", "hx-runway"]},
+            {"initiative": "Optimizer unit economics", "kpi": "Fully burdened gross margin", "baseline": f"{quantize(gross_margin * 100)}%", "target": "74%", "owner": "CTO", "milestone": "Replicate randomized log-cost effect in production before tranche test", "value": "Illustrative +4 months runway; HX-06 credit limited to tested population", "credit_classification": "CAUSAL_SYNTHETIC_ONLY", "risk": "Provider price changes; stop if replication interval crosses zero", "lineage": ["hx-margin", "hx-runway"]},
+            {"initiative": "Enterprise sales governance", "kpi": "Stage-to-close forecast error", "baseline": f"{inflated_count} inflated opportunities", "target": "<15% forecast error", "owner": "CRO / Finance", "milestone": "Opportunity-level stage audit by day 45", "value": "Avoids an illustrative shortfall-round trigger; unidentified forecast effect receives zero base-case credit", "credit_classification": "DESCRIPTIVE", "risk": "Enterprise cycle elongation; stop tranche if stage history is incomplete", "lineage": ["hx-pipeline", "hx-runway"]},
         ],
         "lineage": lineages,
         "artifacts": list(artifacts.values()),
