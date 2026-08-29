@@ -32,24 +32,28 @@ describe("Underwriting Intelligence Lab", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("binds named scenario values to lineage and labels display stress as unbound", async () => {
+  it("binds PE scenarios and sensitivities to retained engine receipts", async () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("button", {name: /Underwriting Room/}));
-    await user.click(screen.getAllByRole("button", {name: /Inspect lineage for .* entry value/})[0]);
-    expect(screen.getByRole("dialog", {name: /entry value/})).toBeInTheDocument();
-    expect(screen.getByText(/Receipt-bound entry value/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: /Upfront EV/}));
+    expect(screen.getByRole("dialog", {name: "Upfront EV"})).toBeInTheDocument();
+    expect(screen.getByText(/Result receipt/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", {name: "Close lineage"}));
-    expect(screen.getByText(/Unbound approximation · not in receipt/)).toBeInTheDocument();
-    expect(screen.getByRole("slider", {name: /Display stress/})).toBeInTheDocument();
+    expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox", {name: "Driver"})).toBeInTheDocument();
+    await user.selectOptions(screen.getByRole("combobox", {name: "Driver"}), "exit_multiple");
+    expect(screen.getByRole("button", {name: "6.5x"})).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("classifies value-creation baselines as descriptive and targets as human assumptions", async () => {
+  it("renders a reconciled value bridge with explicit credit classes", async () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("button", {name: /Value Creation/}));
-    await user.click(screen.getAllByRole("button", {name: "Inspect baseline evidence ↗"})[0]);
-    expect(screen.getByText("descriptive")).toBeInTheDocument();
-    expect(screen.getByText(/illustrative HUMAN_JUDGMENT assumption/)).toBeInTheDocument();
+    expect(screen.getAllByText("HUMAN JUDGMENT").length).toBeGreaterThan(0);
+    expect(screen.getByText("Explicit double-count control")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: /inspect ↗/i}));
+    expect(screen.getByRole("dialog", {name: "Combined value-creation impact"})).toBeInTheDocument();
+    expect(screen.getByText(/Standalone sum/)).toBeInTheDocument();
   });
 });

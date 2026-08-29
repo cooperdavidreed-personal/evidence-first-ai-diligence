@@ -5,8 +5,8 @@ const viewChecks = {
   "IC Snapshot": /What must be true/,
   "Thesis & Evidence": /Evidence → estimate → judgment → action/,
   "Econometric Lab": /What the design can—and cannot—establish/,
-  "Underwriting Room": /Price, structure, and downside/,
-  "Value Creation": /Every initiative earns its place in the value bridge/,
+  "Underwriting Room": /Price, (structure|leverage), and downside/,
+  "Value Creation": /(Every initiative earns its place|Value creation reconciles)/,
 };
 
 async function assertBoundedAndAccessible(page: Page) {
@@ -49,17 +49,29 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
         await page.getByRole("button", {name: "Identified synthetic effect"}).click();
       }
       if (view === "Underwriting Room") {
-        for (const scenario of await page.locator(".scenario-tabs button").all()) await scenario.click();
-        await page.getByLabel("Display stress:").fill("-10");
-        await expect(page.locator("output")).toContainText("unbound display approximation");
-        const scenarioLineage = page.getByRole("button", {name: /Inspect lineage for .* MOIC/}).first();
-        await scenarioLineage.click();
-        await expect(page.getByRole("dialog")).toBeVisible();
-        await page.keyboard.press("Escape");
-        await expect(scenarioLineage).toBeFocused();
+        if (caseName === "AtlasGrid Systems") {
+          await page.getByRole("button", {name: "Seller ask"}).click();
+          await expect(page.getByRole("button", {name: /Upfront EV \$240M/})).toBeVisible();
+          await page.getByRole("button", {name: "Selected"}).click();
+          await page.getByRole("button", {name: "Downside"}).click();
+          await page.getByRole("combobox", {name: "Driver"}).selectOption("exit_multiple");
+          await page.getByRole("button", {name: "5.5x"}).click();
+          await expect(page.getByRole("button", {name: /Gross IRR/}).last()).toBeVisible();
+          const financeLineage = page.getByRole("button", {name: /Maximum bid/});
+          await financeLineage.click();
+          await expect(page.getByRole("dialog")).toBeVisible();
+          await page.keyboard.press("Escape");
+          await expect(financeLineage).toBeFocused();
+        } else {
+          for (const scenario of await page.locator(".scenario-tabs button").all()) await scenario.click();
+          await expect(page.getByText(/No display-only approximation is permitted/)).toBeVisible();
+          expect(await page.getByRole("slider").count()).toBe(0);
+        }
       }
       if (view === "Value Creation") {
-        const evidence = page.getByRole("button", {name: "Inspect baseline evidence ↗"}).first();
+        const evidence = caseName === "AtlasGrid Systems"
+          ? page.getByRole("button", {name: /inspect ↗/i}).first()
+          : page.getByRole("button", {name: "Inspect baseline evidence ↗"}).first();
         await evidence.click();
         await expect(page.getByRole("dialog")).toBeVisible();
         await page.keyboard.press("Escape");

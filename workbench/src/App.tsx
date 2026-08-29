@@ -1,9 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import rawData from "./data/cases.json";
+import { PEUnderwritingRoom, PEValueCreation } from "./pe";
+import { ThesisGraphView } from "./thesis-graph";
 import type { Analysis, CaseData, Lineage, Metric, WorkbenchData } from "./types";
 
-// Generated data is validated against the workbench contract before this build step.
-const data = rawData as unknown as WorkbenchData;
+function assertWorkbenchData(value: unknown): asserts value is WorkbenchData {
+  if (!value || typeof value !== "object" || !("cases" in value) || !Array.isArray(value.cases)) {
+    throw new Error("workbench_data_invalid");
+  }
+  for (const candidate of value.cases) {
+    if (!candidate || typeof candidate !== "object" || !("caseId" in candidate) || !("analysis_sha256" in candidate)) {
+      throw new Error("workbench_case_invalid");
+    }
+  }
+}
+
+const dataCandidate: unknown = rawData;
+assertWorkbenchData(dataCandidate);
+const data = dataCandidate;
 const views = ["IC Snapshot", "Thesis & Evidence", "Econometric Lab", "Underwriting Room", "Value Creation"] as const;
 type View = (typeof views)[number];
 
@@ -121,11 +135,6 @@ function Snapshot({caseData, openMetric}: {caseData: CaseData; openMetric: (metr
 
 function ThesisEvidence({caseData}: {caseData: CaseData}) {
   const falsifiers = caseData.falsifierStates ?? caseData.thesis.falsifiers.map((label) => ({label, status: "OPEN" as const, observed: "Not evaluated"}));
-  const graphColumns = [
-    {title: "Evidence + assumptions", kinds: ["EVIDENCE", "ASSUMPTION"]},
-    {title: "Estimates + scenarios", kinds: ["ESTIMATE", "SCENARIO", "FALSIFIER"]},
-    {title: "Decision + action", kinds: ["DECISION", "INITIATIVE"]},
-  ];
   return (
     <div className="view-stack">
       <section className="thesis-header"><p className="kicker">Falsifiable thesis</p><h2>{caseData.thesis.statement}</h2><p>{caseData.thesis.counterthesis}</p></section>
@@ -134,7 +143,7 @@ function ThesisEvidence({caseData}: {caseData: CaseData}) {
         <article className="falsifiers"><h3>Kill criteria</h3><ol className="falsifier-list">{falsifiers.map((item) => <li key={item.label}><span>{item.label}<small>{item.observed}</small></span><strong data-status={item.status}>{item.status}</strong></li>)}</ol></article>
         <article><h3>Next diligence requests</h3><ol>{caseData.thesis.requests.map((item) => <li key={item}>{item}</li>)}</ol></article>
       </section>
-      <section aria-labelledby="graph-title"><div className="section-heading"><p className="kicker">Machine-readable thesis graph</p><h2 id="graph-title">Evidence → estimate → judgment → action</h2></div><div className="thesis-graph">{graphColumns.map((column) => <article key={column.title}><h3>{column.title}</h3>{caseData.thesisGraph.nodes.filter((node) => column.kinds.includes(node.kind)).slice(0, 10).map((node) => <div className={`graph-node ${node.kind.toLowerCase()}`} key={node.node_id}><span>{node.kind}</span><strong>{node.label}</strong><small>{node.status}</small></div>)}</article>)}</div><p className="graph-receipt">{caseData.thesisGraph.edges.length} typed relationships · graph <code>{caseData.thesisGraph.graph_sha256.slice(0, 16)}…</code></p></section>
+      <section aria-labelledby="graph-title"><div className="section-heading"><p className="kicker">Machine-readable thesis graph</p><h2 id="graph-title">Evidence → estimate → judgment → action</h2></div><ThesisGraphView graph={caseData.thesisGraph} /><p className="graph-receipt">{caseData.thesisGraph.nodes.length} nodes · {caseData.thesisGraph.edges.length} typed relationships · graph <code>{caseData.thesisGraph.graph_sha256.slice(0, 16)}…</code></p></section>
       <section aria-labelledby="evidence-title">
         <div className="section-heading"><p className="kicker">Content-addressed room</p><h2 id="evidence-title">Evidence register</h2></div>
         <div className="table-wrap" tabIndex={0} aria-label="Scrollable evidence register"><table><thead><tr><th>Artifact</th><th>Contract</th><th>Rows</th><th>Digest</th></tr></thead><tbody>
@@ -175,13 +184,10 @@ function EconometricLab({caseData}: {caseData: CaseData}) {
   );
 }
 
-function UnderwritingRoom({caseData, openMetric}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
+function LegacyUnderwritingRoom({caseData, openMetric}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
   const [scenarioId, setScenarioId] = useState(caseData.scenarios[0].id);
-  const [sensitivity, setSensitivity] = useState(0);
-  useEffect(() => {setScenarioId(caseData.scenarios[0].id); setSensitivity(0);}, [caseData]);
+  useEffect(() => {setScenarioId(caseData.scenarios[0].id);}, [caseData]);
   const scenario = caseData.scenarios.find((item) => item.id === scenarioId) ?? caseData.scenarios[0];
-  const parsedMoic = Number.parseFloat(scenario.moic);
-  const sensitized = Number.isFinite(parsedMoic) ? parsedMoic * (1 + sensitivity / 100) : null;
   const scenarioMetric = (item: CaseData["scenarios"][number], field: "entry_ev" | "gross_irr" | "moic" | "covenant", label: string): Metric => ({
     metric_id: `${caseData.caseId}-${item.id}-${field}`,
     label: `${item.label} ${label}`,
@@ -201,17 +207,21 @@ function UnderwritingRoom({caseData, openMetric}: {caseData: CaseData; openMetri
         <button onClick={(event) => openMetric(scenarioMetric(scenario, "moic", "MOIC"), event.currentTarget)} aria-label={`Inspect lineage for ${scenario.label} MOIC`}><span>MOIC</span><strong>{scenario.moic}</strong><small>Inspect ↗</small></button>
         <button onClick={(event) => openMetric(scenarioMetric(scenario, "covenant", "binding constraint"), event.currentTarget)} aria-label={`Inspect lineage for ${scenario.label} binding constraint`}><span>Constraint</span><strong>{scenario.covenant}</strong><small>Inspect ↗</small></button>
       </section>
-      <section className="sensitivity-panel">
-        <div><p className="kicker">Unbound approximation · not in receipt</p><h3>Proportional MOIC display stress</h3><p>This display-only approximation scales the shown scenario MOIC. It does not rerun the model or recompute debt, preferences, dilution, covenants, or any retained result.</p></div>
-        <div className="slider-block"><label htmlFor="sensitivity">Display stress: <strong>{sensitivity > 0 ? "+" : ""}{sensitivity}%</strong></label><input id="sensitivity" type="range" min="-20" max="20" step="5" value={sensitivity} onChange={(event) => setSensitivity(Number(event.target.value))} /><output htmlFor="sensitivity" aria-live="polite">{sensitized === null ? "not applicable" : `${sensitized.toFixed(2)}x unbound display approximation`}</output></div>
-      </section>
+      <aside className="epistemic-note"><strong>VC sensitivity pending v2 engine</strong><span>No display-only approximation is permitted. Helios controls appear only after financing, ownership, and waterfall cells are fully recomputed and receipt-bound.</span></aside>
       <Distribution caseData={caseData} openMetric={openMetric} />
       <section className="table-wrap" tabIndex={0} aria-label="Scrollable scenario table"><table><caption>Named scenarios and binding constraints · select any value for lineage</caption><thead><tr><th>Case</th><th>Entry</th><th>Gross IRR</th><th>MOIC</th><th>Constraint</th></tr></thead><tbody>{caseData.scenarios.map((item) => <tr key={item.id}><th scope="row">{item.label}</th><td><button className="table-lineage" aria-label={`Inspect lineage for ${item.label} entry value`} onClick={(event) => openMetric(scenarioMetric(item, "entry_ev", "entry value"), event.currentTarget)}>{item.entry_ev} ↗</button></td><td><button className="table-lineage" aria-label={`Inspect lineage for ${item.label} gross IRR`} onClick={(event) => openMetric(scenarioMetric(item, "gross_irr", "gross IRR"), event.currentTarget)}>{item.gross_irr} ↗</button></td><td><button className="table-lineage" aria-label={`Inspect lineage for ${item.label} MOIC`} onClick={(event) => openMetric(scenarioMetric(item, "moic", "MOIC"), event.currentTarget)}>{item.moic} ↗</button></td><td><button className="table-lineage" aria-label={`Inspect lineage for ${item.label} binding constraint`} onClick={(event) => openMetric(scenarioMetric(item, "covenant", "binding constraint"), event.currentTarget)}>{item.covenant} ↗</button></td></tr>)}</tbody></table></section>
     </div>
   );
 }
 
+function UnderwritingRoom({caseData, openMetric}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
+  return caseData.peEngine
+    ? <PEUnderwritingRoom caseData={caseData} openMetric={openMetric} />
+    : <LegacyUnderwritingRoom caseData={caseData} openMetric={openMetric} />;
+}
+
 function ValueCreation({caseData, openMetric}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
+  if (caseData.valueCreationBridge) return <PEValueCreation caseData={caseData} openMetric={openMetric} />;
   return (
     <div className="view-stack">
       <section className="value-head"><p className="kicker">Underwriting to ownership</p><h2>Every initiative earns its place in the value bridge</h2><p>Baselines come from the frozen room. Targets are illustrative human assumptions with named owners, milestones, and failure modes.</p></section>
@@ -225,7 +235,14 @@ export default function App() {
   const [view, setView] = useState<View>("IC Snapshot");
   const [drawerMetric, setDrawerMetric] = useState<Metric | null>(null);
   const [drawerTrigger, setDrawerTrigger] = useState<HTMLElement | null>(null);
+  const workspaceRef = useRef<HTMLElement>(null);
   const caseData = useMemo(() => data.cases.find((item) => item.caseId === caseId) ?? data.cases[0], [caseId]);
+  useEffect(() => {
+    if (typeof workspaceRef.current?.scrollIntoView === "function") {
+      workspaceRef.current.scrollIntoView({block: "start"});
+    }
+    workspaceRef.current?.focus({preventScroll: true});
+  }, [view, caseId]);
   if (!caseData) return <main>Workbench data unavailable.</main>;
   return (
     <div className="app-shell">
@@ -233,14 +250,14 @@ export default function App() {
       <header className="topbar">
         <div className="brand"><span className="brand-mark">UIL</span><div><strong>Underwriting Intelligence Lab</strong><small>Evidence → economics → action</small></div></div>
         <div className="case-switch" aria-label="Select investment case">{data.cases.map((item) => <button key={item.caseId} aria-pressed={item.caseId === caseId} onClick={() => {setCaseId(item.caseId); setView("IC Snapshot");}}><span>{item.caseType}</span>{item.company}</button>)}</div>
-        <div className="local-state"><span className="status-dot" />Local verified candidate · founder review pending</div>
+        <div className="local-state"><span className="status-dot" />Local synthetic build · founder review pending</div>
       </header>
       <div className="case-masthead">
         <div><p className="kicker">{caseData.caseType} · illustrative case</p><h1>{caseData.company}</h1></div>
         <p className="synthetic-banner">{caseData.disclosure}</p>
       </div>
       <nav className="view-nav" aria-label="Workbench views">{views.map((item, index) => <button key={item} aria-current={view === item ? "page" : undefined} onClick={() => setView(item)}><span>0{index + 1}</span>{item}</button>)}</nav>
-      <main id="workspace" tabIndex={-1}>
+      <main id="workspace" tabIndex={-1} ref={workspaceRef}>
         {view === "IC Snapshot" && <Snapshot caseData={caseData} openMetric={(metric, trigger) => {setDrawerTrigger(trigger); setDrawerMetric(metric);}} />}
         {view === "Thesis & Evidence" && <ThesisEvidence caseData={caseData} />}
         {view === "Econometric Lab" && <EconometricLab caseData={caseData} />}
