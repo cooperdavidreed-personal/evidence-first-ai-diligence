@@ -4,15 +4,65 @@
   "title": "Illustrative human decision record",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "decision", "attribution", "status", "rationale", "conditions", "open_conditions", "decision_sha256"],
+  "required": [
+    "schema_version",
+    "decision",
+    "attribution",
+    "status",
+    "signature_status",
+    "as_of",
+    "rationale",
+    "terms",
+    "metric_pairs",
+    "conditions",
+    "open_conditions",
+    "verification_sources",
+    "failure_consequences",
+    "decision_sha256"
+  ],
   "properties": {
     "schema_version": {"const": "underwriting.decision-record/v1"},
     "decision": {"enum": ["REPRICE", "INVEST", "PASS"]},
     "attribution": {"const": "Cooper David Reed — illustrative IC"},
     "status": {"enum": ["DECISION_RECORD_WELL_FORMED", "DECISION_RECORD_INCOMPLETE"]},
+    "signature_status": {"enum": ["PENDING_FOUNDER_SIGNATURE", "SIGNED"]},
+    "as_of": {"type": "string", "format": "date-time"},
     "rationale": {"type": "string", "minLength": 30},
+    "terms": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "metric_pairs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["metric", "threshold", "observed", "status"],
+        "properties": {
+          "metric": {"type": "string", "minLength": 1},
+          "threshold": {"type": "string", "minLength": 1},
+          "observed": {"type": "string", "minLength": 1},
+          "status": {"type": "string", "minLength": 1}
+        }
+      }
+    },
     "conditions": {"type": "array", "minItems": 1, "items": {"type": "string"}},
     "open_conditions": {"type": "integer", "minimum": 0},
+    "verification_sources": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "failure_consequences": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
     "decision_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
   }
 }

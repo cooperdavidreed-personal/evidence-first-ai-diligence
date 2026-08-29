@@ -55,6 +55,13 @@ export interface Scenario {
   gross_irr: string;
   moic: string;
   covenant: string;
+  lineage: string[];
+}
+
+export interface FalsifierState {
+  label: string;
+  status: "CLEAR" | "OPEN" | "TRIGGERED";
+  observed: string;
 }
 
 export interface Initiative {
@@ -102,6 +109,17 @@ export interface CaseData {
     rationale: string;
     conditions: string[];
     open_conditions: number;
+    signature_status?: string;
+    as_of?: string;
+    terms?: string[];
+    metric_pairs?: Array<{
+      metric: string;
+      threshold: string;
+      observed: string;
+      status: string;
+    }>;
+    verification_sources?: string[];
+    failure_consequences?: string[];
     decision_sha256: string;
   };
   summaryMetrics: Metric[];
@@ -112,6 +130,7 @@ export interface CaseData {
     falsifiers: string[];
     requests: string[];
   };
+  falsifierStates?: FalsifierState[];
   analyses: Analysis[];
   scenarios: Scenario[];
   scenarioBook: {schema_version: string; case_id: string; scenarios: Scenario[]; distribution: {moic: string[]; irr: string[]; labels: string[]}; scenario_sha256: string};

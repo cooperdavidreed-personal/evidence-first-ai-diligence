@@ -150,6 +150,25 @@ def validate_workbench_case(case: dict[str, Any]) -> None:
         raise UnderwritingError("thesis_graph_node_duplicate")
     if any(edge["from"] not in graph_nodes or edge["to"] not in graph_nodes for edge in case["thesisGraph"]["edges"]):
         raise UnderwritingError("thesis_graph_edge_orphan")
+    graph_adjacency: dict[str, set[str]] = {node_id: set() for node_id in graph_nodes}
+    for edge in case["thesisGraph"]["edges"]:
+        graph_adjacency[edge["from"]].add(edge["to"])
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(node_id: str) -> None:
+        if node_id in visiting:
+            raise UnderwritingError("thesis_graph_cycle")
+        if node_id in visited:
+            return
+        visiting.add(node_id)
+        for next_id in graph_adjacency[node_id]:
+            visit(next_id)
+        visiting.remove(node_id)
+        visited.add(node_id)
+
+    for graph_node_id in graph_nodes:
+        visit(graph_node_id)
     lineage = {item["node_id"]: item for item in case["lineage"]}
     if len(lineage) != len(case["lineage"]):
         raise UnderwritingError("lineage_node_duplicate")
@@ -166,5 +185,8 @@ def validate_workbench_case(case: dict[str, Any]) -> None:
     for metric in case["summaryMetrics"]:
         if not metric["lineage"] or not set(metric["lineage"]).issubset(lineage):
             raise UnderwritingError("headline_lineage_invalid")
+    for scenario_item in case["scenarioBook"]["scenarios"]:
+        if not scenario_item["lineage"] or not set(scenario_item["lineage"]).issubset(lineage):
+            raise UnderwritingError("scenario_lineage_invalid")
     if case["distributionLineage"] not in lineage:
         raise UnderwritingError("distribution_lineage_invalid")

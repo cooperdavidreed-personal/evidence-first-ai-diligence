@@ -13,7 +13,8 @@ No API-key or paid fallback route is authorized. No provider output is case evid
 | Product and editorial contract | Claude | `PRODUCED` | Frozen into `docs/UNDERWRITING-PRODUCT-CONTRACT.md` before results |
 | Econometrics and DGP contract | Claude | `PRODUCED` | Frozen into `docs/ECONOMETRICS-CONTRACT.md` before results |
 | Reference-pattern red team | Grok | `HELD_PROVIDER` after retry ceiling | Partial output retained as nonauthoritative advisory evidence; not used as verified research |
-| Investment/econometrics review | Claude | `PENDING` | Required before final candidate status |
+| Investment/econometrics review of `360e129` | Claude | `QUALITY_SHORT` | Truth leakage, stage-history, decision-integrity, falsifier, lineage, and recovery findings became mandatory repair work |
+| Critical/high repair pass | Codex | `LOCALLY VERIFIED` | Exact repaired commit is submitted to Claude only after deterministic acceptance |
 | Independent final acceptance | Claude | `PENDING` | Required before `PORTFOLIO_CANDIDATE_READY_FOR_FOUNDER_REVIEW` |
 
 Durable provider stdout, state events, and episode receipts live in the excluded local mission directory, not the proposed public package.

@@ -50,11 +50,16 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
       }
       if (view === "Underwriting Room") {
         for (const scenario of await page.locator(".scenario-tabs button").all()) await scenario.click();
-        await page.getByLabel("Proportional stress:").fill("-10");
-        await expect(page.locator("output")).toContainText("illustrative stressed MOIC");
+        await page.getByLabel("Display stress:").fill("-10");
+        await expect(page.locator("output")).toContainText("unbound display approximation");
+        const scenarioLineage = page.getByRole("button", {name: /Inspect lineage for .* MOIC/}).first();
+        await scenarioLineage.click();
+        await expect(page.getByRole("dialog")).toBeVisible();
+        await page.keyboard.press("Escape");
+        await expect(scenarioLineage).toBeFocused();
       }
       if (view === "Value Creation") {
-        const evidence = page.getByRole("button", {name: "Inspect evidence ↗"}).first();
+        const evidence = page.getByRole("button", {name: "Inspect baseline evidence ↗"}).first();
         await evidence.click();
         await expect(page.getByRole("dialog")).toBeVisible();
         await page.keyboard.press("Escape");

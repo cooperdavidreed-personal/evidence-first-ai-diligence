@@ -311,7 +311,17 @@ def _atlasgrid(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, A
             opening_debt = ending_debt
     rows = _write_csv(case_root / "data/debt_schedule.csv", list(debt_rows[0]), debt_rows)
     artifacts.append(_artifact(case_root, "data/debt_schedule.csv", "atlasgrid.debt-schedule/v1", rows))
-    cim = """# AtlasGrid Systems — synthetic confidential information memorandum\n\nSYNTHETIC — NOT INVESTMENT ADVICE\n\nManagement presents durable mission-critical grid software, 111% active-customer NRR, 78% reported gross margin, and $29 million seller-adjusted EBITDA. The data room contains the customer, cost, QoE, and financing records required to challenge those definitions.\n"""
+    base_label, end_label = _month_label(47), _month_label(59)
+    base_entities = {row["entity_id"] for row in month_rows if row["month"] == base_label and int(row["mrr_cents"]) > 0}
+    ending_active = {row["entity_id"]: int(row["mrr_cents"]) for row in month_rows if row["month"] == end_label and int(row["mrr_cents"]) > 0}
+    base_active = {row["entity_id"]: int(row["mrr_cents"]) for row in month_rows if row["month"] == base_label and row["entity_id"] in base_entities}
+    retained_entities = base_entities.intersection(ending_active)
+    active_only_nrr = sum(ending_active[entity_id] for entity_id in retained_entities) / sum(base_active[entity_id] for entity_id in retained_entities)
+    ltm_revenue = sum(int(row["recognized_revenue_cents"]) for row in monthly[-12:])
+    ltm_reported_cogs = sum(int(row["reported_cogs_cents"]) for row in monthly[-12:])
+    reported_margin = 1 - ltm_reported_cogs / ltm_revenue
+    seller_adjusted = int(addbacks[0]["amount_cents"])
+    cim = f"""# AtlasGrid Systems — synthetic confidential information memorandum\n\nSYNTHETIC — NOT INVESTMENT ADVICE\n\nManagement presents durable mission-critical grid software, {active_only_nrr * 100:.2f}% active-customer NRR, {reported_margin * 100:.2f}% reported gross margin, and ${seller_adjusted / 100_000_000:.2f} million seller-adjusted EBITDA. The data room contains the customer, cost, QoE, and financing records required to challenge those definitions.\n"""
     (case_root / "data/CIM.md").write_text(cim, encoding="utf-8")
     artifacts.append(_artifact(case_root, "data/CIM.md", "atlasgrid.cim/v1", 1))
     truth = {
@@ -319,6 +329,7 @@ def _atlasgrid(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, A
         "case_id": "atlasgrid",
         "master_seed": str(seed),
         "price_rct_ate": "-0.05",
+        "annualized_churn_target_pct": "4.00",
         "support_resolution_att_hours": "-4.80",
         "support_churn_att_bps": "-16.00",
         "entity_count": entity_count,
@@ -423,33 +434,50 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
     artifacts.append(_artifact(case_root, "data/monthly_pnl.csv", "helios.monthly-pnl/v1", rows))
 
     pipeline_rows: list[dict[str, Any]] = []
+    stage_history_rows: list[dict[str, Any]] = []
+    inflated_opportunity_ids: list[str] = []
     for idx in range(320):
         actual_stage = int(entity_rng.integers(1, 6))
         inflated = int(idx < 48)
         reported_stage = min(6, actual_stage + inflated)
+        opportunity_id = f"HX-O{idx + 1:04d}"
+        if inflated:
+            inflated_opportunity_ids.append(opportunity_id)
         amount = int(max(250_000, entity_rng.lognormal(math.log(3_500_000), 0.7)))
         pipeline_rows.append(
             {
-                "opportunity_id": f"HX-O{idx + 1:04d}",
-                "actual_stage": actual_stage,
+                "opportunity_id": opportunity_id,
                 "reported_stage": reported_stage,
-                "inflated": inflated,
                 "amount_cents": amount,
             }
         )
+        observations = 10 if idx >= 312 else 18
+        for observation in range(observations):
+            stage = min(actual_stage, 1 + int(observation * actual_stage / observations))
+            stage_history_rows.append(
+                {
+                    "opportunity_id": opportunity_id,
+                    "observation_index": observation + 1,
+                    "stage": stage,
+                }
+            )
     rows = _write_csv(case_root / "data/pipeline.csv", list(pipeline_rows[0]), pipeline_rows)
     artifacts.append(_artifact(case_root, "data/pipeline.csv", "helios.pipeline/v1", rows))
+    rows = _write_csv(case_root / "data/stage_history.csv", list(stage_history_rows[0]), stage_history_rows)
+    artifacts.append(_artifact(case_root, "data/stage_history.csv", "helios.stage-history/v1", rows))
 
     adoption_rates = [0.62, 0.48, 0.33, 0.18, 0.08]
     survey_sizes = [120, 110, 90, 77, 3]
     survey_rows: list[dict[str, Any]] = []
     for tier, (rate, size) in enumerate(zip(adoption_rates, survey_sizes, strict=True), start=1):
+        outcomes = np.array([1] * round(rate * size) + [0] * (size - round(rate * size)))
+        entity_rng.shuffle(outcomes)
         for idx in range(size):
             survey_rows.append(
                 {
                     "respondent_id": f"HX-S{tier}-{idx + 1:03d}",
                     "tier": tier,
-                    "adopted": int(entity_rng.random() < rate),
+                    "adopted": int(outcomes[idx]),
                     "annual_ai_spend_cents": int((6 - tier) * 48_000_000 + entity_rng.normal(0, 5_000_000)),
                 }
             )
@@ -523,6 +551,7 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
         "optimizer_ate_log_cost": "-0.11",
         "market_adoption_rates": [str(value) for value in adoption_rates],
         "pipeline_inflated_count": 48,
+        "pipeline_inflated_opportunity_ids": inflated_opportunity_ids,
         "customer_count": customer_count,
         "distortions": ["design_partner_selection", "pipeline_inflation", "survivor_comparables"],
     }

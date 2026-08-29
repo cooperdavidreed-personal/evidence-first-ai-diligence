@@ -31,4 +31,25 @@ describe("Underwriting Intelligence Lab", () => {
     await user.click(screen.getByRole("button", {name: "Close lineage"}));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+
+  it("binds named scenario values to lineage and labels display stress as unbound", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", {name: /Underwriting Room/}));
+    await user.click(screen.getAllByRole("button", {name: /Inspect lineage for .* entry value/})[0]);
+    expect(screen.getByRole("dialog", {name: /entry value/})).toBeInTheDocument();
+    expect(screen.getByText(/Receipt-bound entry value/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: "Close lineage"}));
+    expect(screen.getByText(/Unbound approximation · not in receipt/)).toBeInTheDocument();
+    expect(screen.getByRole("slider", {name: /Display stress/})).toBeInTheDocument();
+  });
+
+  it("classifies value-creation baselines as descriptive and targets as human assumptions", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", {name: /Value Creation/}));
+    await user.click(screen.getAllByRole("button", {name: "Inspect baseline evidence ↗"})[0]);
+    expect(screen.getByText("descriptive")).toBeInTheDocument();
+    expect(screen.getByText(/illustrative HUMAN_JUDGMENT assumption/)).toBeInTheDocument();
+  });
 });

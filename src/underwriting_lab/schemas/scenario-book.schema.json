@@ -15,14 +15,20 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "label", "entry_ev", "gross_irr", "moic", "covenant"],
+        "required": ["id", "label", "entry_ev", "gross_irr", "moic", "covenant", "lineage"],
         "properties": {
           "id": {"type": "string", "minLength": 1},
           "label": {"type": "string", "minLength": 1},
           "entry_ev": {"type": "string", "minLength": 1},
           "gross_irr": {"type": "string", "minLength": 1},
           "moic": {"type": "string", "minLength": 1},
-          "covenant": {"type": "string", "minLength": 1}
+          "covenant": {"type": "string", "minLength": 1},
+          "lineage": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
+          }
         }
       }
     },
