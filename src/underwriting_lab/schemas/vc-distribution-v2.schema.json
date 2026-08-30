@@ -3,7 +3,7 @@
   "$id": "https://dailyaiagents.dev/schemas/vc-distribution-v2.schema.json",
   "title": "VC Distribution v2",
   "type": "object",
-  "required": ["schema_version", "seed", "draws", "base_result_receipt_sha256", "template_weights", "moic_quantiles", "xirr_quantiles", "probability_below_one", "path_records", "receipt_sha256"],
+  "required": ["schema_version", "seed", "draws", "base_result_receipt_sha256", "template_weights", "moic_quantiles", "xirr_quantiles", "probability_below_one", "probability_below_one_monte_carlo_se_pp", "path_records", "receipt_sha256"],
   "properties": {
     "schema_version": {"const": "underwriting.vc-distribution/v2"},
     "seed": {"type": "integer"},
@@ -13,6 +13,7 @@
     "moic_quantiles": {"type": "array", "minItems": 3, "maxItems": 3},
     "xirr_quantiles": {"type": "array", "minItems": 3, "maxItems": 3},
     "probability_below_one": {"type": "string"},
+    "probability_below_one_monte_carlo_se_pp": {"type": "string", "pattern": "^[0-9]+(?:\\.[0-9]+)?$"},
     "path_records": {"type": "array", "minItems": 500},
     "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
   }

@@ -515,7 +515,17 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
 
     ltm_revenue_cents = sum(int(row["revenue_cents"]) for row in monthly[-12:])
 
-    def exit_valuation(annual_growth: str, revenue_multiple: str) -> dict[str, Any]:
+    base_cash_path = projected_cash_path(105_000_000, 700_000)
+    milestone_cash_path = projected_cash_path(95_000_000, 850_000)
+    downside_cash_path = projected_cash_path(125_000_000, 0)
+    shortfall_cash_path = projected_cash_path(125_000_000, 0)
+
+    def cash_at_exit(path: list[int], funded_capital_cents: int) -> int:
+        return cutoff_cash + funded_capital_cents + sum(path)
+
+    def exit_valuation(
+        annual_growth: str, revenue_multiple: str, exit_cash_cents: int
+    ) -> dict[str, Any]:
         growth = Decimal(annual_growth)
         multiple = Decimal(revenue_multiple)
         terminal_revenue = int(
@@ -528,6 +538,7 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
                 Decimal("1"), rounding=ROUND_HALF_EVEN
             )
         )
+        net_debt_cents = -exit_cash_cents
         return {
             "schema_version": "underwriting.operating-exit-bridge/v1",
             "observed_ltm_revenue_cents": ltm_revenue_cents,
@@ -535,16 +546,17 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
             "years": 5,
             "exit_revenue_multiple": revenue_multiple,
             "terminal_revenue_cents": terminal_revenue,
-            "net_debt_cents": 0,
+            "cash_at_exit_cents": exit_cash_cents,
+            "net_debt_cents": net_debt_cents,
             "exit_enterprise_value_cents": enterprise_value,
-            "exit_equity_value_cents": enterprise_value,
+            "exit_equity_value_cents": enterprise_value - net_debt_cents,
             "classification": "SCENARIO",
         }
 
-    base_exit = exit_valuation("0.40", "4.0")
-    milestone_exit = exit_valuation("0.48", "4.0")
-    downside_exit = exit_valuation("0.20", "2.5")
-    shortfall_exit = exit_valuation("0.25", "3.0")
+    base_exit = exit_valuation("0.40", "4.0", cash_at_exit(base_cash_path, 4_500_000_000))
+    milestone_exit = exit_valuation("0.48", "4.0", cash_at_exit(milestone_cash_path, 4_000_000_000))
+    downside_exit = exit_valuation("0.20", "2.5", cash_at_exit(downside_cash_path, 6_500_000_000))
+    shortfall_exit = exit_valuation("0.25", "3.0", cash_at_exit(shortfall_cash_path, 6_000_000_000))
 
     financing_plan = {
         "schema_version": "helios.financing-plan/v2",
@@ -572,7 +584,7 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
         "scenario_books": [
             {
                 "scenario_id": "BASE", "exit_month": 60, "exit_value_cents": base_exit["exit_equity_value_cents"], "exit_valuation": base_exit,
-                "monthly_net_cash_flow_cents": projected_cash_path(105_000_000, 700_000),
+                "monthly_net_cash_flow_cents": base_cash_path,
                 "events": [
                     {"event_id": "series-c-close", "scheduled_month": 1, "sequence": 10, "event_type": "PRIMARY", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 2_500_000_000, "pre_money_cents": 16_000_000_000, "price_rule": "PRE_MONEY", "pool_target": "0.12", "milestone_state": "NOT_APPLICABLE", "funded": True, "seniority": 1},
                     {"event_id": "series-c-tranche", "scheduled_month": 12, "sequence": 20, "event_type": "MILESTONE", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 1_500_000_000, "pre_money_cents": None, "price_rule": "SAME_AS_SERIES_C", "pool_target": "0", "milestone_state": "FAIL", "milestone_results": milestone_results("FAIL"), "funded": False, "seniority": 1},
@@ -581,7 +593,7 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
             },
             {
                 "scenario_id": "MILESTONE", "exit_month": 60, "exit_value_cents": milestone_exit["exit_equity_value_cents"], "exit_valuation": milestone_exit,
-                "monthly_net_cash_flow_cents": projected_cash_path(95_000_000, 850_000),
+                "monthly_net_cash_flow_cents": milestone_cash_path,
                 "events": [
                     {"event_id": "series-c-close", "scheduled_month": 1, "sequence": 10, "event_type": "PRIMARY", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 2_500_000_000, "pre_money_cents": 16_000_000_000, "price_rule": "PRE_MONEY", "pool_target": "0.12", "milestone_state": "NOT_APPLICABLE", "funded": True, "seniority": 1},
                     {"event_id": "series-c-tranche", "scheduled_month": 12, "sequence": 20, "event_type": "MILESTONE", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 1_500_000_000, "pre_money_cents": None, "price_rule": "SAME_AS_SERIES_C", "pool_target": "0", "milestone_state": "PASS", "milestone_results": milestone_results("PASS"), "funded": True, "seniority": 1},
@@ -589,7 +601,7 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
             },
             {
                 "scenario_id": "DOWNSIDE", "exit_month": 60, "exit_value_cents": downside_exit["exit_equity_value_cents"], "exit_valuation": downside_exit,
-                "monthly_net_cash_flow_cents": projected_cash_path(125_000_000, 0),
+                "monthly_net_cash_flow_cents": downside_cash_path,
                 "events": [
                     {"event_id": "series-c-close", "scheduled_month": 1, "sequence": 10, "event_type": "PRIMARY", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 2_500_000_000, "pre_money_cents": 16_000_000_000, "price_rule": "PRE_MONEY", "pool_target": "0.12", "milestone_state": "NOT_APPLICABLE", "funded": True, "seniority": 1},
                     {"event_id": "series-c-tranche", "scheduled_month": 12, "sequence": 20, "event_type": "MILESTONE", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 1_500_000_000, "pre_money_cents": None, "price_rule": "SAME_AS_SERIES_C", "pool_target": "0", "milestone_state": "FAIL", "milestone_results": milestone_results("FAIL"), "funded": False, "seniority": 1},
@@ -598,7 +610,7 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
             },
             {
                 "scenario_id": "FINANCING_SHORTFALL", "exit_month": 60, "exit_value_cents": shortfall_exit["exit_equity_value_cents"], "exit_valuation": shortfall_exit,
-                "monthly_net_cash_flow_cents": projected_cash_path(125_000_000, 0),
+                "monthly_net_cash_flow_cents": shortfall_cash_path,
                 "events": [
                     {"event_id": "series-c-close", "scheduled_month": 1, "sequence": 10, "event_type": "PRIMARY", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 2_500_000_000, "pre_money_cents": 16_000_000_000, "price_rule": "PRE_MONEY", "pool_target": "0.12", "milestone_state": "NOT_APPLICABLE", "funded": True, "seniority": 1},
                     {"event_id": "series-c-tranche", "scheduled_month": 12, "sequence": 20, "event_type": "MILESTONE", "holder_id": "series-c-investor", "class_id": "SERIES_C", "new_money_cents": 1_500_000_000, "pre_money_cents": None, "price_rule": "SAME_AS_SERIES_C", "pool_target": "0", "milestone_state": "FAIL", "milestone_results": milestone_results("FAIL"), "funded": False, "seniority": 1},

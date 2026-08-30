@@ -242,6 +242,9 @@ export interface PEEngine {
     probability_below_one: string;
     probability_covenant_breach: string;
     probability_payment_default: string;
+    probability_below_one_monte_carlo_se_pp: string;
+    probability_covenant_breach_monte_carlo_se_pp: string;
+    probability_payment_default_monte_carlo_se_pp: string;
     base_engine_inputs: Record<string, unknown>;
     correlation_structure: Record<string, unknown>;
     correlation_structure_sha256: string;
@@ -370,6 +373,7 @@ export interface VCEngine {
     moic_quantiles: string[];
     xirr_quantiles: string[];
     probability_below_one: string;
+    probability_below_one_monte_carlo_se_pp: string;
     receipt_sha256: string;
   };
   sensitivities: {
@@ -393,6 +397,7 @@ export interface VCEngine {
     years: number;
     exit_revenue_multiple: string;
     terminal_revenue_cents: number;
+    cash_at_exit_cents: number;
     net_debt_cents: number;
     exit_enterprise_value_cents: number;
     exit_equity_value_cents: number;
@@ -477,8 +482,12 @@ export interface CaseData {
     terms?: string[];
     metric_pairs?: Array<{
       metric: string;
+      metric_id: string;
+      operator: ">=" | "<=" | ">" | "<" | "==";
       threshold: string;
+      threshold_value: string;
       observed: string;
+      observed_value: string;
       status: string;
     }>;
     verification_sources?: string[];

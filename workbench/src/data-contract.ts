@@ -80,6 +80,16 @@ function validateCase(candidate: unknown): asserts candidate is CaseData {
   }>;
   const metrics = new Map(metricRegistry.map((item) => [item.metric_id, item]));
   if (metrics.size !== metricRegistry.length) throw new Error("metric_registry_duplicate");
+  if (!record(candidate.decision) || !array(candidate.decision.metric_pairs)) throw new Error("decision_metric_pairs_missing");
+  for (const pair of candidate.decision.metric_pairs) {
+    if (!record(pair) || typeof pair.metric_id !== "string" || typeof pair.observed_value !== "string" || typeof pair.operator !== "string" || typeof pair.threshold_value !== "string" || typeof pair.status !== "string") throw new Error("decision_metric_pair_invalid");
+    const metric = metrics.get(pair.metric_id);
+    if (!metric || metric.value !== pair.observed_value) throw new Error("decision_metric_binding_invalid");
+    const observed = Number(pair.observed_value);
+    const threshold = Number(pair.threshold_value);
+    const clears = pair.operator === ">=" ? observed >= threshold : pair.operator === "<=" ? observed <= threshold : pair.operator === ">" ? observed > threshold : pair.operator === "<" ? observed < threshold : pair.operator === "==" ? observed === threshold : null;
+    if (clears === null || pair.status !== (clears ? "CLEARS" : "MISSES")) throw new Error("decision_metric_status_invalid");
+  }
   const locators = new Set(sourceLocators.map((item) => item.locator_id));
   if (sourceLocators.some((item) => item.schema_version !== "underwriting.source-locator/v3" || !item.repository_path.startsWith(`portfolio/${candidate.caseId}/data-room/data/`) || !item.published_path.startsWith(`/source-pack/${candidate.caseId}/data/`) || !/^[0-9a-f]{64}$/.test(item.selection_sha256) || !/^[0-9a-f]{64}$/.test(item.excerpt_sha256))) throw new Error("source_locator_v3_invalid");
   for (const metric of metricRegistry) {

@@ -21,12 +21,12 @@ on Ubuntu/macOS remains `NOT_RUN` until a separately authorized push.
   regression checks, deterministic tagged five-page PDFs for both cases,
   typed diligence and value-creation contracts, chart contracts, keyboard DAG
   traversal, and a frozen 16-mutant falsification ledger.
-- Python: `146/146` locally on the primary Python 3.12 environment. The same
-  `146/146` suite passes locally under Python 3.11, 3.12, and 3.13. This is a
+- Python: `154/154` locally on the primary Python 3.12 environment. The same
+  `154/154` suite passes locally under Python 3.11, 3.12, and 3.13. This is a
   local interpreter matrix, not hosted CI.
 - React: `15/15`. Playwright: `6 passed / 2 intentionally skipped` because the
   memo print contract runs once per case rather than redundantly per viewport.
-- Visual evidence: 22 retained PNGs reproduce within the frozen read-only
+- Visual evidence: 26 retained PNGs reproduce within the frozen read-only
   thresholds; both PDF byte comparisons and all four retained accessibility
   evidence files match. Automated serious/critical Axe findings are zero on
   the tested routes and viewports; comprehensive WCAG compliance is not
@@ -36,8 +36,9 @@ on Ubuntu/macOS remains `NOT_RUN` until a separately authorized push.
   browser print proof.
 - Source evidence: 25 manifest-declared files are committed across the two
   synthetic data rooms. Locator v3 closes all declared analysis-input pairs
-  (`24/24` AtlasGrid and `20/20` Helios), binds exact excerpts and selection
-  digests, and stages only manifest-bound files for public review.
+  (`24/24` AtlasGrid and `20/20` Helios), binds each complete source artifact
+  plus exact granular review rows, cells, pointers, or text spans, and stages
+  only manifest-bound files for public review.
 - Package, public scan, security, mutation, toolkit-integration, estimator
   recovery, and clean-tree gates pass in the exact-head candidate verifier.
   The wheel contains 24 underwriting schemas plus the four preserved kernel

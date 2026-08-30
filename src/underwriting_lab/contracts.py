@@ -148,6 +148,12 @@ def _validate_pe_payload(case: dict[str, Any]) -> None:
         expected = value.quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN)
         if Decimal(distribution[name]) != expected:
             raise UnderwritingError(f"pe_distribution_probability_mismatch:{name}")
+        expected_se_pp = (
+            (expected * (Decimal(1) - expected) / denominator).sqrt()
+            * Decimal(100)
+        ).quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN)
+        if Decimal(distribution[f"{name}_monte_carlo_se_pp"]) != expected_se_pp:
+            raise UnderwritingError(f"pe_distribution_monte_carlo_se_mismatch:{name}")
     sensitivity = engine.get("sensitivities")
     if not isinstance(sensitivity, dict):
         raise UnderwritingError("pe_sensitivity_book_missing")
@@ -211,11 +217,14 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
             )
         )
         equity_value = enterprise_value - int(exit_bridge["net_debt_cents"])
+        exit_cash = int(result["cash_by_month"][-1]["ending_cash_cents"])
         if (
             terminal_revenue != exit_bridge["terminal_revenue_cents"]
             or enterprise_value != exit_bridge["exit_enterprise_value_cents"]
             or equity_value != exit_bridge["exit_equity_value_cents"]
             or equity_value != waterfall["exit_value_cents"]
+            or exit_bridge.get("cash_at_exit_cents") != exit_cash
+            or exit_bridge["net_debt_cents"] != -exit_cash
         ):
             raise UnderwritingError("vc_operating_exit_bridge_reconciliation_failed")
         issued_shares = sum(
@@ -395,6 +404,18 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         values = sorted(Decimal(record[field]) for record in records)
         if [format(values[index], "f") for index in quantile_indices] != distribution[output]:
             raise UnderwritingError(f"vc_distribution_quantile_mismatch:{field}")
+    below_one = (
+        Decimal(sum(Decimal(record["gross_moic"]) < 1 for record in records))
+        / Decimal(len(records))
+    ).quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN)
+    if Decimal(distribution["probability_below_one"]) != below_one:
+        raise UnderwritingError("vc_distribution_probability_mismatch")
+    expected_se_pp = (
+        (below_one * (Decimal(1) - below_one) / Decimal(len(records))).sqrt()
+        * Decimal(100)
+    ).quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN)
+    if Decimal(distribution["probability_below_one_monte_carlo_se_pp"]) != expected_se_pp:
+        raise UnderwritingError("vc_distribution_monte_carlo_se_mismatch")
     bridge = case.get("vcValueCreationBridge")
     if not isinstance(bridge, dict):
         raise UnderwritingError("vc_value_creation_bridge_missing")
@@ -489,6 +510,48 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
                 )
             if set(metric["source_locator_ids"]) != expected_locator_ids:
                 raise UnderwritingError(f"analysis_output_locator_mismatch:{metric_id}")
+
+    comparison_operators = {
+        ">=": lambda observed, threshold: observed >= threshold,
+        "<=": lambda observed, threshold: observed <= threshold,
+        ">": lambda observed, threshold: observed > threshold,
+        "<": lambda observed, threshold: observed < threshold,
+        "==": lambda observed, threshold: observed == threshold,
+    }
+    for pair in case["decision"]["metric_pairs"]:
+        metric = metrics.get(pair["metric_id"])
+        if metric is None:
+            raise UnderwritingError("decision_metric_orphan")
+        observed = Decimal(pair["observed_value"])
+        if observed != Decimal(metric["value"]):
+            raise UnderwritingError("decision_metric_value_mismatch")
+        threshold = Decimal(pair["threshold_value"])
+        compare = comparison_operators.get(pair["operator"])
+        if compare is None:
+            raise UnderwritingError("decision_metric_operator_invalid")
+        expected_status = "CLEARS" if compare(observed, threshold) else "MISSES"
+        if pair["status"] != expected_status:
+            raise UnderwritingError("decision_metric_status_mismatch")
+        unit = metric["unit"]
+        if unit == "decimal_rate":
+            expected_display = f"{quantize(observed * 100)}%"
+        elif unit == "multiple":
+            expected_display = f"{quantize(observed)}x"
+        elif unit == "percent":
+            expected_display = f"{quantize(observed)}%"
+        elif unit == "modeled_months_funded_minimum":
+            expected_display = f">={quantize(observed)} modeled months"
+        else:
+            raise UnderwritingError("decision_metric_unit_unsupported")
+        if pair["metric_id"] == "helios-hx-09-probability_below_1x":
+            probability = observed / Decimal(100)
+            draws = Decimal(case["vcEngine"]["distribution"]["draws"])
+            standard_error_pp = (
+                probability * (Decimal(1) - probability) / draws
+            ).sqrt() * Decimal(100)
+            expected_display += f" (MC SE {quantize(standard_error_pp)} pp)"
+        if pair["observed"] != expected_display:
+            raise UnderwritingError("decision_metric_display_mismatch")
 
     formulas: dict[str, dict[str, Any]] = {}
     for formula in case["formulaRegistry"]:

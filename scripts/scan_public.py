@@ -4,12 +4,14 @@
 from __future__ import annotations
 
 import hashlib
+from importlib import resources
 import json
 import re
 import subprocess
 from pathlib import Path
 
 from ic_evidence_lab.canonical import canonical_json
+from jsonschema import Draft202012Validator
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -83,6 +85,19 @@ def validate_source_room(root: Path, case_id: str, relative_root: str) -> set[st
     if manifest_path.is_symlink() or not manifest_path.is_file():
         raise ValueError(f"source_room_manifest_missing_or_symlink:{case_id}")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    schema = json.loads(
+        resources.files("underwriting_lab.schemas")
+        .joinpath("dataroom-manifest.schema.json")
+        .read_text(encoding="utf-8")
+    )
+    schema_errors = sorted(
+        Draft202012Validator(schema).iter_errors(manifest),
+        key=lambda error: list(error.absolute_path),
+    )
+    if schema_errors:
+        first = schema_errors[0]
+        location = "/".join(str(item) for item in first.absolute_path) or "<root>"
+        raise ValueError(f"source_room_manifest_schema_invalid:{case_id}:{location}:{first.message}")
     manifest_body = dict(manifest)
     expected_manifest_sha256 = manifest_body.pop("manifest_sha256", None)
     if (

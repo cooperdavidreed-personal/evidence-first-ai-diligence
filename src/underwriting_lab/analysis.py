@@ -82,6 +82,39 @@ def _output(name: str, value: Decimal | float | int | str, unit: str) -> dict[st
     return {"name": name, "value": str(value), "unit": unit}
 
 
+def _decision_pair(
+    *,
+    metric: str,
+    metric_id: str,
+    operator: str,
+    threshold: str,
+    threshold_value: Decimal | float | int | str,
+    observed: str,
+    observed_value: Decimal | float | int | str,
+) -> dict[str, str]:
+    observed_decimal = Decimal(str(observed_value))
+    threshold_decimal = Decimal(str(threshold_value))
+    clears = {
+        ">=": observed_decimal >= threshold_decimal,
+        "<=": observed_decimal <= threshold_decimal,
+        ">": observed_decimal > threshold_decimal,
+        "<": observed_decimal < threshold_decimal,
+        "==": observed_decimal == threshold_decimal,
+    }.get(operator)
+    if clears is None:
+        raise UnderwritingError("decision_operator_invalid")
+    return {
+        "metric": metric,
+        "metric_id": metric_id,
+        "operator": operator,
+        "threshold": threshold,
+        "threshold_value": format(threshold_decimal, "f"),
+        "observed": observed,
+        "observed_value": format(observed_decimal, "f"),
+        "status": "CLEARS" if clears else "MISSES",
+    }
+
+
 def _diagnostic(
     name: str,
     value: float | str,
@@ -855,7 +888,7 @@ def _atlasgrid(
             ],
             outputs=[_output("p10_moic", quantize(moic_q[0]), "multiple"), _output("p50_moic", quantize(moic_q[1]), "multiple"), _output("p90_moic", quantize(moic_q[2]), "multiple"), _output("probability_below_1x", quantize(pe_distribution.probability_below_one * 100), "percent"), _output("probability_covenant_breach", quantize(pe_distribution.probability_covenant_breach * 100), "percent"), _output("probability_payment_default", quantize(pe_distribution.probability_payment_default * 100), "percent")],
             assumptions=["Correlated ARR retention, new ARR, gross margin, and exit-multiple draws are disclosed conditional scenario inputs, not forecasts; every draw reruns the complete monthly cash and debt engine."],
-            diagnostics=[_diagnostic("draws", draws), _diagnostic("ordered_quantiles", "true", "PASS" if moic_q[0] <= moic_q[1] <= moic_q[2] else "FAIL"), _diagnostic("correlation_digest", pe_distribution.correlation_structure_sha256, "PASS" if pe_distribution.correlation_structure_sha256 == digest(pe_distribution.correlation_structure) else "FAIL"), _diagnostic("path_reconciliation", len(pe_distribution.path_records), "PASS" if len(pe_distribution.path_records) == draws and all(all(int(value) == 0 for value in record["reconciliation"].values()) for record in pe_distribution.path_records) else "FAIL")],
+            diagnostics=[_diagnostic("draws", draws), _diagnostic("below_1x_probability_monte_carlo_se_pp", pe_distribution.probability_below_one_monte_carlo_se_pp, "REPORTED"), _diagnostic("covenant_breach_probability_monte_carlo_se_pp", pe_distribution.probability_covenant_breach_monte_carlo_se_pp, "REPORTED"), _diagnostic("payment_default_probability_monte_carlo_se_pp", pe_distribution.probability_payment_default_monte_carlo_se_pp, "REPORTED"), _diagnostic("ordered_quantiles", "true", "PASS" if moic_q[0] <= moic_q[1] <= moic_q[2] else "FAIL"), _diagnostic("correlation_digest", pe_distribution.correlation_structure_sha256, "PASS" if pe_distribution.correlation_structure_sha256 == digest(pe_distribution.correlation_structure) else "FAIL"), _diagnostic("path_reconciliation", len(pe_distribution.path_records), "PASS" if len(pe_distribution.path_records) == draws and all(all(int(value) == 0 for value in record["reconciliation"].values()) for record in pe_distribution.path_records) else "FAIL")],
         ),
     ]
     _bind_specs(receipts, manifest)
@@ -939,8 +972,8 @@ def _atlasgrid(
         "open_conditions": 3,
         "terms": ["Illustrative $210M enterprise value", "Same declared debt quantum", "Earnout capped against verified live ARR"],
         "metric_pairs": [
-            {"metric": "Gross IRR", "threshold": ">=22%", "observed": f"{quantize(reprice_irr * 100)}%", "status": "CLEARS" if reprice_irr >= Decimal("0.22") else "MISSES"},
-            {"metric": "Gross MOIC", "threshold": ">=2.0x", "observed": f"{quantize(reprice_moic)}x", "status": "CLEARS" if reprice_moic >= Decimal("2") else "MISSES"},
+            _decision_pair(metric="Gross IRR", metric_id="atlasgrid-SELECTED-gross-irr", operator=">=", threshold=">=22%", threshold_value="0.22", observed=f"{quantize(reprice_irr * 100)}%", observed_value=reprice_irr),
+            _decision_pair(metric="Gross MOIC", metric_id="atlasgrid-SELECTED-gross-moic", operator=">=", threshold=">=2.0x", threshold_value="2.0", observed=f"{quantize(reprice_moic)}x", observed_value=reprice_moic),
         ],
         "verification_sources": ["AG-02", "AG-03", "AG-04", "AG-10", "AG-11"],
         "failure_consequences": ["Do not advance at seller ask", "Retain HOLD until open diligence conditions are adjudicated"],
@@ -1601,9 +1634,9 @@ def _helios(
             method="Precommitted unadjusted randomized ITT with a labeled baseline-adjusted precision companion",
             population=f"{len(experiment)} randomized synthetic customers",
             inputs=[_input(artifacts["optimizer-experiment"])],
-            outputs=[_output("optimizer_ate", quantize(rct_effect * 100), "percent_log_points"), _output("optimizer_baseline_adjusted_companion", quantize(adjusted_effect * 100), "percent_log_points")],
+            outputs=[_output("optimizer_ate", quantize(rct_effect, "0.0001"), "log_points"), _output("optimizer_baseline_adjusted_companion", quantize(adjusted_effect, "0.0001"), "log_points")],
             assumptions=["Restricted seeded permutation repeatedly proposes 60-of-120 assignments and accepts the first with absolute baseline SMD at or below 0.15; acceptance never inspects outcomes; no cross-customer interference."],
-            diagnostics=[_diagnostic("assignment_mechanism", experiment[0]["assignment_mechanism"], "REPORTED"), _diagnostic("assignment_proposal", experiment[0]["assignment_proposal"], "REPORTED"), _diagnostic("maximum_assignment_proposals", experiment[0]["maximum_assignment_proposals"], "REPORTED"), _diagnostic("assignment_acceptance_uses_outcomes", experiment[0]["assignment_acceptance_uses_outcomes"], "PASS" if experiment[0]["assignment_acceptance_uses_outcomes"] == "false" else "FAIL"), _diagnostic("assignment_seed_commitment", experiment[0]["assignment_seed_commitment"], "REPORTED"), _diagnostic("treatment_count", int(treatment.sum()), "PASS" if int(treatment.sum()) == 60 else "FAIL"), _diagnostic("control_count", int(len(treatment) - treatment.sum()), "PASS" if int(len(treatment) - treatment.sum()) == 60 else "FAIL"), _diagnostic("unadjusted_confidence_interval", f"[{quantize(rct_low * 100)}, {quantize(rct_high * 100)}]", "REPORTED"), _diagnostic("unadjusted_standard_error", quantize(rct_se * 100), "REPORTED"), _diagnostic("confidence_interval", f"[{quantize(adjusted_low * 100)}, {quantize(adjusted_high * 100)}]", "REPORTED"), _diagnostic("standard_error", quantize(adjusted_se * 100), "REPORTED"), _diagnostic("baseline_cost_smd", quantize(optimizer_smd), "PASS" if abs(optimizer_smd) <= float(experiment[0]["balance_smd_threshold"]) else "FAIL")],
+            diagnostics=[_diagnostic("assignment_mechanism", experiment[0]["assignment_mechanism"], "REPORTED"), _diagnostic("assignment_proposal", experiment[0]["assignment_proposal"], "REPORTED"), _diagnostic("maximum_assignment_proposals", experiment[0]["maximum_assignment_proposals"], "REPORTED"), _diagnostic("assignment_acceptance_uses_outcomes", experiment[0]["assignment_acceptance_uses_outcomes"], "PASS" if experiment[0]["assignment_acceptance_uses_outcomes"] == "false" else "FAIL"), _diagnostic("assignment_seed_commitment", experiment[0]["assignment_seed_commitment"], "REPORTED"), _diagnostic("treatment_count", int(treatment.sum()), "PASS" if int(treatment.sum()) == 60 else "FAIL"), _diagnostic("control_count", int(len(treatment) - treatment.sum()), "PASS" if int(len(treatment) - treatment.sum()) == 60 else "FAIL"), _diagnostic("unadjusted_confidence_interval", f"[{quantize(rct_low, '0.0001')}, {quantize(rct_high, '0.0001')}]", "REPORTED"), _diagnostic("unadjusted_standard_error", quantize(rct_se, "0.0001"), "REPORTED"), _diagnostic("confidence_interval", f"[{quantize(adjusted_low, '0.0001')}, {quantize(adjusted_high, '0.0001')}]", "REPORTED"), _diagnostic("standard_error", quantize(adjusted_se, "0.0001"), "REPORTED"), _diagnostic("baseline_cost_smd", quantize(optimizer_smd), "PASS" if abs(optimizer_smd) <= float(experiment[0]["balance_smd_threshold"]) else "FAIL")],
         ),
         analysis_receipt(
             analysis_id="HX-07",
@@ -1636,7 +1669,7 @@ def _helios(
             population="Declared synthetic venture scenario distribution",
             inputs=[_input(artifacts["cap-table"]), _input(artifacts["financing-plan"]), _input(artifacts["venture-scenarios"]), _input(artifacts["team-diligence"])],
             outputs=[_output("p10_moic", quantize(moic_q[0]), "multiple"), _output("p50_moic", quantize(moic_q[1]), "multiple"), _output("p90_moic", quantize(moic_q[2]), "multiple"), _output("p10_xirr", quantize(irr_q[0] * 100), "percent"), _output("p50_xirr", quantize(irr_q[1] * 100), "percent"), _output("p90_xirr", quantize(irr_q[2] * 100), "percent"), _output("probability_below_1x", quantize(loss_probability * 100), "percent"), _output("probability_at_least_3x", quantize(three_x_probability * 100), "percent"), _output("selected_ltm_revenue_cents", selected_exit_bridge["observed_ltm_revenue_cents"], "cents"), _output("selected_terminal_revenue_cents", selected_exit_bridge["terminal_revenue_cents"], "cents"), _output("selected_exit_revenue_multiple", selected_exit_bridge["exit_revenue_multiple"], "multiple"), _output("selected_exit_equity_value_cents", selected_exit_bridge["exit_equity_value_cents"], "cents")],
-            assumptions=["Scenario-state weights, exit value, exit timing, and operating-cash factors are disclosed conditional priors; every retained path replays financing events and the exact legal waterfall.", "Each scenario exit equity value is derived from observed LTM revenue, a declared five-year annual growth rate, and a declared revenue multiple; net debt is zero in the synthetic case."],
+            assumptions=["Scenario-state weights, exit value, exit timing, and operating-cash factors are disclosed conditional priors; every retained path replays financing events and the exact legal waterfall.", "Each scenario exit equity value is derived from observed LTM revenue, a declared five-year annual growth rate, a declared revenue multiple, and modeled exit cash; the full operating cash ledger determines negative net debt."],
             diagnostics=[_diagnostic("draws", vc_distribution["draws"]), _diagnostic("loss_probability_monte_carlo_se_pp", quantize(loss_probability_mce_pp), "REPORTED"), _diagnostic("three_x_probability_monte_carlo_se_pp", quantize(three_x_probability_mce_pp), "REPORTED"), _diagnostic("operating_exit_bridge", "ltm_revenue_x_growth_x_revenue_multiple_less_net_debt", "PASS"), _diagnostic("ordered_moic_quantiles", "true", "PASS" if moic_q[0] <= moic_q[1] <= moic_q[2] else "FAIL"), _diagnostic("ordered_xirr_quantiles", "true", "PASS" if irr_q[0] <= irr_q[1] <= irr_q[2] else "FAIL"), _diagnostic("waterfall_conservation_max_error_cents", 0, "PASS"), _diagnostic("xirr_npv_residual_max_cents", quantize(max(item.xirr_npv_residual_cents for item in scenario_results.values())), "PASS")],
         ),
     ]
@@ -1666,12 +1699,12 @@ def _helios(
         "open_conditions": 7,
         "terms": ["Illustrative $25M first close + $15M conditional tranche", "$160M pre-money; 12% post-financing unissued pool", "1x non-participating Series C; pre-money holders bear pool refresh"],
         "metric_pairs": [
-            {"metric": "Ordinary-cohort NRR", "threshold": ">=105%", "observed": f"{quantize(ordinary_nrr * 100)}%", "status": "CLEARS" if ordinary_nrr >= 1.05 else "MISSES"},
-            {"metric": "Gross margin", "threshold": ">=70%", "observed": f"{quantize(gross_margin * 100)}%", "status": "CLEARS" if gross_margin >= 0.70 else "MISSES"},
-            {"metric": "Post-close runway", "threshold": ">=18 months", "observed": f">={quantize(post_close_runway_floor)} modeled months", "status": "CLEARS" if post_close_runway_floor >= 18 else "MISSES"},
-            {"metric": "Milestone gross XIRR", "threshold": ">=30%", "observed": f"{quantize(selected_vc.gross_xirr * 100)}%", "status": "CLEARS" if selected_vc.gross_xirr >= Decimal("0.30") else "MISSES"},
-            {"metric": "Milestone gross MOIC", "threshold": ">=3.0x", "observed": f"{quantize(selected_vc.gross_moic)}x", "status": "CLEARS" if selected_vc.gross_moic >= Decimal("3.0") else "MISSES"},
-            {"metric": "Modeled loss probability", "threshold": "<=10%", "observed": f"{quantize(loss_probability * 100)}%", "status": "CLEARS" if loss_probability <= Decimal("0.10") else "MISSES"},
+            _decision_pair(metric="Ordinary-cohort NRR", metric_id="helios-hx-02-ordinary_nrr", operator=">=", threshold=">=105%", threshold_value="105", observed=f"{quantize(ordinary_nrr * 100)}%", observed_value=quantize(ordinary_nrr * 100)),
+            _decision_pair(metric="Gross margin", metric_id="helios-hx-01-gross_margin", operator=">=", threshold=">=70%", threshold_value="70", observed=f"{quantize(gross_margin * 100)}%", observed_value=quantize(gross_margin * 100)),
+            _decision_pair(metric="Post-close runway", metric_id="helios-hx-03-post_close_runway_floor", operator=">=", threshold=">=18 months", threshold_value="18", observed=f">={quantize(post_close_runway_floor)} modeled months", observed_value=post_close_runway_floor),
+            _decision_pair(metric="Milestone gross XIRR", metric_id="helios-MILESTONE-gross-xirr", operator=">=", threshold=">=30%", threshold_value="0.30", observed=f"{quantize(selected_vc.gross_xirr * 100)}%", observed_value=selected_vc.gross_xirr),
+            _decision_pair(metric="Milestone gross MOIC", metric_id="helios-MILESTONE-gross-moic", operator=">=", threshold=">=3.0x", threshold_value="3.0", observed=f"{quantize(selected_vc.gross_moic)}x", observed_value=selected_vc.gross_moic),
+            _decision_pair(metric="Modeled loss probability", metric_id="helios-hx-09-probability_below_1x", operator="<=", threshold="<=10%", threshold_value="10", observed=f"{quantize(loss_probability * 100)}% (MC SE {quantize(loss_probability_mce_pp)} pp)", observed_value=quantize(loss_probability * 100)),
         ],
         "verification_sources": ["HX-01", "HX-02", "HX-03", "HX-04", "HX-06", "HX-09"],
         "failure_consequences": ["Do not release the second tranche", "Retain HOLD until milestone evidence and founder adjudication"],

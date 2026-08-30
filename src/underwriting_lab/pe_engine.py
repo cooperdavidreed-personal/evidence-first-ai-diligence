@@ -130,6 +130,9 @@ class PEDistribution:
     probability_below_one: Decimal
     probability_covenant_breach: Decimal
     probability_payment_default: Decimal
+    probability_below_one_monte_carlo_se_pp: Decimal
+    probability_covenant_breach_monte_carlo_se_pp: Decimal
+    probability_payment_default_monte_carlo_se_pp: Decimal
     base_engine_inputs: dict[str, object]
     correlation_structure: dict[str, object]
     correlation_structure_sha256: str
@@ -146,6 +149,9 @@ class PEDistribution:
             "probability_below_one": format(self.probability_below_one, "f"),
             "probability_covenant_breach": format(self.probability_covenant_breach, "f"),
             "probability_payment_default": format(self.probability_payment_default, "f"),
+            "probability_below_one_monte_carlo_se_pp": format(self.probability_below_one_monte_carlo_se_pp, "f"),
+            "probability_covenant_breach_monte_carlo_se_pp": format(self.probability_covenant_breach_monte_carlo_se_pp, "f"),
+            "probability_payment_default_monte_carlo_se_pp": format(self.probability_payment_default_monte_carlo_se_pp, "f"),
             "base_engine_inputs": self.base_engine_inputs,
             "correlation_structure": self.correlation_structure,
             "correlation_structure_sha256": self.correlation_structure_sha256,
@@ -771,14 +777,27 @@ def simulate_pe_distribution(
         _quantile(xirrs, Decimal("0.50")),
         _quantile(xirrs, Decimal("0.90")),
     )
+    probability_below_one = (Decimal(sum(item < 1 for item in moics)) / Decimal(draws)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN)
+    probability_covenant_breach = (Decimal(sum(record["first_covenant_breach_month"] is not None for record in path_records)) / Decimal(draws)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN)
+    probability_payment_default = (Decimal(sum(bool(record["payment_default"]) for record in path_records)) / Decimal(draws)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN)
+
+    def monte_carlo_se_pp(probability: Decimal) -> Decimal:
+        return (
+            (probability * (Decimal(1) - probability) / Decimal(draws)).sqrt()
+            * Decimal(100)
+        ).quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN)
+
     return PEDistribution(
         seed=seed,
         draws=draws,
         moic_quantiles=moic_quantiles,
         xirr_quantiles=xirr_quantiles,
-        probability_below_one=(Decimal(sum(item < 1 for item in moics)) / Decimal(draws)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN),
-        probability_covenant_breach=(Decimal(sum(record["first_covenant_breach_month"] is not None for record in path_records)) / Decimal(draws)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN),
-        probability_payment_default=(Decimal(sum(bool(record["payment_default"]) for record in path_records)) / Decimal(draws)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN),
+        probability_below_one=probability_below_one,
+        probability_covenant_breach=probability_covenant_breach,
+        probability_payment_default=probability_payment_default,
+        probability_below_one_monte_carlo_se_pp=monte_carlo_se_pp(probability_below_one),
+        probability_covenant_breach_monte_carlo_se_pp=monte_carlo_se_pp(probability_covenant_breach),
+        probability_payment_default_monte_carlo_se_pp=monte_carlo_se_pp(probability_payment_default),
         base_engine_inputs=_engine_inputs(
             "DISTRIBUTION_BASE", operating, transaction, date(2026, 8, 29)
         ),

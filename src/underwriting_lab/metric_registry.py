@@ -440,6 +440,55 @@ def build_case_metric_contract(
                     **extra,
                 )
 
+            exit_bridge = result["engine_inputs"]["exit_valuation"]
+            if not isinstance(exit_bridge, dict):
+                raise UnderwritingError("vc_metric_exit_bridge_missing")
+            add_vc_cents(f"{prefix}-bridge-observed-ltm-revenue", "Observed LTM revenue", int(exit_bridge["observed_ltm_revenue_cents"]))
+            add(
+                metric_id=f"{prefix}-bridge-annual-growth", label="Annual revenue growth", value=exit_bridge["annual_revenue_growth"],
+                display_value=_percent(exit_bridge["annual_revenue_growth"]), unit="decimal_rate", quantum="0.01", **common,
+            )
+            add(
+                metric_id=f"{prefix}-bridge-hold-years", label="Hold period", value=exit_bridge["years"],
+                display_value=f"{exit_bridge['years']} years", unit="years", quantum="1", **common,
+            )
+            add_vc_cents(f"{prefix}-bridge-terminal-revenue", "Terminal revenue", int(exit_bridge["terminal_revenue_cents"]))
+            add(
+                metric_id=f"{prefix}-bridge-exit-multiple", label="Exit revenue multiple", value=exit_bridge["exit_revenue_multiple"],
+                display_value=_multiple(exit_bridge["exit_revenue_multiple"]), unit="multiple", quantum="0.01", **common,
+            )
+            exit_ev_formula = f"vc-formula-{scenario_id.lower()}-bridge-exit-ev"
+            add_vc_cents(
+                f"{prefix}-bridge-exit-enterprise-value", "Exit enterprise value", int(exit_bridge["exit_enterprise_value_cents"]),
+                formula_id=exit_ev_formula,
+                operand_ids=[f"{prefix}-bridge-terminal-revenue", f"{prefix}-bridge-exit-multiple"],
+            )
+            add_vc_cents(f"{prefix}-bridge-exit-cash", "Modeled exit cash", int(exit_bridge["cash_at_exit_cents"]))
+            exit_equity_formula = f"vc-formula-{scenario_id.lower()}-bridge-exit-equity"
+            add_vc_cents(
+                f"{prefix}-bridge-exit-equity", "Exit equity value", int(exit_bridge["exit_equity_value_cents"]),
+                formula_id=exit_equity_formula,
+                operand_ids=[f"{prefix}-bridge-exit-enterprise-value", f"{prefix}-bridge-exit-cash"],
+            )
+            formulas.extend(
+                [
+                    _formula(
+                        exit_ev_formula,
+                        "MULTIPLY",
+                        [f"{prefix}-bridge-terminal-revenue", f"{prefix}-bridge-exit-multiple"],
+                        f"{prefix}-bridge-exit-enterprise-value",
+                        "cents",
+                    ),
+                    _formula(
+                        exit_equity_formula,
+                        "ADD",
+                        [f"{prefix}-bridge-exit-enterprise-value", f"{prefix}-bridge-exit-cash"],
+                        f"{prefix}-bridge-exit-equity",
+                        "cents",
+                    ),
+                ]
+            )
+
             scenario_label = scenario_id.replace("_", " ").title()
             funded_target_operand_ids = [
                 f"{prefix}-event-{event['event_id']}-new-money"

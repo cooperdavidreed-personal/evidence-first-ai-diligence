@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Underwriting PE distribution v2",
   "type": "object", "additionalProperties": false,
-  "required": ["schema_version", "seed", "draws", "moic_quantiles", "xirr_quantiles", "probability_below_one", "probability_covenant_breach", "probability_payment_default", "base_engine_inputs", "correlation_structure", "correlation_structure_sha256", "path_receipt_sha256s", "path_records", "receipt_sha256"],
+  "required": ["schema_version", "seed", "draws", "moic_quantiles", "xirr_quantiles", "probability_below_one", "probability_covenant_breach", "probability_payment_default", "probability_below_one_monte_carlo_se_pp", "probability_covenant_breach_monte_carlo_se_pp", "probability_payment_default_monte_carlo_se_pp", "base_engine_inputs", "correlation_structure", "correlation_structure_sha256", "path_receipt_sha256s", "path_records", "receipt_sha256"],
   "properties": {
     "schema_version": {"const": "underwriting.pe-distribution/v2"},
     "seed": {"type": "integer"},
@@ -12,6 +12,9 @@
     "probability_below_one": {"type": "string", "pattern": "^(0(\\.[0-9]+)?|1(\\.0+)?)$"},
     "probability_covenant_breach": {"type": "string", "pattern": "^(0(\\.[0-9]+)?|1(\\.0+)?)$"},
     "probability_payment_default": {"type": "string", "pattern": "^(0(\\.[0-9]+)?|1(\\.0+)?)$"},
+    "probability_below_one_monte_carlo_se_pp": {"type": "string", "pattern": "^[0-9]+(?:\\.[0-9]+)?$"},
+    "probability_covenant_breach_monte_carlo_se_pp": {"type": "string", "pattern": "^[0-9]+(?:\\.[0-9]+)?$"},
+    "probability_payment_default_monte_carlo_se_pp": {"type": "string", "pattern": "^[0-9]+(?:\\.[0-9]+)?$"},
     "base_engine_inputs": {"type": "object"},
     "correlation_structure": {
       "type": "object",

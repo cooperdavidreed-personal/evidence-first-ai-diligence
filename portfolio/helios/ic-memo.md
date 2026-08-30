@@ -7,7 +7,7 @@
 **Authority:** `DECISION_RECORD_INCOMPLETE` / `PENDING_FOUNDER_SIGNATURE` / no delegated investment authority.
 
 **Knowledge cutoff:** `2026-08-29T00:00:00Z`
-**Packet receipt:** `7f13a18e2e35c6d9231b286996975597653653bb53ca95d1af1206ac1a1c594e`
+**Packet receipt:** `6df879922ff80372f1ee8218ac75d715bb8c8fc805802a8b69d792ad201c7fe7`
 
 ## Recommendation and executable terms
 
@@ -20,9 +20,9 @@ Invest only if the 30% XIRR, 3.0x MOIC, and 10% loss hurdles clear and milestone
 | Valuation | $160M pre-money / $200M fully funded post-money |
 | Series C ownership | 13.51% at first close / 20.00% fully funded |
 | Option pool | 1,611,031 unissued shares after refresh; pre-money holders bear the refresh |
-| Base returns | 48.23% gross XIRR / 7.16x gross MOIC |
-| Down-round returns | 9.00% gross XIRR / 1.54x gross MOIC |
-| Shortfall case | Bridge at month 36; 20.00% / 2.49x |
+| Selected milestone returns | 60.26% gross XIRR / 9.19x gross MOIC |
+| Down-round returns | 9.64% gross XIRR / 1.58x gross MOIC |
+| Shortfall case | Bridge at month 36; 20.18% / 2.51x |
 
 ## Product, market, customers, competition, and business model
 
@@ -54,10 +54,10 @@ These are role-level evidence states, not invented biographies or reference-chec
 
 | Scenario | Funded Series C | Ownership | Minimum cash | Exit proceeds | Gross XIRR | Gross MOIC |
 |---|---:|---:|---:|---:|---:|---:|
-| BASE | $25M | 12.94% | $13.4M | $179.1M | 48.23% | 7.16x |
-| MILESTONE | $40M | 20.00% | $17M | $363.9M | 59.91% | 9.10x |
-| DOWNSIDE | $25M | 10.14% | $9M | $38.5M | 9.00% | 1.54x |
-| FINANCING_SHORTFALL | $25M | 10.79% | $250,000 | $62.2M | 20.00% | 2.49x |
+| BASE | $25M | 12.94% | $13.4M | $181.1M | 48.55% | 7.24x |
+| MILESTONE | $40M | 20.00% | $17M | $367.7M | 60.26% | 9.19x |
+| DOWNSIDE | $25M | 10.14% | $9M | $39.6M | 9.64% | 1.58x |
+| FINANCING_SHORTFALL | $25M | 10.79% | $250,000 | $62.7M | 20.18% | 2.51x |
 
 | Selected event | Month | Status | Cash | New shares | Fully diluted shares |
 |---|---:|---|---:|---:|---:|
@@ -90,18 +90,18 @@ The selected exit equity value is not a naked outcome assumption. It is derived 
 | Observed LTM revenue | $57M | Retained synthetic P&L |
 | Annual revenue growth / hold | 48.00% / 5 years | Scenario |
 | Terminal revenue / exit multiple | $404.4M / 4.00x | Scenario |
-| Exit enterprise value / net debt | $1,617.6M / $0 | Accounting bridge |
-| Exit equity value | $1,617.6M | Waterfall operand |
+| Exit enterprise value / cash | $1,617.6M / $17M | Accounting bridge; net debt is -$17M |
+| Exit equity value | $1,634.6M | Waterfall operand |
 
-Exit value basis is `EQUITY_VALUE`. Unissued pool shares receive zero proceeds. Class proceeds conserve to $1,617.6M with a 0-cent residual.
+Exit value basis is `EQUITY_VALUE`. Unissued pool shares receive zero proceeds. Class proceeds conserve to $1,634.6M with a 0-cent residual.
 
 | Class | Election | Preference | Residual | Total proceeds |
 |---|---|---:|---:|---:|
-| SERIES_A | CONVERT | $0 | $257M | $257M |
-| SERIES_B | CONVERT | $0 | $231.9M | $231.9M |
-| SERIES_C | CONVERT | $0 | $363.9M | $363.9M |
+| SERIES_A | CONVERT | $0 | $259.7M | $259.7M |
+| SERIES_B | CONVERT | $0 | $234.4M | $234.4M |
+| SERIES_C | CONVERT | $0 | $367.7M | $367.7M |
 
-Series C invests $40M in dated funded tranches and receives $363.9M at exit: **59.91% gross XIRR / 9.10x gross MOIC**.
+Series C invests $40M in dated funded tranches and receives $367.7M at exit: **60.26% gross XIRR / 9.19x gross MOIC**.
 
 ## Conditional distribution and sensitivity
 
@@ -111,10 +111,10 @@ Declared scenario-state priors: Base 30.00%; Downside 15.00%; Financing Shortfal
 
 | Statistic | p10 | p50 | p90 |
 |---|---:|---:|---:|
-| Gross MOIC | 1.51x | 6.98x | 11.60x |
-| Gross XIRR | 8.87% | 45.93% | 68.94% |
+| Gross MOIC | 1.54x | 7.05x | 11.72x |
+| Gross XIRR | 9.20% | 46.23% | 69.33% |
 
-- Probability below 1.0x: **0.10%**.
+- Probability below 1.0x: **0.10%** (Monte Carlo SE **0.10 pp**, 1,000 draws).
 - Sensitivity book: 11 full-engine cells across exit value, exit date, later-round price, and milestone state.
 
 ## Econometric credit and zero-credit map
@@ -125,7 +125,7 @@ Declared scenario-state priors: Base 30.00%; Downside 15.00%; Financing Shortfal
 
 ## Value creation and board cadence
 
-Combined full-model impact: **$3.1M minimum cash**, **$3.9M Series C proceeds**, **0.36% gross XIRR**, including an explicit **$0 interaction residual**.
+Combined full-model impact: **$3.1M minimum cash**, **$3.9M Series C proceeds**, **0.35% gross XIRR**, including an explicit **-$0 interaction residual**.
 
 | Initiative | Evidence class | Baseline / target | Owner | Modeled consequence | Stop rule / risk |
 |---|---|---|---|---|---|
@@ -162,7 +162,7 @@ This packet is generated from a fictional deterministic room. Synthetic causal e
 
 ## Receipt appendix
 
-- MILESTONE result: `96de3cfb9a54a6d57033a5144a535c3a03c00e6493c8748e64e220a6ae6788b7`
-- DOWNSIDE result: `f562cc0231580216cd62d974a08655fafd44b57e2e3c637e1466515241bce4fc`
-- Sensitivity book: `f4895a534dd9e2c538d0ce3994ca63bcfa40af1892cafbc4560dca2820a13698`
-- Value-creation bridge: `4ba168d3d1f6dd8ff2268bc989c346b124cb2642dddc85e28f287ca38498e04f`
+- MILESTONE result: `f9ff468695bb5ee3fea76121b21a4bbb590792a3987b30a5e374dd77b9d9aeb8`
+- DOWNSIDE result: `c52a91b04b7c6ad14e1f92e125df355f32658d6128daaf364f4171b6a02e64fe`
+- Sensitivity book: `de3b3f187e9322e5dcaff775f2e05ab119bfb413d65c3439035ba7c7f1915bbf`
+- Value-creation bridge: `fd0ecafe8af8d0f3c5cc3be1a2143ec3c9f61d57f26cd607e4f02f47fc69ef68`

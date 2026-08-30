@@ -101,3 +101,19 @@ def test_helios_distribution_contains_effective_later_exit_paths(helios_v2: dict
         item["realized_timing_delta_months"] == item["exit_month"] - 60
         for item in records
     )
+
+
+def test_decision_metric_display_cannot_be_rebound_to_a_false_value(helios_v2: dict) -> None:
+    case = deepcopy(helios_v2)
+    pair = next(
+        item
+        for item in case["decision"]["metric_pairs"]
+        if item["metric"] == "Modeled loss probability"
+    )
+    pair["observed"] = "999999.99%"
+    decision_body = dict(case["decision"])
+    decision_body.pop("decision_sha256")
+    case["decision"]["decision_sha256"] = digest(decision_body)
+    _rebind_case(case)
+    with pytest.raises(UnderwritingError, match="decision_metric_display_mismatch"):
+        validate_workbench_case(case)

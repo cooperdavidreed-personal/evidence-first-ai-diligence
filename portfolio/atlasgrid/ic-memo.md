@@ -5,7 +5,7 @@
 **Provisional posture:** `REPRICE`  
 **Workflow state:** `DECISION_RECORD_INCOMPLETE` / `PENDING_FOUNDER_SIGNATURE`  
 **Knowledge cutoff:** `2026-08-29T00:00:00Z`
-**Packet receipt:** `ae85030c38dc55659347d62288abdd583495faa30ed96725cae778c88ad5422f`
+**Packet receipt:** `05a89d28a88ac26ed960ecad307df3079b8b0e3824b03310552b26973f6e919d`
 
 ## Recommendation
 
@@ -57,9 +57,9 @@ The named downside is a deterministic stress case. The conditional distribution 
 | Gross MOIC | 1.24x | 2.81x | 4.72x |
 | Gross IRR | 4.39% | 23.30% | 38.07% |
 
-- Probability below 1.0x MOIC: **5.40%**.
-- Probability of a modeled covenant breach: **0.00%**.
-- Probability of modeled payment default: **0.00%**.
+- Probability below 1.0x MOIC: **5.40%** (Monte Carlo SE **0.71 pp**, 1,000 draws).
+- Probability of a modeled covenant breach: **0.00%** (Monte Carlo SE **0.00 pp**, 1,000 draws).
+- Probability of modeled payment default: **0.00%** (Monte Carlo SE **0.00 pp**, 1,000 draws).
 - Named downside floor: **6.16% IRR / 1.35x MOIC**; distributional p10: **4.39% / 1.24x**.
 
 ### Entry value × exit multiple sensitivity
@@ -152,7 +152,7 @@ This packet is generated from a fictional, deterministic data room. Synthetic ca
 
 ## Receipt appendix
 
-- Case analysis: `af04879fd42e0e9cd4f11bcb5b26f9caa562c852eaf8defba300cfef6f26f3b5`
+- Case analysis: `0fe11b3684dbc823273b0cde58fd60565221d0089cc886c2334c068c0e190789`
 - ASK result: `0c8166368d5bd4f1e4dbd5b88a48f3d3f22d20726fa0c929c8d4427e05d769a8`
 - SELECTED result: `87e0a3ece3a76aca6d5e1d7e89021f5915e17234c6db75d60f34e26654dd2e7e`
 - DOWNSIDE result: `8b949ad91fdf4f88e31eaabdc30336be8b3b27852a751cc61d3c3cab82277c40`

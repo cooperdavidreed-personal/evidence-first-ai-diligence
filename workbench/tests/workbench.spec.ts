@@ -76,7 +76,7 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
     if (caseName === "Helios Compute Control") {
       firstViewportChecks.push([page.getByRole("button", {name: /Milestone · Series C funded capital/}), "capital and ownership terms"]);
       firstViewportChecks.push([page.getByRole("button", {name: /Milestone · Series C fully diluted ownership/}), "fully diluted ownership"]);
-      firstViewportChecks.push([page.getByRole("button", {name: /Base.*gross XIRR/i}), "base gross return"]);
+      firstViewportChecks.push([page.getByRole("button", {name: /Milestone.*gross XIRR/i}), "selected milestone gross return"]);
       firstViewportChecks.push([page.getByRole("button", {name: /Downside.*gross XIRR/i}), "downside gross return"]);
     } else {
       firstViewportChecks.push([page.getByRole("button", {name: /Upfront EV/}), "selected entry price"]);
@@ -90,7 +90,7 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
     await lineageTrigger.focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("dialog")).toBeVisible();
-    await expect(page.getByText("Bound source universes").first()).toBeVisible();
+    await expect(page.getByText("Bound source evidence").first()).toBeVisible();
     const sourceLink = page.getByRole("link", {name: "Open complete committed synthetic source ↗"}).first();
     await expect(sourceLink).toBeVisible();
     await expect(page.getByRole("dialog").locator(".locator-inspection pre").first()).toContainText(/CSV_ROWS|JSON_VALUE|TEXT_SPAN/);
@@ -137,6 +137,8 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
           await page.keyboard.press("Enter");
           expect(await graph.locator(".dag-node.active").count()).toBeGreaterThan(1);
           expect(await graph.locator(".dag-node.muted").count()).toBeGreaterThan(0);
+          await graph.evaluate((element) => element.scrollIntoView({block: "center", inline: "nearest"}));
+          await expect(selectedNode).toBeInViewport();
           await captureVisualEvidence(page, `desktop-${evidenceCaseSlug}-selected-thesis-path.png`);
           const decisionId = await selectedNode.getAttribute("data-node-id");
           await page.keyboard.press("ArrowLeft");

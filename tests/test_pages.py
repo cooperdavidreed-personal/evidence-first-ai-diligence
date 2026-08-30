@@ -22,13 +22,41 @@ def _candidate_repo(root: Path) -> Path:
         source = room / "data" / "source.csv"
         source.write_text("id,value\n1,synthetic\n")
         source_sha256 = hashlib.sha256(source.read_bytes()).hexdigest()
+        analysis_spec = {
+            "schema_version": "underwriting.analysis-spec/v2",
+            "analysis_id": "AG-01" if case == "atlasgrid" else "HX-01",
+            "cutoff": "2026-08-29T00:00:00Z",
+            "tolerance_policy": "frozen-test-fixture",
+            "state_policy": "fail-closed",
+            "method_family": "fixture",
+            "recovery_rule": "exact fixture identity",
+            "design": {
+                "outcome": "value",
+                "treatment_or_exposure": "none",
+                "population": "one synthetic row",
+                "period": "fixture cutoff",
+                "estimand": "identity",
+                "unit": "text",
+                "assignment_or_design": "ACCOUNTING_IDENTITY",
+                "uncertainty_method": "EXACT",
+                "required_diagnostics": ["fixture_digest"],
+                "permitted_use": "TEST_ONLY",
+            },
+        }
+        analysis_spec["spec_sha256"] = hashlib.sha256(canonical_json(analysis_spec)).hexdigest()
         source_manifest = {
             "schema_version": "underwriting.dataroom-manifest/v1",
             "case_id": case,
             "synthetic": True,
+            "disclosure": "SYNTHETIC — NOT INVESTMENT ADVICE",
+            "contract_version": "underwriting-econometrics/v2",
+            "cutoff": "2026-08-29T00:00:00Z",
+            "seed_commitment": "0" * 64,
+            "generator": "underwriting_lab.generator/v1",
             "artifacts": [
-                {"path": "data/source.csv", "sha256": source_sha256}
+                {"artifact_id": "source", "path": "data/source.csv", "schema": "fixture.source/v1", "rows": 1, "sha256": source_sha256}
             ],
+            "analysis_specs": [analysis_spec],
         }
         source_manifest["manifest_sha256"] = hashlib.sha256(canonical_json(source_manifest)).hexdigest()
         (room / "manifest.json").write_bytes(canonical_json(source_manifest) + b"\n")

@@ -138,7 +138,7 @@ class VCScenarioAssumptions:
             required = {
                 "observed_ltm_revenue_cents", "annual_revenue_growth", "years",
                 "exit_revenue_multiple", "terminal_revenue_cents", "net_debt_cents",
-                "exit_enterprise_value_cents", "exit_equity_value_cents",
+                "cash_at_exit_cents", "exit_enterprise_value_cents", "exit_equity_value_cents",
             }
             if bridge.get("schema_version") != "underwriting.operating-exit-bridge/v1" or not required.issubset(bridge):
                 raise UnderwritingError("vc_exit_valuation_contract_invalid")
@@ -160,6 +160,7 @@ class VCScenarioAssumptions:
                 or enterprise_value != int(bridge["exit_enterprise_value_cents"])
                 or equity_value != int(bridge["exit_equity_value_cents"])
                 or equity_value != self.exit_value_cents
+                or int(bridge["net_debt_cents"]) != -int(bridge["cash_at_exit_cents"])
             ):
                 raise UnderwritingError("vc_exit_valuation_bridge_mismatch")
 
@@ -978,6 +979,13 @@ def simulate_vc_distribution(
     ]
     moics = sorted(Decimal(item["gross_moic"]) for item in records)
     irrs = sorted(Decimal(item["gross_xirr"]) for item in records)
+    probability_below_one = (
+        Decimal(sum(value < 1 for value in moics)) / Decimal(draws)
+    ).quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN)
+    probability_below_one_monte_carlo_se_pp = (
+        (probability_below_one * (Decimal(1) - probability_below_one) / Decimal(draws)).sqrt()
+        * Decimal(100)
+    ).quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN)
     body = {
         "schema_version": "underwriting.vc-distribution/v2",
         "seed": seed,
@@ -993,12 +1001,8 @@ def simulate_vc_distribution(
         },
         "moic_quantiles": [format(moics[index], "f") for index in indices],
         "xirr_quantiles": [format(irrs[index], "f") for index in indices],
-        "probability_below_one": format(
-            (
-                Decimal(sum(value < 1 for value in moics)) / Decimal(draws)
-            ).quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN),
-            "f",
-        ),
+        "probability_below_one": format(probability_below_one, "f"),
+        "probability_below_one_monte_carlo_se_pp": format(probability_below_one_monte_carlo_se_pp, "f"),
         "path_records": records,
     }
     body["receipt_sha256"] = digest(body)

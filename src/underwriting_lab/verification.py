@@ -289,14 +289,14 @@ def _helios_checks(case: dict[str, Any], truth: dict[str, Any]) -> list[dict[str
     def optimizer_interval() -> tuple[float, float, bool]:
         receipt = _receipt(case, "HX-06")
         estimate = _output(receipt, "optimizer_ate")
-        planted_truth = float(truth["optimizer_ate_log_cost"]) * 100
+        planted_truth = float(truth["optimizer_ate_log_cost"])
         low, high = _interval(receipt)
         return estimate, planted_truth, estimate * planted_truth > 0 and low <= planted_truth <= high
 
     _append_check(
         checks,
         analysis_id="HX-06",
-        estimand="optimizer_ate_percent_log_points",
+        estimand="optimizer_ate_log_points",
         precommitted_rule="estimate_sign_matches_truth_and_truth_inside_95pct_interval",
         success_state="INTERVAL_CONTAINS_TRUTH",
         evaluate=optimizer_interval,

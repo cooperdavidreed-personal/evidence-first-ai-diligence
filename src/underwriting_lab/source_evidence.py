@@ -22,44 +22,57 @@ def _csv_locator(path: Path, declared_rows: int) -> tuple[str, dict[str, Any], o
         rows = list(reader)
     if not columns or len(rows) != declared_rows:
         raise UnderwritingError(f"source_csv_shape_mismatch:{path.name}")
-    selected = {"columns": columns, "rows": rows}
     indexes = sorted({0, len(rows) // 2, len(rows) - 1})
+    selected_rows = [
+        {"data_row": index + 2, "cells": rows[index]}
+        for index in indexes
+    ]
+    selected = {"columns": columns, "rows": selected_rows}
     excerpt = {
         "kind": "CSV_ROWS",
-        "rows": [
-            {"data_row": index + 2, "cells": rows[index]}
-            for index in indexes
-        ],
+        "rows": selected_rows,
     }
     selector = {
         "columns": columns,
-        "data_row_end": len(rows) + 1,
-        "data_row_start": 2,
+        "data_rows": [index + 2 for index in indexes],
         "header_row": 1,
-        "selected_cell_count": len(rows) * len(columns),
-        "selected_row_count": len(rows),
+        "selected_cell_count": len(indexes) * len(columns),
+        "selected_row_count": len(indexes),
     }
     return "CSV_CELLS", selector, excerpt, _selection_digest(selected)
 
 
 def _json_locator(path: Path) -> tuple[str, dict[str, Any], object, str]:
     value = json.loads(path.read_text(encoding="utf-8"))
-    selector = {"json_pointers": [""]}
-    excerpt = {"kind": "JSON_VALUE", "pointer": "", "value": value}
-    return "JSON_POINTERS", selector, excerpt, _selection_digest(value)
+    if isinstance(value, dict):
+        keys = sorted(value)[:3]
+        pointers = [f"/{key.replace('~', '~0').replace('/', '~1')}" for key in keys]
+        values = {pointer: value[key] for pointer, key in zip(pointers, keys, strict=True)}
+    elif isinstance(value, list) and value:
+        indexes = sorted({0, len(value) // 2, len(value) - 1})
+        pointers = [f"/{index}" for index in indexes]
+        values = {pointer: value[index] for pointer, index in zip(pointers, indexes, strict=True)}
+    else:
+        pointers = [""]
+        values = {"": value}
+    selector = {"json_pointers": pointers}
+    excerpt = {"kind": "JSON_VALUES", "values": values}
+    return "JSON_POINTERS", selector, excerpt, _selection_digest(values)
 
 
 def _text_locator(path: Path) -> tuple[str, dict[str, Any], object, str]:
     value = path.read_text(encoding="utf-8")
     lines = value.splitlines()
+    selected_lines = lines[: min(20, len(lines))]
+    selected_text = "\n".join(selected_lines)
     selector = {
-        "byte_end_exclusive": len(value.encode("utf-8")),
+        "byte_end_exclusive": len(selected_text.encode("utf-8")),
         "byte_start": 0,
-        "line_end": len(lines),
+        "line_end": len(selected_lines),
         "line_start": 1,
     }
-    excerpt = {"kind": "TEXT_SPAN", "text": value}
-    return "TEXT_SPAN", selector, excerpt, _selection_digest(value)
+    excerpt = {"kind": "TEXT_SPAN", "text": selected_text}
+    return "TEXT_SPAN", selector, excerpt, _selection_digest(selected_text)
 
 
 def compile_source_evidence(

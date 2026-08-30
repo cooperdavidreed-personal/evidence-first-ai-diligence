@@ -57,6 +57,7 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
         assert section in markdown
     assert "Probability below 1.0x MOIC" in markdown
     assert "Probability of a modeled covenant breach" in markdown
+    assert markdown.count("Monte Carlo SE") >= 3
     assert "OPEN **AG-D04 · CRITICAL · PRE_DEBT_COMMITMENT**" in markdown
     assert "{'request_id'" not in markdown
     assert not set("—–‑−").intersection(markdown)
@@ -138,6 +139,8 @@ def test_helios_ic_packet_reconciles_engine_terms_and_receipts(tmp_path: Path) -
         "## Receipt appendix",
     ):
         assert section in markdown
+    assert "Selected milestone returns" in markdown
+    assert "Monte Carlo SE" in markdown
     assert "gross XIRR" in markdown
     assert "no delegated investment authority" in markdown
     receipt = json.loads(artifacts["receipt"].read_text(encoding="utf-8"))

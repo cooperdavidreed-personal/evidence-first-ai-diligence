@@ -27,8 +27,12 @@ def _decision() -> dict:
         "metric_pairs": [
             {
                 "metric": "Gross IRR",
+                "metric_id": "atlasgrid-REPRICE-gross-irr",
+                "operator": ">=",
                 "threshold": ">=22%",
+                "threshold_value": "0.22",
                 "observed": "24.0%",
+                "observed_value": "0.24",
                 "status": "CLEAR",
             }
         ],
@@ -152,4 +156,3 @@ def test_workbench_contract_rejects_thesis_graph_cycle() -> None:
     _rebind(case)
     with pytest.raises(UnderwritingError, match="thesis_graph_cycle"):
         validate_workbench_case(case)
-
