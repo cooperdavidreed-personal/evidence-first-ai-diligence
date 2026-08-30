@@ -169,3 +169,46 @@ def test_formula_bound_atlasgrid_decision_returns_reject_coherent_rebinding(
         _rebind_case(case)
         with pytest.raises(UnderwritingError, match="formula_value_mismatch"):
             validate_workbench_case(case)
+
+
+def test_atlasgrid_formula_operands_cannot_diverge_from_engine_cash_flows(
+    atlasgrid_v2: dict,
+) -> None:
+    case = deepcopy(atlasgrid_v2)
+    metric = next(
+        item
+        for item in case["metricRegistry"]
+        if item["metric_id"] == "atlasgrid-SELECTED-sponsor-cash-flow-03"
+    )
+    metric["value"] = str(int(metric["value"]) + 100_000_000)
+    metric.pop("metric_sha256")
+    metric["metric_sha256"] = digest(metric)
+    _rebind_case(case)
+    with pytest.raises(UnderwritingError, match="pe_sponsor_cash_flow_metric_mismatch"):
+        validate_workbench_case(case)
+
+
+def test_helios_formula_operands_cannot_diverge_from_engine_ledgers(
+    helios_v2: dict,
+) -> None:
+    attacks = (
+        (
+            "helios-MILESTONE-target-cash-flow-03",
+            "vc_target_cash_flow_metric_mismatch",
+        ),
+        (
+            "helios-MILESTONE-event-series-c-close-new-money",
+            "vc_financing_event_metric_mismatch",
+        ),
+    )
+    for metric_id, expected_error in attacks:
+        case = deepcopy(helios_v2)
+        metric = next(
+            item for item in case["metricRegistry"] if item["metric_id"] == metric_id
+        )
+        metric["value"] = str(int(metric["value"]) + 100_000_000)
+        metric.pop("metric_sha256")
+        metric["metric_sha256"] = digest(metric)
+        _rebind_case(case)
+        with pytest.raises(UnderwritingError, match=expected_error):
+            validate_workbench_case(case)

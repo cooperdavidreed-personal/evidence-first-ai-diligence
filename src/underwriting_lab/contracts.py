@@ -512,6 +512,69 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             if set(metric["source_locator_ids"]) != expected_locator_ids:
                 raise UnderwritingError(f"analysis_output_locator_mismatch:{metric_id}")
 
+    pe_engine = case.get("peEngine")
+    if pe_engine is not None:
+        selected = pe_engine["selected"]
+        selected_receipt = selected["receipt_sha256"]
+        for index, flow in enumerate(selected["sponsor_cash_flows"], start=1):
+            metric_id = (
+                f"{case['caseId']}-{selected['scenario_id']}"
+                f"-sponsor-cash-flow-{index:02d}"
+            )
+            metric = metrics.get(metric_id)
+            if metric is None:
+                raise UnderwritingError(f"pe_sponsor_cash_flow_metric_missing:{metric_id}")
+            if (
+                Decimal(metric["value"]) != Decimal(flow["amount_cents"])
+                or metric["period"] != flow["date"]
+                or metric["governing_receipt_sha256"] != selected_receipt
+            ):
+                raise UnderwritingError(f"pe_sponsor_cash_flow_metric_mismatch:{metric_id}")
+
+    vc_engine = case.get("vcEngine")
+    if vc_engine is not None:
+        milestone = vc_engine["milestone"]
+        milestone_receipt = milestone["receipt_sha256"]
+        for index, flow in enumerate(milestone["target_cash_flows"], start=1):
+            metric_id = f"{case['caseId']}-MILESTONE-target-cash-flow-{index:02d}"
+            metric = metrics.get(metric_id)
+            if metric is None:
+                raise UnderwritingError(f"vc_target_cash_flow_metric_missing:{metric_id}")
+            if (
+                Decimal(metric["value"]) != Decimal(flow["amount_cents"])
+                or metric["period"] != flow["date"]
+                or metric["governing_receipt_sha256"] != milestone_receipt
+            ):
+                raise UnderwritingError(f"vc_target_cash_flow_metric_mismatch:{metric_id}")
+        milestone_metric_values = {
+            f"{case['caseId']}-MILESTONE-target-invested": milestone["target_invested_cents"],
+            f"{case['caseId']}-MILESTONE-target-proceeds": milestone["target_proceeds_cents"],
+            f"{case['caseId']}-MILESTONE-gross-xirr": milestone["gross_xirr"],
+            f"{case['caseId']}-MILESTONE-gross-moic": milestone["gross_moic"],
+        }
+        for metric_id, engine_value in milestone_metric_values.items():
+            metric = metrics.get(metric_id)
+            if metric is None:
+                raise UnderwritingError(f"vc_milestone_metric_missing:{metric_id}")
+            if (
+                Decimal(metric["value"]) != Decimal(engine_value)
+                or metric["governing_receipt_sha256"] != milestone_receipt
+            ):
+                raise UnderwritingError(f"vc_milestone_metric_mismatch:{metric_id}")
+        for event in milestone["financing_events"]:
+            metric_id = (
+                f"{case['caseId']}-MILESTONE-event-"
+                f"{event['event_id']}-new-money"
+            )
+            metric = metrics.get(metric_id)
+            if metric is None:
+                raise UnderwritingError(f"vc_financing_event_metric_missing:{metric_id}")
+            if (
+                Decimal(metric["value"]) != Decimal(event["new_money_cents"])
+                or metric["governing_receipt_sha256"] != milestone_receipt
+            ):
+                raise UnderwritingError(f"vc_financing_event_metric_mismatch:{metric_id}")
+
     comparison_operators = {
         ">=": lambda observed, threshold: observed >= threshold,
         "<=": lambda observed, threshold: observed <= threshold,
