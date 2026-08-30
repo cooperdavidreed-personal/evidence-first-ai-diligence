@@ -59,6 +59,10 @@ def _atlasgrid(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, A
     event_rng = _rng(seed, "atlasgrid/events")
     parent_count = 220
     entity_count = 1600
+    # Recovery seeds test estimator behavior, not whether a fixed covenant and
+    # bid problem exists. Keep the fixed-cost base inside the frozen feasible
+    # bracket while customer, retention, pricing, and support evidence varies.
+    monthly_opex_base_cents = 220_000_000
     parent_weights = entity_rng.dirichlet(np.linspace(1.5, 0.35, parent_count))
     parent_ids = [f"AG-P{i:03d}" for i in range(1, parent_count + 1)]
     assigned = entity_rng.choice(parent_count, size=entity_count, p=parent_weights)
@@ -170,7 +174,7 @@ def _atlasgrid(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, A
         customer_success = int(subscription * 0.084)
         fully_burdened_cogs = hosting + implementation + customer_success
         reported_cogs = hosting + implementation
-        opex = int(2_250_000_00 + month * 1_400_000 + event_rng.normal(0, 8_000_000))
+        opex = int(monthly_opex_base_cents + month * 1_400_000 + event_rng.normal(0, 8_000_000))
         monthly.append(
             {
                 "month": _month_label(month),

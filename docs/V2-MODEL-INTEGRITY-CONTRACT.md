@@ -446,6 +446,13 @@ bands are:
 
 No public surface calls smoke recovery “coverage.”
 
+The frozen recovery seeds must also remain analyzable under the unchanged
+AtlasGrid covenant and combined base/downside maximum-bid boundary. Seeded
+customer and experiment variation may not make the fixed transaction problem
+undefined. The previously failing second AtlasGrid recovery seed is retained
+as an explicit planted-red regression; neither its covenant nor its return
+hurdles are widened.
+
 ### Isolation and temporal integrity
 
 - Static import gate prevents runtime analytics from importing truth or

@@ -325,6 +325,19 @@ def test_recovery_seed_plan_is_precommitted_and_disjoint() -> None:
     assert set(atlasgrid).isdisjoint(helios)
 
 
+def test_atlasgrid_recovery_seed_keeps_combined_bid_boundary_feasible(tmp_path: Path) -> None:
+    seed = RECOVERY_SEEDS["atlasgrid"][1]
+    manifest = generate_room("atlasgrid", seed, tmp_path / "atlasgrid-recovery")
+    case = _json(analyze_room(manifest, tmp_path / "atlasgrid-recovery.json"))
+    receipt = next(item for item in case["analyses"] if item["analysis_id"] == "AG-10")
+    diagnostic = next(
+        item for item in receipt["diagnostics"]
+        if item["name"] == "maximum_bid_downside_floor"
+    )
+    assert diagnostic["status"] == "PASS"
+    assert case["peEngine"]["maximum_bid_cents"] >= 15_000_000_000
+
+
 def test_committed_recovery_ledger_is_bound_and_passes() -> None:
     ledger = _json(Path(__file__).parents[1] / "verification" / "underwriting-recovery.json")
     body = dict(ledger)

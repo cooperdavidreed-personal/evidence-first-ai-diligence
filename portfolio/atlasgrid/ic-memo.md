@@ -5,7 +5,7 @@
 **Provisional posture:** `REPRICE`  
 **Workflow state:** `DECISION_RECORD_INCOMPLETE` / `PENDING_FOUNDER_SIGNATURE`  
 **Knowledge cutoff:** `2026-08-29T00:00:00Z`
-**Packet receipt:** `9cbc662ad80b1c3fb8f33b36f2eb930176af217a93f23f300f9d703a9d3c11a2`
+**Packet receipt:** `2bc3725878bbdc9388267920896e964a61ec49f005a951f9dec70857294aa9b4`
 
 ## Recommendation
 
@@ -15,13 +15,13 @@ The asking price fails the frozen return hurdle. The selected upfront structure 
 
 | Case | Upfront EV | Gross IRR | Gross MOIC | Exit debt | Minimum liquidity | Covenant breach |
 |---|---:|---:|---:|---:|---:|---|
-| Seller ask | $240M | 16.97% | 2.19x | $19.5M | $3.2M | None |
-| Selected | $210M | 22.57% | 2.73x | $19.5M | $3.2M | None |
-| Downside | $210M | 5.21% | 1.29x | $48.4M | $3.1M | None |
+| Seller ask | $240M | 17.62% | 2.25x | $16.4M | $3.2M | None |
+| Selected | $210M | 23.26% | 2.80x | $16.4M | $3.2M | None |
+| Downside | $210M | 6.16% | 1.35x | $45.6M | $3.2M | None |
 
 ## Price and structure
 
-- Maximum upfront bid under the fixed selected terms: **$211M**.
+- Maximum upfront bid under the fixed selected terms: **$215.4M**.
 - Selected sponsor equity at close: **$102M**.
 - Funded term debt at face: **$120M**; the undrawn revolver remains liquidity capacity, not a source.
 - Selected contingent earnout paid in the modeled base case: **$4.5M**; downside payout: **$0**.
@@ -32,9 +32,9 @@ The asking price fails the frozen return hurdle. The selected upfront structure 
 |---|---:|---:|---|
 | ARR | $76.2M | $122M | Full-cohort retention, not active-only retention, anchors the path. |
 | Revenue | $83.9M | $134.3M | Monthly exit revenue is annualized for comparability. |
-| Normalized / lender EBITDA | $25.3M | $47.1M | Entry earnings are normalized from QoE; exit uses the lender schedule. |
+| Normalized / lender EBITDA | $25.9M | $47.9M | Entry earnings are normalized from QoE; exit uses the lender schedule. |
 | Gross margin | 72.79% | Scenario path | Fully burdened costs remain included. |
-| Entry EV / normalized EBITDA | 8.29x | - | Price discipline is tested against normalized, not seller-adjusted, EBITDA. |
+| Entry EV / normalized EBITDA | 8.10x | - | Price discipline is tested against normalized, not seller-adjusted, EBITDA. |
 | Entry EV / LTM revenue | 2.50x | - | Revenue multiple is a cross-check, not the return engine. |
 | Exit EV / lender EBITDA | - | 6.50x | Exit multiple is a human scenario assumption. |
 
@@ -42,11 +42,11 @@ The asking price fails the frozen return hurdle. The selected upfront structure 
 
 | Year | Selected debt | Selected liquidity | Selected leverage | Selected headroom | Downside debt | Downside headroom |
 |---:|---:|---:|---:|---:|---:|---:|
-| 1 | $109M | $3.3M | 3.98x | 1.27x | $111.1M | 0.82x |
-| 2 | $94M | $3.4M | 2.98x | 2.27x | $99.6M | 1.61x |
-| 3 | $74.6M | $3.6M | 2.06x | 3.19x | $85.5M | 2.39x |
-| 4 | $50M | $3.7M | 1.21x | 4.04x | $68.5M | 3.14x |
-| 5 | $19.5M | $3.9M | 0.41x | 4.84x | $48.4M | 3.88x |
+| 1 | $108.6M | $3.3M | 3.87x | 1.38x | $110.6M | 0.94x |
+| 2 | $93M | $3.5M | 2.89x | 2.36x | $98.6M | 1.73x |
+| 3 | $73M | $3.6M | 1.98x | 3.27x | $84M | 2.49x |
+| 4 | $47.7M | $3.7M | 1.13x | 4.12x | $66.4M | 3.24x |
+| 5 | $16.4M | $3.9M | 0.34x | 4.91x | $45.6M | 3.98x |
 
 ## Sensitivity and distributional downside
 
@@ -54,21 +54,21 @@ The named downside is a deterministic stress case. The conditional distribution 
 
 | Conditional path statistic | p10 | p50 | p90 |
 |---|---:|---:|---:|
-| Gross MOIC | 1.17x | 2.73x | 4.64x |
-| Gross IRR | 3.14% | 22.64% | 37.62% |
+| Gross MOIC | 1.24x | 2.81x | 4.72x |
+| Gross IRR | 4.39% | 23.30% | 38.07% |
 
-- Probability below 1.0x MOIC: **6.60%**.
+- Probability below 1.0x MOIC: **5.40%**.
 - Probability of a modeled covenant breach: **0.00%**.
 - Probability of modeled payment default: **0.00%**.
-- Named downside floor: **5.21% IRR / 1.29x MOIC**; distributional p10: **3.14% / 1.17x**.
+- Named downside floor: **6.16% IRR / 1.35x MOIC**; distributional p10: **4.39% / 1.24x**.
 
 ### Entry value × exit multiple sensitivity
 
 | Entry / exit | 5.5x | 6.5x | 7.5x |
 |---|---:|---:|---:|
-| $200M | 20.74% / 2.53x | 25.14% / 3.02x | 29.00% / 3.51x |
-| $210M | 18.27% / 2.29x | 22.57% / 2.73x | 26.35% / 3.17x |
-| $220M | 16.07% / 2.09x | 20.30% / 2.49x | 24.01% / 2.89x |
+| $200M | 21.47% / 2.60x | 25.84% / 3.10x | 29.68% / 3.60x |
+| $210M | 18.98% / 2.35x | 23.26% / 2.80x | 27.02% / 3.25x |
+| $220M | 16.77% / 2.15x | 20.97% / 2.56x | 24.66% / 2.97x |
 
 ## Underwriting thesis and counterthesis
 
@@ -132,9 +132,9 @@ Of the standalone value, **$66.2M** is pure human judgment and **$16.3M** is mix
 
 | Initiative | Credit class | Implementation cost | Exit EBITDA | Exit debt | Exit equity | IRR impact |
 |---|---|---:|---:|---:|---:|---:|
-| Renewal architecture | HUMAN_JUDGMENT | $1.5M | $6M | -$10.2M | $49.1M | 3.50% |
-| Support automation | MIXED_CAUSAL_SYNTHETIC_AND_HUMAN_JUDGMENT | $2M | $1.9M | -$3.8M | $16.3M | 1.32% |
-| Delivery cost reset | HUMAN_JUDGMENT | $2.5M | $1.9M | -$4.4M | $17M | 1.42% |
+| Renewal architecture | HUMAN_JUDGMENT | $1.5M | $6M | -$10.2M | $49.1M | 3.43% |
+| Support automation | MIXED_CAUSAL_SYNTHETIC_AND_HUMAN_JUDGMENT | $2M | $1.9M | -$3.8M | $16.3M | 1.29% |
+| Delivery cost reset | HUMAN_JUDGMENT | $2.5M | $1.9M | -$4.4M | $17M | 1.39% |
 
 ### Ownership cadence and board control
 
@@ -152,9 +152,9 @@ This packet is generated from a fictional, deterministic data room. Synthetic ca
 
 ## Receipt appendix
 
-- Case analysis: `7571c5065c99c56d425379ef4fd3de6455f3bcb1a3c0f59847c17dfb5f4ed44f`
-- ASK result: `d167ef1482b25877dab3e9115a03eeaa89492c92e36da902c71b35f2fde766d0`
-- SELECTED result: `c50fdfea9c6754f5b41824537c524ebdbd76658c23f97ccd2671cd912674161b`
-- DOWNSIDE result: `5a43686feffed8735cd002e463a82f0b9019bdc28ee6301277573426bf4e843f`
-- Sensitivity book: `b10e5acdd6fc70cb08b5d8e35ba552f351ff6e87418266e4b846cdab78aa527a`
-- Value-creation bridge: `bbe29a3ee368bd7bd3537946a22ba167f805e4eb83eb2f078d0a48ce21e6154a`
+- Case analysis: `4e16a15c13b84a73217583c784ed39bf5347290ed6aeaa02e1f835ffb8ef8c92`
+- ASK result: `0c8166368d5bd4f1e4dbd5b88a48f3d3f22d20726fa0c929c8d4427e05d769a8`
+- SELECTED result: `87e0a3ece3a76aca6d5e1d7e89021f5915e17234c6db75d60f34e26654dd2e7e`
+- DOWNSIDE result: `8b949ad91fdf4f88e31eaabdc30336be8b3b27852a751cc61d3c3cab82277c40`
+- Sensitivity book: `4895ffd22d9e046cb3e5bd051fb35e434d39d7377f8400e82f6d5c30c79dd246`
+- Value-creation bridge: `20b86f120e1e2593574d81c82816aa6ae7faf612453bd365b5b50105504a930f`
