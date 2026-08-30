@@ -9,24 +9,25 @@ const columnFor = (kind: ThesisNode["kind"]) => {
   return 2;
 };
 
-function connected(graph: ThesisGraph, selected: string | null): Set<string> {
-  if (!selected) return new Set(graph.nodes.map((item) => item.node_id));
-  const result = new Set([selected]);
-  const walk = (start: string, direction: "upstream" | "downstream") => {
-    const pending = [start];
-    while (pending.length) {
-      const current = pending.pop()!;
-      for (const edge of graph.edges) {
-        const next = direction === "downstream" && edge.from === current
-          ? edge.to
-          : direction === "upstream" && edge.to === current ? edge.from : null;
-        if (next && !result.has(next)) {result.add(next); pending.push(next);}
-      }
+function spotlight(graph: ThesisGraph, selected: string | null) {
+  if (!selected) return {nodes: new Set(graph.nodes.map((item) => item.node_id)), edges: graph.edges};
+  const nodes = new Set([selected]);
+  const edges: ThesisGraph["edges"] = [];
+  const walk = (direction: "upstream" | "downstream") => {
+    let current = selected;
+    while (true) {
+      const edge = graph.edges.find((item) => direction === "upstream" ? item.to === current : item.from === current);
+      if (!edge) return;
+      const next = direction === "upstream" ? edge.from : edge.to;
+      if (nodes.has(next)) return;
+      edges.push(edge);
+      nodes.add(next);
+      current = next;
     }
   };
-  walk(selected, "upstream");
-  walk(selected, "downstream");
-  return result;
+  walk("upstream");
+  walk("downstream");
+  return {nodes, edges};
 }
 
 export function ThesisGraphView({graph}: {graph: ThesisGraph}) {
@@ -42,10 +43,11 @@ export function ThesisGraphView({graph}: {graph: ThesisGraph}) {
     });
   }, [graph]);
   const byId = new Map(positioned.map((item) => [item.node_id, item]));
-  const active = connected(graph, selected);
+  const activePath = spotlight(graph, selected);
+  const active = activePath.nodes;
   const height = Math.max(320, ...positioned.map((item) => item.y + 64));
   const selectedNode = selected ? byId.get(selected) : undefined;
-  const selectedEdges = selected ? graph.edges.filter((edge) => active.has(edge.from) && active.has(edge.to)) : [];
+  const selectedEdges = selected ? activePath.edges : [];
   const focusNode = (nodeId: string) => {
     setFocused(nodeId);
     requestAnimationFrame(() => {
@@ -73,7 +75,7 @@ export function ThesisGraphView({graph}: {graph: ThesisGraph}) {
     <div className="dag-scroll" tabIndex={0} aria-label="Scrollable thesis dependency graph">
       <svg className="thesis-dag" viewBox={`0 0 1040 ${height}`} role="tree" aria-label="Evidence to decision dependency graph" data-node-count={graph.nodes.length} data-edge-count={graph.edges.length}>
         <defs><marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" /></marker></defs>
-        <g className="dag-edges">{graph.edges.map((edge) => {const from = byId.get(edge.from); const to = byId.get(edge.to); if (!from || !to) return null; const highlighted = !selected || active.has(edge.from) && active.has(edge.to); return <line key={`${edge.from}-${edge.to}-${edge.relationship}`} x1={from.x + 275} y1={from.y + 27} x2={to.x - 10} y2={to.y + 27} className={highlighted ? "active" : "muted"} markerEnd="url(#arrow)"><title>{edge.relationship}</title></line>;})}</g>
+        <g className="dag-edges">{(selected ? selectedEdges : graph.edges).map((edge) => {const from = byId.get(edge.from); const to = byId.get(edge.to); if (!from || !to) return null; return <line key={`${edge.from}-${edge.to}-${edge.relationship}`} x1={from.x + 275} y1={from.y + 27} x2={to.x - 10} y2={to.y + 27} className="active" markerEnd="url(#arrow)"><title>{edge.relationship}</title></line>;})}</g>
         <g className="dag-nodes">
           {positioned.map((node: PositionedNode) => (
             <g

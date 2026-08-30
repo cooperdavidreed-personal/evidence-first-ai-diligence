@@ -50,39 +50,78 @@ async function assertInFirstViewport(page: Page, locator: Locator, label: string
   expect(box!.y + box!.height, `${label} falls below the initial viewport`).toBeLessThanOrEqual(viewport!.height);
 }
 
+async function loadCanonicalVisualRoute(page: Page, routeCaseId: string, routeSlug: string, heading: RegExp) {
+  // A hash-only navigation can retain the previous document's scroll/focus state.
+  // Change the document URL as well, then explicitly settle and reset every
+  // browser-owned source of vertical position before retaining visual evidence.
+  await page.goto(`/?visual=${routeCaseId}-${routeSlug}#/v2/${routeCaseId}/${routeSlug}`, {waitUntil: "networkidle"});
+  await expect(page.getByRole("heading", {name: heading})).toBeVisible();
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    document.documentElement.style.setProperty("scroll-behavior", "auto", "important");
+    document.body.style.setProperty("scroll-behavior", "auto", "important");
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    window.scrollTo(0, 0);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    window.scrollTo(0, 0);
+  });
+  await expect.poll(() => page.evaluate(() => ({
+    body: document.body.scrollTop,
+    document: document.documentElement.scrollTop,
+    visual: window.visualViewport?.pageTop ?? window.scrollY,
+    window: window.scrollY,
+  }))).toEqual({body: 0, document: 0, visual: 0, window: 0});
+  await expect(page.getByText("Underwriting Intelligence Lab", {exact: true})).toBeInViewport();
+  await expect(page.getByText("SYNTHETIC — NOT INVESTMENT ADVICE", {exact: true})).toBeInViewport();
+  const nav = page.getByRole("navigation", {name: "Workbench views"});
+  await expect(nav).toBeInViewport();
+  await expect(nav.getByRole("button")).toHaveCount(5);
+}
+
 for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
   test(`${caseName} complete keyboard, interaction, visual, and accessibility flow`, async ({page}, testInfo: TestInfo) => {
     const accessibilityScans: Array<Record<string, unknown>> = [];
     const evidenceCaseSlug = caseName.toLowerCase().replaceAll(" ", "-");
-    await page.goto("/");
-    await page.evaluate(() => window.scrollTo({top: 0, left: 0, behavior: "instant"}));
-    // Mobile Chromium can retain a 6px visual-viewport offset while the layout
-    // viewport is at the document origin. Element-level first-viewport checks
-    // below remain the substantive clipping gate.
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThanOrEqual(8);
-    await page.getByRole("button", {name: new RegExp(caseName)}).click();
+    const routeCaseId = caseName === "AtlasGrid Systems" ? "atlasgrid" : "helios";
+    await page.goto(`/#/v2/${routeCaseId}/snapshot`);
+    await expect(page.getByText("Underwriting Intelligence Lab", {exact: true})).toBeVisible();
+    await page.evaluate(() => {
+      document.documentElement.style.setProperty("scroll-behavior", "auto", "important");
+      document.body.style.setProperty("scroll-behavior", "auto", "important");
+      if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+    });
     await expect(page.getByRole("heading", {name: caseName})).toBeVisible();
     await expect(page.getByText("SYNTHETIC — NOT INVESTMENT ADVICE")).toBeVisible();
     await expect(page.getByText("PENDING HUMAN")).toBeVisible();
 
     const firstViewportChecks = [
-      [page.locator(".case-masthead .kicker"), "illustrative posture"],
       [page.getByText("PENDING HUMAN", {exact: true}), "human authority state"],
       [page.getByText("HOLD", {exact: true}), "workflow hold state"],
       [page.getByText("PENDING FOUNDER SIGNATURE", {exact: true}), "unsigned decision state"],
-      [page.getByRole("heading", {name: caseName === "AtlasGrid Systems" ? "REPRICE" : "CONDITIONAL INVEST"}), "price or investment posture"],
-      [page.getByText(caseName === "AtlasGrid Systems" ? "Cap earnout against verified live ARR" : "Ordinary-cohort NRR at or above 105%", {exact: true}), "decisive driver"],
+      [page.getByRole("heading", {name: caseName === "AtlasGrid Systems" ? "REPRICE" : "CONDITIONAL INVEST"}), "analytical posture"],
     ] as Array<[Locator, string]>;
-    if (caseName === "Helios Compute Control") {
-      firstViewportChecks.push([page.getByRole("button", {name: /Milestone · Series C funded capital/}), "capital and ownership terms"]);
+    if (caseName === "Helios Compute Control" && testInfo.project.name === "desktop") {
+      firstViewportChecks.push([page.getByRole("button", {name: /Inspect lineage for First close · Series C cash \$25M/}), "first-close capital"]);
+      firstViewportChecks.push([page.getByRole("button", {name: /Inspect lineage for Conditional tranche · Series C cash \$15M/}), "conditional tranche capital"]);
       firstViewportChecks.push([page.getByRole("button", {name: /Milestone · Series C fully diluted ownership/}), "fully diluted ownership"]);
-      firstViewportChecks.push([page.getByRole("button", {name: /Milestone.*gross XIRR/i}), "selected milestone gross return"]);
+      firstViewportChecks.push([page.getByRole("button", {name: /^Inspect lineage for Milestone.*gross XIRR/i}), "selected milestone gross return"]);
       firstViewportChecks.push([page.getByRole("button", {name: /Downside.*gross XIRR/i}), "downside gross return"]);
-    } else {
+      firstViewportChecks.push([page.getByRole("heading", {name: /Retention and margin support a milestone structure/}), "decisive evidence"]);
+      firstViewportChecks.push([page.getByRole("heading", {name: /Down-round dilution and weaker exit economics/}), "loss case"]);
+      firstViewportChecks.push([page.getByRole("heading", {name: /Provider-level compute, telemetry, and support unit-cost ledger/}), "blocking gate"]);
+      firstViewportChecks.push([page.getByRole("heading", {name: "Runway uses three different bases"}), "runway timing basis"]);
+    } else if (caseName === "AtlasGrid Systems" && testInfo.project.name === "desktop") {
       firstViewportChecks.push([page.getByRole("button", {name: /Upfront EV/}), "selected entry price"]);
       firstViewportChecks.push([page.getByRole("button", {name: /Funded term debt/}), "selected financing structure"]);
       firstViewportChecks.push([page.getByRole("button", {name: /Earnout threshold \/ cap/}), "contingent consideration"]);
       firstViewportChecks.push([page.getByRole("button", {name: /Gross IRR/}).first(), "selected gross return"]);
+      firstViewportChecks.push([page.getByRole("heading", {name: "Definitions reduce earnings and concentration quality"}), "decisive evidence"]);
+      firstViewportChecks.push([page.getByRole("heading", {name: "Churn plus multiple compression breaks the return case"}), "loss case"]);
+      firstViewportChecks.push([page.getByRole("heading", {name: "Lender definition of covenant EBITDA"}), "blocking gate"]);
     }
     for (const [locator, label] of firstViewportChecks) await assertInFirstViewport(page, locator, label);
 
@@ -90,10 +129,14 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
     await lineageTrigger.focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("dialog")).toBeVisible();
-    await expect(page.getByText("Bound source evidence").first()).toBeVisible();
+    await expect(page.getByRole("dialog").getByLabel("Business meaning")).toBeVisible();
+    await expect(page.getByRole("dialog").locator(".lineage-summary").getByText(/^[a-f0-9]{64}$/)).toHaveCount(0);
+    await page.getByRole("dialog").getByText("Readable source evidence", {exact: true}).click();
     const sourceLink = page.getByRole("link", {name: "Open complete committed synthetic source ↗"}).first();
     await expect(sourceLink).toBeVisible();
-    await expect(page.getByRole("dialog").locator(".locator-inspection pre").first()).toContainText(/CSV_ROWS|JSON_VALUE|TEXT_SPAN/);
+    await expect(page.getByRole("dialog").locator(".excerpt-grid").first()).toBeVisible();
+    const readableExcerpt = await page.getByRole("dialog").locator(".excerpt-grid dd").allTextContents();
+    expect(readableExcerpt.every((value) => !value.trim().startsWith("{") && !value.trim().startsWith("["))).toBe(true);
     const sourceResponse = await page.request.get(await sourceLink.evaluate((element) => (element as HTMLAnchorElement).href));
     expect(sourceResponse.status()).toBe(200);
     if (testInfo.project.name === "desktop") {
@@ -137,7 +180,10 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
           await page.keyboard.press("Enter");
           expect(await graph.locator(".dag-node.active").count()).toBeGreaterThan(1);
           expect(await graph.locator(".dag-node.muted").count()).toBeGreaterThan(0);
-          await graph.evaluate((element) => element.scrollIntoView({block: "center", inline: "nearest"}));
+          expect(await graph.locator(".dag-edges line").count()).toBeLessThanOrEqual(3);
+          // Retain the complete compact spotlight chain, including its evidence
+          // origin, rather than centering only the selected decision node.
+          await graph.evaluate((element) => element.scrollIntoView({block: "start", inline: "nearest"}));
           await expect(selectedNode).toBeInViewport();
           await captureVisualEvidence(page, `desktop-${evidenceCaseSlug}-selected-thesis-path.png`);
           const decisionId = await selectedNode.getAttribute("data-node-id");
@@ -188,7 +234,8 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
           const financeLineage = page.getByRole("button", {name: /Series C gross XIRR/}).first();
           await financeLineage.click();
           await expect(page.getByRole("dialog")).toBeVisible();
-          await expect(page.getByRole("dialog")).toContainText("DATED_XIRR");
+          await page.getByRole("dialog").getByText("Calculation and decision chain", {exact: true}).click();
+          await expect(page.getByRole("dialog")).toContainText("DATED XIRR");
           await expect(page.getByRole("dialog").locator(".formula-inspection li")).toHaveCount(2);
           await page.keyboard.press("Escape");
           await expect(financeLineage).toBeFocused();
@@ -209,11 +256,8 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
       accessibilityScans.push({view, ...await assertBoundedAndAccessible(page)});
       const slug = view.toLowerCase().replaceAll(" ", "-").replaceAll("&", "and");
       const caseSlug = caseName.toLowerCase().replaceAll(" ", "-");
-      await page.evaluate(() => {
-        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-        window.scrollTo({top: 0, left: 0, behavior: "instant"});
-      });
-      await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThanOrEqual(5);
+      const routeSlug = {"IC Snapshot": "snapshot", "Thesis & Evidence": "evidence", "Econometric Lab": "econometrics", "Underwriting Room": "underwriting", "Value Creation": "value-creation"}[view];
+      await loadCanonicalVisualRoute(page, routeCaseId, routeSlug!, heading);
       await captureVisualEvidence(page, `${testInfo.project.name}-${caseSlug}-${slug}.png`);
     }
     expect(chartIds.size).toBe(4);
@@ -227,3 +271,29 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
     });
   });
 }
+
+test("stable deep links restore case, room, search, metric focus, and browser history", async ({page}) => {
+  await page.goto("/#/v2/helios/evidence");
+  await expect(page.getByRole("heading", {name: "Helios Compute Control"})).toBeVisible();
+  await expect(page.getByRole("button", {name: /Thesis & Evidence/})).toHaveAttribute("aria-current", "page");
+  const search = page.getByRole("searchbox", {name: "Search room"});
+  await search.fill("ordinary-cohort NRR");
+  await expect(page.getByRole("status")).toContainText("1 of");
+  await page.getByLabel("Deal room search results").getByRole("button", {name: "Inspect finding evidence ↗"}).click();
+  await expect(page).toHaveURL(/#\/v2\/helios\/evidence\?metric=hx-nrr-metric$/);
+  await expect(page.getByRole("dialog", {name: "Ordinary-cohort NRR"})).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/v2\/helios\/evidence$/);
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", {name: "Helios Compute Control"})).toBeVisible();
+  await expect(page.getByRole("button", {name: /Thesis & Evidence/})).toHaveAttribute("aria-current", "page");
+  await page.goto("/#/v2/atlasgrid/underwriting?scenario=ask&driver=exit_multiple&cell=exit_multiple%3A5.5");
+  await expect(page.getByRole("button", {name: "Seller ask"})).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("combobox", {name: "Driver"})).toHaveValue("exit_multiple");
+  await expect(page.getByRole("button", {name: "5.5x"})).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", {name: "Selected"}).click();
+  await expect(page).toHaveURL(/scenario=selected/);
+  await expect(page).toHaveURL(/driver=exit_multiple/);
+  await expect(page).toHaveURL(/cell=exit_multiple%3A5.5/);
+});

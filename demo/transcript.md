@@ -1,19 +1,30 @@
 # Demo transcript
 
-This system checks evidence for diligence. It does not make the investment
-decision. The candidate memo starts with an unsupported claim: VectorForge has
-$4.8 million of contracted ARR. The local gate records `NO_CITATIONS`, and the
-workflow stays on `HOLD`.
+AtlasGrid opens with an analytical posture, not an approval: the workflow is
+on hold, human authority is pending, and the decision record is unsigned. The
+first read states the decisive evidence, the loss mechanism, and the exact
+diligence gate before exposing model detail. Predeclared return tests can clear
+while unresolved evidence still prevents the case from advancing.
 
-That failure is retained in the receipt. Now add the retained synthetic source
-snapshots, exact evidence spans, source dates, calculations, and
-counterevidence. The same rules calculate the metrics, preserve contradictions,
-and reproduce the same hash-bound packet.
+Every decision-facing number opens from business meaning into its calculation,
+retained source selection, and audit metadata. The deal room is searchable by
+business meaning across sources, findings, analyses, owners, and open requests.
+Econometric classification changes the investment model: associations receive
+zero credit and synthetic effects remain bounded to their tested population.
 
-The output is a claim ledger, an open-question queue, and a human-review
-packet—not a recommendation. Inspect every source, state, limitation, and
-receipt in the repository. Human judgment remains the boundary.
+AtlasGrid compares seller ask, selected structure, and downside through retained
+model results rather than presentation-only changes. The exact case, room,
+scenario, sensitivity driver, and cell are encoded in a stable, restorable URL.
 
-The rendered video is intentionally silent and caption-led. SRT and WebVTT
-caption files contain the complete narration; no external voice or media
-service is required.
+Helios reuses the same evidence, judgment, scenario, and receipt contracts for
+a milestone-financed venture investment. The interface distinguishes current
+runway, funded runway, and the no-tranche cash path while separating first-close
+and conditional capital. A failed milestone withholds the tranche and reruns
+capitalization, runway, preferences, dated cash flows, ownership, and returns.
+
+The final layer turns evidence into an owned operating plan with costs,
+milestones, stop rules, and a reconciled value bridge.
+
+This is a silent, captioned recording of the real local workbench. Both cases
+and all company records are synthetic; it does not claim production adoption,
+investment performance, or autonomous decision authority.

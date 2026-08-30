@@ -1,84 +1,27 @@
 {
-  "schema_version": "ic-evidence-lab.demo-storyboard/v1",
-  "target_duration_seconds": 80,
-  "allowed_duration_seconds": [75, 85],
-  "status": "QUALITY_SHORT",
+  "schema_version": "underwriting.demo-storyboard/v2",
+  "target_duration_seconds": 150,
+  "allowed_duration_seconds": [145, 155],
+  "status": "PORTFOLIO_CANDIDATE_FOUNDER_REVIEW_PENDING",
+  "capture": "REAL_LOCAL_WORKBENCH_INTERACTIONS",
   "scenes": [
-    {
-      "start": 0,
-      "end": 7,
-      "eyebrow": "EVIDENCE-FIRST AI DILIGENCE",
-      "title": "A diligence packet that shows its work.",
-      "body": "Deterministic checks support human review. They do not make investment decisions.",
-      "proof": "Synthetic case  /  offline execution  /  explicit limitations",
-      "caption": "This system checks evidence for diligence. It does not make the investment decision.",
-      "source": "README.md"
-    },
-    {
-      "start": 7,
-      "end": 18,
-      "eyebrow": "01  /  FAILURE",
-      "title": "Unsupported material claims stop the workflow.",
-      "body": "The candidate memo starts with a $4.8 million contracted ARR claim but supplies no retained evidence.",
-      "proof": "C1  →  NO_CITATIONS     workflow  →  HOLD",
-      "caption": "The candidate memo starts with an unsupported claim: VectorForge has 4.8 million dollars of contracted ARR.",
-      "source": "examples/vectorforge/case-before.json"
-    },
-    {
-      "start": 18,
-      "end": 31,
-      "eyebrow": "02  /  RETAIN THE FAILURE",
-      "title": "Failure is a result—not an exception.",
-      "body": "The receipt preserves the failing state, limitations, source inventory, and content digest for review.",
-      "proof": "NO_CITATIONS is explicit. HOLD is deterministic.",
-      "caption": "The local gate records no citations, and the workflow stays on hold. That failure is retained in the receipt.",
-      "source": "src/ic_evidence_lab/schemas/receipt.schema.json"
-    },
-    {
-      "start": 31,
-      "end": 45,
-      "eyebrow": "03  /  CORRECT THE INPUTS",
-      "title": "Evidence can support, contradict, or be blocked.",
-      "body": "Add frozen source snapshots, exact spans, source dates, calculations, and counterevidence—without erasing disagreement.",
-      "proof": "162.50% growth  /  72.50% margin  /  post-cutoff source BLOCKED",
-      "caption": "Now add retained synthetic source snapshots, exact evidence spans, source dates, calculations, and counterevidence.",
-      "source": "examples/vectorforge/case-after.json"
-    },
-    {
-      "start": 45,
-      "end": 59,
-      "eyebrow": "04  /  RERUN",
-      "title": "The same inputs produce the same packet.",
-      "body": "Canonical JSON, Decimal arithmetic, and SHA-256 bind the output to the reviewed inputs.",
-      "proof": "packet SHA-256  {packet_sha256}",
-      "caption": "The same rules calculate the metrics, preserve contradictions, and reproduce the same hash-bound packet.",
-      "source": "src/ic_evidence_lab/canonical.py"
-    },
-    {
-      "start": 59,
-      "end": 72,
-      "eyebrow": "05  /  REVIEW",
-      "title": "Every unresolved question survives into review.",
-      "body": "The output is a claim ledger and open-question queue—not a buy, sell, or approval recommendation.",
-      "proof": "{claim_count} claims  /  {question_count} open questions  /  human judgment retained",
-      "caption": "The output is a claim ledger, an open-question queue, and a human-review packet—not a recommendation.",
-      "source": "docs/EVALUATION.md"
-    },
-    {
-      "start": 72,
-      "end": 80,
-      "eyebrow": "06  /  VERIFY",
-      "title": "Two released MCP gates verify the bundle.",
-      "body": "Evidence Gate checks each artifact. Release Gate binds the verified artifacts into one release receipt.",
-      "proof": "Evidence Gate 0.1.1  →  PASS     Release Gate 0.1.1  →  PASS",
-      "caption": "Inspect every source, state, limitation, and receipt in the repository. Human judgment remains the boundary.",
-      "source": "src/ic_evidence_lab/toolkit_adapter.py"
-    }
+    {"start": 0, "end": 10, "eyebrow": "01 / DECISION FIRST", "title": "Posture is not authority", "body": "AtlasGrid opens with REPRICE, HOLD, PENDING HUMAN, and an unsigned record.", "proof": "REPRICE · HOLD · PENDING HUMAN", "caption": "AtlasGrid opens with an analytical posture, not an approval: the workflow is on hold, human authority is pending, and the decision record is unsigned.", "source": "workbench/src/App.tsx"},
+    {"start": 10, "end": 23, "eyebrow": "02 / THE IC READ", "title": "Evidence, loss case, gate", "body": "The first read explains what matters before model detail.", "proof": "driver → loss mechanism → blocking gate", "caption": "The first read states the decisive evidence, the loss mechanism, and the exact diligence gate before exposing model detail.", "source": "docs/INVESTOR-EXPERIENCE-CONTRACT.md"},
+    {"start": 23, "end": 35, "eyebrow": "03 / HURDLE LEDGER", "title": "Clear math can remain on hold", "body": "Predeclared thresholds do not substitute for diligence or authority.", "proof": "23.26% ≥ 22% · still HOLD", "caption": "Predeclared return tests can clear while unresolved evidence still prevents the case from advancing.", "source": "workbench/src/App.tsx"},
+    {"start": 35, "end": 50, "eyebrow": "04 / NUMBER TO SOURCE", "title": "Progressive lineage", "body": "Business meaning comes first; formulas, sources, and hashes stay inspectable.", "proof": "meaning → calculation → source → audit metadata", "caption": "Every decision-facing number opens from business meaning into its calculation, retained source selection, and audit metadata.", "source": "workbench/src/App.tsx"},
+    {"start": 50, "end": 62, "eyebrow": "05 / NAVIGABLE ROOM", "title": "Find the gate, not the file", "body": "Search spans sources, findings, analyses, owners, and requests.", "proof": "business search · typed filters · stable routes", "caption": "The deal room is searchable by business meaning across sources, findings, analyses, owners, and open requests.", "source": "workbench/src/App.tsx"},
+    {"start": 62, "end": 78, "eyebrow": "06 / ECONOMETRIC CONSEQUENCE", "title": "Identification changes model credit", "body": "Zero credit, scenario-only credit, and bounded credit are visible decision states.", "proof": "ZERO CREDIT · SCENARIO ONLY · BOUNDED", "caption": "Econometric classification changes the investment model: associations receive zero credit and synthetic effects remain bounded to their tested population.", "source": "docs/ECONOMETRICS-CONTRACT-V2.md"},
+    {"start": 78, "end": 96, "eyebrow": "07 / RECOMPUTED SCENARIOS", "title": "Ask, selected, downside", "body": "Each scenario is retained, receipt-bound, and economically distinct.", "proof": "$240M ask → $210M selected → downside", "caption": "AtlasGrid compares seller ask, selected structure, and downside through retained model results rather than presentation-only changes.", "source": "workbench/src/pe.tsx"},
+    {"start": 96, "end": 107, "eyebrow": "08 / SENSITIVITY STATE", "title": "Share the exact question", "body": "Case, room, scenario, driver, and cell survive reload and browser history.", "proof": "stable URL · restorable state", "caption": "The exact case, room, scenario, sensitivity driver, and cell are encoded in a stable, restorable URL.", "source": "workbench/tests/workbench.spec.ts"},
+    {"start": 107, "end": 119, "eyebrow": "09 / CROSS-ASSET REUSE", "title": "The same contracts govern VC", "body": "Helios extends the shared evidence and judgment system.", "proof": "one workbench · two capital structures", "caption": "Helios reuses the same evidence, judgment, scenario, and receipt contracts for a milestone-financed venture investment.", "source": "workbench/src/vc.tsx"},
+    {"start": 119, "end": 132, "eyebrow": "10 / TERMS AND TIME", "title": "Runway bases stay distinct", "body": "Current, funded, and no-tranche cash paths are never conflated.", "proof": "$25M first close · $15M conditional tranche", "caption": "The interface distinguishes current runway, funded runway, and the no-tranche cash path while separating first-close and conditional capital.", "source": "workbench/src/App.tsx"},
+    {"start": 132, "end": 143, "eyebrow": "11 / EVENT-BASED VENTURE", "title": "Milestone failure changes economics", "body": "The model reruns ownership, cash, preferences, and dated returns.", "proof": "withhold tranche → rerun cap table and cash", "caption": "A failed milestone withholds the tranche and reruns capitalization, runway, preferences, dated cash flows, ownership, and returns.", "source": "workbench/src/vc.tsx"},
+    {"start": 143, "end": 150, "eyebrow": "12 / UNDERWRITING TO OWNERSHIP", "title": "Evidence becomes an operating plan", "body": "Initiatives carry owners, costs, milestones, stop rules, and value bridges.", "proof": "evidence → estimate → economics → action", "caption": "The final layer turns evidence into an owned operating plan with costs, milestones, stop rules, and a reconciled value bridge.", "source": "workbench/src/value-plan.tsx"}
   ],
   "limitations": [
-    "This artifact verifies a media contract but is not accepted as a public portfolio demo.",
-    "Static slides do not demonstrate the product workflow, evidence inspection, correction interaction, or reviewer decision process.",
-    "The demo is silent and caption-led; no external voice or media service is used.",
-    "Rendering is reproducible from public repository inputs, but encoder and font versions can change media bytes."
+    "Both cases and every displayed company record are synthetic.",
+    "The capture demonstrates local product behavior, not production adoption or investment performance.",
+    "The video is silent with complete SRT and WebVTT captions.",
+    "Browser video encoding is reproducible in structure but not claimed byte-identical across platforms."
   ]
 }

@@ -27,7 +27,7 @@ def main() -> int:
 
     repo = Path(__file__).resolve().parents[1]
     root = repo / args.root
-    video = root / "evidence-first-ai-diligence-demo.mp4"
+    video = root / "underwriting-intelligence-lab-demo.mp4"
     manifest = json.loads((root / "manifest.json").read_text())
     storyboard = json.loads((repo / "demo/storyboard.json").read_text())
     lower, upper = storyboard["allowed_duration_seconds"]
@@ -56,13 +56,13 @@ def main() -> int:
     require(audio_streams == [], f"unexpected audio streams: {len(audio_streams)}")
     stream = video_streams[0]
     require(stream["codec_name"] == "h264", f"unexpected codec: {stream['codec_name']}")
-    require((stream["width"], stream["height"]) == (1920, 1080), "unexpected resolution")
+    require((stream["width"], stream["height"]) == (1440, 900), "unexpected resolution")
     require(stream["pix_fmt"] == "yuv420p", f"unexpected pixel format: {stream['pix_fmt']}")
     require(stream["avg_frame_rate"] == "30/1", f"unexpected frame rate: {stream['avg_frame_rate']}")
     require(manifest["sha256"] == sha256(video), "video digest does not match manifest")
     require(
-        bool(manifest["packet_sha256"]) and len(manifest["packet_sha256"]) == 64,
-        "packet digest is missing or malformed",
+        manifest["capture"] == "REAL_LOCAL_WORKBENCH_INTERACTIONS",
+        "demo is not declared as a real-workbench capture",
     )
     require(
         (root / "captions.srt").read_text() == (repo / "demo/captions.srt").read_text(),

@@ -31,9 +31,10 @@ function BoundValue({caseData, metricId, detail, openMetric}: {caseData: CaseDat
   return <button className="inline-finance-value" data-metric-id={metricId} aria-label={`Inspect lineage for ${metric.label}`} onClick={(event) => openMetric(metric, event.currentTarget)}>{metric.value}<small>↗</small></button>;
 }
 
-function BoundCard({caseData, metricId, detail, openMetric}: {caseData: CaseData; metricId: string; detail: string; openMetric: OpenMetric}) {
+function BoundCard({caseData, metricId, detail, openMetric, label}: {caseData: CaseData; metricId: string; detail: string; openMetric: OpenMetric; label?: string}) {
   const metric = boundMetric(caseData, metricId, detail);
-  return <button className="finance-metric" data-metric-id={metricId} aria-label={`Inspect lineage for ${metric.label} ${metric.value}`} onClick={(event) => openMetric(metric, event.currentTarget)}><span>{metric.label}</span><strong>{metric.value}</strong><small>Inspect lineage ↗</small></button>;
+  const displayMetric = label ? {...metric, label} : metric;
+  return <button className="finance-metric" data-metric-id={metricId} aria-label={`Inspect lineage for ${displayMetric.label} ${displayMetric.value}`} onClick={(event) => openMetric(displayMetric, event.currentTarget)}><span>{displayMetric.label}</span><strong>{displayMetric.value}</strong><small>Inspect lineage ↗</small></button>;
 }
 
 function FinancingTimeline({caseData, result, prefix, openMetric}: {caseData: CaseData; result: VCScenarioResult; prefix: string; openMetric: OpenMetric}) {
@@ -62,29 +63,31 @@ function CapTableAndWaterfall({caseData, result, prefix, openMetric}: {caseData:
   </div>;
 }
 
-function SensitivityBook({caseData, openMetric}: {caseData: CaseData; openMetric: OpenMetric}) {
+function SensitivityBook({caseData, openMetric, routeState, onRouteState}: {caseData: CaseData; openMetric: OpenMetric; routeState?: {driver?: string | null; cell?: string | null}; onRouteState?: (state: {driver?: string; cell?: string}) => void}) {
   const book = caseData.vcEngine!.sensitivities;
-  const [axis, setAxis] = useState(book.axis_order[0]);
+  const initialAxis = routeState?.driver && book.axis_order.includes(routeState.driver as VCSensitivityCell["axis"]) ? routeState.driver as VCSensitivityCell["axis"] : book.axis_order[0];
+  const [axis, setAxis] = useState(initialAxis);
   const cells = useMemo(() => book.cells.filter((item) => item.axis === axis), [book, axis]);
-  const [selectedId, setSelectedId] = useState(cells[1]?.cell_id ?? cells[0]?.cell_id ?? "");
-  useEffect(() => setSelectedId(cells[1]?.cell_id ?? cells[0]?.cell_id ?? ""), [axis, cells]);
+  const [selectedId, setSelectedId] = useState(routeState?.cell && cells.some((item) => item.cell_id === routeState.cell) ? routeState.cell : cells[1]?.cell_id ?? cells[0]?.cell_id ?? "");
+  useEffect(() => {const next = routeState?.cell && cells.some((item) => item.cell_id === routeState.cell) ? routeState.cell : cells[1]?.cell_id ?? cells[0]?.cell_id ?? ""; setSelectedId(next);}, [axis, cells, routeState?.cell]);
   const selected = cells.find((item) => item.cell_id === selectedId) ?? cells[0];
   const labels: Record<VCSensitivityCell["axis"], string> = {exit_value: "Exit value", exit_date: "Exit date", later_round_price: "Later-round price", milestone_state: "Milestone state"};
   const card = (suffix: string, detail: string) => <BoundCard caseData={caseData} metricId={`helios-${selected.cell_id}-${suffix}`} detail={`${detail} Full engine rerun ${selected.result_receipt_sha256}.`} openMetric={openMetric} />;
-  return <section className="finance-panel sensitivity-book" aria-labelledby="vc-sensitivity-title"><div className="panel-heading"><div><p className="kicker">Full-model recomputation</p><h3 id="vc-sensitivity-title">VC sensitivity book</h3></div><code>{book.receipt_sha256.slice(0, 12)}…</code></div><div className="sensitivity-controls"><label htmlFor="vc-axis">Driver</label><select id="vc-axis" value={axis} onChange={(event) => setAxis(event.target.value as VCSensitivityCell["axis"])}>{book.axis_order.map((item) => <option value={item} key={item}>{labels[item]}</option>)}</select><div className="scenario-tabs">{cells.map((item) => <button key={item.cell_id} aria-pressed={item.cell_id === selected.cell_id} onClick={() => setSelectedId(item.cell_id)}>{item.assumption_label}</button>)}</div></div><div className="finance-metric-grid sensitivity-result">{card("gross-xirr", "Dated gross-to-investor XIRR.")}{card("gross-moic", "Gross proceeds divided by funded capital.")}{card("ownership", "Fully diluted Series C ownership.")}{card("minimum-cash", "Minimum monthly ending cash.")}</div></section>;
+  return <section className="finance-panel sensitivity-book" aria-labelledby="vc-sensitivity-title"><div className="panel-heading"><div><p className="kicker">Full-model recomputation</p><h3 id="vc-sensitivity-title">VC sensitivity book</h3></div><code>{book.receipt_sha256.slice(0, 12)}…</code></div><div className="sensitivity-controls"><label htmlFor="vc-axis">Driver</label><select id="vc-axis" value={axis} onChange={(event) => {const nextAxis = event.target.value as VCSensitivityCell["axis"]; const nextCells = book.cells.filter((item) => item.axis === nextAxis); const nextCell = nextCells[1]?.cell_id ?? nextCells[0]?.cell_id; setAxis(nextAxis); setSelectedId(nextCell ?? ""); onRouteState?.({driver: nextAxis, cell: nextCell});}}>{book.axis_order.map((item) => <option value={item} key={item}>{labels[item]}</option>)}</select><div className="scenario-tabs">{cells.map((item) => <button key={item.cell_id} aria-pressed={item.cell_id === selected.cell_id} onClick={() => {setSelectedId(item.cell_id); onRouteState?.({driver: axis, cell: item.cell_id});}}>{item.assumption_label}</button>)}</div></div><div className="finance-metric-grid sensitivity-result">{card("gross-xirr", "Dated gross-to-investor XIRR.")}{card("gross-moic", "Gross proceeds divided by funded capital.")}{card("ownership", "Fully diluted Series C ownership.")}{card("minimum-cash", "Minimum monthly ending cash.")}</div></section>;
 }
 
-export function VCUnderwritingRoom({caseData, openMetric}: {caseData: CaseData; openMetric: OpenMetric}) {
+export function VCUnderwritingRoom({caseData, openMetric, routeState, onRouteState}: {caseData: CaseData; openMetric: OpenMetric; routeState?: {scenario?: string | null; driver?: string | null; cell?: string | null}; onRouteState?: (state: {scenario?: string; driver?: string; cell?: string}) => void}) {
   const engine = caseData.vcEngine;
-  const [scenarioKey, setScenarioKey] = useState<ScenarioKey>("milestone");
-  useEffect(() => setScenarioKey("milestone"), [caseData.caseId]);
+  const validScenario = routeState?.scenario && ["base", "milestone", "downside", "financing_shortfall"].includes(routeState.scenario) ? routeState.scenario as ScenarioKey : "milestone";
+  const [scenarioKey, setScenarioKey] = useState<ScenarioKey>(validScenario);
+  useEffect(() => setScenarioKey(validScenario), [caseData.caseId, validScenario]);
   if (!engine) return null;
   const result = engine[scenarioKey];
   const exitBridge = engine.operating_exit_bridges[scenarioKey];
   const prefix = `helios-${result.scenario_id}`;
   const labels: Record<ScenarioKey, string> = {base: "Base", milestone: "Milestones clear", downside: "Down round", financing_shortfall: "Shortfall bridge"};
   return <div className="view-stack pe-room vc-room">
-    <section className="underwriting-head"><div><p className="kicker">Venture financing · exact event ledger</p><h2>Terms, ownership, runway, and preferences</h2><p>Every tab and sensitivity is a retained Python-engine rerun. Unfunded tranches contribute no cash, shares, preference, or investor outflow.</p></div><div className="scenario-tabs">{(Object.keys(labels) as ScenarioKey[]).map((item) => <button key={item} aria-pressed={item === scenarioKey} onClick={() => setScenarioKey(item)}>{labels[item]}</button>)}</div></section>
+    <section className="underwriting-head"><div><p className="kicker">Venture financing · exact event ledger</p><h2>Terms, ownership, runway, and preferences</h2><p>Every tab and sensitivity is a retained Python-engine rerun. Unfunded tranches contribute no cash, shares, preference, or investor outflow.</p></div><div className="scenario-tabs">{(Object.keys(labels) as ScenarioKey[]).map((item) => <button key={item} aria-pressed={item === scenarioKey} onClick={() => {setScenarioKey(item); onRouteState?.({scenario: item});}}>{labels[item]}</button>)}</div></section>
     <ChartRegistryCaption caseData={caseData} location="Underwriting Room" />
     <section className="terms-ribbon"><BoundCard caseData={caseData} metricId={`${prefix}-target-invested`} detail="Total Series C cash actually funded in the selected scenario." openMetric={openMetric} /><BoundCard caseData={caseData} metricId={`${prefix}-ownership`} detail="Series C fully diluted ownership after event-by-event dilution." openMetric={openMetric} /><BoundCard caseData={caseData} metricId={`${prefix}-gross-xirr`} detail="Irregular-date gross-to-investor XIRR; not MOIC CAGR." openMetric={openMetric} /><BoundCard caseData={caseData} metricId={`${prefix}-gross-moic`} detail="Exact exit proceeds divided by funded Series C cash." openMetric={openMetric} /></section>
     <aside className="engine-receipt"><span>Selected engine receipt</span><code>{result.receipt_sha256}</code><strong>{engine.exit_value_basis.replaceAll("_", " ")}</strong></aside>
@@ -93,13 +96,13 @@ export function VCUnderwritingRoom({caseData, openMetric}: {caseData: CaseData; 
     <CashRunway caseData={caseData} result={result} prefix={prefix} openMetric={openMetric} />
     <CapTableAndWaterfall caseData={caseData} result={result} prefix={prefix} openMetric={openMetric} />
     <section className="finance-panel milestone-ledger" aria-labelledby="milestone-title"><div className="panel-heading"><div><p className="kicker">Executable second tranche</p><h3 id="milestone-title">Milestone test ledger</h3></div><span>M{engine.milestone_contract.test_month} · {engine.milestone_contract.cure_period_days}-day cure</span></div><div className="milestone-grid">{engine.milestone_contract.tests.map((item) => <article key={item.metric_id}><strong>{item.metric_id}</strong><span>{item.operator} {item.threshold}</span><small>{item.period}</small></article>)}</div><p>{engine.milestone_contract.release_rule.replaceAll("_", " ")} · evaluator {engine.milestone_contract.evaluator.replaceAll("_", " ")} · failure: {engine.milestone_contract.failure_consequence.replaceAll("_", " ")}</p></section>
-    <SensitivityBook caseData={caseData} openMetric={openMetric} />
+    <SensitivityBook caseData={caseData} openMetric={openMetric} routeState={routeState} onRouteState={onRouteState} />
   </div>;
 }
 
 export function VCSnapshotTerms({caseData, openMetric}: {caseData: CaseData; openMetric: OpenMetric}) {
   if (!caseData.vcEngine) return null;
-  return <section className="terms-ribbon vc-snapshot-terms" aria-label="Executable venture terms and returns"><BoundCard caseData={caseData} metricId="helios-MILESTONE-target-invested" detail="$25M first close plus the funded $15M milestone tranche in the selected case." openMetric={openMetric} /><BoundCard caseData={caseData} metricId="helios-MILESTONE-ownership" detail="Fully funded Series C ownership after the pre-money option-pool refresh." openMetric={openMetric} /><BoundCard caseData={caseData} metricId="helios-MILESTONE-gross-xirr" detail="Selected milestone case gross-to-investor dated XIRR on the same $40M funded structure." openMetric={openMetric} /><BoundCard caseData={caseData} metricId="helios-DOWNSIDE-gross-xirr" detail="Down-round case gross-to-investor dated XIRR." openMetric={openMetric} /></section>;
+  return <section className="terms-ribbon vc-snapshot-terms" aria-label="Executable venture terms and returns"><BoundCard caseData={caseData} metricId="helios-MILESTONE-event-series-c-close-new-money" label="First close · Series C cash" detail="Series C capital funded at close; this is the unconditional first check." openMetric={openMetric} /><BoundCard caseData={caseData} metricId="helios-MILESTONE-event-series-c-tranche-new-money" label="Conditional tranche · Series C cash" detail="Second-tranche capital funded only after the retained milestone tests clear." openMetric={openMetric} /><BoundCard caseData={caseData} metricId="helios-MILESTONE-ownership" detail="Fully funded Series C ownership after the pre-money option-pool refresh." openMetric={openMetric} /><BoundCard caseData={caseData} metricId="helios-MILESTONE-gross-xirr" detail="Selected milestone case gross-to-investor dated XIRR on the same $40M funded structure." openMetric={openMetric} /><BoundCard caseData={caseData} metricId="helios-DOWNSIDE-gross-xirr" detail="Down-round case gross-to-investor dated XIRR." openMetric={openMetric} /></section>;
 }
 
 export function VCValueCreation({caseData, openMetric}: {caseData: CaseData; openMetric: OpenMetric}) {

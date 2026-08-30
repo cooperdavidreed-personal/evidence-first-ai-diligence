@@ -199,12 +199,15 @@ def _workflow_disposition(receipts: list[dict[str, Any]], decision: dict[str, An
 
 
 def _thesis_graph(result: dict[str, Any]) -> dict[str, Any]:
+    decision_posture = result["decision"]["decision"]
+    if decision_posture == "INVEST":
+        decision_posture = "CONDITIONAL INVEST"
     nodes: list[dict[str, Any]] = [
         {
             "node_id": "decision",
             "kind": "DECISION",
-            "label": result["decision"]["decision"],
-            "status": result["decision"]["status"],
+            "label": f"{decision_posture} · NOT APPROVED",
+            "status": f'{result["workflowDisposition"]} · {result["investmentAdjudication"].replace("_", " ")}',
             "references": [result["decision"]["decision_sha256"]],
         }
     ]

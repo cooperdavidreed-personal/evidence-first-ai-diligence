@@ -15,8 +15,12 @@ No API-key or paid fallback route is authorized. No provider output is case evid
 | V2 benchmark and countercase orders | Grok | `PRODUCED` | Advisory findings entered the frozen contracts only through deterministic implementation gates |
 | AtlasGrid PE implementation and verdict reviews | Grok | `ACCEPT_PE_GATE` | Final advisory score 92 with no critical or high finding; exact output digest is retained in local mission evidence |
 | Helios finance, data, and rendered-product audits | Codex subagents | `QUALITY_SHORT` then repaired | Milestone derivation, independent waterfall oracle, distribution-state risk, econometric labeling, headline formulas, and value mapping became executable repair gates |
-| V2 implementation and deterministic acceptance | Codex | `DETERMINISTIC_LOCAL_PASS` | Codex remained the only filesystem writer; 161 Python tests, 15 React tests, the supported Playwright matrix, package/security/toolkit/public-scan gates, and retained visual/PDF/accessibility evidence pass locally |
+| V2 implementation and deterministic acceptance | Codex | `DETERMINISTIC_LOCAL_PASS` | Codex remained the only filesystem writer; 161 Python tests, 18 current React tests, the supported Playwright matrix, package/security/toolkit/public-scan gates, and retained visual/PDF/accessibility evidence pass locally |
 | Independent final V2 acceptance | Claude | `HELD_PROVIDER` | Required before the mission can claim provider-independent founder-review acceptance |
+| Investor-experience architecture and comprehension review | Claude | `ACCEPT_ARCHITECTURE` | Read-only review required posture-versus-authority, explicit terms and hurdle consequences, three distinct Helios runway bases, progressive lineage, and mobile information preservation before implementation |
+| Investor-product countercase | Grok | `FAILED_RETRYABLE — PARTIAL ADVISORY ONLY` | Partial findings were retained as unverified advice; no Grok output was admitted as case evidence or acceptance |
+| Productization implementation and blind first-viewport checks | Codex plus fresh read-only subagents | `LOCAL PASS` | AtlasGrid was completed and blind-read before Helios; both first views passed the frozen comprehension questions without filesystem writes by reviewers |
+| Final visual-baseline and exact-image comprehension review | Three fresh read-only Codex subagents | `ACCEPT_BASELINE; BLIND PASS 2/2` | All 26 stable retained PNGs were inspected; both exact desktop Snapshot digests independently passed all five frozen comprehension questions with zero reviewer writes |
 
 Durable provider stdout, state events, and episode receipts live in the excluded local mission directory, not the proposed public package.
 
@@ -31,4 +35,4 @@ unsafe paths, and digest drift before the review surface is staged.
 
 ## Claim discipline
 
-Passing tests demonstrate local contract behavior on synthetic cases. They do not establish enterprise deployment, real diligence accuracy, comprehensive accessibility compliance, model superiority, or an investment track record. Hosted CI, publication, model benchmarks, CoreWeave labels, and public resume/LinkedIn claims remain outside this mission.
+Passing tests demonstrate local contract behavior on synthetic cases. They do not establish enterprise deployment, real diligence accuracy, comprehensive accessibility compliance, model superiority, or an investment track record. Core Web Vitals tracing is also `NOT RUN` because the required Chrome performance-trace interface was unavailable. Hosted CI, publication, model benchmarks, CoreWeave labels, and public resume/LinkedIn claims remain outside this mission.

@@ -14,7 +14,7 @@ technical report and interview talking points
 | “Prompt-injection protection,” “robust to prompt injection,” or equivalent | A regex match is a quarantine heuristic, not an adversarial robustness evaluation. |
 | MCP publication or self-attestation as the headline proof | Packaging and protocol registration do not establish diligence quality or model performance. |
 | Release badges, provenance ceremony, registry count or artifact count as evidence of product value | Those can support supply-chain hygiene only after verification; they are not the flagship outcome. |
-| The rejected slide pipeline, incomplete LangChain case and the current demo | They do not demonstrate the proposed claim-to-IC workflow. |
+| The rejected slide pipeline, incomplete LangChain case, and retired static-card demo | They do not demonstrate the proposed claim-to-IC workflow. The replacement records the real workbench and is separately founder-review pending. |
 | Raw model transcripts | They are unaudited, may expose prompts or provider metadata, and are not reproducible evidence. |
 | VectorForge as a real diligence result | It is fictional and may remain only as a clearly labeled regression fixture. |
 | “Industry grade,” “production ready,” “independently certified,” or “outside validated” | Those claims require defined evidence that does not yet exist. |
@@ -67,4 +67,3 @@ Current truthful status: the rebuild foundation and evaluation protocol are
 being prepared in an isolated branch. No public release, model-performance
 result, hosted product, Cooper investment conclusion or independent
 reproduction is claimed.
-

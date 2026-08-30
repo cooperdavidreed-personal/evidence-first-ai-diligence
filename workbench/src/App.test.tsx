@@ -1,11 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import App from "./App";
 import rawData from "./data/cases.json";
 import {assertWorkbenchData} from "./data-contract";
 
 describe("Underwriting Intelligence Lab", () => {
+  beforeEach(() => window.history.replaceState(null, "", "/"));
   it("renders all five investment views and synthetic disclosure", () => {
     render(<App />);
     expect(screen.getByRole("heading", {name: "AtlasGrid Systems"})).toBeInTheDocument();
@@ -21,7 +22,36 @@ describe("Underwriting Intelligence Lab", () => {
     await user.click(screen.getByRole("button", {name: /Helios Compute Control/}));
     expect(screen.getByRole("heading", {name: "Helios Compute Control"})).toBeInTheDocument();
     expect(screen.getByRole("heading", {name: "CONDITIONAL INVEST"})).toBeInTheDocument();
-    expect(screen.getByText("Cooper David Reed — illustrative IC")).toBeInTheDocument();
+    expect(screen.getByText(/Cooper David Reed — illustrative IC/)).toBeInTheDocument();
+  });
+
+  it("separates quantitative hurdle clearance from investment authority", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    expect(screen.getByRole("heading", {name: "The numbers can clear while the deal remains on hold"})).toBeInTheDocument();
+    expect(screen.getAllByText("CLEARS").length).toBe(2);
+    expect(screen.getByText(/Do not advance at seller ask/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: "Inspect decision test for Gross IRR"}));
+    expect(screen.getByRole("dialog", {name: "Gross IRR"})).toHaveTextContent("not investment approval");
+    await user.click(screen.getByRole("button", {name: "Close lineage"}));
+    await user.click(screen.getByRole("button", {name: /Helios Compute Control/}));
+    expect(screen.getAllByText("CLEARS").length).toBe(6);
+    expect(screen.getByText(/Do not release the second tranche/)).toBeInTheDocument();
+  });
+
+  it("restores stable case and room routes and searches the deal room", async () => {
+    window.history.replaceState(null, "", "/#/v2/helios/evidence");
+    const user = userEvent.setup();
+    render(<App />);
+    expect(screen.getByRole("heading", {name: "Helios Compute Control"})).toBeInTheDocument();
+    expect(screen.getByRole("button", {name: /Thesis & Evidence/})).toHaveAttribute("aria-current", "page");
+    const search = screen.getByRole("searchbox", {name: "Search room"});
+    await user.type(search, "provider-level compute");
+    expect(screen.getByRole("status")).toHaveTextContent("1 of");
+    expect(screen.getByLabelText("Deal room search results")).toHaveTextContent("Provider-level compute, telemetry, and support unit-cost ledger");
+    await user.click(screen.getByRole("button", {name: /AtlasGrid Systems/}));
+    expect(window.location.hash).toBe("#/v2/atlasgrid/evidence");
+    expect(screen.getByRole("button", {name: /Thesis & Evidence/})).toHaveAttribute("aria-current", "page");
   });
 
   it("opens a keyboard-addressable lineage drawer", async () => {
@@ -143,6 +173,21 @@ describe("Underwriting Intelligence Lab", () => {
     expect(output).toHaveAttribute("data-metric-id", "atlasgrid-ag-08-resolution_att");
   });
 
+  it("states the investment consequence of identified and non-identified analyses", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", {name: /Econometric Lab/}));
+    expect(screen.getAllByText("ZERO CREDIT").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("BASE-CASE CREDIT · BOUNDED").length).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", {name: "Association / abstention"}));
+    expect(screen.getAllByText("ZERO CREDIT").length).toBeGreaterThan(0);
+    expect(screen.getByText(/No base-case causal credit is permitted/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: /Helios Compute Control/}));
+    await user.click(screen.getByRole("button", {name: "Identified synthetic effect"}));
+    expect(screen.getAllByText("SCENARIO ONLY").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/adoption, transferability, and valuation remain scenario judgments/i).length).toBeGreaterThan(0);
+  });
+
   it("uses the registered Helios MOIC distribution IDs", async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -159,7 +204,7 @@ describe("Underwriting Intelligence Lab", () => {
     await user.click(screen.getByRole("button", {name: /Thesis & Evidence/}));
     expect(screen.getByRole("heading", {name: "Diligence requests and decision consequences"})).toBeInTheDocument();
     expect(screen.getByText("AG-D04")).toBeInTheDocument();
-    expect(screen.getByText(/Do not advance debt terms/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Do not advance debt terms/).length).toBeGreaterThanOrEqual(2);
     await user.click(screen.getByRole("button", {name: /Value Creation/}));
     expect(screen.getByRole("heading", {name: "Screened-out levers"})).toBeInTheDocument();
     expect(screen.getByText("Broad renewal price increase")).toBeInTheDocument();

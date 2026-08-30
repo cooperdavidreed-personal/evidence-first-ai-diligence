@@ -1,8 +1,8 @@
 {
-  "schema_version": "underwriting.blind-review-protocol/v1",
+  "schema_version": "underwriting.blind-review-protocol/v2",
   "status": "PRECOMMITTED",
   "time_limit_seconds_per_case": 60,
-  "review_context": "A reviewer who did not author the implementation receives only the retained desktop IC Snapshot image and these questions.",
+  "review_context": "A reviewer who did not author the implementation receives only the retained 1440 by 900 desktop IC Snapshot image and these questions. The reviewer has 60 seconds per image and may not inspect another artifact.",
   "cases": [
     {
       "case_id": "atlasgrid-systems",
@@ -14,12 +14,12 @@
     }
   ],
   "questions": [
-    "What is the illustrative investment posture and current human-authority state?",
+    "What is the analytical investment posture, and what are the current human-authority and workflow states?",
     "What price, capital, ownership, or structure is being proposed?",
-    "What is the most decision-relevant driver?",
-    "What is the clearest counterthesis or failure mode?",
-    "What open gate must be resolved before human approval?"
+    "What is the most decision-relevant driver, and how does it change the economics?",
+    "What is the clearest loss case or counterthesis?",
+    "What exact blocking gate must be resolved before advancement, and what happens if it remains unresolved?"
   ],
-  "pass_rule": "For each case, the reviewer must answer all five questions from the first-viewport image without opening another artifact; ambiguous or absent answers fail.",
+  "pass_rule": "For each case, the reviewer must answer all five questions from the first-viewport image without opening another artifact. Ambiguity between analytical posture and approval, an answer inferred only from a technical status code, or an absent economic consequence fails. AtlasGrid must pass before Helios implementation begins; both exact final images must then pass together.",
   "limitations": "This bounded artifact-comprehension check is not a human-factors study, hiring-outcome proof, accessibility certification, or evidence of real investment quality."
 }

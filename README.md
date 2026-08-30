@@ -23,6 +23,12 @@ The workbench presents five shared views for both cases:
 4. **Underwriting Room** — scenario selection, sensitivities, capital mechanics, and seeded return distributions.
 5. **Value Creation** — evidence-linked initiatives, KPI baselines, owners, milestones, risks, and value bridges.
 
+The productized reader adds a 60-second IC brief, an explicit authority bar, a
+predeclared hurdle ledger, a searchable deal-room index, progressive
+business-to-audit lineage, and stable URLs for case, room, scenario, driver,
+sensitivity cell, and metric focus. See the controlling [Investor Experience
+Contract](docs/INVESTOR-EXPERIENCE-CONTRACT.md).
+
 ## Run locally
 
 Python 3.11+ and Node 22+ are required. The application has no runtime backend or network dependency.
@@ -54,6 +60,23 @@ underwriting-lab build-workbench \
 
 The existing `ic-evidence-lab` CLI and evidence-kernel behavior remain intact.
 
+## Render the product walkthrough
+
+The former static-card reel was retired as `QUALITY SHORT`. The replacement is a
+150-second silent, captioned recording of the real local workbench through
+ordinary controls:
+
+```bash
+uv sync --frozen --extra demo
+uv run python scripts/render_demo.py
+uv run python scripts/verify_demo.py
+```
+
+The film covers decision posture versus authority, hurdle tests, number-to-source
+inspection, deal-room search, econometric model credit, PE scenario changes,
+VC milestone failure, and the value-creation bridge. It remains a local founder-
+review candidate until the release packet and rendered film are approved.
+
 ## Verification model
 
 - Money is generated and reconciled in integer cents; presentation uses declared rounding.
@@ -70,11 +93,11 @@ The existing `ic-evidence-lab` CLI and evidence-kernel behavior remain intact.
 - The retained browser evidence covers all five views for both cases at 1440x900 and 390x844, including first-viewport terms, keyboard DAG traversal, metric-to-source inspection, and four exact-match Axe evidence records. This is bounded route evidence, not comprehensive WCAG certification.
 - `NOT_IDENTIFIED` analyses abstain rather than convert correlation into causal claims.
 
-See [Underwriting Architecture](docs/UNDERWRITING-ARCHITECTURE.md), the controlling [v2 Benchmark Contract](docs/V2-BENCHMARK-CONTRACT.md), [v2 Model-Integrity Contract](docs/V2-MODEL-INTEGRITY-CONTRACT.md), [v2 Econometrics Contract](docs/ECONOMETRICS-CONTRACT-V2.md), and [Build Provenance](docs/BUILD-PROVENANCE.md). The original [product](docs/UNDERWRITING-PRODUCT-CONTRACT.md) and [econometrics](docs/ECONOMETRICS-CONTRACT.md) contracts are retained only as historical v1 context.
+See [Underwriting Architecture](docs/UNDERWRITING-ARCHITECTURE.md), the controlling [v2 Benchmark Contract](docs/V2-BENCHMARK-CONTRACT.md), [v2 Model-Integrity Contract](docs/V2-MODEL-INTEGRITY-CONTRACT.md), [v2 Econometrics Contract](docs/ECONOMETRICS-CONTRACT-V2.md), [Performance Budget](docs/PERFORMANCE-BUDGET.md), [Founder Interview Guide](docs/COOPER-INTERVIEW-GUIDE.md), and [Build Provenance](docs/BUILD-PROVENANCE.md). The original [product](docs/UNDERWRITING-PRODUCT-CONTRACT.md) and [econometrics](docs/ECONOMETRICS-CONTRACT.md) contracts are retained only as historical v1 context.
 
 ## Evidence kernel
 
-The accepted foundation still supports content-addressed evidence packets, exact-quote checks, counterevidence, temporal leakage controls, prompt-injection handling, and human-owned judgment. Its prior silent slide demo remains explicitly `QUALITY SHORT` and is not the portfolio demo. See [Architecture](docs/ARCHITECTURE.md), [Threat Model](docs/THREAT-MODEL.md), and [Career Claims](docs/CAREER-CLAIMS.md).
+The accepted foundation still supports content-addressed evidence packets, exact-quote checks, counterevidence, temporal leakage controls, prompt-injection handling, and human-owned judgment. See [Architecture](docs/ARCHITECTURE.md), [Threat Model](docs/THREAT-MODEL.md), and [Career Claims](docs/CAREER-CLAIMS.md).
 
 ## Authorship and license
 

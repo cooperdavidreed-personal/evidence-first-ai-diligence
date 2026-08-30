@@ -1,31 +1,43 @@
-# Blind first-viewport comprehension result — superseded
+# Blind first-viewport comprehension result
 
-State: `SUPERSEDED_NOT_CURRENT`
+State: `PASS`
 
-Current blind review: `NOT_RUN`
+Two fresh read-only reviewers independently passed the frozen protocol against
+the exact retained desktop IC Snapshot images. Each reviewer received only one
+image and the protocol, answered all five questions within the bounded review,
+and performed no filesystem writes.
 
-The prior bounded review passed against two earlier IC Snapshot images. Those
-image digests no longer match the retained visual-evidence manifest after the
-underwriting and presentation repairs, so that result is preserved only as
-historical process evidence and must not be used to validate the current
-portfolio candidate.
+## Binding
 
-## Historical binding
+- Protocol SHA-256: `b3023b6a6abf9067bd841e63ae3c4910c49e7f6a743df9a21e013beb821c7c2e`.
+- AtlasGrid image SHA-256: `a615dd6740cc4179756b5abf737da8e63a5a9757f2913dcff6a229b70b3abdf4`.
+- Helios image SHA-256: `3d358b883a979d869a1421ca19ff39250ac749cf6d87ef29cf4143866cc5cfc6`.
+- Reviewers: two fresh Codex subagents with no implementation context.
+- Writes performed: `0`.
 
-- Reviewer: fresh read-only Codex subagent with no implementation context.
-- Protocol SHA-256: `0257ada64263d247abf8a2bf9926804a6c4e142cc835ab7a55fce97c48ec78a5`.
-- Historical AtlasGrid image SHA-256: `38e584f17e499a7263eea972d7ad2bcc07623309d0392d81b6c326714e194cf5`.
-- Historical Helios image SHA-256: `925e670f89d40a31d9f8a6a75d59bfcfd2c8cfe80785ca74d0ddeb3bf5073022`.
-- Writes performed by reviewer: `0`.
+## AtlasGrid
 
-## Current boundary
+Verdict: `PASS`
 
-The current screenshots remain covered by deterministic browser, visual,
-overflow, keyboard, and automated accessibility gates. Those checks do not
-substitute for a new context-blind comprehension review. A future `PASS` must
-bind the current protocol and both current IC Snapshot digests before it may be
-treated as current evidence.
+The reviewer identified `REPRICE · NOT APPROVED`, `HOLD`, pending human and
+founder authority, the $210M upfront EV / $120M term debt / $88M threshold and
+$20M cap, normalized EBITDA and concentration as the decisive driver, the
+6.16% / 1.35x loss case, and the executed covenant-EBITDA definition as the
+blocking gate. No material ambiguity was reported.
 
-This bounded artifact-comprehension protocol is not a human-factors study,
+## Helios
+
+Verdict: `PASS`
+
+The reviewer identified `CONDITIONAL INVEST · NOT APPROVED`, `HOLD`, pending
+human and founder authority, the $25M first close / $15M conditional tranche /
+20.0% fully diluted ownership, retention and margin as the milestone-funding
+driver, the 9.64% / 1.58x loss case, and the provider-level cost ledger as the
+blocking gate. The reviewer correctly distinguished current, funded, and
+shortfall runway consequences. No material ambiguity was reported.
+
+## Boundary
+
+This is a bounded artifact-comprehension check, not a human-factors study,
 hiring-outcome proof, accessibility certification, or validation of real
 investment quality.

@@ -110,19 +110,20 @@ function ExitBridge({caseData, scenario, openMetric}: {caseData: CaseData; scena
   </section>;
 }
 
-function SensitivityBook({caseData, openMetric}: {caseData: CaseData; openMetric: OpenMetric}) {
+function SensitivityBook({caseData, openMetric, routeState, onRouteState}: {caseData: CaseData; openMetric: OpenMetric; routeState?: {driver?: string | null; cell?: string | null}; onRouteState?: (state: {driver?: string; cell?: string}) => void}) {
   const book = caseData.peEngine?.sensitivities;
-  const [axis, setAxis] = useState(book?.axis_order[0] ?? "");
+  const initialAxis = routeState?.driver && book?.axis_order.includes(routeState.driver) ? routeState.driver : book?.axis_order[0] ?? "";
+  const [axis, setAxis] = useState(initialAxis);
   const cells = useMemo(() => book?.one_way.filter((item) => item.axis === axis) ?? [], [book, axis]);
-  const [selectedId, setSelectedId] = useState(cells[1]?.cell_id ?? cells[0]?.cell_id ?? "");
-  useEffect(() => setSelectedId(cells[1]?.cell_id ?? cells[0]?.cell_id ?? ""), [axis, cells]);
+  const [selectedId, setSelectedId] = useState(routeState?.cell && cells.some((item) => item.cell_id === routeState.cell) ? routeState.cell : cells[1]?.cell_id ?? cells[0]?.cell_id ?? "");
+  useEffect(() => {const next = routeState?.cell && cells.some((item) => item.cell_id === routeState.cell) ? routeState.cell : cells[1]?.cell_id ?? cells[0]?.cell_id ?? ""; setSelectedId(next);}, [axis, cells, routeState?.cell]);
   if (!book) return null;
   const selected = cells.find((item) => item.cell_id === selectedId) ?? cells[0];
   const axisLabels: Record<string, string> = {entry_enterprise_value_cents: "Entry EV", full_cohort_nrr: "Full-cohort NRR", gross_margin: "Gross margin", annual_cash_rate: "Cash interest", funded_term_face_cents: "Funded debt", exit_multiple: "Exit multiple"};
   const cellMetric = (cell: PESensitivityCell, suffix: string, label: string, value: string): Metric => {const registry = registeredMetric(caseData, `${caseData.caseId}-${cell.cell_id}-${suffix}`); return {metric_id: registry.metric_id, label, value: registry.display_value || value, detail: `Fully recomputed sensitivity cell. Engine input ${cell.engine_inputs_sha256.slice(0, 16)}…; result ${cell.result_receipt_sha256.slice(0, 16)}….`, classification: registry.classification, lineage: registry.source_locator_ids.map((id) => id.replace(/^locator-/, "")), registry};};
   return <section className="finance-panel sensitivity-book" aria-labelledby="sensitivity-title">
     <div className="panel-heading"><div><p className="kicker">Receipt-bound recomputation</p><h3 id="sensitivity-title">Sensitivity book</h3></div><code>{book.receipt_sha256.slice(0, 12)}…</code></div>
-    <div className="sensitivity-controls"><label htmlFor="axis">Driver</label><select id="axis" value={axis} onChange={(event) => setAxis(event.target.value)}>{book.axis_order.map((item) => <option key={item} value={item}>{axisLabels[item] ?? item}</option>)}</select><div className="scenario-tabs">{cells.map((item) => <button key={item.cell_id} aria-pressed={item.cell_id === selected?.cell_id} onClick={() => setSelectedId(item.cell_id)}>{item.assumption_label}</button>)}</div></div>
+    <div className="sensitivity-controls"><label htmlFor="axis">Driver</label><select id="axis" value={axis} onChange={(event) => {const nextAxis = event.target.value; const nextCells = book.one_way.filter((item) => item.axis === nextAxis); const nextCell = nextCells[1]?.cell_id ?? nextCells[0]?.cell_id; setAxis(nextAxis); setSelectedId(nextCell ?? ""); onRouteState?.({driver: nextAxis, cell: nextCell});}}>{book.axis_order.map((item) => <option key={item} value={item}>{axisLabels[item] ?? item}</option>)}</select><div className="scenario-tabs">{cells.map((item) => <button key={item.cell_id} aria-pressed={item.cell_id === selected?.cell_id} onClick={() => {setSelectedId(item.cell_id); onRouteState?.({driver: axis, cell: item.cell_id});}}>{item.assumption_label}</button>)}</div></div>
     {selected && <div className="finance-metric-grid sensitivity-result">
       <MetricButton metric={cellMetric(selected, "irr", "Gross IRR", percent(selected.gross_xirr))} openMetric={openMetric} />
       <MetricButton metric={cellMetric(selected, "moic", "Gross MOIC", multiple(selected.gross_moic))} openMetric={openMetric} />
@@ -133,10 +134,11 @@ function SensitivityBook({caseData, openMetric}: {caseData: CaseData; openMetric
   </section>;
 }
 
-export function PEUnderwritingRoom({caseData, openMetric}: {caseData: CaseData; openMetric: OpenMetric}) {
+export function PEUnderwritingRoom({caseData, openMetric, routeState, onRouteState}: {caseData: CaseData; openMetric: OpenMetric; routeState?: {scenario?: string | null; driver?: string | null; cell?: string | null}; onRouteState?: (state: {scenario?: string; driver?: string; cell?: string}) => void}) {
   const engine = caseData.peEngine;
-  const [scenarioKey, setScenarioKey] = useState<ScenarioKey>("selected");
-  useEffect(() => setScenarioKey("selected"), [caseData.caseId]);
+  const validScenario = routeState?.scenario && ["ask", "selected", "downside"].includes(routeState.scenario) ? routeState.scenario as ScenarioKey : "selected";
+  const [scenarioKey, setScenarioKey] = useState<ScenarioKey>(validScenario);
+  useEffect(() => setScenarioKey(validScenario), [caseData.caseId, validScenario]);
   if (!engine) return null;
   const scenario = engine[scenarioKey];
   const labels: Record<ScenarioKey, string> = {ask: "Seller ask", selected: "Selected", downside: "Downside"};
@@ -144,7 +146,7 @@ export function PEUnderwritingRoom({caseData, openMetric}: {caseData: CaseData; 
   const earnoutThreshold = Number(transaction.earnout_threshold_arr_cents ?? 0);
   const earnoutCap = Number(transaction.earnout_cap_cents ?? 0);
   return <div className="view-stack pe-room">
-    <section className="underwriting-head"><div><p className="kicker">Cash-flow underwriting · {labels[scenarioKey]} basis</p><h2>Price, leverage, and downside</h2><p>Every selected state is a retained Python-engine result. The browser verifies ten simple accounting identities but does not recreate the financial engine.</p></div><div className="scenario-tabs">{(["ask", "selected", "downside"] as ScenarioKey[]).map((item) => <button key={item} aria-pressed={item === scenarioKey} onClick={() => setScenarioKey(item)}>{labels[item]}</button>)}</div></section>
+    <section className="underwriting-head"><div><p className="kicker">Cash-flow underwriting · {labels[scenarioKey]} basis</p><h2>Price, leverage, and downside</h2><p>Every selected state is a retained Python-engine result. The browser verifies ten simple accounting identities but does not recreate the financial engine.</p></div><div className="scenario-tabs">{(["ask", "selected", "downside"] as ScenarioKey[]).map((item) => <button key={item} aria-pressed={item === scenarioKey} onClick={() => {setScenarioKey(item); onRouteState?.({scenario: item});}}>{labels[item]}</button>)}</div></section>
     <ChartRegistryCaption caseData={caseData} location="Underwriting Room" />
     <section className="terms-ribbon">
       <MetricButton metric={financeMetric(caseData, scenario, "entry", "Upfront EV", money(scenario.sources_and_uses.uses_cents.cash_enterprise_value), "Cash enterprise value in the selected sources-and-uses schedule.")} openMetric={openMetric} />
@@ -154,7 +156,7 @@ export function PEUnderwritingRoom({caseData, openMetric}: {caseData: CaseData; 
     </section>
     <div className="finance-layout"><SourcesUses caseData={caseData} scenario={scenario} openMetric={openMetric} /><ExitBridge caseData={caseData} scenario={scenario} openMetric={openMetric} /></div>
     <DebtCovenant caseData={caseData} scenario={scenario} openMetric={openMetric} />
-    <aside className="epistemic-note"><strong>Sensitivity basis: selected operating and financing case</strong><span>Sensitivity cells are independent full-model reruns and do not inherit the scenario tab above.</span></aside><SensitivityBook caseData={caseData} openMetric={openMetric} />
+    <aside className="epistemic-note"><strong>Sensitivity basis: selected operating and financing case</strong><span>Sensitivity cells are independent full-model reruns and do not inherit the scenario tab above.</span></aside><SensitivityBook caseData={caseData} openMetric={openMetric} routeState={routeState} onRouteState={onRouteState} />
   </div>;
 }
 

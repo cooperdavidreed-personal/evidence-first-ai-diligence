@@ -24,6 +24,36 @@ export function writeAccessibilityEvidence(fileName: string, value: object): voi
 }
 
 export async function captureVisualEvidence(page: Page, fileName: string, fullPage = false): Promise<void> {
+  const isCanonicalWorkbenchRoute = fileName.endsWith(".png")
+    && !fileName.includes("-lineage-drawer")
+    && !fileName.includes("-selected-thesis-path")
+    && !fileName.includes("-ic-memo");
+  if (isCanonicalWorkbenchRoute) {
+    const state = await page.evaluate(() => {
+      const brand = document.querySelector(".topbar")?.getBoundingClientRect();
+      const disclosure = document.querySelector(".synthetic-banner")?.getBoundingClientRect();
+      const nav = document.querySelector(".view-nav")?.getBoundingClientRect();
+      return {
+        scrollY: window.scrollY,
+        visualTop: window.visualViewport?.pageTop ?? window.scrollY,
+        brandTop: brand?.top ?? -1,
+        brandBottom: brand?.bottom ?? Number.POSITIVE_INFINITY,
+        disclosureTop: disclosure?.top ?? -1,
+        disclosureBottom: disclosure?.bottom ?? Number.POSITIVE_INFINITY,
+        disclosureText: document.querySelector(".synthetic-banner")?.textContent?.trim() ?? "",
+        navTop: nav?.top ?? -1,
+        navBottom: nav?.bottom ?? Number.POSITIVE_INFINITY,
+        navControls: document.querySelectorAll(".view-nav button").length,
+        viewportHeight: window.innerHeight,
+      };
+    });
+    const inFrame = (top: number, bottom: number) => top >= 0 && bottom <= state.viewportHeight;
+    if (state.scrollY !== 0 || state.visualTop !== 0 || !inFrame(state.brandTop, state.brandBottom)
+      || !inFrame(state.disclosureTop, state.disclosureBottom) || !inFrame(state.navTop, state.navBottom)
+      || state.disclosureText !== "SYNTHETIC — NOT INVESTMENT ADVICE" || state.navControls !== 5) {
+      throw new Error(`canonical_visual_precondition_failed:${fileName}:${JSON.stringify(state)}`);
+    }
+  }
   await page.screenshot({
     path: visualEvidencePath(fileName),
     fullPage,
