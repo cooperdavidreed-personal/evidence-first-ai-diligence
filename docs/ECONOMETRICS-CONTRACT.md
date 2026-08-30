@@ -1,6 +1,6 @@
 # Underwriting Intelligence Lab econometrics contract
 
-Status: `FROZEN BEFORE GENERATED CASE RESULTS`  
+Status: `SUPERSEDED — HISTORICAL ONLY; DRAW COUNTS DO NOT GOVERN V2`
 Contract version: `underwriting-econometrics/v1`  
 Cutoff: `2026-08-31T23:59:59Z`
 
@@ -10,6 +10,10 @@ canonical AtlasGrid or Helios results are generated. A failed tolerance remains
 a finding. It may be fixed only by repairing an implementation bug or issuing a
 new contract version with new seeds; post-result tolerance widening is
 prohibited.
+
+The v2.1 amendment in `ECONOMETRICS-CONTRACT-V2.md` explicitly supersedes the
+AG-11 and HX-09 draw counts below. They are retained only to preserve the
+historical record and must not be read as current candidate acceptance gates.
 
 ## Shared generation and isolation
 

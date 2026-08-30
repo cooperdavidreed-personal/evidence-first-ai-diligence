@@ -387,6 +387,17 @@ export interface VCEngine {
     tests: Array<{metric_id: string; period: string; operator: string; threshold: string}>;
   };
   exit_value_basis: "EQUITY_VALUE";
+  operating_exit_bridges: Record<"base" | "milestone" | "downside" | "financing_shortfall", {
+    observed_ltm_revenue_cents: number;
+    annual_revenue_growth: string;
+    years: number;
+    exit_revenue_multiple: string;
+    terminal_revenue_cents: number;
+    net_debt_cents: number;
+    exit_enterprise_value_cents: number;
+    exit_equity_value_cents: number;
+    classification: "SCENARIO";
+  }>;
 }
 
 export interface VCValueCreationBridge {

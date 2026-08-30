@@ -129,14 +129,39 @@ def build_case_metric_contract(
             raise UnderwritingError(f"summary_metric_not_numeric:{summary['metric_id']}") from exc
         if numeric is None:
             raise UnderwritingError(f"summary_metric_not_numeric:{summary['metric_id']}")
+        special: dict[str, Any] = {}
+        if case["caseId"] == "atlasgrid" and summary["metric_id"] == "ag-return":
+            selected = case["peEngine"]["selected"]
+            special = {
+                "value": selected["gross_xirr"],
+                "unit": "decimal_rate",
+                "quantum": "0.00000000000001",
+                "formula_id": "pe-formula-headline-dated-xirr",
+                "operand_ids": [
+                    f"atlasgrid-{selected['scenario_id']}-sponsor-cash-flow-{index:02d}"
+                    for index, _ in enumerate(selected["sponsor_cash_flows"], start=1)
+                ],
+            }
+        elif case["caseId"] == "helios" and summary["metric_id"] == "hx-ownership":
+            special = {
+                "value": case["vcEngine"]["milestone"]["target_ownership"],
+                "unit": "decimal_rate",
+                "quantum": "0.00000001",
+                "formula_id": "vc-formula-headline-ownership",
+                "operand_ids": [
+                    "helios-MILESTONE-target-shares",
+                    "helios-MILESTONE-fully-diluted-shares",
+                ],
+            }
         add(
-            metric_id=summary["metric_id"], label=summary["label"], value=numeric,
-            display_value=summary["value"], unit="display_native", quantum="0.01",
+            metric_id=summary["metric_id"], label=summary["label"], value=special.pop("value", numeric),
+            display_value=summary["value"], unit=special.pop("unit", "display_native"), quantum=special.pop("quantum", "0.01"),
             period=case["decision"].get("as_of", "NOT_APPLICABLE"),
             classification=summary["classification"],
             locator_ids=locators_for_lineage(lineage_ids),
             receipt_sha256=case["analysis_sha256"] if "analysis_sha256" in case else case["manifest_sha256"],
             downstream_ids=["decision"],
+            **special,
         )
 
     # Every analysis output receives one deterministic registry identifier. This
@@ -239,6 +264,35 @@ def build_case_metric_contract(
             add(metric_id=f"{base}-gross-moic", label="Gross MOIC", value=result["gross_moic"], display_value=_multiple(result["gross_moic"]), unit="multiple", quantum="0.0001", **common)
             add_cents(f"{base}-earnout", "Earnout paid", result["earnout_cents"])
 
+            if scenario_key == "selected":
+                sponsor_cash_flow_ids: list[str] = []
+                for index, flow in enumerate(result["sponsor_cash_flows"], start=1):
+                    metric_id = f"{base}-sponsor-cash-flow-{index:02d}"
+                    add(
+                        metric_id=metric_id,
+                        label=f"Sponsor dated cash flow {index}",
+                        value=flow["amount_cents"],
+                        display_value=_money(flow["amount_cents"]),
+                        unit="cents",
+                        quantum="1",
+                        period=flow["date"],
+                        classification="SCENARIO",
+                        locator_ids=list(locators_by_analysis["AG-10"]),
+                        receipt_sha256=receipt,
+                        assumption_ids=[f"{scenario_id}.engine_inputs"],
+                        downstream_ids=["ag-return", "decision"],
+                    )
+                    sponsor_cash_flow_ids.append(metric_id)
+                formulas.append(
+                    _formula(
+                        "pe-formula-headline-dated-xirr",
+                        "DATED_XIRR",
+                        sponsor_cash_flow_ids,
+                        "ag-return",
+                        "decimal_rate",
+                    )
+                )
+
             for month in debt["months"]:
                 month_id = f"{base}-month-{month['month']:02d}"
                 for field in ("ending_cash_cents", "ending_term_cents", "ending_revolver_cents", "cash_interest_cents", "optional_sweep_cents"):
@@ -328,6 +382,15 @@ def build_case_metric_contract(
             receipt_sha256=pipeline_receipt["receipt_sha256"],
             assumption_ids=["complete_stage_history_audit"],
             downstream_ids=["series-c-tranche"],
+        )
+        formulas.append(
+            _formula(
+                "vc-formula-headline-ownership",
+                "DIVIDE",
+                ["helios-MILESTONE-target-shares", "helios-MILESTONE-fully-diluted-shares"],
+                "hx-ownership",
+                "decimal_rate",
+            )
         )
         add(
             metric_id="hx-optimizer-replication",
@@ -730,6 +793,12 @@ def build_case_metric_contract(
         "renderManifest": {
             "schema_version": "underwriting.render-manifest/v2",
             "metric_ids": render_ids,
-            "formula_sample_metric_ids": [item["output_metric_id"] for item in formulas[:10]],
+            # Browser arithmetic samples are exact binary identities. Dated
+            # XIRR formulas remain fully bound and are independently recomputed
+            # by the Decimal Python validator rather than approximated in JS.
+            "formula_sample_metric_ids": [
+                item["output_metric_id"]
+                for item in sorted(formulas, key=lambda item: item["operation"] == "DATED_XIRR")[:10]
+            ],
         },
     }

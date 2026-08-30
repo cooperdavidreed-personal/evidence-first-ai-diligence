@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from decimal import Decimal
 
 import pytest
 
@@ -43,7 +44,7 @@ def test_formula_tamper_fails_after_rebinding_outer_digests(atlasgrid_v2: dict) 
     case = deepcopy(atlasgrid_v2)
     output_id = case["renderManifest"]["formula_sample_metric_ids"][0]
     metric = next(item for item in case["metricRegistry"] if item["metric_id"] == output_id)
-    metric["value"] = str(int(metric["value"]) + 1)
+    metric["value"] = format(Decimal(metric["value"]) + max(Decimal("1"), Decimal(metric["quantum"])), "f")
     metric.pop("metric_sha256")
     metric["metric_sha256"] = digest(metric)
     _rebind_case(case)

@@ -31,6 +31,7 @@ function connected(graph: ThesisGraph, selected: string | null): Set<string> {
 
 export function ThesisGraphView({graph}: {graph: ThesisGraph}) {
   const [selected, setSelected] = useState<string | null>(null);
+  const [focused, setFocused] = useState(graph.nodes[0]?.node_id ?? "");
   const positioned = useMemo(() => {
     const counts = [0, 0, 0];
     return graph.nodes.map((node) => {
@@ -45,15 +46,27 @@ export function ThesisGraphView({graph}: {graph: ThesisGraph}) {
   const height = Math.max(320, ...positioned.map((item) => item.y + 64));
   const selectedNode = selected ? byId.get(selected) : undefined;
   const selectedEdges = selected ? graph.edges.filter((edge) => active.has(edge.from) && active.has(edge.to)) : [];
-  const choose = (nodeId: string) => setSelected((current) => current === nodeId ? null : nodeId);
+  const focusNode = (nodeId: string) => {
+    setFocused(nodeId);
+    requestAnimationFrame(() => {
+      document.querySelector<SVGGElement>(`[data-node-id="${nodeId}"]`)?.focus();
+    });
+  };
+  const choose = (nodeId: string) => {
+    setFocused(nodeId);
+    setSelected((current) => current === nodeId ? null : nodeId);
+  };
   const navigate = (nodeId: string, direction: "upstream" | "downstream") => {
     const edge = graph.edges.find((item) => direction === "upstream" ? item.to === nodeId : item.from === nodeId);
     const nextId = edge ? (direction === "upstream" ? edge.from : edge.to) : null;
     if (!nextId) return;
     setSelected(nextId);
-    requestAnimationFrame(() => {
-      document.querySelector<SVGGElement>(`[data-node-id="${nextId}"]`)?.focus();
-    });
+    focusNode(nextId);
+  };
+  const navigateSequence = (nodeId: string, delta: number) => {
+    const index = positioned.findIndex((item) => item.node_id === nodeId);
+    const next = positioned[Math.max(0, Math.min(positioned.length - 1, index + delta))];
+    if (next) focusNode(next.node_id);
   };
   return <div className="dag-shell">
     <div className="dag-column-labels"><span>Evidence + assumptions</span><span>Estimates + scenarios</span><span>Decision + action</span></div>
@@ -68,7 +81,7 @@ export function ThesisGraphView({graph}: {graph: ThesisGraph}) {
               data-node-id={node.node_id}
               transform={`translate(${node.x} ${node.y})`}
               role="treeitem"
-              tabIndex={0}
+              tabIndex={focused === node.node_id ? 0 : -1}
               aria-selected={selected === node.node_id}
               className={`dag-node ${node.kind.toLowerCase()} ${active.has(node.node_id) ? "active" : "muted"}`}
               onClick={() => choose(node.node_id)}
@@ -82,6 +95,18 @@ export function ThesisGraphView({graph}: {graph: ThesisGraph}) {
                 } else if (event.key === "ArrowRight") {
                   event.preventDefault();
                   navigate(node.node_id, "downstream");
+                } else if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  navigateSequence(node.node_id, -1);
+                } else if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  navigateSequence(node.node_id, 1);
+                } else if (event.key === "Home") {
+                  event.preventDefault();
+                  focusNode(positioned[0].node_id);
+                } else if (event.key === "End") {
+                  event.preventDefault();
+                  focusNode(positioned[positioned.length - 1].node_id);
                 }
               }}
             >
@@ -95,6 +120,6 @@ export function ThesisGraphView({graph}: {graph: ThesisGraph}) {
       </svg>
     </div>
     <ol className="dag-mobile-list" aria-label="Thesis dependency list">{positioned.filter((node) => active.has(node.node_id)).map((node) => <li key={node.node_id}><button aria-pressed={selected === node.node_id} onClick={() => choose(node.node_id)}><span>{node.kind}</span><strong>{node.label}</strong><small>{node.status}</small></button></li>)}</ol>
-    <div className="dag-detail" aria-live="polite">{selectedNode ? <><div><p className="kicker">Selected dependency</p><strong>{selectedNode.label}</strong><small>{selectedNode.kind} · {selectedNode.status} · Arrow Left upstream · Arrow Right downstream</small></div><ul>{selectedEdges.map((edge) => <li key={`${edge.from}-${edge.to}`}><code>{edge.from}</code> {edge.relationship.replaceAll("_", " ")} <code>{edge.to}</code></li>)}</ul><button onClick={() => setSelected(null)}>Clear path</button></> : <p>Select any node to isolate its connected evidence-to-action path. Use Arrow Left for an upstream dependency and Arrow Right for a downstream dependency. All {graph.nodes.length} nodes and {graph.edges.length} typed edges are rendered.</p>}</div>
+    <div className="dag-detail" aria-live="polite">{selectedNode ? <><div><p className="kicker">Selected dependency</p><strong>{selectedNode.label}</strong><small>{selectedNode.kind} · {selectedNode.status} · Left/right follows a dependency · Up/down traverses every node</small></div><ul>{selectedEdges.map((edge) => <li key={`${edge.from}-${edge.to}`}><code>{edge.from}</code> {edge.relationship.replaceAll("_", " ")} <code>{edge.to}</code></li>)}</ul><button onClick={() => setSelected(null)}>Clear path</button></> : <p>Select any node to isolate its connected evidence-to-action path. Left/right follows dependencies; up/down, Home, and End provide a complete roving-keyboard traversal. All {graph.nodes.length} nodes and {graph.edges.length} typed edges are rendered.</p>}</div>
   </div>;
 }

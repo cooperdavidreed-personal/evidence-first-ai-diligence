@@ -70,31 +70,72 @@ def reviewed_binary_allowlist(root: Path) -> set[str]:
     return reviewed
 
 
+def validate_source_room(root: Path, case_id: str, relative_root: str) -> set[str]:
+    """Return the exact publishable inventory for one synthetic source room.
+
+    This is the shared fail-closed boundary used by both the public scan and
+    Pages staging.  It intentionally rejects symlinks and undeclared files
+    before any source bytes are copied into a release artifact.
+    """
+
+    manifest_relative = f"{relative_root}/manifest.json"
+    manifest_path = root / manifest_relative
+    if manifest_path.is_symlink() or not manifest_path.is_file():
+        raise ValueError(f"source_room_manifest_missing_or_symlink:{case_id}")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest_body = dict(manifest)
+    expected_manifest_sha256 = manifest_body.pop("manifest_sha256", None)
+    if (
+        manifest.get("schema_version") != "underwriting.dataroom-manifest/v1"
+        or manifest.get("case_id") != case_id
+        or manifest.get("synthetic") is not True
+        or not isinstance(manifest.get("artifacts"), list)
+        or expected_manifest_sha256
+        != hashlib.sha256(canonical_json(manifest_body)).hexdigest()
+    ):
+        raise ValueError(f"source_room_manifest_invalid:{case_id}")
+
+    reviewed = {manifest_relative}
+    artifact_paths: set[str] = set()
+    for artifact in manifest["artifacts"]:
+        if not isinstance(artifact, dict) or not isinstance(artifact.get("path"), str):
+            raise ValueError(f"source_room_artifact_entry_invalid:{case_id}")
+        relative = Path(artifact["path"])
+        if (
+            relative.is_absolute()
+            or ".." in relative.parts
+            or "truth" in relative.parts
+            or relative.as_posix() in artifact_paths
+        ):
+            raise ValueError(f"source_room_path_unsafe:{case_id}:{relative}")
+        artifact_paths.add(relative.as_posix())
+        public_relative = f"{relative_root}/{relative.as_posix()}"
+        path = root / public_relative
+        if path.is_symlink() or not path.is_file():
+            raise ValueError(f"source_room_artifact_missing_or_symlink:{public_relative}")
+        if hashlib.sha256(path.read_bytes()).hexdigest() != artifact.get("sha256"):
+            raise ValueError(f"source_room_artifact_mismatch:{public_relative}")
+        reviewed.add(public_relative)
+
+    room_path = root / relative_root
+    observed = {
+        path.relative_to(root).as_posix()
+        for path in room_path.rglob("*")
+        if path.is_file() or path.is_symlink()
+    }
+    if observed != reviewed:
+        extras = sorted(observed - reviewed)
+        missing = sorted(reviewed - observed)
+        raise ValueError(
+            f"source_room_inventory_mismatch:{case_id}:extra={extras}:missing={missing}"
+        )
+    return reviewed
+
+
 def source_room_allowlist(root: Path) -> set[str]:
     reviewed: set[str] = set()
     for case_id, relative_root in SOURCE_ROOM_ROOTS.items():
-        manifest_relative = f"{relative_root}/manifest.json"
-        manifest_path = root / manifest_relative
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        manifest_body = dict(manifest)
-        expected_manifest_sha256 = manifest_body.pop("manifest_sha256", None)
-        if (
-            manifest.get("case_id") != case_id
-            or manifest.get("synthetic") is not True
-            or expected_manifest_sha256
-            != hashlib.sha256(canonical_json(manifest_body)).hexdigest()
-        ):
-            raise ValueError(f"source_room_manifest_invalid:{case_id}")
-        reviewed.add(manifest_relative)
-        for artifact in manifest["artifacts"]:
-            relative = Path(artifact["path"])
-            if relative.is_absolute() or ".." in relative.parts or "truth" in relative.parts:
-                raise ValueError(f"source_room_path_unsafe:{case_id}:{relative}")
-            public_relative = f"{relative_root}/{relative.as_posix()}"
-            path = root / public_relative
-            if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != artifact["sha256"]:
-                raise ValueError(f"source_room_artifact_mismatch:{public_relative}")
-            reviewed.add(public_relative)
+        reviewed.update(validate_source_room(root, case_id, relative_root))
     return reviewed
 
 

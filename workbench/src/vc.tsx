@@ -80,6 +80,7 @@ export function VCUnderwritingRoom({caseData, openMetric}: {caseData: CaseData; 
   useEffect(() => setScenarioKey("milestone"), [caseData.caseId]);
   if (!engine) return null;
   const result = engine[scenarioKey];
+  const exitBridge = engine.operating_exit_bridges[scenarioKey];
   const prefix = `helios-${result.scenario_id}`;
   const labels: Record<ScenarioKey, string> = {base: "Base", milestone: "Milestones clear", downside: "Down round", financing_shortfall: "Shortfall bridge"};
   return <div className="view-stack pe-room vc-room">
@@ -87,6 +88,7 @@ export function VCUnderwritingRoom({caseData, openMetric}: {caseData: CaseData; 
     <ChartRegistryCaption caseData={caseData} location="Underwriting Room" />
     <section className="terms-ribbon"><BoundCard caseData={caseData} metricId={`${prefix}-target-invested`} detail="Total Series C cash actually funded in the selected scenario." openMetric={openMetric} /><BoundCard caseData={caseData} metricId={`${prefix}-ownership`} detail="Series C fully diluted ownership after event-by-event dilution." openMetric={openMetric} /><BoundCard caseData={caseData} metricId={`${prefix}-gross-xirr`} detail="Irregular-date gross-to-investor XIRR; not MOIC CAGR." openMetric={openMetric} /><BoundCard caseData={caseData} metricId={`${prefix}-gross-moic`} detail="Exact exit proceeds divided by funded Series C cash." openMetric={openMetric} /></section>
     <aside className="engine-receipt"><span>Selected engine receipt</span><code>{result.receipt_sha256}</code><strong>{engine.exit_value_basis.replaceAll("_", " ")}</strong></aside>
+    <section className="finance-panel" aria-labelledby="vc-exit-bridge-title"><div className="panel-heading"><div><p className="kicker">Operating case → terminal value</p><h3 id="vc-exit-bridge-title">Five-year exit valuation bridge</h3></div><span>Scenario · not a forecast</span></div><div className="finance-metric-grid"><article><span>Observed LTM revenue</span><strong>{money(exitBridge.observed_ltm_revenue_cents)}</strong><small>Committed monthly P&amp;L</small></article><article><span>Annual growth / hold</span><strong>{percent(exitBridge.annual_revenue_growth)} · {exitBridge.years}y</strong><small>Declared scenario assumption</small></article><article><span>Terminal revenue / multiple</span><strong>{money(exitBridge.terminal_revenue_cents)} · {multiple(exitBridge.exit_revenue_multiple)}</strong><small>Revenue × (1 + growth)<sup>{exitBridge.years}</sup></small></article><article><span>Exit equity value</span><strong>{money(exitBridge.exit_equity_value_cents)}</strong><small>Enterprise value less {money(exitBridge.net_debt_cents)} net debt</small></article></div><p className="assumption">This bridge supplies the exact equity-value operand consumed by the preference waterfall and investor-return engine.</p></section>
     <FinancingTimeline caseData={caseData} result={result} prefix={prefix} openMetric={openMetric} />
     <CashRunway caseData={caseData} result={result} prefix={prefix} openMetric={openMetric} />
     <CapTableAndWaterfall caseData={caseData} result={result} prefix={prefix} openMetric={openMetric} />

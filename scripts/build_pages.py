@@ -7,6 +7,7 @@ import shutil
 from pathlib import Path
 
 from ic_evidence_lab.canonical import canonical_json
+from scripts.scan_public import validate_source_room
 
 
 def _copy_file(repo: Path, destination: Path, relative: str) -> Path:
@@ -55,7 +56,9 @@ def build(repo: Path, destination: Path, workbench_dist: Path) -> None:
     for case in ("atlasgrid", "helios"):
         for name in ("ic-memo.html", "ic-memo.md", "model-appendix.json", "packet-receipt.json"):
             staged.append((_copy_file(repo, destination, f"portfolio/{case}/{name}"), "case-packet"))
-        source_manifest_path = repo / "portfolio" / case / "data-room" / "manifest.json"
+        room_relative = f"portfolio/{case}/data-room"
+        validate_source_room(repo, case, room_relative)
+        source_manifest_path = repo / room_relative / "manifest.json"
         source_manifest = json.loads(source_manifest_path.read_text(encoding="utf-8"))
         source_files = [("manifest.json", None), *[(item["path"], item["sha256"]) for item in source_manifest["artifacts"]]]
         for relative, expected_sha256 in source_files:

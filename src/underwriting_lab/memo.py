@@ -119,6 +119,7 @@ def _vc_packet(case: dict[str, Any]) -> dict[str, Any]:
         },
         "milestone_contract": engine["milestone_contract"],
         "exit_value_basis": engine["exit_value_basis"],
+        "operating_exit_bridges": engine["operating_exit_bridges"],
         "distribution": engine["distribution"],
         "sensitivities": engine["sensitivities"],
         "value_creation": case["valueCreation"],
@@ -246,6 +247,16 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
         "",
         "## Preference waterfall and investor return bridge",
         "",
+        "The selected exit equity value is not a naked outcome assumption. It is derived from the retained LTM revenue ledger and a declared five-year operating and valuation scenario:",
+        "",
+        "| Exit-value operand | Selected milestone case | Classification |",
+        "|---|---:|---|",
+        f"| Observed LTM revenue | {_money(packet['operating_exit_bridges']['milestone']['observed_ltm_revenue_cents'])} | Retained synthetic P&L |",
+        f"| Annual revenue growth / hold | {_percent(packet['operating_exit_bridges']['milestone']['annual_revenue_growth'])} / {packet['operating_exit_bridges']['milestone']['years']} years | Scenario |",
+        f"| Terminal revenue / exit multiple | {_money(packet['operating_exit_bridges']['milestone']['terminal_revenue_cents'])} / {_multiple(packet['operating_exit_bridges']['milestone']['exit_revenue_multiple'])} | Scenario |",
+        f"| Exit enterprise value / net debt | {_money(packet['operating_exit_bridges']['milestone']['exit_enterprise_value_cents'])} / {_money(packet['operating_exit_bridges']['milestone']['net_debt_cents'])} | Accounting bridge |",
+        f"| Exit equity value | {_money(packet['operating_exit_bridges']['milestone']['exit_equity_value_cents'])} | Waterfall operand |",
+        "",
         f"Exit value basis is `{packet['exit_value_basis']}`. Unissued pool shares receive zero proceeds. Class proceeds conserve to {_money(selected['waterfall']['exit_value_cents'])} with a {selected['waterfall']['conservation_residual_cents']}-cent residual.",
         "",
         "| Class | Election | Preference | Residual | Total proceeds |",
@@ -319,12 +330,11 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
         "",
         "## Receipt appendix",
         "",
-        f"- Case analysis: `{packet['analysis_sha256']}`",
         *[
             f"- {key.upper()} result: `{value['receipt_sha256']}`"
             for key, value in packet["scenarios"].items()
+            if key in {"milestone", "downside"}
         ],
-        f"- Distribution: `{packet['distribution']['receipt_sha256']}`",
         f"- Sensitivity book: `{packet['sensitivities']['receipt_sha256']}`",
         f"- Value-creation bridge: `{packet['value_creation_bridge']['receipt_sha256']}`",
         "",
@@ -525,11 +535,13 @@ def _memo_html(markdown: str, packet: dict[str, Any]) -> str:
 
     paragraphs = []
     in_table = False
+    compact_receipts = False
     for line in markdown.splitlines():
         if line.startswith("# "):
             paragraphs.append(f"<h1>{inline(line[2:])}</h1>")
         elif line.startswith("## "):
-            paragraphs.append(f"<h2>{inline(line[3:])}</h2>")
+            compact_receipts = line[3:] == "Receipt appendix"
+            paragraphs.append(f"<h2{' class=receipt-title' if compact_receipts else ''}>{inline(line[3:])}</h2>")
         elif line.startswith("### "):
             paragraphs.append(f"<h3>{inline(line[4:])}</h3>")
         elif line.startswith("> "):
@@ -550,13 +562,13 @@ def _memo_html(markdown: str, packet: dict[str, Any]) -> str:
                 paragraphs.append("</tbody></table>")
                 in_table = False
             if line.startswith("- "):
-                paragraphs.append(f"<p class=bullet>• {inline(line[2:])}</p>")
+                paragraphs.append(f"<p class='bullet{' receipt-row' if compact_receipts else ''}'>• {inline(line[2:])}</p>")
             elif line:
-                paragraphs.append(f"<p>{inline(line)}</p>")
+                paragraphs.append(f"<p{' class=receipt-row' if compact_receipts else ''}>{inline(line)}</p>")
     if in_table:
         paragraphs.append("</tbody></table>")
     style = """
-    @page{size:letter;margin:.55in}*{box-sizing:border-box}body{margin:0;color:#20262b;font:10.5px/1.45 Arial,sans-serif}h1,h2,h3{font-family:Georgia,serif;font-weight:500}h1{font-size:30px;border-bottom:2px solid #20262b;padding-bottom:12px}h2{font-size:19px;margin-top:26px;border-bottom:1px solid #aaa;padding-bottom:5px}h3{font-size:14px}aside{border:1px solid #8a3d2f;color:#8a3d2f;padding:8px;font:700 9px monospace}p{margin:7px 0}.bullet{padding-left:12px}code{font:9px monospace;color:#234fa4;overflow-wrap:anywhere}table{width:100%;border-collapse:collapse;margin:10px 0 18px;page-break-inside:avoid}th,td{border-bottom:1px solid #ccc;padding:6px;text-align:left;vertical-align:top}th{font:700 8px monospace;text-transform:uppercase;color:#586269}footer{margin-top:30px;border-top:1px solid #20262b;padding-top:8px;font:8px monospace;color:#586269}@media screen{body{max-width:900px;margin:40px auto;padding:40px;background:#fbf9f4}}
+    @page{size:letter;margin:.55in .55in .66in;@bottom-left{content:"Underwriting Intelligence Lab";font:7.5px monospace;color:#586269}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:7.5px monospace;color:#586269}}*{box-sizing:border-box}body{margin:0;color:#20262b;font:11px/1.43 Arial,sans-serif}h1,h2,h3{font-family:Georgia,serif;font-weight:500;break-after:avoid-page}h1{font-size:30px;border-bottom:2px solid #20262b;padding-bottom:12px}h2{font-size:19px;margin-top:24px;border-bottom:1px solid #aaa;padding-bottom:5px}h3{font-size:14px}aside{border:1px solid #8a3d2f;color:#8a3d2f;padding:8px;font:700 9px monospace;break-inside:avoid}p{margin:6px 0;orphans:3;widows:3}p:has(+table),h2:has(+p),h3:has(+p){break-after:avoid-page}.bullet{padding-left:12px}.receipt-title{margin-top:18px}.receipt-row{display:inline-block;width:50%;margin:2px 0;padding-right:8px;font-size:8px;line-height:1.25;vertical-align:top}code{font:9px monospace;color:#234fa4;overflow-wrap:anywhere}.receipt-row code{font-size:7px}table{width:100%;border-collapse:collapse;margin:9px 0 16px;break-inside:avoid-page}th,td{border-bottom:1px solid #ccc;padding:5.5px;text-align:left;vertical-align:top}th{font:700 8.5px monospace;text-transform:uppercase;color:#586269}tr{break-inside:avoid}footer{display:block;clear:both;margin-top:8px;border-top:1px solid #20262b;padding-top:4px;font:7.5px monospace;color:#586269;break-inside:avoid}@media print{footer{display:none}}@media screen{body{max-width:900px;margin:40px auto;padding:40px;background:#fbf9f4}}
     """
     return f"<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>{escape(packet['company'])} IC memorandum</title><style>{style}</style></head><body>{''.join(paragraphs)}<footer>Packet {packet['packet_sha256']} · {escape(packet['disclosure'])}</footer></body></html>"
 

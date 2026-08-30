@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import shutil
 from copy import deepcopy
 from pathlib import Path
 
@@ -104,6 +105,20 @@ def test_runtime_analysis_has_no_verification_truth_dependency() -> None:
     assert all(token not in source for token in forbidden)
     assert "from .verification" not in source
     assert "verification/truth" not in source
+
+    cli_source = (Path(__file__).parents[1] / "src" / "underwriting_lab" / "cli.py").read_text(encoding="utf-8")
+    prefix = cli_source.split('if args.command == "verify-estimator-coverage":', maxsplit=1)[0]
+    assert "from .verification" not in prefix
+
+
+def test_analysis_is_byte_identical_after_truth_tree_is_removed(tmp_path: Path) -> None:
+    room = tmp_path / "truth-isolation"
+    manifest = generate_room("helios", 20260829, room)
+    first_path = analyze_room(manifest, tmp_path / "with-truth.json")
+    first = first_path.read_bytes()
+    shutil.rmtree(room / "verification" / "truth")
+    second_path = analyze_room(manifest, tmp_path / "without-truth.json")
+    assert second_path.read_bytes() == first
 
 
 def test_runtime_pipeline_omits_planted_answer_columns(

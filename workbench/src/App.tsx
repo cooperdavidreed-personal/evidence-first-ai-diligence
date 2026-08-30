@@ -16,6 +16,23 @@ type View = (typeof views)[number];
 
 const displayClass = (value: string) => value.toLowerCase().replaceAll("_", " ");
 
+const outputDisplay = (value: string, unit: string) => {
+  const labels: Record<string, string> = {
+    percentage_points: "pp",
+    percentage_points_per_price_point: "pp / price pp",
+    price_percentage_points: "price pp",
+    percent_log_points: "pp log-cost change",
+    modeled_months_funded_minimum: "modeled months minimum",
+  };
+  if (unit === "percent") return `${value}%`;
+  if (unit === "multiple") return `${value}x`;
+  if (unit === "months") return `${value} mo`;
+  if (unit === "million_usd") return `$${value}M`;
+  if (unit === "cents") return `$${(Number(value) / 100_000_000).toLocaleString(undefined, {maximumFractionDigits: 2})}M`;
+  if (unit === "modeled_months_funded_minimum") return `≥${value} modeled months`;
+  return labels[unit] ? `${value} ${labels[unit]}` : `${value} ${unit.replaceAll("_", " ")}`;
+};
+
 function EvidenceDrawer({caseData, metric, onClose}: {caseData: CaseData; metric: Metric; onClose: () => void}) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -46,7 +63,7 @@ function EvidenceDrawer({caseData, metric, onClose}: {caseData: CaseData; metric
       <p className="drawer-detail">{metric.detail}</p>
       {registered && <dl className="method-grid registry-detail"><div><dt>Exact value / quantum</dt><dd>{registered.value} · {registered.quantum} {registered.unit}</dd></div><div><dt>Period / state</dt><dd>{registered.period} · {registered.state}</dd></div><div><dt>Governing receipt</dt><dd><code>{registered.governing_receipt_sha256}</code></dd></div><div><dt>Downstream</dt><dd>{registered.downstream_ids.join(", ") || "No downstream binding"}</dd></div></dl>}
       {formula && <section className="formula-inspection"><span>Formula</span><strong>{formula.formula_id} · {formula.operation}</strong><ol>{operands.map((item) => <li key={item!.metric_id}><code>{item!.metric_id}</code> = {item!.value} {item!.unit}</li>)}</ol></section>}
-      {locators.length > 0 && <section className="locator-inspection"><span>Precise source locators</span>{locators.map((item) => <article key={item!.locator_id}><strong>{item!.artifact_path}</strong><code>{item!.locator_kind}: {JSON.stringify(item!.selector)}</code><small>{item!.period} · complete synthetic source universe retained</small><pre>{JSON.stringify(item!.retained_excerpt, null, 2)}</pre><a href={item!.published_path} target="_blank" rel="noreferrer">Open committed synthetic source ↗</a><code>artifact {item!.artifact_sha256}</code><code>selection {item!.selection_sha256}</code></article>)}</section>}
+      {locators.length > 0 && <section className="locator-inspection"><span>Bound source universes</span><p className="locator-note">The selector and selection digest bind the complete synthetic input universe. The readable excerpt is a three-row review sample, not the full selection.</p>{locators.map((item) => <article key={item!.locator_id}><strong>{item!.artifact_path}</strong><code>{item!.locator_kind}: {JSON.stringify(item!.selector)}</code><small>{item!.period} · complete synthetic source universe hash-bound</small><pre>{JSON.stringify(item!.retained_excerpt, null, 2)}</pre><a href={item!.published_path} target="_blank" rel="noreferrer">Open complete committed synthetic source ↗</a><code>artifact {item!.artifact_sha256}</code><code>selection {item!.selection_sha256}</code></article>)}</section>}
       <ol className="lineage-flow">
         {nodes.map((node) => {
           const artifact = caseData.artifacts.find((item) => item.artifact_id === node.artifact_id);
@@ -167,7 +184,7 @@ function ThesisEvidence({caseData}: {caseData: CaseData}) {
 function analysisOutputMetric(caseData: CaseData, analysis: Analysis, output: Analysis["outputs"][number]): Metric {
   const metricId = `${caseData.caseId}-${analysis.analysis_id.toLowerCase()}-${output.name}`;
   const registry = caseData.metricRegistry.find((item) => item.metric_id === metricId);
-  return {metric_id: metricId, label: `${analysis.analysis_id} · ${output.name.replaceAll("_", " ")}`, value: registry?.display_value ?? `${output.value} ${output.unit}`, detail: `${analysis.question} Population: ${analysis.population}.`, classification: registry?.classification ?? analysis.classification, lineage: caseData.lineage.filter((item) => item.analysis_id === analysis.analysis_id && item.output_names.includes(output.name)).map((item) => item.node_id), registry};
+  return {metric_id: metricId, label: `${analysis.analysis_id} · ${output.name.replaceAll("_", " ")}`, value: outputDisplay(output.value, output.unit), detail: `${analysis.question} Population: ${analysis.population}.`, classification: registry?.classification ?? analysis.classification, lineage: caseData.lineage.filter((item) => item.analysis_id === analysis.analysis_id && item.output_names.includes(output.name)).map((item) => item.node_id), registry};
 }
 
 function AnalysisDetail({caseData, analysis, openMetric}: {caseData: CaseData; analysis: Analysis; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
@@ -262,7 +279,7 @@ export default function App() {
   const openRegisteredMetric = (metric: Metric, trigger: HTMLElement) => {
     const registry = caseData.metricRegistry.find((item) => item.metric_id === metric.metric_id);
     setDrawerTrigger(trigger);
-    setDrawerMetric(registry ? {...metric, value: registry.display_value, classification: registry.classification, registry} : metric);
+    setDrawerMetric(registry ? {...metric, classification: registry.classification, registry} : metric);
   };
   useEffect(() => {
     if (!initializedRef.current) {
@@ -283,10 +300,10 @@ export default function App() {
         <div className="case-switch" aria-label="Select investment case">{data.cases.map((item) => <button key={item.caseId} aria-pressed={item.caseId === caseId} onClick={() => {setCaseId(item.caseId); setView("IC Snapshot");}}><span>{item.caseType}</span>{item.company}</button>)}</div>
         <div className="local-state"><span className="status-dot" />Local synthetic build · founder review pending</div>
       </header>
-      <div className="case-masthead">
-        <div><p className="kicker">{caseData.caseType} · illustrative case</p><h1>{caseData.company}</h1></div>
+      <section className="case-masthead" aria-labelledby="case-title">
+        <div><p className="kicker">{caseData.caseType} · illustrative case</p><h1 id="case-title">{caseData.company}</h1></div>
         <p className="synthetic-banner">{caseData.disclosure}</p>
-      </div>
+      </section>
       <nav className="view-nav" aria-label="Workbench views">{views.map((item, index) => <button key={item} aria-current={view === item ? "page" : undefined} onClick={() => setView(item)}><span>0{index + 1}</span>{item}</button>)}</nav>
       <main id="workspace" tabIndex={-1} ref={workspaceRef}>
         {view === "IC Snapshot" && <Snapshot caseData={caseData} openMetric={openRegisteredMetric} />}

@@ -23,12 +23,15 @@ def _candidate_repo(root: Path) -> Path:
         source.write_text("id,value\n1,synthetic\n")
         source_sha256 = hashlib.sha256(source.read_bytes()).hexdigest()
         source_manifest = {
+            "schema_version": "underwriting.dataroom-manifest/v1",
+            "case_id": case,
             "synthetic": True,
             "artifacts": [
                 {"path": "data/source.csv", "sha256": source_sha256}
             ],
         }
-        (room / "manifest.json").write_text(json.dumps(source_manifest))
+        source_manifest["manifest_sha256"] = hashlib.sha256(canonical_json(source_manifest)).hexdigest()
+        (room / "manifest.json").write_bytes(canonical_json(source_manifest) + b"\n")
     accessibility_root = repo / "verification" / "accessibility-evidence"
     accessibility_root.mkdir(parents=True)
     for name in ("desktop-atlasgrid.json", "mobile-atlasgrid.json", "desktop-helios.json", "mobile-helios.json"):
@@ -122,4 +125,34 @@ def test_pages_reject_unsafe_visual_manifest_path(tmp_path: Path) -> None:
     workbench.mkdir()
     (workbench / "index.html").write_text("v2")
     with pytest.raises(ValueError, match="unsafe candidate artifact path"):
+        build(repo, tmp_path / "pages", workbench)
+
+
+@pytest.mark.parametrize("mutation", ["identity", "synthetic", "digest", "extra", "symlink"])
+def test_pages_fail_closed_on_source_room_drift(tmp_path: Path, mutation: str) -> None:
+    repo = _candidate_repo(tmp_path)
+    room = repo / "portfolio" / "atlasgrid" / "data-room"
+    manifest_path = room / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    if mutation == "identity":
+        manifest["case_id"] = "helios"
+    elif mutation == "synthetic":
+        manifest["synthetic"] = False
+    elif mutation == "digest":
+        manifest["manifest_sha256"] = "0" * 64
+    elif mutation == "extra":
+        (room / "undeclared.txt").write_text("must not publish")
+    else:
+        source = room / "data" / "source.csv"
+        source.unlink()
+        source.symlink_to(tmp_path / "outside.csv")
+    if mutation in {"identity", "synthetic"}:
+        manifest.pop("manifest_sha256")
+        manifest["manifest_sha256"] = hashlib.sha256(canonical_json(manifest)).hexdigest()
+    if mutation in {"identity", "synthetic", "digest"}:
+        manifest_path.write_bytes(canonical_json(manifest) + b"\n")
+    workbench = tmp_path / "built-workbench"
+    workbench.mkdir()
+    (workbench / "index.html").write_text("v2")
+    with pytest.raises(ValueError, match="source_room_"):
         build(repo, tmp_path / "pages", workbench)

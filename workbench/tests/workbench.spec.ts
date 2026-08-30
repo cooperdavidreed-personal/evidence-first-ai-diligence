@@ -20,7 +20,7 @@ const viewChecks = {
 
 async function assertBoundedAndAccessible(page: Page) {
   const scan = await new AxeBuilder({page}).analyze();
-  expect(scan.violations.filter((violation) => ["critical", "serious"].includes(violation.impact ?? ""))).toEqual([]);
+  expect(scan.violations).toEqual([]);
   const width = await page.evaluate(() => ({
     scroll: document.documentElement.scrollWidth,
     client: document.documentElement.clientWidth,
@@ -53,6 +53,7 @@ async function assertInFirstViewport(page: Page, locator: Locator, label: string
 for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
   test(`${caseName} complete keyboard, interaction, visual, and accessibility flow`, async ({page}, testInfo: TestInfo) => {
     const accessibilityScans: Array<Record<string, unknown>> = [];
+    const evidenceCaseSlug = caseName.toLowerCase().replaceAll(" ", "-");
     await page.goto("/");
     await page.evaluate(() => window.scrollTo({top: 0, left: 0, behavior: "instant"}));
     // Mobile Chromium can retain a 6px visual-viewport offset while the layout
@@ -89,12 +90,15 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
     await lineageTrigger.focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("dialog")).toBeVisible();
-    await expect(page.getByText("Precise source locators").first()).toBeVisible();
-    const sourceLink = page.getByRole("link", {name: "Open committed synthetic source ↗"}).first();
+    await expect(page.getByText("Bound source universes").first()).toBeVisible();
+    const sourceLink = page.getByRole("link", {name: "Open complete committed synthetic source ↗"}).first();
     await expect(sourceLink).toBeVisible();
     await expect(page.getByRole("dialog").locator(".locator-inspection pre").first()).toContainText(/CSV_ROWS|JSON_VALUE|TEXT_SPAN/);
     const sourceResponse = await page.request.get(await sourceLink.evaluate((element) => (element as HTMLAnchorElement).href));
     expect(sourceResponse.status()).toBe(200);
+    if (testInfo.project.name === "desktop") {
+      await captureVisualEvidence(page, `desktop-${evidenceCaseSlug}-lineage-drawer.png`);
+    }
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).not.toBeVisible();
     await expect(lineageTrigger).toBeFocused();
@@ -133,6 +137,7 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
           await page.keyboard.press("Enter");
           expect(await graph.locator(".dag-node.active").count()).toBeGreaterThan(1);
           expect(await graph.locator(".dag-node.muted").count()).toBeGreaterThan(0);
+          await captureVisualEvidence(page, `desktop-${evidenceCaseSlug}-selected-thesis-path.png`);
           const decisionId = await selectedNode.getAttribute("data-node-id");
           await page.keyboard.press("ArrowLeft");
           await expect.poll(async () => graph.locator(".dag-node:focus").getAttribute("data-node-id")).not.toBe(decisionId);
@@ -210,9 +215,8 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
       await captureVisualEvidence(page, `${testInfo.project.name}-${caseSlug}-${slug}.png`);
     }
     expect(chartIds.size).toBe(4);
-    const caseSlug = caseName.toLowerCase().replaceAll(" ", "-");
-    writeAccessibilityEvidence(`${testInfo.project.name}-${caseSlug}.json`, {
-      boundary: "Automated Axe scan for critical and serious findings plus tested root overflow; not comprehensive WCAG conformance.",
+    writeAccessibilityEvidence(`${testInfo.project.name}-${evidenceCaseSlug}.json`, {
+      boundary: "Automated Axe scan found no rule violations and tested root overflow is zero; this is not comprehensive WCAG conformance.",
       case: caseName,
       project: testInfo.project.name,
       scans: accessibilityScans,

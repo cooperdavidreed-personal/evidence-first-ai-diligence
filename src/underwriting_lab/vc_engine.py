@@ -124,6 +124,7 @@ class VCScenarioAssumptions:
     monthly_net_cash_flow_cents: tuple[int, ...]
     events: tuple[FundingEvent, ...]
     target_holder_id: str
+    exit_valuation: Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         if self.scenario_id not in {"BASE", "MILESTONE", "DOWNSIDE", "FINANCING_SHORTFALL"}:
@@ -132,6 +133,35 @@ class VCScenarioAssumptions:
             raise UnderwritingError("vc_exit_month_invalid")
         if self.exit_value_cents < 0:
             raise UnderwritingError("vc_exit_value_invalid")
+        if self.exit_valuation is not None:
+            bridge = self.exit_valuation
+            required = {
+                "observed_ltm_revenue_cents", "annual_revenue_growth", "years",
+                "exit_revenue_multiple", "terminal_revenue_cents", "net_debt_cents",
+                "exit_enterprise_value_cents", "exit_equity_value_cents",
+            }
+            if bridge.get("schema_version") != "underwriting.operating-exit-bridge/v1" or not required.issubset(bridge):
+                raise UnderwritingError("vc_exit_valuation_contract_invalid")
+            terminal_revenue = int(
+                (
+                    Decimal(int(bridge["observed_ltm_revenue_cents"]))
+                    * (Decimal(1) + Decimal(str(bridge["annual_revenue_growth"])))
+                    ** int(bridge["years"])
+                ).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN)
+            )
+            enterprise_value = int(
+                (Decimal(terminal_revenue) * Decimal(str(bridge["exit_revenue_multiple"]))).quantize(
+                    Decimal("1"), rounding=ROUND_HALF_EVEN
+                )
+            )
+            equity_value = enterprise_value - int(bridge["net_debt_cents"])
+            if (
+                terminal_revenue != int(bridge["terminal_revenue_cents"])
+                or enterprise_value != int(bridge["exit_enterprise_value_cents"])
+                or equity_value != int(bridge["exit_equity_value_cents"])
+                or equity_value != self.exit_value_cents
+            ):
+                raise UnderwritingError("vc_exit_valuation_bridge_mismatch")
 
 
 @dataclass(frozen=True)
@@ -264,6 +294,7 @@ def _scenario_inputs(item: VCScenarioAssumptions) -> dict[str, Any]:
         "monthly_net_cash_flow_cents": list(item.monthly_net_cash_flow_cents),
         "events": [_event_dict(event) for event in item.events],
         "target_holder_id": item.target_holder_id,
+        "exit_valuation": dict(item.exit_valuation) if item.exit_valuation is not None else None,
     }
 
 
@@ -901,6 +932,9 @@ def simulate_vc_distribution(
             exit_month=exit_month,
             exit_value_cents=exit_value,
             monthly_net_cash_flow_cents=operating_path,
+            # A stochastic path perturbs the operating-derived scenario value;
+            # it is a conditional stress draw, not the deterministic bridge.
+            exit_valuation=None,
         )
         path_result = run_vc_scenario(
             assumptions=path_assumptions,

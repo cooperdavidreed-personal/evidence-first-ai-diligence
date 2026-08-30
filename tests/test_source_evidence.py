@@ -8,6 +8,7 @@ import pytest
 from underwriting_lab.analysis import analyze_room
 from underwriting_lab.contracts import UnderwritingError, digest, read_json
 from underwriting_lab.generator import generate_room
+from underwriting_lab.source_evidence import verify_source_evidence
 
 from scripts.sync_portfolio_source_rooms import verify_or_update
 
@@ -97,3 +98,19 @@ def test_locator_excerpt_tampering_fails_case_validation(tmp_path: Path) -> None
 
     with pytest.raises(UnderwritingError, match="source_locator_excerpt_digest_mismatch"):
         validate_workbench_case(case)
+
+
+def test_source_bound_verifier_rejects_coherently_rehashed_false_locator(tmp_path: Path) -> None:
+    manifest = generate_room("helios", 20260829, tmp_path / "helios")
+    source_root = manifest.parent
+    case = read_json(analyze_room(manifest, tmp_path / "helios.json"))
+    locator = case["sourceLocators"][0]
+    locator["selector"]["selected_row_count"] += 1
+    locator["retained_excerpt"]["rows"][0]["cells"] = {"fabricated": "value"}
+    locator["selection_sha256"] = digest({"fabricated": True})
+    locator["excerpt_sha256"] = digest(locator["retained_excerpt"])
+    locator_body = dict(locator)
+    locator_body.pop("locator_sha256")
+    locator["locator_sha256"] = digest(locator_body)
+    with pytest.raises(UnderwritingError, match="source_locator_source_binding_mismatch"):
+        verify_source_evidence(case, source_root)

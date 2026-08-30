@@ -10,10 +10,7 @@ from .analysis import analyze_room
 from .contracts import UnderwritingError, validate_workbench_data
 from .generator import CASE_IDS, generate_room
 from .memo import build_ic_packet
-from .verification import (
-    build_estimator_coverage_ledger,
-    build_helios_estimator_coverage_ledger,
-)
+from .source_evidence import verify_source_evidence
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -54,6 +51,13 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"status": "PRODUCED", "artifacts": {key: value.as_posix() for key, value in artifacts.items()}}, sort_keys=True))
             return 0
         if args.command == "verify-estimator-coverage":
+            # Verification truth is intentionally outside the runtime analysis
+            # import graph. Import it only for the explicitly named verifier.
+            from .verification import (
+                build_estimator_coverage_ledger,
+                build_helios_estimator_coverage_ledger,
+            )
+
             result = (
                 build_estimator_coverage_ledger(args.out)
                 if args.case == "atlasgrid"
@@ -61,7 +65,14 @@ def main(argv: list[str] | None = None) -> int:
             )
             print(json.dumps({"status": "PRODUCED", "coverage": result.as_posix()}, sort_keys=True))
             return 0
-        cases = [json.loads(Path(path).read_text(encoding="utf-8")) for path in args.cases]
+        case_paths = [Path(path) for path in args.cases]
+        cases = [json.loads(path.read_text(encoding="utf-8")) for path in case_paths]
+        for case, path in zip(cases, case_paths, strict=True):
+            candidates = (path.parent / "case", path.parent / "data-room")
+            source_root = next((candidate for candidate in candidates if candidate.is_dir()), None)
+            if source_root is None:
+                raise UnderwritingError(f"workbench_source_room_missing:{path}")
+            verify_source_evidence(case, source_root)
         case_ids = [case["caseId"] for case in cases]
         if sorted(case_ids) != ["atlasgrid", "helios"]:
             raise UnderwritingError("workbench_requires_exactly_atlasgrid_and_helios")

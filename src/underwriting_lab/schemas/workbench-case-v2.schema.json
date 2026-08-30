@@ -86,7 +86,7 @@
     "peEngine": {"type": "object"},
     "vcEngine": {
       "type": "object",
-      "required": ["base", "milestone", "downside", "financing_shortfall", "distribution", "sensitivities", "milestone_contract", "exit_value_basis"],
+      "required": ["base", "milestone", "downside", "financing_shortfall", "distribution", "sensitivities", "milestone_contract", "exit_value_basis", "operating_exit_bridges"],
       "additionalProperties": false,
       "properties": {
         "base": {"type": "object"},
@@ -96,7 +96,18 @@
         "distribution": {"type": "object"},
         "sensitivities": {"type": "object"},
         "milestone_contract": {"type": "object"},
-        "exit_value_basis": {"const": "EQUITY_VALUE"}
+        "exit_value_basis": {"const": "EQUITY_VALUE"},
+        "operating_exit_bridges": {
+          "type": "object",
+          "required": ["base", "milestone", "downside", "financing_shortfall"],
+          "additionalProperties": false,
+          "properties": {
+            "base": {"type": "object"},
+            "milestone": {"type": "object"},
+            "downside": {"type": "object"},
+            "financing_shortfall": {"type": "object"}
+          }
+        }
       }
     },
     "valueCreationBridge": {"type": "object"},

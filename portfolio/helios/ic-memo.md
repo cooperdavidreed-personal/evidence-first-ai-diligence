@@ -7,11 +7,11 @@
 **Authority:** `DECISION_RECORD_INCOMPLETE` / `PENDING_FOUNDER_SIGNATURE` / no delegated investment authority.
 
 **Knowledge cutoff:** `2026-08-29T00:00:00Z`
-**Packet receipt:** `c7744a4f463d863f03a23940586323ea3c6404197dc02599a3a91600efcf9008`
+**Packet receipt:** `7f13a18e2e35c6d9231b286996975597653653bb53ca95d1af1206ac1a1c594e`
 
 ## Recommendation and executable terms
 
-Invest at the proposed valuation only with milestone-based funding tied to ordinary-cohort retention, verified pipeline conversion, and gross-margin progression.
+Invest only if the 30% XIRR, 3.0x MOIC, and 10% loss hurdles clear and milestone funding stays tied to retention, pipeline, and margin evidence.
 
 | Term | Exact selected-case position |
 |---|---|
@@ -20,9 +20,9 @@ Invest at the proposed valuation only with milestone-based funding tied to ordin
 | Valuation | $160M pre-money / $200M fully funded post-money |
 | Series C ownership | 13.51% at first close / 20.00% fully funded |
 | Option pool | 1,611,031 unissued shares after refresh; pre-money holders bear the refresh |
-| Base returns | 47.62% gross XIRR / 7.02x gross MOIC |
-| Down-round returns | 8.70% gross XIRR / 1.52x gross MOIC |
-| Shortfall case | Bridge at month 36; 19.00% / 2.39x |
+| Base returns | 48.23% gross XIRR / 7.16x gross MOIC |
+| Down-round returns | 9.00% gross XIRR / 1.54x gross MOIC |
+| Shortfall case | Bridge at month 36; 20.00% / 2.49x |
 
 ## Product, market, customers, competition, and business model
 
@@ -54,10 +54,10 @@ These are role-level evidence states, not invented biographies or reference-chec
 
 | Scenario | Funded Series C | Ownership | Minimum cash | Exit proceeds | Gross XIRR | Gross MOIC |
 |---|---:|---:|---:|---:|---:|---:|
-| BASE | $25M | 12.94% | $13.4M | $175.4M | 47.62% | 7.02x |
-| MILESTONE | $40M | 20.00% | $17M | $360M | 59.54% | 9.00x |
-| DOWNSIDE | $25M | 10.14% | $9M | $37.9M | 8.70% | 1.52x |
-| FINANCING_SHORTFALL | $25M | 10.79% | $250,000 | $59.7M | 19.00% | 2.39x |
+| BASE | $25M | 12.94% | $13.4M | $179.1M | 48.23% | 7.16x |
+| MILESTONE | $40M | 20.00% | $17M | $363.9M | 59.91% | 9.10x |
+| DOWNSIDE | $25M | 10.14% | $9M | $38.5M | 9.00% | 1.54x |
+| FINANCING_SHORTFALL | $25M | 10.79% | $250,000 | $62.2M | 20.00% | 2.49x |
 
 | Selected event | Month | Status | Cash | New shares | Fully diluted shares |
 |---|---:|---|---:|---:|---:|
@@ -83,15 +83,25 @@ The $15M second tranche releases only when `ALL_TESTS_PASS_AFTER_CURE` after a 3
 
 ## Preference waterfall and investor return bridge
 
-Exit value basis is `EQUITY_VALUE`. Unissued pool shares receive zero proceeds. Class proceeds conserve to $1,600M with a 0-cent residual.
+The selected exit equity value is not a naked outcome assumption. It is derived from the retained LTM revenue ledger and a declared five-year operating and valuation scenario:
+
+| Exit-value operand | Selected milestone case | Classification |
+|---|---:|---|
+| Observed LTM revenue | $57M | Retained synthetic P&L |
+| Annual revenue growth / hold | 48.00% / 5 years | Scenario |
+| Terminal revenue / exit multiple | $404.4M / 4.00x | Scenario |
+| Exit enterprise value / net debt | $1,617.6M / $0 | Accounting bridge |
+| Exit equity value | $1,617.6M | Waterfall operand |
+
+Exit value basis is `EQUITY_VALUE`. Unissued pool shares receive zero proceeds. Class proceeds conserve to $1,617.6M with a 0-cent residual.
 
 | Class | Election | Preference | Residual | Total proceeds |
 |---|---|---:|---:|---:|
-| SERIES_A | CONVERT | $0 | $254.2M | $254.2M |
-| SERIES_B | CONVERT | $0 | $229.4M | $229.4M |
-| SERIES_C | CONVERT | $0 | $360M | $360M |
+| SERIES_A | CONVERT | $0 | $257M | $257M |
+| SERIES_B | CONVERT | $0 | $231.9M | $231.9M |
+| SERIES_C | CONVERT | $0 | $363.9M | $363.9M |
 
-Series C invests $40M in dated funded tranches and receives $360M at exit: **59.54% gross XIRR / 9.00x gross MOIC**.
+Series C invests $40M in dated funded tranches and receives $363.9M at exit: **59.91% gross XIRR / 9.10x gross MOIC**.
 
 ## Conditional distribution and sensitivity
 
@@ -101,8 +111,8 @@ Declared scenario-state priors: Base 30.00%; Downside 15.00%; Financing Shortfal
 
 | Statistic | p10 | p50 | p90 |
 |---|---:|---:|---:|
-| Gross MOIC | 1.46x | 6.85x | 11.47x |
-| Gross XIRR | 7.97% | 45.54% | 68.28% |
+| Gross MOIC | 1.51x | 6.98x | 11.60x |
+| Gross XIRR | 8.87% | 45.93% | 68.94% |
 
 - Probability below 1.0x: **0.10%**.
 - Sensitivity book: 11 full-engine cells across exit value, exit date, later-round price, and milestone state.
@@ -115,7 +125,7 @@ Declared scenario-state priors: Base 30.00%; Downside 15.00%; Financing Shortfal
 
 ## Value creation and board cadence
 
-Combined full-model impact: **$3.1M minimum cash**, **$3.9M Series C proceeds**, **0.36% gross XIRR**, including an explicit **-$0 interaction residual**.
+Combined full-model impact: **$3.1M minimum cash**, **$3.9M Series C proceeds**, **0.36% gross XIRR**, including an explicit **$0 interaction residual**.
 
 | Initiative | Evidence class | Baseline / target | Owner | Modeled consequence | Stop rule / risk |
 |---|---|---|---|---|---|
@@ -152,11 +162,7 @@ This packet is generated from a fictional deterministic room. Synthetic causal e
 
 ## Receipt appendix
 
-- Case analysis: `a7e5ae2f95eabac12fc068d2160a4327f381069ac0b3b6ca804f336c09235003`
-- BASE result: `25e42585f6c9cd97a030d3d79dcb69c9aa70795ec76da82e822b8e2a6f0f3417`
-- MILESTONE result: `9cf24ca939951b9d65eecd0ce26b2721d39f4f0c48578e6a0a9093cbcf2203e8`
-- DOWNSIDE result: `8c4a2cfe0cafaa5a6340c8f0419f32e97ca590eab1ef8ac25cac9576affe2d20`
-- FINANCING_SHORTFALL result: `12e20a1bd48af041b1079449c086fe22fb0272ddc7350bba5a0e8f45d43676d0`
-- Distribution: `23f00c394c8c68fa84a27bf93020af913ee655ad2ea8818b517abb7525073b8e`
-- Sensitivity book: `2a22c9c3cb2cd91ee537e0cca6ae8081b700e8d778e2dd1e03d9cfc4757b060d`
-- Value-creation bridge: `4c3ca1b029af6671b42490f2363559e19cec1cf56944a08733c92839d2976fda`
+- MILESTONE result: `96de3cfb9a54a6d57033a5144a535c3a03c00e6493c8748e64e220a6ae6788b7`
+- DOWNSIDE result: `f562cc0231580216cd62d974a08655fafd44b57e2e3c637e1466515241bce4fc`
+- Sensitivity book: `f4895a534dd9e2c538d0ce3994ca63bcfa40af1892cafbc4560dca2820a13698`
+- Value-creation bridge: `4ba168d3d1f6dd8ff2268bc989c346b124cb2642dddc85e28f287ca38498e04f`

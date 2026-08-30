@@ -192,7 +192,27 @@ def test_helios_contract_gates(generated: dict[str, tuple[Path, dict]]) -> None:
     assert hx06_diagnostics["control_count"]["value"] == "60"
     assert receipts["HX-07"]["state"] == "ABSTAIN"
     assert receipts["HX-08"]["diagnostics"][0]["status"] == "PASS"
-    assert receipts["HX-09"]["diagnostics"][2]["status"] == "PASS"
+    hx09_diagnostics = {item["name"]: item for item in receipts["HX-09"]["diagnostics"]}
+    assert hx09_diagnostics["ordered_xirr_quantiles"]["status"] == "PASS"
+    assert hx09_diagnostics["operating_exit_bridge"]["status"] == "PASS"
+    assert Decimal(hx09_diagnostics["loss_probability_monte_carlo_se_pp"]["value"]) >= 0
+    bridges = case["vcEngine"]["operating_exit_bridges"]
+    assert set(bridges) == {"base", "milestone", "downside", "financing_shortfall"}
+    for key, bridge in bridges.items():
+        terminal = (
+            Decimal(bridge["observed_ltm_revenue_cents"])
+            * (Decimal(1) + Decimal(bridge["annual_revenue_growth"])) ** int(bridge["years"])
+        ).quantize(Decimal("1"))
+        enterprise = (terminal * Decimal(bridge["exit_revenue_multiple"])).quantize(Decimal("1"))
+        assert int(terminal) == bridge["terminal_revenue_cents"]
+        assert int(enterprise) == bridge["exit_enterprise_value_cents"]
+        assert bridge["exit_equity_value_cents"] == enterprise - bridge["net_debt_cents"]
+        assert case["vcEngine"][key]["waterfall"]["exit_value_cents"] == bridge["exit_equity_value_cents"]
+    pairs = {item["metric"]: item for item in case["decision"]["metric_pairs"]}
+    assert pairs["Milestone gross XIRR"]["status"] == "CLEARS"
+    assert pairs["Milestone gross MOIC"]["status"] == "CLEARS"
+    assert pairs["Modeled loss probability"]["status"] == "CLEARS"
+    assert pairs["Post-close runway"]["observed"].startswith(">=60")
 
 
 def test_every_headline_metric_has_valid_lineage(generated: dict[str, tuple[Path, dict]]) -> None:

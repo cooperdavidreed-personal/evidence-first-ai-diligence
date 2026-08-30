@@ -34,6 +34,19 @@ def main() -> int:
                         "bytes": path.stat().st_size,
                     }
                 )
+    for case in cases:
+        for interaction in ("lineage-drawer", "selected-thesis-path"):
+            path = evidence / f"desktop-{case}-{interaction}.png"
+            if not path.is_file():
+                raise SystemExit(f"missing_interaction_evidence:{path.name}")
+            files.append(
+                {
+                    "path": path.relative_to(root).as_posix(),
+                    "viewport": "1440x900",
+                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                    "bytes": path.stat().st_size,
+                }
+            )
     print_files = []
     for path, format_name in (
         (evidence / "desktop-atlasgrid-ic-memo.png", "full-page PNG"),
@@ -55,7 +68,7 @@ def main() -> int:
         "schema_version": "underwriting.visual-evidence/v1",
         "files": files,
         "print_files": print_files,
-        "scope": "Five views, two synthetic cases, desktop and mobile; automated serious/critical axe scan and root-overflow assertion per route; AtlasGrid and Helios IC memos retained as full-page PNG and normalized US Letter PDF proofs.",
+        "scope": "Five views, two synthetic cases, desktop and mobile; open lineage drawers and selected thesis paths retained at desktop; automated all-rule axe scan and root-overflow assertion per route; AtlasGrid and Helios IC memos retained as full-page PNG and normalized US Letter PDF proofs.",
     }
     manifest["manifest_sha256"] = hashlib.sha256(canonical_json(manifest)).hexdigest()
     output = root / "verification" / "visual-evidence.json"

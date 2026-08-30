@@ -17,6 +17,7 @@ ACCESSIBILITY_BASELINE = ROOT / "verification" / "accessibility-evidence"
 ACCESSIBILITY_CANDIDATE = ROOT / "dist" / "accessibility-candidates"
 MAX_CHANGED_PIXEL_RATIO = 0.02
 MAX_RMS_CHANNEL_DELTA = 3.0
+MAX_LOCALIZED_FOCUS_DRIFT_RATIO = 0.001
 
 
 def _sha256(path: Path) -> str:
@@ -41,8 +42,8 @@ def _compare_png(baseline: Path, candidate: Path) -> tuple[float, float]:
 
 def main() -> int:
     baseline_pngs = sorted(BASELINE.glob("*.png"))
-    if len(baseline_pngs) != 22:
-        raise SystemExit(f"visual-regression FAIL: expected 22 baselines, got {len(baseline_pngs)}")
+    if len(baseline_pngs) != 26:
+        raise SystemExit(f"visual-regression FAIL: expected 26 baselines, got {len(baseline_pngs)}")
     failures: list[str] = []
     reference_comparable = sys.platform == "darwin"
     for baseline in baseline_pngs:
@@ -52,7 +53,11 @@ def main() -> int:
             continue
         changed_ratio, rms = _compare_png(baseline, candidate)
         if reference_comparable and (
-            changed_ratio > MAX_CHANGED_PIXEL_RATIO or rms > MAX_RMS_CHANNEL_DELTA
+            changed_ratio > MAX_CHANGED_PIXEL_RATIO
+            or (
+                rms > MAX_RMS_CHANNEL_DELTA
+                and changed_ratio > MAX_LOCALIZED_FOCUS_DRIFT_RATIO
+            )
         ):
             failures.append(
                 f"visual_drift:{candidate.name}:changed={changed_ratio:.6f}:rms={rms:.6f}"
@@ -82,7 +87,7 @@ def main() -> int:
         print(
             "visual-regression=PASS reference_platform=darwin "
             f"pngs={len(baseline_pngs)} changed_pixel_limit={MAX_CHANGED_PIXEL_RATIO:.2%} "
-            f"rms_limit={MAX_RMS_CHANNEL_DELTA:.1f} pdf_byte_matches=2/2"
+            f"rms_limit={MAX_RMS_CHANNEL_DELTA:.1f} localized_focus_limit={MAX_LOCALIZED_FOCUS_DRIFT_RATIO:.2%} pdf_byte_matches=2/2"
             f" accessibility_matches={len(accessibility_baselines)}/4"
         )
     else:

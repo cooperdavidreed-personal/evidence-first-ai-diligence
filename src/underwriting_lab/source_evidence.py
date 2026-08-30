@@ -128,3 +128,23 @@ def compile_source_evidence(
     ):
         raise UnderwritingError("source_locator_input_closure_mismatch")
     return locators, by_analysis
+
+
+def verify_source_evidence(case: dict[str, Any], source_root: Path) -> None:
+    """Recompute locator selectors, excerpts, and digests from source bytes.
+
+    Hash-consistent locator JSON is not sufficient evidence: a consumer must
+    prove that its selector actually resolves to the committed artifact bytes.
+    """
+
+    expected, _ = compile_source_evidence(case, source_root)
+    observed = case.get("sourceLocators")
+    if not isinstance(observed, list):
+        raise UnderwritingError("source_locator_registry_missing")
+    expected_by_id = {item["locator_id"]: item for item in expected}
+    observed_by_id = {item.get("locator_id"): item for item in observed if isinstance(item, dict)}
+    if len(expected_by_id) != len(expected) or set(observed_by_id) != set(expected_by_id):
+        raise UnderwritingError("source_locator_registry_mismatch")
+    for locator_id, expected_locator in expected_by_id.items():
+        if observed_by_id[locator_id] != expected_locator:
+            raise UnderwritingError(f"source_locator_source_binding_mismatch:{locator_id}")

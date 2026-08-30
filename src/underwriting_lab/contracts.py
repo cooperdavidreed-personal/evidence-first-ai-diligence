@@ -179,6 +179,9 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         "downside": "DOWNSIDE",
         "financing_shortfall": "FINANCING_SHORTFALL",
     }
+    exit_bridges = engine.get("operating_exit_bridges")
+    if not isinstance(exit_bridges, dict) or set(exit_bridges) != set(expected_ids):
+        raise UnderwritingError("vc_operating_exit_bridge_set_invalid")
     for key, scenario_id in expected_ids.items():
         result = engine.get(key)
         if not isinstance(result, dict) or result.get("scenario_id") != scenario_id:
@@ -192,6 +195,29 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
             raise UnderwritingError("vc_waterfall_conservation_failed")
         funded_target = 0
         engine_inputs = result["engine_inputs"]
+        exit_bridge = exit_bridges[key]
+        if engine_inputs.get("exit_valuation") != exit_bridge:
+            raise UnderwritingError("vc_operating_exit_bridge_input_mismatch")
+        terminal_revenue = int(
+            (
+                Decimal(exit_bridge["observed_ltm_revenue_cents"])
+                * (Decimal(1) + Decimal(exit_bridge["annual_revenue_growth"]))
+                ** int(exit_bridge["years"])
+            ).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN)
+        )
+        enterprise_value = int(
+            (Decimal(terminal_revenue) * Decimal(exit_bridge["exit_revenue_multiple"])).quantize(
+                Decimal("1"), rounding=ROUND_HALF_EVEN
+            )
+        )
+        equity_value = enterprise_value - int(exit_bridge["net_debt_cents"])
+        if (
+            terminal_revenue != exit_bridge["terminal_revenue_cents"]
+            or enterprise_value != exit_bridge["exit_enterprise_value_cents"]
+            or equity_value != exit_bridge["exit_equity_value_cents"]
+            or equity_value != waterfall["exit_value_cents"]
+        ):
+            raise UnderwritingError("vc_operating_exit_bridge_reconciliation_failed")
         issued_shares = sum(
             int(holder["shares"]) for holder in engine_inputs["initial_holders"]
         )

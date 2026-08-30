@@ -15,7 +15,7 @@ No API-key or paid fallback route is authorized. No provider output is case evid
 | V2 benchmark and countercase orders | Grok | `PRODUCED` | Advisory findings entered the frozen contracts only through deterministic implementation gates |
 | AtlasGrid PE implementation and verdict reviews | Grok | `ACCEPT_PE_GATE` | Final advisory score 92 with no critical or high finding; exact output digest is retained in local mission evidence |
 | Helios finance, data, and rendered-product audits | Codex subagents | `QUALITY_SHORT` then repaired | Milestone derivation, independent waterfall oracle, distribution-state risk, econometric labeling, headline formulas, and value mapping became executable repair gates |
-| V2 implementation and deterministic acceptance | Codex | `DETERMINISTIC_LOCAL_PASS` | Codex remained the only filesystem writer; 146 Python tests, 15 React tests, the supported Playwright matrix, package/security/toolkit/public-scan gates, and retained visual/PDF/accessibility evidence pass locally |
+| V2 implementation and deterministic acceptance | Codex | `DETERMINISTIC_LOCAL_PASS` | Codex remained the only filesystem writer; 153 Python tests, 15 React tests, the supported Playwright matrix, package/security/toolkit/public-scan gates, and retained visual/PDF/accessibility evidence pass locally |
 | Independent final V2 acceptance | Claude | `HELD_PROVIDER` | Required before the mission can claim provider-independent founder-review acceptance |
 
 Durable provider stdout, state events, and episode receipts live in the excluded local mission directory, not the proposed public package.
