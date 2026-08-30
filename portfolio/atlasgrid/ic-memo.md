@@ -5,7 +5,7 @@
 **Provisional posture:** `REPRICE`  
 **Workflow state:** `DECISION_RECORD_INCOMPLETE` / `PENDING_FOUNDER_SIGNATURE`  
 **Knowledge cutoff:** `2026-08-29T00:00:00Z`
-**Packet receipt:** `8877a5bc1065f0f6343a99fdcc2c4ad4b3f132f80d6a9d06de5aaa21d30ce5dc`
+**Packet receipt:** `64047c984d75dd8dabc902d9747ade95c0d2ba449dbdd82ea33a3f366d37f801`
 
 ## Recommendation
 
@@ -152,7 +152,7 @@ This packet is generated from a fictional, deterministic data room. Synthetic ca
 
 ## Receipt appendix
 
-- Case analysis: `b5aeac5fab7c806afb36bfdedba7e5a03872d0fe9c7f2cd6988fbe051d6cc3d1`
+- Case analysis: `af2d1089db11fa26fc51ac14705e8037a433e05a9a625a0e7494f90ca0a21821`
 - ASK result: `0c8166368d5bd4f1e4dbd5b88a48f3d3f22d20726fa0c929c8d4427e05d769a8`
 - SELECTED result: `87e0a3ece3a76aca6d5e1d7e89021f5915e17234c6db75d60f34e26654dd2e7e`
 - DOWNSIDE result: `8b949ad91fdf4f88e31eaabdc30336be8b3b27852a751cc61d3c3cab82277c40`

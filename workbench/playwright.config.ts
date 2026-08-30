@@ -1,6 +1,8 @@
 import { defineConfig } from "@playwright/test";
 
-const port = Number(process.env.WORKBENCH_PORT ?? "4173");
+// Keep the productization lane isolated from the accepted V2 worktree, whose
+// retained local preview owns 4173 on the review machine.
+const port = Number(process.env.WORKBENCH_PORT ?? "4174");
 
 export default defineConfig({
   testDir: "./tests",

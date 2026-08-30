@@ -15,14 +15,14 @@ Measured with `pnpm --dir workbench build` on 2026-08-30:
 |---|---:|---:|---:|---|
 | HTML entry | 0.57 KB | 0.34 KB | 2 KB gzip | `PASS` |
 | CSS | 47.34 KB | 8.92 KB | 12 KB gzip | `PASS` |
-| Application shell | 298.53 KB | 85.89 KB | 100 KB gzip | `PASS` |
+| Application shell | 298.86 KB | 86.01 KB | 100 KB gzip | `PASS` |
 | Generated analytical case payload | 4,490.37 KB | 748.76 KB | 800 KB gzip | `PASS` |
-| Total initial static transfer, gzip-equivalent | 4,836.81 KB | 843.91 KB | 900 KB gzip | `PASS` |
+| Total initial static transfer, gzip-equivalent | 4,837.14 KB | 844.03 KB | 900 KB gzip | `PASS` |
 | Third-party runtime origins | 0 | 0 | 0 | `PASS` |
 
 At the start of this productization lane the application and case payload were
 emitted as one 830.82 KB gzip JavaScript entry. Separating the application shell
-from generated case data reduced the shell entry to 85.89 KB gzip, an 89.7%
+from generated case data reduced the shell entry to 86.01 KB gzip, an 89.6%
 reduction. This improves cache behavior and makes the code/data boundary visible;
 the current route still loads the combined case payload immediately.
 

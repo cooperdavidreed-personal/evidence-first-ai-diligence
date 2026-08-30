@@ -7,7 +7,7 @@
 **Authority:** `DECISION_RECORD_INCOMPLETE` / `PENDING_FOUNDER_SIGNATURE` / no delegated investment authority.
 
 **Knowledge cutoff:** `2026-08-29T00:00:00Z`
-**Packet receipt:** `5ea2a76fa53499c6e8eb9f10cc4b60c84afa7d4aae0f5b07a98244149350b8cf`
+**Packet receipt:** `4d698272e2dd0b340c6197156fe0f507f268cd5b62a35dcb434fce0b78876feb`
 
 ## Recommendation and executable terms
 
