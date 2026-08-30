@@ -70,6 +70,22 @@ def test_helios_optimizer_fixture_is_balanced_and_preserves_plant() -> None:
     assert sum(int(row["treatment"]) for row in rows) == 60
 
 
+def test_seed_permutations_kill_first_n_assignment_mutant() -> None:
+    _, atlas_first = atlasgrid_experiment_fixture(20260828)
+    _, atlas_second = atlasgrid_experiment_fixture(20260830)
+    def atlas_ids(rows: list[dict[str, object]]) -> set[object]:
+        return {row["pod_id"] for row in rows if int(row["treated"]) == 1}
+    assert atlas_ids(atlas_first) != atlas_ids(atlas_second)
+    assert atlas_ids(atlas_first) != {f"AG-S{index:02d}" for index in range(1, 21)}
+
+    helios_first = helios_optimizer_fixture(20260829)
+    helios_second = helios_optimizer_fixture(20260831)
+    def helios_ids(rows: list[dict[str, object]]) -> set[object]:
+        return {row["customer_id"] for row in rows if int(row["treatment"]) == 1}
+    assert helios_ids(helios_first) != helios_ids(helios_second)
+    assert helios_ids(helios_first) != {f"HX-X{index:03d}" for index in range(1, 61)}
+
+
 def test_post_cutoff_sentinel_is_separate_from_eligible_fixture() -> None:
     eligible, support = atlasgrid_experiment_fixture(991)
     with_sentinel, repeated_support = atlasgrid_experiment_fixture(

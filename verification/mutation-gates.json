@@ -1,0 +1,23 @@
+{
+  "schema_version": "underwriting.mutation-gates/v1",
+  "status": "FROZEN",
+  "limitations": "These gates execute explicit falsification fixtures and independent oracles. They are not a whole-program mutation score.",
+  "mutants": [
+    {"mutant_id": "sweep-sign-reversal", "test_nodeid": "tests/test_pe_independent_oracles.py::test_debt_schedule_matches_independent_oracle_for_500_generated_examples"},
+    {"mutant_id": "amortization-off-by-one", "test_nodeid": "tests/test_pe_independent_oracles.py::test_accounting_invariants_hold_across_100_explicit_seeds"},
+    {"mutant_id": "seniority-swap", "test_nodeid": "tests/test_vc_engine.py::test_independent_waterfall_oracle_matches_500_draws_and_breakpoints"},
+    {"mutant_id": "participation-cap-removal", "test_nodeid": "tests/test_vc_engine.py::test_waterfall_conserves_and_changes_conversion_at_boundaries"},
+    {"mutant_id": "interest-balance-convention-change", "test_nodeid": "tests/test_pe_independent_oracles.py::test_debt_schedule_matches_independent_oracle_for_500_generated_examples"},
+    {"mutant_id": "stored-covenant-status-trust", "test_nodeid": "tests/test_finance_primitives.py::test_monthly_debt_schedule_reconciles_and_computes_status"},
+    {"mutant_id": "quantile-as-scenario", "test_nodeid": "tests/test_underwriting_lab.py::test_helios_scenarios_are_event_based_and_receipt_distinct"},
+    {"mutant_id": "moic-cagr-as-xirr", "test_nodeid": "tests/test_pe_independent_oracles.py::test_irregular_xirr_is_not_moic_cagr"},
+    {"mutant_id": "hard-coded-exit-debt", "test_nodeid": "tests/test_underwriting_lab.py::test_atlasgrid_displayed_returns_bind_to_cash_flow_engine"},
+    {"mutant_id": "first-n-treatment-assignment", "test_nodeid": "tests/test_estimator_coverage.py::test_seed_permutations_kill_first_n_assignment_mutant"},
+    {"mutant_id": "residual-dilution-scalar", "test_nodeid": "tests/test_vc_engine.py::test_pool_top_up_is_exact_and_minimal"},
+    {"mutant_id": "global-series-c-conversion-choice", "test_nodeid": "tests/test_vc_engine.py::test_independent_waterfall_oracle_matches_500_draws_and_breakpoints"},
+    {"mutant_id": "earnout-as-certain-haircut", "test_nodeid": "tests/test_pe_engine.py::test_earnout_threshold_partial_cap_and_close_relative_dates"},
+    {"mutant_id": "accepted-abstention-as-global-hold", "test_nodeid": "tests/test_underwriting_v2_core.py::test_decision_state_machine_distinguishes_abstention_and_authority"},
+    {"mutant_id": "display-only-sensitivity", "test_nodeid": "tests/test_pe_engine.py::test_sensitivity_assumption_change_mutates_book_receipt"},
+    {"mutant_id": "parse-float-finance-path", "test_nodeid": "STATIC_NO_PARSEFLOAT"}
+  ]
+}

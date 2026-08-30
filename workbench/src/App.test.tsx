@@ -114,4 +114,57 @@ describe("Underwriting Intelligence Lab", () => {
     expect(screen.getByRole("heading", {name: "Ownership cadence"})).toBeInTheDocument();
     for (const phase of ["Pre-close", "Day 1", "Day 30", "Day 100", "Year 1"]) expect(screen.getByText(phase)).toBeInTheDocument();
   });
+
+  it("renders all four registered chart contracts in their declared views", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const chartIds = new Set<string>();
+    for (const view of ["IC Snapshot", "Thesis & Evidence", "Underwriting Room", "Value Creation"]) {
+      await user.click(screen.getByRole("button", {name: new RegExp(view)}));
+      const contract = screen.getByLabelText(new RegExp(`${view} chart contracts`)).querySelector<HTMLElement>("[data-chart-id]");
+      expect(contract).not.toBeNull();
+      chartIds.add(contract!.dataset.chartId!);
+    }
+    expect(chartIds.size).toBe(4);
+  });
+
+  it("opens stable econometric output lineage from the paired estimate and output ledger", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", {name: /Econometric Lab/}));
+    const paired = screen.getByRole("button", {name: "Inspect lineage for Randomized offer ITT"});
+    expect(paired).toHaveAttribute("data-metric-id", "atlasgrid-ag-07-renewal_itt");
+    paired.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("dialog", {name: /AG-07 · renewal itt/i})).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(paired).toHaveFocus();
+    const output = screen.getByRole("button", {name: /Inspect lineage for AG-08 · resolution att/i});
+    expect(output).toHaveAttribute("data-metric-id", "atlasgrid-ag-08-resolution_att");
+  });
+
+  it("uses the registered Helios MOIC distribution IDs", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", {name: /Helios Compute Control/}));
+    const distribution = screen.getByRole("button", {name: "Inspect lineage for p10 conditional MOIC"});
+    expect(distribution).toHaveAttribute("data-metric-id", "helios-distribution-moic-0");
+    await user.click(distribution);
+    expect(screen.getByRole("dialog", {name: "p10 conditional MOIC"})).toHaveTextContent("Governing receipt");
+  });
+
+  it("renders governed diligence, prioritized initiatives, and screened-out levers", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", {name: /Thesis & Evidence/}));
+    expect(screen.getByRole("heading", {name: "Diligence requests and decision consequences"})).toBeInTheDocument();
+    expect(screen.getByText("AG-D04")).toBeInTheDocument();
+    expect(screen.getByText(/Do not advance debt terms/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: /Value Creation/}));
+    expect(screen.getByRole("heading", {name: "Screened-out levers"})).toBeInTheDocument();
+    expect(screen.getByText("Broad renewal price increase")).toBeInTheDocument();
+    expect(screen.getByLabelText("Prioritized value-creation initiatives")).toHaveTextContent("P1 · Days 1–100");
+    expect(screen.getByLabelText("Prioritized value-creation initiatives")).toHaveTextContent("Implementation cost");
+    expect(screen.getByLabelText("Prioritized value-creation initiatives")).toHaveTextContent("Stop rule");
+  });
 });

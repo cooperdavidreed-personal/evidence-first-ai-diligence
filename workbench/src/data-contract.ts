@@ -54,6 +54,16 @@ function validateCase(candidate: unknown): asserts candidate is CaseData {
     if (!array(candidate[key])) throw new Error(`workbench_case_array_missing:${key}`);
   }
   if (!record(candidate.teamAssessment) || !array(candidate.teamAssessment.strengths) || !array(candidate.teamAssessment.unproven) || !array(candidate.teamAssessment.required_hires) || typeof candidate.teamAssessment.key_person_risk !== "string") throw new Error("team_assessment_invalid");
+  if (!record(candidate.thesis) || !array(candidate.thesis.requests) || candidate.thesis.requests.some((item) => !record(item) || ["request_id", "request", "owner", "due_state", "materiality", "decision_consequence"].some((key) => typeof item[key] !== "string" || !item[key]))) throw new Error("diligence_request_invalid");
+  if (!array(candidate.chartRegistry) || candidate.chartRegistry.length !== 4) throw new Error("chart_registry_requires_four");
+  const charts = candidate.chartRegistry as Array<Record<string, unknown>>;
+  const chartIds = new Set(charts.map((item) => item.chart_id));
+  const chartLocations = charts.map((item) => item.rendered_location).sort().join(",");
+  if (chartIds.size !== 4 || chartLocations !== "IC Snapshot,Thesis & Evidence,Underwriting Room,Value Creation" || charts.some((item) => ["chart_id", "question", "conclusion", "uncertainty", "decision_dependency", "rendered_location"].some((key) => typeof item[key] !== "string" || !item[key]))) throw new Error("chart_registry_invalid");
+  if (!array(candidate.valueCreation) || candidate.valueCreation.length === 0 || candidate.valueCreation.some((item) => !record(item) || typeof item.priority !== "number" || ["initiative", "kpi", "baseline", "target", "owner", "timing", "dependency", "implementation_cost", "milestone", "stop_rule", "value", "risk"].some((key) => typeof item[key] !== "string" || !item[key]))) throw new Error("value_creation_plan_invalid");
+  const priorities = (candidate.valueCreation as Array<{priority: number}>).map((item) => item.priority);
+  if (new Set(priorities).size !== priorities.length || priorities.some((item, index) => item !== index + 1)) throw new Error("value_creation_priority_invalid");
+  if (!array(candidate.screenedOutLevers) || candidate.screenedOutLevers.length === 0 || candidate.screenedOutLevers.some((item) => !record(item) || ["lever", "evidence_state", "reason_screened_out", "reconsideration_trigger"].some((key) => typeof item[key] !== "string" || !item[key]))) throw new Error("screened_out_lever_invalid");
   if (!array(candidate.ownershipCadence) || candidate.ownershipCadence.length !== 5) throw new Error("ownership_cadence_invalid");
   const cadence = candidate.ownershipCadence as Array<Record<string, unknown>>;
   if (cadence.map((item) => item.phase).join(",") !== "Pre-close,Day 1,Day 30,Day 100,Year 1" || cadence.some((item) => ["timing", "owner", "milestone", "kpi", "stop_rule"].some((key) => typeof item[key] !== "string" || !item[key]))) throw new Error("ownership_cadence_sequence_invalid");

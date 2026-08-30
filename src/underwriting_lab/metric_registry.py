@@ -8,6 +8,8 @@ from .contracts import UnderwritingError, digest
 
 
 def _decimal(value: int | str | Decimal) -> str:
+    if str(value) in {"ABSTAIN", "NONE"}:
+        return str(value)
     return format(Decimal(str(value)), "f")
 
 
@@ -139,6 +141,57 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
             receipt_sha256=case["analysis_sha256"] if "analysis_sha256" in case else case["manifest_sha256"],
             downstream_ids=["decision"],
         )
+
+    # Every analysis output receives one deterministic registry identifier. This
+    # closes the audit gap between receipt-backed values and the values rendered
+    # in the econometric and lineage drawers.
+    for receipt in case["analyses"]:
+        analysis_id = receipt["analysis_id"]
+        for output in receipt["outputs"]:
+            output_name = output["name"]
+            locator_ids = [
+                locator_by_lineage[item["node_id"]]
+                for item in case["lineage"]
+                if item["analysis_id"] == analysis_id
+                and output_name in item["output_names"]
+            ]
+            locator_ids = list(dict.fromkeys(locator_ids))
+            if not locator_ids:
+                raise UnderwritingError(
+                    f"analysis_output_lineage_missing:{analysis_id}:{output_name}"
+                )
+            value = output["value"]
+            numeric_match = re.fullmatch(r"-?[0-9]+(?:\.[0-9]+)?", value)
+            if numeric_match and "." in value:
+                decimal_places = len(value.rsplit(".", maxsplit=1)[1])
+                quantum = f"0.{('0' * (decimal_places - 1))}1"
+            else:
+                quantum = "1"
+            classification = receipt["classification"]
+            if value == "ABSTAIN":
+                classification = "NOT_IDENTIFIED"
+            add(
+                metric_id=f"{case['caseId']}-{analysis_id.lower()}-{output_name}",
+                label=output_name.replace("_", " ").title(),
+                value=value,
+                display_value=(
+                    value
+                    if value in {"ABSTAIN", "NONE"}
+                    else f"{value} {output['unit']}"
+                ),
+                unit=output["unit"],
+                quantum=quantum,
+                period=receipt["cutoff"],
+                classification=classification,
+                locator_ids=locator_ids,
+                receipt_sha256=receipt["receipt_sha256"],
+                assumption_ids=(
+                    [f"{analysis_id}.declared_assumptions"]
+                    if receipt["assumptions"]
+                    else []
+                ),
+                downstream_ids=["decision"],
+            )
 
     engine = case.get("peEngine")
     if engine is not None:

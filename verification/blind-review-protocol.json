@@ -1,0 +1,25 @@
+{
+  "schema_version": "underwriting.blind-review-protocol/v1",
+  "status": "PRECOMMITTED",
+  "time_limit_seconds_per_case": 60,
+  "review_context": "A reviewer who did not author the implementation receives only the retained desktop IC Snapshot image and these questions.",
+  "cases": [
+    {
+      "case_id": "atlasgrid-systems",
+      "artifact": "dist/visual-evidence/desktop-atlasgrid-systems-ic-snapshot.png"
+    },
+    {
+      "case_id": "helios-compute-control",
+      "artifact": "dist/visual-evidence/desktop-helios-compute-control-ic-snapshot.png"
+    }
+  ],
+  "questions": [
+    "What is the illustrative investment posture and current human-authority state?",
+    "What price, capital, ownership, or structure is being proposed?",
+    "What is the most decision-relevant driver?",
+    "What is the clearest counterthesis or failure mode?",
+    "What open gate must be resolved before human approval?"
+  ],
+  "pass_rule": "For each case, the reviewer must answer all five questions from the first-viewport image without opening another artifact; ambiguous or absent answers fail.",
+  "limitations": "This bounded artifact-comprehension check is not a human-factors study, hiring-outcome proof, accessibility certification, or evidence of real investment quality."
+}

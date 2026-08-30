@@ -1,4 +1,5 @@
 import {useEffect, useMemo, useState} from "react";
+import {ChartRegistryCaption} from "./chart-registry";
 import {registeredMetric} from "./data-contract";
 import type {CaseData, Metric, VCSensitivityCell, VCScenarioResult} from "./types";
 
@@ -83,6 +84,7 @@ export function VCUnderwritingRoom({caseData, openMetric}: {caseData: CaseData; 
   const labels: Record<ScenarioKey, string> = {base: "Base", milestone: "Milestones clear", downside: "Down round", financing_shortfall: "Shortfall bridge"};
   return <div className="view-stack pe-room vc-room">
     <section className="underwriting-head"><div><p className="kicker">Venture financing · exact event ledger</p><h2>Terms, ownership, runway, and preferences</h2><p>Every tab and sensitivity is a retained Python-engine rerun. Unfunded tranches contribute no cash, shares, preference, or investor outflow.</p></div><div className="scenario-tabs">{(Object.keys(labels) as ScenarioKey[]).map((item) => <button key={item} aria-pressed={item === scenarioKey} onClick={() => setScenarioKey(item)}>{labels[item]}</button>)}</div></section>
+    <ChartRegistryCaption caseData={caseData} location="Underwriting Room" />
     <section className="terms-ribbon"><BoundCard caseData={caseData} metricId={`${prefix}-target-invested`} detail="Total Series C cash actually funded in the selected scenario." openMetric={openMetric} /><BoundCard caseData={caseData} metricId={`${prefix}-ownership`} detail="Series C fully diluted ownership after event-by-event dilution." openMetric={openMetric} /><BoundCard caseData={caseData} metricId={`${prefix}-gross-xirr`} detail="Irregular-date gross-to-investor XIRR; not MOIC CAGR." openMetric={openMetric} /><BoundCard caseData={caseData} metricId={`${prefix}-gross-moic`} detail="Exact exit proceeds divided by funded Series C cash." openMetric={openMetric} /></section>
     <aside className="engine-receipt"><span>Selected engine receipt</span><code>{result.receipt_sha256}</code><strong>{engine.exit_value_basis.replaceAll("_", " ")}</strong></aside>
     <FinancingTimeline caseData={caseData} result={result} prefix={prefix} openMetric={openMetric} />

@@ -109,16 +109,46 @@ export interface FalsifierState {
 }
 
 export interface Initiative {
+  priority: number;
   initiative: string;
   kpi: string;
   baseline: string;
   target: string;
   owner: string;
+  timing: string;
+  dependency: string;
+  implementation_cost: string;
   milestone: string;
+  stop_rule: string;
   value: string;
   risk: string;
   lineage: string[];
   credit_classification?: string;
+}
+
+export interface DiligenceRequest {
+  request_id: string;
+  request: string;
+  owner: string;
+  due_state: string;
+  materiality: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+  decision_consequence: string;
+}
+
+export interface ScreenedOutLever {
+  lever: string;
+  evidence_state: string;
+  reason_screened_out: string;
+  reconsideration_trigger: string;
+}
+
+export interface ChartContract {
+  chart_id: string;
+  question: string;
+  conclusion: string;
+  uncertainty: string;
+  decision_dependency: string;
+  rendered_location: "IC Snapshot" | "Thesis & Evidence" | "Underwriting Room" | "Value Creation";
 }
 
 export interface SourcesAndUses {
@@ -444,8 +474,9 @@ export interface CaseData {
     counterthesis: string;
     drivers: string[];
     falsifiers: string[];
-    requests: string[];
+    requests: DiligenceRequest[];
   };
+  chartRegistry: ChartContract[];
   teamAssessment: {
     strengths: string[];
     unproven: string[];
@@ -468,6 +499,7 @@ export interface CaseData {
   distributionLineage: string;
   returnsDistribution: {moic: string[]; irr: string[]; labels: string[]};
   valueCreation: Initiative[];
+  screenedOutLevers: ScreenedOutLever[];
   valueCreationBridge?: PEValueCreationBridge;
   peEngine?: PEEngine;
   vcEngine?: VCEngine;

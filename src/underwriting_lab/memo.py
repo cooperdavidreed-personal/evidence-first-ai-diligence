@@ -26,6 +26,18 @@ def _multiple(decimal: str) -> str:
     return f"{Decimal(decimal):.2f}x"
 
 
+def _diligence_line(item: dict[str, Any]) -> str:
+    return (
+        f"- OPEN **{item['request_id']} · {item['materiality']} · "
+        f"{item['due_state']}** — {item['request']} Owner: {item['owner']}. "
+        f"Decision consequence: {item['decision_consequence']}"
+    )
+
+
+def _ascii_dashes(value: str) -> str:
+    return value.translate(str.maketrans({"—": "-", "–": "-", "‑": "-", "−": "-"}))
+
+
 def _packet(case: dict[str, Any]) -> dict[str, Any]:
     engine = case["peEngine"]
     bridge = case["valueCreationBridge"]
@@ -301,7 +313,7 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
         "## Falsifiers, open diligence, and limitations",
         "",
         *[f"- FALSIFIER: {item}" for item in packet["thesis"]["falsifiers"]],
-        *[f"- OPEN: {item}" for item in packet["thesis"]["requests"]],
+        *[_diligence_line(item) for item in packet["thesis"]["requests"]],
         "",
         "This packet is generated from a fictional deterministic room. Synthetic causal estimates recover planted mechanisms only. Scenario outputs are not forecasts. The investment record remains unsigned and requires human IC authority.",
         "",
@@ -446,7 +458,7 @@ def _memo_markdown(packet: dict[str, Any]) -> str:
         "### Falsifiers and open diligence",
         "",
         *[f"- {item}" for item in packet["thesis"]["falsifiers"]],
-        *[f"- OPEN: {item}" for item in packet["thesis"]["requests"]],
+        *[_diligence_line(item) for item in packet["thesis"]["requests"]],
         "",
         "### Risk, mitigant, owner, and consequence",
         "",
@@ -570,7 +582,7 @@ def build_ic_packet_from_case(case: dict[str, Any], output_dir: str | Path) -> d
     destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
     packet = packet_builder(case)
-    markdown = memo_builder(packet)
+    markdown = _ascii_dashes(memo_builder(packet))
     html = _memo_html(markdown, packet)
     memo_path = destination / "ic-memo.md"
     html_path = destination / "ic-memo.html"

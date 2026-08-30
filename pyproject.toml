@@ -28,7 +28,7 @@ toolkit = [
   "dailyaiagents-release-gate==0.1.1",
   "mcp==1.29.1",
 ]
-dev = ["pytest==9.0.3"]
+dev = ["pytest==9.0.3", "Pillow==12.3.0"]
 demo = ["Pillow==12.3.0"]
 quality = ["bandit==1.8.6", "pip-audit==2.9.0", "ruff==0.12.12"]
 

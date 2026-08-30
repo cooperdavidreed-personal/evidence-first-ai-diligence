@@ -49,7 +49,7 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
         "## Leverage, liquidity, and covenant workpaper",
         "## Sensitivity and distributional downside",
         "### Risk, mitigant, owner, and consequence",
-        "### Team judgment — synthetic room only",
+        "### Team judgment - synthetic room only",
         "## Value creation",
         "### Ownership cadence and board control",
         "## Receipt appendix",
@@ -57,6 +57,9 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
         assert section in markdown
     assert "Probability below 1.0x MOIC" in markdown
     assert "Probability of a modeled covenant breach" in markdown
+    assert "OPEN **AG-D04 · CRITICAL · PRE_DEBT_COMMITMENT**" in markdown
+    assert "{'request_id'" not in markdown
+    assert not set("—–‑−").intersection(markdown)
     for phase in ("Pre-close", "Day 1", "Day 30", "Day 100", "Year 1"):
         assert f"| {phase} |" in markdown
     html = artifacts["html"].read_text(encoding="utf-8")
@@ -84,8 +87,14 @@ def test_ic_packet_fails_closed_on_failed_diagnostic(tmp_path: Path) -> None:
     ag10 = next(item for item in tampered["analyses"] if item["analysis_id"] == "AG-10")
     diagnostic = next(item for item in ag10["diagnostics"] if item["name"] == "xirr_npv_residual")
     diagnostic["status"] = "FAIL"
-    ag10.pop("receipt_sha256")
+    prior_receipt = ag10.pop("receipt_sha256")
     ag10["receipt_sha256"] = digest(ag10)
+    for metric in tampered["metricRegistry"]:
+        if metric["governing_receipt_sha256"] != prior_receipt:
+            continue
+        metric["governing_receipt_sha256"] = ag10["receipt_sha256"]
+        metric.pop("metric_sha256")
+        metric["metric_sha256"] = digest(metric)
     tampered.pop("analysis_sha256")
     tampered["analysis_sha256"] = digest(tampered)
     try:
@@ -105,6 +114,10 @@ def test_helios_ic_packet_reconciles_engine_terms_and_receipts(tmp_path: Path) -
     repeated = build_ic_packet_from_case(case, tmp_path / "packet-repeat")
     for artifact_name in ("memo", "html", "appendix", "receipt"):
         assert artifacts[artifact_name].read_bytes() == repeated[artifact_name].read_bytes()
+    markdown = artifacts["memo"].read_text(encoding="utf-8")
+    assert "OPEN **HX-D04 · CRITICAL · PRE_SIGNING**" in markdown
+    assert "{'request_id'" not in markdown
+    assert not set("—–‑−").intersection(markdown)
     packet = json.loads(artifacts["appendix"].read_text(encoding="utf-8"))
     body = dict(packet)
     expected = body.pop("packet_sha256")

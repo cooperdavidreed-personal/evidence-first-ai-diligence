@@ -1,59 +1,107 @@
 from __future__ import annotations
 
-import subprocess
-import sys
-from html.parser import HTMLParser
+import hashlib
+import json
 from pathlib import Path
-from urllib.parse import urlparse
+
+import pytest
+
+from ic_evidence_lab.canonical import canonical_json
+from scripts.build_pages import build
 
 
-ROOT = Path(__file__).parents[1]
+def _candidate_repo(root: Path) -> Path:
+    repo = root / "candidate-repo"
+    for case in ("atlasgrid", "helios"):
+        case_root = repo / "portfolio" / case
+        case_root.mkdir(parents=True)
+        for name in ("ic-memo.html", "ic-memo.md", "model-appendix.json", "packet-receipt.json"):
+            (case_root / name).write_text(f"{case}:{name}")
+    png = repo / "dist/visual-evidence/proof.png"
+    pdf = repo / "output/pdf/memo.pdf"
+    png.parent.mkdir(parents=True)
+    pdf.parent.mkdir(parents=True)
+    png.write_bytes(b"reviewed-png")
+    pdf.write_bytes(b"reviewed-pdf")
+    manifest = {
+        "schema_version": "underwriting.visual-evidence/v1",
+        "files": [
+            {
+                "path": "dist/visual-evidence/proof.png",
+                "viewport": "1x1",
+                "bytes": png.stat().st_size,
+                "sha256": hashlib.sha256(png.read_bytes()).hexdigest(),
+            }
+        ],
+        "print_files": [
+            {
+                "path": "output/pdf/memo.pdf",
+                "format": "test PDF",
+                "bytes": pdf.stat().st_size,
+                "sha256": hashlib.sha256(pdf.read_bytes()).hexdigest(),
+            }
+        ],
+        "scope": "test",
+    }
+    manifest["manifest_sha256"] = hashlib.sha256(canonical_json(manifest)).hexdigest()
+    manifest_path = repo / "verification/visual-evidence.json"
+    manifest_path.parent.mkdir(parents=True)
+    manifest_path.write_bytes(canonical_json(manifest) + b"\n")
+    return repo
 
 
-class ResourceParser(HTMLParser):
-    def __init__(self) -> None:
-        super().__init__()
-        self.resources: list[str] = []
+def test_pages_stage_v2_workbench_and_bound_candidate_artifacts(tmp_path: Path) -> None:
+    repo = _candidate_repo(tmp_path)
+    workbench = tmp_path / "built-workbench"
+    workbench.mkdir()
+    (workbench / "index.html").write_text("<h1>V2 portfolio workbench</h1>")
+    (workbench / "assets").mkdir()
+    (workbench / "assets/app.js").write_text("console.log('v2')")
+    destination = tmp_path / "pages"
 
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        for name, value in attrs:
-            if name in {"href", "src"} and value:
-                self.resources.append(value)
+    build(repo, destination, workbench)
+
+    assert (destination / "index.html").read_text() == "<h1>V2 portfolio workbench</h1>"
+    assert (destination / "assets/app.js").is_file()
+    for case in ("atlasgrid", "helios"):
+        for name in ("ic-memo.html", "ic-memo.md", "model-appendix.json", "packet-receipt.json"):
+            assert (destination / "portfolio" / case / name).is_file()
+    assert (destination / "verification/visual-evidence.json").is_file()
+    assert (destination / "output/pdf/memo.pdf").is_file()
+    assert not (destination / "demo").exists()
+
+    manifest = json.loads((destination / "candidate-artifacts.json").read_text())
+    assert manifest["schema_version"] == "underwriting.portfolio-candidate/v2"
+    roles = {entry["role"] for entry in manifest["artifacts"]}
+    assert {"v2-workbench", "case-packet", "visual-manifest", "visual-evidence", "print-pdf"} <= roles
+    for entry in manifest["artifacts"]:
+        artifact = destination / entry["path"]
+        assert artifact.stat().st_size == entry["bytes"]
+        assert hashlib.sha256(artifact.read_bytes()).hexdigest() == entry["sha256"]
 
 
-def test_static_pages_are_built_from_canonical_cases(tmp_path: Path) -> None:
-    subprocess.run(
-        [sys.executable, str(ROOT / "scripts/build_pages.py"), "--out", str(tmp_path)],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    page = (tmp_path / "index.html").read_text()
-    assert "Build investment memos that show their work" in page
-    assert "does not make investment decisions" in page
-    assert 'class="skip" href="#content"' in page
-    assert '<main id="content">' in page
-    assert (
-        "<caption>Citation statuses for the corrected synthetic case</caption>" in page
-    )
-    assert 'rel="icon" href="data:image/svg+xml' in page
-    assert "VectorForge AI" not in page or "synthetic" in page.lower()
-    assert (tmp_path / "data/after.json").is_file()
-    assert (tmp_path / "data/after-receipt.json").is_file()
-    assert not (tmp_path / "assets/app.js").exists()
-    for relative in (
-        "assets/styles.css",
-        "data/after.json",
-        "data/after-receipt.json",
-        "data/before.json",
-    ):
-        assert (tmp_path / relative).is_file()
-    parser = ResourceParser()
-    parser.feed(page)
-    assert parser.resources
-    for resource in parser.resources:
-        parsed = urlparse(resource)
-        assert parsed.scheme in {"", "data"}
-        if not parsed.scheme and not resource.startswith("#"):
-            assert (tmp_path / parsed.path).is_file()
+def test_pages_refuse_stale_destination(tmp_path: Path) -> None:
+    repo = _candidate_repo(tmp_path)
+    workbench = tmp_path / "built-workbench"
+    workbench.mkdir()
+    (workbench / "index.html").write_text("v2")
+    destination = tmp_path / "pages"
+    destination.mkdir()
+    (destination / "stale.txt").write_text("stale")
+    with pytest.raises(RuntimeError, match="must be empty"):
+        build(repo, destination, workbench)
+
+
+def test_pages_reject_unsafe_visual_manifest_path(tmp_path: Path) -> None:
+    repo = _candidate_repo(tmp_path)
+    manifest_path = repo / "verification/visual-evidence.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["files"][0]["path"] = "../outside.png"
+    manifest.pop("manifest_sha256")
+    manifest["manifest_sha256"] = hashlib.sha256(canonical_json(manifest)).hexdigest()
+    manifest_path.write_bytes(canonical_json(manifest) + b"\n")
+    workbench = tmp_path / "built-workbench"
+    workbench.mkdir()
+    (workbench / "index.html").write_text("v2")
+    with pytest.raises(ValueError, match="unsafe candidate artifact path"):
+        build(repo, tmp_path / "pages", workbench)

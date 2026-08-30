@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import rawData from "./data/cases.json";
 import {assertWorkbenchData} from "./data-contract";
-import { PEUnderwritingRoom, PEValueCreation } from "./pe";
+import {ChartRegistryCaption} from "./chart-registry";
+import { PESnapshotTerms, PEUnderwritingRoom, PEValueCreation } from "./pe";
 import { VCSnapshotTerms, VCUnderwritingRoom, VCValueCreation } from "./vc";
 import { ThesisGraphView } from "./thesis-graph";
+import {ValuePlanDetails} from "./value-plan";
 import type { Analysis, CaseData, Lineage, Metric, WorkbenchData } from "./types";
 
 const dataCandidate: unknown = rawData;
@@ -84,7 +86,7 @@ function Distribution({caseData, openMetric}: {caseData: CaseData; openMetric?: 
         <div className="distribution-row" key={caseData.returnsDistribution.labels[index]}>
           <span>{caseData.returnsDistribution.labels[index]}</span>
           <div className="bar-track"><div className="bar" style={{width: `${Math.max(3, (value / maximum) * 100)}%`}} /></div>
-          {openMetric ? <button className="distribution-value" aria-label={`Inspect lineage for ${caseData.returnsDistribution.labels[index]} conditional MOIC`} onClick={(event) => openMetric({metric_id: `${caseData.caseId}-distribution-${index}`, label: `${caseData.returnsDistribution.labels[index]} conditional MOIC`, value: `${value.toFixed(2)}x`, detail: "Seeded scenario output, not a forecast", classification: "SCENARIO", lineage: [caseData.distributionLineage]}, event.currentTarget)}>{value.toFixed(2)}x ↗</button> : <strong>{value.toFixed(2)}x</strong>}
+          {openMetric ? <button className="distribution-value" data-metric-id={caseData.caseId === "helios" ? `helios-distribution-moic-${index}` : `${caseData.caseId}-distribution-${index}`} aria-label={`Inspect lineage for ${caseData.returnsDistribution.labels[index]} conditional MOIC`} onClick={(event) => openMetric({metric_id: caseData.caseId === "helios" ? `helios-distribution-moic-${index}` : `${caseData.caseId}-distribution-${index}`, label: `${caseData.returnsDistribution.labels[index]} conditional MOIC`, value: `${value.toFixed(2)}x`, detail: "Seeded scenario output, not a forecast", classification: "SCENARIO", lineage: [caseData.distributionLineage]}, event.currentTarget)}>{value.toFixed(2)}x ↗</button> : <strong>{value.toFixed(2)}x</strong>}
         </div>
       ))}
     </figure>
@@ -108,6 +110,7 @@ function Snapshot({caseData, openMetric}: {caseData: CaseData; openMetric: (metr
           <ul className="condition-list">{caseData.decision.conditions.map((condition) => <li key={condition}>{condition}</li>)}</ul>
         </div>
       </section>
+      {caseData.peEngine && <PESnapshotTerms caseData={caseData} openMetric={openMetric} />}
       {caseData.vcEngine && <VCSnapshotTerms caseData={caseData} openMetric={openMetric} />}
       <section aria-labelledby="metrics-title">
         <div className="section-heading"><p className="kicker">Decision economics</p><h2 id="metrics-title">What must be true</h2></div>
@@ -128,6 +131,7 @@ function Snapshot({caseData, openMetric}: {caseData: CaseData; openMetric: (metr
         <article className="counter"><p className="kicker">Counterthesis</p><p>{caseData.thesis.counterthesis}</p></article>
       </section>
       <section className="snapshot-criteria"><article><p className="kicker">Decisive drivers</p><ul>{caseData.thesis.drivers.map((item) => <li key={item}>{item}</li>)}</ul></article><article><p className="kicker">Falsifiers</p><ul className="falsifier-list">{falsifiers.map((item) => <li key={item.label}><span>{item.label}<small>{item.observed}</small></span><strong data-status={item.status}>{item.status}</strong></li>)}</ul></article></section>
+      <ChartRegistryCaption caseData={caseData} location="IC Snapshot" />
       <Distribution caseData={caseData} openMetric={openMetric} />
     </div>
   );
@@ -135,16 +139,18 @@ function Snapshot({caseData, openMetric}: {caseData: CaseData; openMetric: (metr
 
 function ThesisEvidence({caseData}: {caseData: CaseData}) {
   const falsifiers = caseData.falsifierStates ?? caseData.thesis.falsifiers.map((label) => ({label, status: "OPEN" as const, observed: "Not evaluated"}));
+  const diligenceRequests = caseData.thesis.requests.map((item, index) => typeof item === "string" ? {request_id: `${caseData.caseId}-legacy-${index}`, request: item, owner: "Not assigned", due_state: "OPEN", materiality: "HIGH" as const, decision_consequence: "Retain HOLD until adjudicated."} : item);
   return (
     <div className="view-stack">
       <section className="thesis-header"><p className="kicker">Falsifiable thesis</p><h2>{caseData.thesis.statement}</h2><p>{caseData.thesis.counterthesis}</p></section>
       <section className="thesis-grid">
         <article><h3>Value drivers</h3><ol>{caseData.thesis.drivers.map((item) => <li key={item}>{item}</li>)}</ol></article>
         <article className="falsifiers"><h3>Kill criteria</h3><ol className="falsifier-list">{falsifiers.map((item) => <li key={item.label}><span>{item.label}<small>{item.observed}</small></span><strong data-status={item.status}>{item.status}</strong></li>)}</ol></article>
-        <article><h3>Next diligence requests</h3><ol>{caseData.thesis.requests.map((item) => <li key={item}>{item}</li>)}</ol></article>
+        <article><h3>Next diligence requests</h3><ol>{diligenceRequests.map((item) => <li key={item.request_id}>{item.request}</li>)}</ol></article>
       </section>
+      <section aria-labelledby="diligence-title"><div className="section-heading"><p className="kicker">Open-gate register</p><h2 id="diligence-title">Diligence requests and decision consequences</h2></div><div className="diligence-register">{diligenceRequests.map((item) => <article key={item.request_id} data-materiality={item.materiality}><div><span>{item.request_id}</span><strong>{item.materiality}</strong></div><h3>{item.request}</h3><dl><div><dt>Owner</dt><dd>{item.owner}</dd></div><div><dt>Due state</dt><dd>{item.due_state.replaceAll("_", " ")}</dd></div><div><dt>If unresolved</dt><dd>{item.decision_consequence}</dd></div></dl></article>)}</div></section>
       <section aria-labelledby="team-title"><div className="section-heading"><p className="kicker">Role-specific judgment · synthetic room only</p><h2 id="team-title">Team capability, gaps, and required capacity</h2></div><div className="team-assessment"><article><h3>Observable strengths</h3><ul>{caseData.teamAssessment.strengths.map((item) => <li key={item}>{item}</li>)}</ul></article><article><h3>Unproven capabilities</h3><ul>{caseData.teamAssessment.unproven.map((item) => <li key={item}>{item}</li>)}</ul></article><article><h3>Key-person risk</h3><p>{caseData.teamAssessment.key_person_risk}</p></article><article><h3>Required hires / capacity</h3><ul>{caseData.teamAssessment.required_hires.map((item) => <li key={item}>{item}</li>)}</ul></article></div></section>
-      <section aria-labelledby="graph-title"><div className="section-heading"><p className="kicker">Machine-readable thesis graph</p><h2 id="graph-title">Evidence → estimate → judgment → action</h2></div><ThesisGraphView graph={caseData.thesisGraph} /><p className="graph-receipt">{caseData.thesisGraph.nodes.length} nodes · {caseData.thesisGraph.edges.length} typed relationships · graph <code>{caseData.thesisGraph.graph_sha256.slice(0, 16)}…</code></p></section>
+      <section aria-labelledby="graph-title"><div className="section-heading"><p className="kicker">Machine-readable thesis graph</p><h2 id="graph-title">Evidence → estimate → judgment → action</h2></div><ChartRegistryCaption caseData={caseData} location="Thesis & Evidence" /><ThesisGraphView graph={caseData.thesisGraph} /><p className="graph-receipt">{caseData.thesisGraph.nodes.length} nodes · {caseData.thesisGraph.edges.length} typed relationships · graph <code>{caseData.thesisGraph.graph_sha256.slice(0, 16)}…</code></p></section>
       {caseData.evidenceMappings && <section aria-labelledby="mapping-title"><div className="section-heading"><p className="kicker">Evidence-to-economics discipline</p><h2 id="mapping-title">What receives model credit—and what does not</h2></div><div className="table-wrap" tabIndex={0}><table><thead><tr><th>Evidence</th><th>Observed</th><th>Mapped target</th><th>Credit class</th><th>Model credit</th><th>Decision response</th></tr></thead><tbody>{caseData.evidenceMappings.map((item) => <tr key={item.mapping_id}><td>{item.source_analysis_id}<small className="cell-receipt">{item.source_receipt_sha256.slice(0, 10)}…</small></td><td>{item.observed_value}</td><td>{item.target_assumption_or_condition}</td><td>{displayClass(item.credit_classification)}</td><td>{item.model_credit}</td><td>{item.decision_response}</td></tr>)}</tbody></table></div></section>}
       <section aria-labelledby="evidence-title">
         <div className="section-heading"><p className="kicker">Content-addressed room</p><h2 id="evidence-title">Evidence register</h2></div>
@@ -156,31 +162,40 @@ function ThesisEvidence({caseData}: {caseData: CaseData}) {
   );
 }
 
-function AnalysisDetail({analysis}: {analysis: Analysis}) {
+function analysisOutputMetric(caseData: CaseData, analysis: Analysis, output: Analysis["outputs"][number]): Metric {
+  const metricId = `${caseData.caseId}-${analysis.analysis_id.toLowerCase()}-${output.name}`;
+  const registry = caseData.metricRegistry.find((item) => item.metric_id === metricId);
+  return {metric_id: metricId, label: `${analysis.analysis_id} · ${output.name.replaceAll("_", " ")}`, value: registry?.display_value ?? `${output.value} ${output.unit}`, detail: `${analysis.question} Population: ${analysis.population}.`, classification: registry?.classification ?? analysis.classification, lineage: caseData.lineage.filter((item) => item.analysis_id === analysis.analysis_id && item.output_names.includes(output.name)).map((item) => item.node_id), registry};
+}
+
+function AnalysisDetail({caseData, analysis, openMetric}: {caseData: CaseData; analysis: Analysis; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
   return (
     <article className="analysis-detail">
       <div className="analysis-title"><div><p className="kicker">{analysis.analysis_id}</p><h3>{analysis.question}</h3></div><span className={`state ${analysis.state.toLowerCase()}`}>{analysis.state}</span></div>
-      <dl className="method-grid"><div><dt>Estimand / outputs</dt><dd>{analysis.outputs.length ? analysis.outputs.map((item) => `${item.name}: ${item.value} ${item.unit}`).join(" · ") : "No estimate — abstention retained"}</dd></div><div><dt>Method</dt><dd>{analysis.method}</dd></div><div><dt>Population</dt><dd>{analysis.population}</dd></div><div><dt>Classification / cutoff</dt><dd>{displayClass(analysis.classification)} · {analysis.cutoff}</dd></div></dl>
+      <dl className="method-grid"><div><dt>Estimand / outputs</dt><dd className="analysis-output-list">{analysis.outputs.length ? analysis.outputs.map((output) => {const metric = analysisOutputMetric(caseData, analysis, output); return <button key={output.name} data-metric-id={metric.metric_id} onClick={(event) => openMetric(metric, event.currentTarget)} aria-label={`Inspect lineage for ${metric.label}`}><span>{output.name.replaceAll("_", " ")}</span><strong>{metric.value}</strong><small>Inspect ↗</small></button>;}) : "No estimate — abstention retained"}</dd></div><div><dt>Method</dt><dd>{analysis.method}</dd></div><div><dt>Population</dt><dd>{analysis.population}</dd></div><div><dt>Classification / cutoff</dt><dd>{displayClass(analysis.classification)} · {analysis.cutoff}</dd></div></dl>
       <div className="diagnostics"><h4>Diagnostics</h4>{analysis.diagnostics.map((diagnostic) => <div key={diagnostic.name}><span>{diagnostic.name.replaceAll("_", " ")}</span><strong>{diagnostic.value}</strong><em data-status={diagnostic.status}>{diagnostic.status}</em></div>)}</div>
       <p className="assumption">{analysis.assumptions.join(" ")}</p>
     </article>
   );
 }
 
-function EconometricLab({caseData}: {caseData: CaseData}) {
+function EconometricLab({caseData, openMetric}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
   const identified = caseData.analyses.filter((item) => item.classification === "CAUSAL_SYNTHETIC_ONLY");
   const associative = caseData.analyses.filter((item) => item.classification === "PREDICTIVE_ASSOCIATION" || item.classification === "NOT_IDENTIFIED");
   const [mode, setMode] = useState<"identified" | "naive">("identified");
   const visible = mode === "identified" ? identified : associative;
   const paired = caseData.caseId === "atlasgrid"
-    ? {naive: "Observational offer-scale association", naiveValue: caseData.analyses.find((item) => item.analysis_id === "AG-06")?.outputs.find((item) => item.name === "implied_offer_scale_association")?.value ?? "n/a", adjusted: "Randomized offer ITT", adjustedValue: caseData.analyses.find((item) => item.analysis_id === "AG-07")?.outputs[0]?.value ?? "n/a", unit: "percentage points · same offer scale", naiveNote: "selection exposed", adjustedNote: "design-aligned comparison"}
-    : {naive: "Precommitted unadjusted randomized ITT", naiveValue: caseData.analyses.find((item) => item.analysis_id === "HX-06")?.outputs.find((item) => item.name === "optimizer_ate")?.value ?? "n/a", adjusted: "Baseline-adjusted precision companion", adjustedValue: caseData.analyses.find((item) => item.analysis_id === "HX-06")?.outputs.find((item) => item.name === "optimizer_baseline_adjusted_companion")?.value ?? "n/a", unit: "log-cost percentage points · same randomized population", naiveNote: "primary recovery and economic mapping", adjustedNote: "companion only; receives no separate credit"};
+    ? {naive: "Observational offer-scale association", naiveAnalysis: "AG-06", naiveOutput: "implied_offer_scale_association", adjusted: "Randomized offer ITT", adjustedAnalysis: "AG-07", adjustedOutput: "renewal_itt", unit: "percentage points · same offer scale", naiveNote: "selection exposed", adjustedNote: "design-aligned comparison"}
+    : {naive: "Precommitted unadjusted randomized ITT", naiveAnalysis: "HX-06", naiveOutput: "optimizer_ate", adjusted: "Baseline-adjusted precision companion", adjustedAnalysis: "HX-06", adjustedOutput: "optimizer_baseline_adjusted_companion", unit: "log-cost percentage points · same randomized population", naiveNote: "primary recovery and economic mapping", adjustedNote: "companion only; receives no separate credit"};
+  const pairMetric = (analysisId: string, outputName: string) => {const analysis = caseData.analyses.find((item) => item.analysis_id === analysisId); const output = analysis?.outputs.find((item) => item.name === outputName); return analysis && output ? analysisOutputMetric(caseData, analysis, output) : null;};
+  const naiveMetric = pairMetric(paired.naiveAnalysis, paired.naiveOutput);
+  const adjustedMetric = pairMetric(paired.adjustedAnalysis, paired.adjustedOutput);
   return (
     <div className="view-stack">
       <section className="econ-intro"><div><p className="kicker">Identification before inference</p><h2>What the design can—and cannot—establish</h2></div><div className="segmented" aria-label="Analysis comparison"><button aria-pressed={mode === "naive"} onClick={() => setMode("naive")}>Association / abstention</button><button aria-pressed={mode === "identified"} onClick={() => setMode("identified")}>Identified synthetic effect</button></div></section>
       <aside className="epistemic-note"><strong>Synthetic causal boundary</strong><span>Identified effects recover a planted assignment mechanism. They are not real-company causal claims.</span></aside>
-      <section className="paired-estimate" aria-label="Naive versus adjusted comparison"><article><span>{paired.naive}</span><strong>{paired.naiveValue}</strong><small>{paired.unit} · {paired.naiveNote}</small></article><div aria-hidden="true">→</div><article><span>{paired.adjusted}</span><strong>{paired.adjustedValue}</strong><small>{paired.unit} · {paired.adjustedNote}</small></article></section>
-      <section className="analysis-list">{visible.length ? visible.map((analysis) => <AnalysisDetail key={analysis.analysis_id} analysis={analysis} />) : <p>No analysis in this class.</p>}</section>
+      <section className="paired-estimate" aria-label="Naive versus adjusted comparison"><article><span>{paired.naive}</span>{naiveMetric ? <button data-metric-id={naiveMetric.metric_id} onClick={(event) => openMetric(naiveMetric, event.currentTarget)} aria-label={`Inspect lineage for ${paired.naive}`}><strong>{naiveMetric.value}</strong><em>Inspect ↗</em></button> : <strong>n/a</strong>}<small>{paired.unit} · {paired.naiveNote}</small></article><div aria-hidden="true">→</div><article><span>{paired.adjusted}</span>{adjustedMetric ? <button data-metric-id={adjustedMetric.metric_id} onClick={(event) => openMetric(adjustedMetric, event.currentTarget)} aria-label={`Inspect lineage for ${paired.adjusted}`}><strong>{adjustedMetric.value}</strong><em>Inspect ↗</em></button> : <strong>n/a</strong>}<small>{paired.unit} · {paired.adjustedNote}</small></article></section>
+      <section className="analysis-list">{visible.length ? visible.map((analysis) => <AnalysisDetail key={analysis.analysis_id} caseData={caseData} analysis={analysis} openMetric={openMetric} />) : <p>No analysis in this class.</p>}</section>
       <section className="classification-key"><h3>Method classes</h3>{["ACCOUNTING_IDENTITY", "DESCRIPTIVE", "PREDICTIVE_ASSOCIATION", "CAUSAL_SYNTHETIC_ONLY", "SCENARIO", "NOT_IDENTIFIED"].map((item) => <span key={item}>{displayClass(item)}</span>)}</section>
     </div>
   );
@@ -228,7 +243,7 @@ function ValueCreation({caseData, openMetric}: {caseData: CaseData; openMetric: 
   return (
     <div className="view-stack">
       <section className="value-head"><p className="kicker">Underwriting to ownership</p><h2>Every initiative earns its place in the value bridge</h2><p>Baselines come from the frozen room. Targets are illustrative human assumptions with named owners, milestones, and failure modes.</p></section>
-      <section className="initiative-list">{caseData.valueCreation.map((item, index) => <article key={item.initiative}><span className="initiative-number">0{index + 1}</span><div className="initiative-title"><h3>{item.initiative}</h3><p>{item.owner}</p><button className="text-link" onClick={(event) => openMetric({metric_id: `${caseData.caseId}-initiative-${index}`, label: `${item.initiative} baseline`, value: item.baseline, detail: `Evidence-bound baseline. Target ${item.target} is an illustrative HUMAN_JUDGMENT assumption; ${item.value}.`, classification: "DESCRIPTIVE", lineage: item.lineage}, event.currentTarget)}>Inspect baseline evidence ↗</button></div><dl><div><dt>KPI</dt><dd>{item.kpi}</dd></div><div><dt>Baseline → target</dt><dd>{item.baseline} → <span className="human-assumption">{item.target} · human assumption</span></dd></div><div><dt>Milestone</dt><dd>{item.milestone}</dd></div><div><dt>Value bridge</dt><dd>{item.value}</dd></div><div><dt>Principal risk</dt><dd>{item.risk}</dd></div></dl></article>)}</section>
+      <ValuePlanDetails caseData={caseData} openMetric={openMetric} />
       <section aria-labelledby="cadence-title"><div className="section-heading"><p className="kicker">Pre-close to board control</p><h2 id="cadence-title">Ownership cadence</h2></div><div className="ownership-cadence">{caseData.ownershipCadence.map((item) => <article key={item.phase}><span>{item.phase}</span><small>{item.timing}</small><h3>{item.milestone}</h3><dl><div><dt>Owner</dt><dd>{item.owner}</dd></div><div><dt>Board KPI</dt><dd>{item.kpi}</dd></div><div><dt>Stop rule</dt><dd>{item.stop_rule}</dd></div></dl></article>)}</div></section>
     </div>
   );
@@ -274,9 +289,9 @@ export default function App() {
       <main id="workspace" tabIndex={-1} ref={workspaceRef}>
         {view === "IC Snapshot" && <Snapshot caseData={caseData} openMetric={openRegisteredMetric} />}
         {view === "Thesis & Evidence" && <ThesisEvidence caseData={caseData} />}
-        {view === "Econometric Lab" && <EconometricLab caseData={caseData} />}
+        {view === "Econometric Lab" && <EconometricLab caseData={caseData} openMetric={openRegisteredMetric} />}
         {view === "Underwriting Room" && <UnderwritingRoom caseData={caseData} openMetric={openRegisteredMetric} />}
-        {view === "Value Creation" && <ValueCreation caseData={caseData} openMetric={openRegisteredMetric} />}
+        {view === "Value Creation" && (caseData.vcEngine ? <div className="view-stack"><ChartRegistryCaption caseData={caseData} location="Value Creation" /><ValueCreation caseData={caseData} openMetric={openRegisteredMetric} /><ValuePlanDetails caseData={caseData} openMetric={openRegisteredMetric} /></div> : <ValueCreation caseData={caseData} openMetric={openRegisteredMetric} />)}
       </main>
       <footer><span>Local synthetic reference implementation</span><span>Manifest <code>{caseData.manifest_sha256.slice(0, 16)}…</code></span><span>No runtime model, network, or investment authority</span></footer>
       {drawerMetric && <EvidenceDrawer caseData={caseData} metric={drawerMetric} onClose={() => {setDrawerMetric(null); requestAnimationFrame(() => drawerTrigger?.focus());}} />}

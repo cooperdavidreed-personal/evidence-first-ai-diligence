@@ -553,6 +553,7 @@ demo = [
     { name = "pillow" },
 ]
 dev = [
+    { name = "pillow" },
     { name = "pytest" },
 ]
 quality = [
@@ -575,6 +576,7 @@ requires-dist = [
     { name = "mcp", marker = "extra == 'toolkit'", specifier = "==1.29.1" },
     { name = "numpy", specifier = ">=2.3,<3" },
     { name = "pillow", marker = "extra == 'demo'", specifier = "==12.3.0" },
+    { name = "pillow", marker = "extra == 'dev'", specifier = "==12.3.0" },
     { name = "pip-audit", marker = "extra == 'quality'", specifier = "==2.9.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = "==9.0.3" },
     { name = "ruff", marker = "extra == 'quality'", specifier = "==0.12.12" },

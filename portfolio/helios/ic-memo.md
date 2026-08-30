@@ -1,13 +1,13 @@
-# Helios Compute Control — illustrative venture investment committee memorandum
+# Helios Compute Control - illustrative venture investment committee memorandum
 
-> SYNTHETIC — NOT INVESTMENT ADVICE
+> SYNTHETIC - NOT INVESTMENT ADVICE
 
 **Conditional posture:** `INVEST` subject to the executable terms and falsifiers below.
 
 **Authority:** `DECISION_RECORD_INCOMPLETE` / `PENDING_FOUNDER_SIGNATURE` / no delegated investment authority.
 
 **Knowledge cutoff:** `2026-08-29T00:00:00Z`
-**Packet receipt:** `20b9cee7af3f64aa192c0fc4a5d05914f5eca23c517a983691fcfe22d139a209`
+**Packet receipt:** `50cb867349419de230b2d2c6815d3250ff0b698521defec8a431d2eccb4a8339`
 
 ## Recommendation and executable terms
 
@@ -47,7 +47,7 @@ These are role-level evidence states, not invented biographies or reference-chec
 |---|---|
 | Observable strengths | CEO / founder: Product insight is supported by design-partner problem definition. CTO: Optimizer experiment shows synthetic unit-cost improvement. CRO / revenue: Pipeline stage history exists at opportunity level. Finance: No dedicated capability is evidenced. |
 | Unproven capabilities | CEO / founder: Commercial dependence and succession remain open. Evidence state: OPEN. CTO: Provider concentration and production replication remain open. Evidence state: PARTIAL. CRO / revenue: Ordinary-customer repeatability is not established. Evidence state: OPEN. Finance: Usage margin, runway, and financing controls need an accountable owner. Evidence state: ABSENT. |
-| Key-person risk | OPEN — founder commercial dependence and succession evidence remain conditions to the second tranche. |
+| Key-person risk | OPEN - founder commercial dependence and succession evidence remain conditions to the second tranche. |
 | Required capacity | Finance leader accountable for usage margin, monthly close, runway, and financing controls. Revenue operations owner accountable for ordinary-customer stage-to-close governance. |
 
 ## Cap table and financing-event bridge
@@ -119,9 +119,9 @@ Combined full-model impact: **$3.1M minimum cash**, **$3.9M Series C proceeds**,
 
 | Initiative | Evidence class | Baseline / target | Owner | Modeled consequence | Stop rule / risk |
 |---|---|---|---|---|---|
-| Ordinary-cohort expansion | HUMAN_JUDGMENT | 117.07% / 125% | CRO | $75,504/month cash; $9.1M exit value; $1.5M cost | Design-partner tactics do not transfer; stop if two ordinary cohorts fall below 105% |
-| Optimizer unit economics | MIXED_CAUSAL_SYNTHETIC_AND_SCENARIO | 70.61% / 74% | CTO | $56,142/month cash; $8.1M exit value; $2M cost | Provider price changes; stop if replication interval crosses zero |
-| Enterprise sales governance | DESCRIPTIVE | 48 inflated opportunities / <15% forecast error | CRO / Finance | $0/month cash; $0 exit value; $1.2M cost | Enterprise cycle elongation; stop tranche if stage history is incomplete |
+| Ordinary-cohort expansion | HUMAN_JUDGMENT | 117.07% / 125% | CRO | $75,504/month cash; $9.1M exit value; $1.5M cost | Design-partner tactics do not transfer |
+| Optimizer unit economics | MIXED_CAUSAL_SYNTHETIC_AND_SCENARIO | 70.61% / 74% | CTO | $56,142/month cash; $8.1M exit value; $2M cost | Provider price changes or workload mix invalidate transferred savings |
+| Enterprise sales governance | DESCRIPTIVE | 48 inflated opportunities / <15% forecast error | CRO / Finance | $0/month cash; $0 exit value; $1.2M cost | Enterprise cycle elongation remains unidentified |
 
 ### Economic mapping register
 
@@ -143,16 +143,16 @@ Combined full-model impact: **$3.1M minimum cash**, **$3.9M Series C proceeds**,
 - FALSIFIER: Pipeline conversion below 20%
 - FALSIFIER: Gross margin below 65%
 - FALSIFIER: Runway below 12 months post-close
-- OPEN: Full stage-history export
-- OPEN: Design-partner contract sample
-- OPEN: Cloud-cost unit ledger
-- OPEN: Preference and pro-rata side letters
+- OPEN **HX-D01 · HIGH · PRE_IC** - Full opportunity stage-history export through the cutoff Owner: Revenue operations diligence lead. Decision consequence: Keep the conditional tranche withheld until conversion and weighted pipeline are recomputed from complete history.
+- OPEN **HX-D02 · HIGH · PRE_SIGNING** - Design-partner contract and renewal sample Owner: Commercial diligence lead. Decision consequence: Re-underwrite ordinary-cohort transferability and remove pooled-retention credit if terms are not comparable.
+- OPEN **HX-D03 · CRITICAL · PRE_TRANCHE** - Provider-level compute, telemetry, and support unit-cost ledger Owner: Technical and financial diligence leads. Decision consequence: Do not release milestone capital until gross-margin improvement reconciles to provider invoices and workload telemetry.
+- OPEN **HX-D04 · CRITICAL · PRE_SIGNING** - Executed preference, pro-rata, option-pool, and side-letter schedule Owner: Deal counsel. Decision consequence: Do not fund until ownership and every waterfall scenario reconcile to executed terms.
 
 This packet is generated from a fictional deterministic room. Synthetic causal estimates recover planted mechanisms only. Scenario outputs are not forecasts. The investment record remains unsigned and requires human IC authority.
 
 ## Receipt appendix
 
-- Case analysis: `7e7e06047a4db2b9698ec68b85d61d5cbbf3b2bd498bec1a2a046ee34e8c0e8a`
+- Case analysis: `0c9046fb877b09dc84ad8225e079ae7c3c79f76c5efa4680374e637e9c31424d`
 - BASE result: `25e42585f6c9cd97a030d3d79dcb69c9aa70795ec76da82e822b8e2a6f0f3417`
 - MILESTONE result: `9cf24ca939951b9d65eecd0ce26b2721d39f4f0c48578e6a0a9093cbcf2203e8`
 - DOWNSIDE result: `8c4a2cfe0cafaa5a6340c8f0419f32e97ca590eab1ef8ac25cac9576affe2d20`

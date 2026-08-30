@@ -416,6 +416,31 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
         if not metric["source_locator_ids"] and not metric["operand_ids"] and not metric["assumption_ids"]:
             raise UnderwritingError("metric_provenance_missing")
 
+    for receipt in case["analyses"]:
+        for output in receipt["outputs"]:
+            metric_id = (
+                f"{case['caseId']}-{receipt['analysis_id'].lower()}-{output['name']}"
+            )
+            metric = metrics.get(metric_id)
+            if metric is None:
+                raise UnderwritingError(f"analysis_output_metric_missing:{metric_id}")
+            if metric["value"] != output["value"]:
+                raise UnderwritingError(f"analysis_output_metric_value_mismatch:{metric_id}")
+            if metric["governing_receipt_sha256"] != receipt["receipt_sha256"]:
+                raise UnderwritingError(f"analysis_output_receipt_mismatch:{metric_id}")
+            expected_locator_ids = {
+                f"locator-{item['node_id']}"
+                for item in case["lineage"]
+                if item["analysis_id"] == receipt["analysis_id"]
+                and output["name"] in item["output_names"]
+            }
+            if not expected_locator_ids:
+                raise UnderwritingError(
+                    f"analysis_output_lineage_missing:{receipt['analysis_id']}:{output['name']}"
+                )
+            if set(metric["source_locator_ids"]) != expected_locator_ids:
+                raise UnderwritingError(f"analysis_output_locator_mismatch:{metric_id}")
+
     formulas: dict[str, dict[str, Any]] = {}
     for formula in case["formulaRegistry"]:
         _validate_named_hash(formula, "formula-registry-entry-v2.schema.json", "formula_sha256")
@@ -485,6 +510,28 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
                 raise UnderwritingError("vc_milestone_metric_orphan")
             if test["evidence_locator"] not in lineage_ids:
                 raise UnderwritingError("vc_milestone_locator_orphan")
+
+
+def _validate_editorial_contract(case: dict[str, Any]) -> None:
+    request_ids = [item["request_id"] for item in case["thesis"]["requests"]]
+    if len(request_ids) != len(set(request_ids)):
+        raise UnderwritingError("diligence_request_duplicate")
+    chart_ids = [item["chart_id"] for item in case["chartRegistry"]]
+    if len(chart_ids) != len(set(chart_ids)):
+        raise UnderwritingError("chart_registry_duplicate")
+    initiatives = case["valueCreation"]
+    if not 3 <= len(initiatives) <= 5:
+        raise UnderwritingError("value_creation_priority_count_invalid")
+    priorities = [item["priority"] for item in initiatives]
+    if priorities != list(range(1, len(initiatives) + 1)):
+        raise UnderwritingError("value_creation_priorities_invalid")
+    lineage_ids = {item["node_id"] for item in case["lineage"]}
+    for initiative in initiatives:
+        if not set(initiative["lineage"]).issubset(lineage_ids):
+            raise UnderwritingError("value_creation_lineage_orphan")
+    screened_levers = [item["lever"] for item in case["screenedOutLevers"]]
+    if len(screened_levers) != len(set(screened_levers)):
+        raise UnderwritingError("screened_out_lever_duplicate")
 
 
 def validate_workbench_data(document: dict[str, Any]) -> None:
@@ -567,6 +614,7 @@ def validate_workbench_case(case: dict[str, Any]) -> None:
     is_v2 = case.get("schema_version") == "underwriting.workbench-case/v2"
     if is_v2:
         validate_v2_document(case, "workbench-case-v2.schema.json")
+        _validate_editorial_contract(case)
         _validate_hashed_v2_document(case["temporalScan"], "temporal-scan-v1.schema.json")
         if case["temporalScan"]["cutoff"] != CUTOFF or case["decision"].get("as_of") != CUTOFF:
             raise UnderwritingError("temporal_cutoff_mismatch")

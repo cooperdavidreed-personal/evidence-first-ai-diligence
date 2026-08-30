@@ -1,6 +1,8 @@
 import {useEffect, useMemo, useState} from "react";
+import {ChartRegistryCaption} from "./chart-registry";
 import {registeredMetric} from "./data-contract";
 import type {CaseData, Metric, PECaseResult, PESensitivityCell} from "./types";
+import {ValuePlanDetails} from "./value-plan";
 
 type OpenMetric = (metric: Metric, trigger: HTMLElement) => void;
 type ScenarioKey = "ask" | "selected" | "downside";
@@ -143,6 +145,7 @@ export function PEUnderwritingRoom({caseData, openMetric}: {caseData: CaseData; 
   const earnoutCap = Number(transaction.earnout_cap_cents ?? 0);
   return <div className="view-stack pe-room">
     <section className="underwriting-head"><div><p className="kicker">Cash-flow underwriting · {labels[scenarioKey]} basis</p><h2>Price, leverage, and downside</h2><p>Every selected state is a retained Python-engine result. The browser verifies ten simple accounting identities but does not recreate the financial engine.</p></div><div className="scenario-tabs">{(["ask", "selected", "downside"] as ScenarioKey[]).map((item) => <button key={item} aria-pressed={item === scenarioKey} onClick={() => setScenarioKey(item)}>{labels[item]}</button>)}</div></section>
+    <ChartRegistryCaption caseData={caseData} location="Underwriting Room" />
     <section className="terms-ribbon">
       <MetricButton metric={financeMetric(caseData, scenario, "entry", "Upfront EV", money(scenario.sources_and_uses.uses_cents.cash_enterprise_value), "Cash enterprise value in the selected sources-and-uses schedule.")} openMetric={openMetric} />
       <MetricButton metric={financeMetric(caseData, scenario, "max-bid", "Maximum bid", money(engine.maximum_bid_cents), "One-cent boundary solving the frozen 22% IRR and 2.0x MOIC hurdles with other selected terms fixed.")} openMetric={openMetric} />
@@ -155,12 +158,24 @@ export function PEUnderwritingRoom({caseData, openMetric}: {caseData: CaseData; 
   </div>;
 }
 
+export function PESnapshotTerms({caseData, openMetric}: {caseData: CaseData; openMetric: OpenMetric}) {
+  const selected = caseData.peEngine?.selected;
+  if (!selected) return null;
+  return <section className="terms-ribbon vc-snapshot-terms" aria-label="Executable buyout terms and returns">
+    <MetricButton metric={financeMetric(caseData, selected, "entry", "Upfront EV", money(selected.sources_and_uses.uses_cents.cash_enterprise_value), "Selected cash enterprise value before the contingent earnout.")} openMetric={openMetric} />
+    <MetricButton metric={financeMetric(caseData, selected, "debt-funded", "Funded term debt", "", "Funded term debt at close; undrawn revolver is excluded from sources.")} openMetric={openMetric} />
+    <MetricButton metric={financeMetric(caseData, selected, "earnout-terms", "Earnout threshold / cap", "", "Month-24 verified live ARR threshold and maximum contingent payment.")} openMetric={openMetric} />
+    <MetricButton metric={financeMetric(caseData, selected, "gross-irr", "Gross IRR", percent(selected.gross_xirr), "Dated gross-to-sponsor XIRR under the selected structure.")} openMetric={openMetric} />
+  </section>;
+}
+
 export function PEValueCreation({caseData, openMetric}: {caseData: CaseData; openMetric: OpenMetric}) {
   const bridge = caseData.valueCreationBridge;
   if (!bridge) return null;
   const maximum = Math.max(...bridge.standalone.map((item) => Math.abs(item.exit_equity_delta_cents)), Math.abs(bridge.interaction_residual_cents), 1);
   return <div className="view-stack">
     <section className="value-head"><p className="kicker">Diligence to Day 1</p><h2>Value creation reconciles into sponsor equity</h2><p>Each lever is a full operating, debt, and return recomputation. Synthetic causal evidence and human assumptions are labeled separately.</p></section>
+    <ChartRegistryCaption caseData={caseData} location="Value Creation" />
     <section className="value-waterfall" aria-labelledby="value-waterfall-title">
       <div className="panel-heading"><div><p className="kicker">Standalone effects + interaction</p><h3 id="value-waterfall-title">Exit-equity value bridge</h3></div><code>{bridge.receipt_sha256.slice(0, 12)}…</code></div>
       {bridge.standalone.map((item) => {
@@ -170,7 +185,7 @@ export function PEValueCreation({caseData, openMetric}: {caseData: CaseData; ope
       <article className="interaction"><div><span>Interaction residual</span><small>Explicit double-count control</small></div><div className="waterfall-track"><span style={{width: `${Math.max(2, Math.abs(bridge.interaction_residual_cents) / maximum * 100)}%`}} /></div><InlineMetricButton caseData={caseData} metricId="atlasgrid-value-interaction" detail="Combined full-model result less the sum of standalone exit-equity deltas." openMetric={openMetric} /></article>
       <footer><span>Combined exit-equity impact</span><InlineMetricButton caseData={caseData} metricId="atlasgrid-value-combined" detail={`Standalone sum ${money(bridge.sum_standalone_exit_equity_delta_cents)} plus interaction ${money(bridge.interaction_residual_cents)}. Receipt ${bridge.receipt_sha256}.`} openMetric={openMetric} /></footer>
     </section>
-    <section className="initiative-list">{caseData.valueCreation.map((item, index) => <article key={item.initiative}><span className="initiative-number">0{index + 1}</span><div className="initiative-title"><h3>{item.initiative}</h3><p>{item.owner}</p><small>{item.credit_classification?.replaceAll("_", " ")}</small><button className="text-link" onClick={(event) => openMetric({metric_id: `${caseData.caseId}-initiative-${index}`, label: `${item.initiative} baseline`, value: item.baseline, detail: `Evidence-bound baseline. Target ${item.target} is an illustrative HUMAN_JUDGMENT assumption; ${item.value}.`, classification: "DESCRIPTIVE", lineage: item.lineage}, event.currentTarget)}>Inspect baseline evidence ↗</button></div><dl><div><dt>KPI</dt><dd>{item.kpi}</dd></div><div><dt>Baseline → target</dt><dd>{item.baseline} → <span className="human-assumption">{item.target} · human assumption</span></dd></div><div><dt>Milestone</dt><dd>{item.milestone}</dd></div><div><dt>Value bridge</dt><dd>{item.value}</dd></div><div><dt>Principal risk</dt><dd>{item.risk}</dd></div></dl></article>)}</section>
+    <ValuePlanDetails caseData={caseData} openMetric={openMetric} />
     <section aria-labelledby="pe-cadence-title"><div className="section-heading"><p className="kicker">Pre-close to board control</p><h2 id="pe-cadence-title">Ownership cadence</h2></div><div className="ownership-cadence">{caseData.ownershipCadence.map((item) => <article key={item.phase}><span>{item.phase}</span><small>{item.timing}</small><h3>{item.milestone}</h3><dl><div><dt>Owner</dt><dd>{item.owner}</dd></div><div><dt>Board KPI</dt><dd>{item.kpi}</dd></div><div><dt>Stop rule</dt><dd>{item.stop_rule}</dd></div></dl></article>)}</div></section>
   </div>;
 }

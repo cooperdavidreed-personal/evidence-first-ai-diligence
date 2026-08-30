@@ -1,27 +1,31 @@
-# Evidence-First AI Diligence 0.1.0
+# Underwriting Intelligence Lab V2 portfolio candidate
 
-> `PUBLICATION HELD`: the verified engineering foundation remains local while
-> the product thesis and rejected `QUALITY SHORT` demo are reassessed.
+> `LOCAL PORTFOLIO CANDIDATE — FOUNDER REVIEW PENDING`: publication, hosted
+> CI, and anonymous access remain `NOT RUN` until separately authorized.
 
-This first public release demonstrates a narrow idea: an AI-assisted diligence
-workflow should make unsupported claims, counterevidence, temporal leakage, and
-human judgment visible instead of smoothing them into confident prose.
+The candidate release surface is the static React V2 underwriting workbench,
+the AtlasGrid and Helios synthetic case packets, the hash-bound visual-evidence
+manifest and screenshots, and the retained IC-memo PDFs. The earlier silent
+slide demo remains `QUALITY_SHORT`; it is legacy evidence and is deliberately
+excluded from the V2 release bundle and Pages artifact set.
 
 ## Inspect in under five minutes
 
-1. Read the failure and corrected examples in `examples/vectorforge/`.
-2. Run `uv run ic-evidence-lab run` for both cases.
-3. Inspect the packet, memo, and SHA-256-bound receipt.
-4. Run the 24-case benchmark.
-5. Watch the caption-led demo and open the GitHub Pages case study.
+1. Open the workbench and switch between AtlasGrid and Helios.
+2. Inspect all five views, scenario controls, and metric lineage.
+3. Open each case packet under `portfolio/`.
+4. Verify `verification/visual-evidence.json` against its PNG and PDF bytes.
+5. Inspect `candidate-artifacts.json`, which binds every staged Pages artifact.
 
 ## Verified locally
 
-- 20 Python tests and 24 declared benchmark outcomes pass.
-- Repeated outputs are byte-identical.
-- Evidence Gate 0.1.1 and Release Gate 0.1.1 return `PASS` for the bundle.
-- Clean package installation, static analysis, dependency audit, Pages build,
-  and the 80-second media contract pass.
+- The exact local counts and boundaries are recorded in `LOCAL-VERIFICATION.md`.
+- Candidate verification installs the toolkit extra and treats `NOT_RUN` from
+  Evidence Gate or Release Gate as a hard failure.
+- Clean wheel installation asserts the exact packaged kernel and underwriting
+  schema asset sets, including every V2 schema.
+- Pages and release-bundle automation stage the V2 workbench, both case
+  packets, the visual manifest and bound evidence, and the retained PDFs.
 
 Hosted CI and anonymous public access must be checked after publication. This
 project does not make investment decisions or provide investment advice.

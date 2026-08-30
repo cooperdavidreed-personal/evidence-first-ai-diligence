@@ -10,14 +10,19 @@ No API-key or paid fallback route is authorized. No provider output is case evid
 
 | Order | Provider role | Result | Treatment |
 |---|---|---:|---|
-| V2 model-integrity architecture review | Claude | `HELD_PROVIDER` | Native signed-in CLI returned a 429 usage hold; no paid or API-key fallback was used |
+| V2 model-integrity architecture review | Claude | `PRODUCED` | Advisory specifications were retained before implementation and accepted only through deterministic repair gates |
+| V2 frozen-benchmark and final integrated reviews | Claude | `HELD_PROVIDER` | A later native signed-in CLI order returned a 429 usage hold; no paid or API-key fallback was used |
 | V2 benchmark and countercase orders | Grok | `PRODUCED` | Advisory findings entered the frozen contracts only through deterministic implementation gates |
 | AtlasGrid PE implementation and verdict reviews | Grok | `ACCEPT_PE_GATE` | Final advisory score 92 with no critical or high finding; exact output digest is retained in local mission evidence |
 | Helios finance, data, and rendered-product audits | Codex subagents | `QUALITY_SHORT` then repaired | Milestone derivation, independent waterfall oracle, distribution-state risk, econometric labeling, headline formulas, and value mapping became executable repair gates |
-| V2 implementation and deterministic acceptance | Codex | `LOCALLY_VERIFIED_DETERMINISTIC` | Codex remained the only filesystem writer; 120 Python, 11 React, five browser/print flows, 45 smoke-recovery checks, two 500-seed coverage ledgers, and visual/PDF evidence passed on the candidate tree |
+| V2 implementation and deterministic acceptance | Codex | `REVERIFYING_EXACT_HEAD` | Codex remained the only filesystem writer; exact final denominators are recorded only after the current repair tree passes the full matrix |
 | Independent final V2 acceptance | Claude | `HELD_PROVIDER` | Required before the mission can claim provider-independent founder-review acceptance |
 
 Durable provider stdout, state events, and episode receipts live in the excluded local mission directory, not the proposed public package.
+
+The Episode 00 capsule digest does not match the current capsule digest. This
+historical `MISSION_INTEGRITY_SHORT` is disclosed in the local mission receipt;
+the current capsule is frozen and future provider events must be append-only.
 
 ## Claim discipline
 

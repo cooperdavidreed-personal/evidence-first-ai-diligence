@@ -3,7 +3,7 @@
   "title": "Underwriting workbench case v2",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "caseId", "company", "caseType", "synthetic", "investmentAdjudication", "workflowDisposition", "disclosure", "decision", "summaryMetrics", "thesis", "teamAssessment", "ownershipCadence", "falsifierStates", "analyses", "distributionLineage", "scenarios", "returnsDistribution", "evidenceMappings", "valueCreation", "lineage", "artifacts", "temporalScan", "manifest_sha256", "scenarioBook", "thesisGraph", "sourceLocators", "formulaRegistry", "metricRegistry", "renderManifest", "analysis_sha256"],
+  "required": ["schema_version", "caseId", "company", "caseType", "synthetic", "investmentAdjudication", "workflowDisposition", "disclosure", "decision", "summaryMetrics", "thesis", "chartRegistry", "teamAssessment", "ownershipCadence", "falsifierStates", "analyses", "distributionLineage", "scenarios", "returnsDistribution", "evidenceMappings", "valueCreation", "screenedOutLevers", "lineage", "artifacts", "temporalScan", "manifest_sha256", "scenarioBook", "thesisGraph", "sourceLocators", "formulaRegistry", "metricRegistry", "renderManifest", "analysis_sha256"],
   "properties": {
     "schema_version": {"const": "underwriting.workbench-case/v2"},
     "caseId": {"enum": ["atlasgrid", "helios"]},
@@ -15,7 +15,47 @@
     "disclosure": {"const": "SYNTHETIC — NOT INVESTMENT ADVICE"},
     "decision": {"type": "object"},
     "summaryMetrics": {"type": "array", "minItems": 1},
-    "thesis": {"type": "object"},
+    "thesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["statement", "counterthesis", "drivers", "falsifiers", "requests"],
+      "properties": {
+        "statement": {"type": "string", "minLength": 1},
+        "counterthesis": {"type": "string", "minLength": 1},
+        "drivers": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "falsifiers": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "requests": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["request_id", "request", "owner", "due_state", "materiality", "decision_consequence"],
+            "properties": {
+              "request_id": {"type": "string", "minLength": 1},
+              "request": {"type": "string", "minLength": 1},
+              "owner": {"type": "string", "minLength": 1},
+              "due_state": {"type": "string", "minLength": 1},
+              "materiality": {"enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]},
+              "decision_consequence": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      }
+    },
+    "chartRegistry": {
+      "type": "array", "minItems": 3, "maxItems": 8,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["chart_id", "question", "conclusion", "uncertainty", "decision_dependency", "rendered_location"],
+        "properties": {
+          "chart_id": {"type": "string", "minLength": 1},
+          "question": {"type": "string", "minLength": 1},
+          "conclusion": {"type": "string", "minLength": 1},
+          "uncertainty": {"type": "string", "minLength": 1},
+          "decision_dependency": {"type": "string", "minLength": 1},
+          "rendered_location": {"enum": ["IC Snapshot", "Thesis & Evidence", "Econometric Lab", "Underwriting Room", "Value Creation"]}
+        }
+      }
+    },
     "teamAssessment": {
       "type": "object", "additionalProperties": false,
       "required": ["strengths", "unproven", "key_person_risk", "required_hires"],
@@ -62,7 +102,43 @@
     "valueCreationBridge": {"type": "object"},
     "vcValueCreationBridge": {"type": "object"},
     "evidenceMappings": {"type": "array"},
-    "valueCreation": {"type": "array"},
+    "valueCreation": {
+      "type": "array", "minItems": 3, "maxItems": 5,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["priority", "initiative", "kpi", "baseline", "target", "owner", "timing", "dependency", "implementation_cost", "milestone", "stop_rule", "value", "credit_classification", "risk", "lineage"],
+        "properties": {
+          "priority": {"type": "integer", "minimum": 1, "maximum": 5},
+          "initiative": {"type": "string", "minLength": 1},
+          "kpi": {"type": "string", "minLength": 1},
+          "baseline": {"type": "string", "minLength": 1},
+          "target": {"type": "string", "minLength": 1},
+          "owner": {"type": "string", "minLength": 1},
+          "timing": {"type": "string", "minLength": 1},
+          "dependency": {"type": "string", "minLength": 1},
+          "implementation_cost": {"type": "string", "minLength": 1},
+          "milestone": {"type": "string", "minLength": 1},
+          "stop_rule": {"type": "string", "minLength": 1},
+          "value": {"type": "string", "minLength": 1},
+          "credit_classification": {"type": "string", "minLength": 1},
+          "risk": {"type": "string", "minLength": 1},
+          "lineage": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    "screenedOutLevers": {
+      "type": "array", "minItems": 1, "maxItems": 5,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["lever", "evidence_state", "reason_screened_out", "reconsideration_trigger"],
+        "properties": {
+          "lever": {"type": "string", "minLength": 1},
+          "evidence_state": {"type": "string", "minLength": 1},
+          "reason_screened_out": {"type": "string", "minLength": 1},
+          "reconsideration_trigger": {"type": "string", "minLength": 1}
+        }
+      }
+    },
     "lineage": {"type": "array", "minItems": 1},
     "artifacts": {"type": "array", "minItems": 1},
     "temporalScan": {"type": "object"},

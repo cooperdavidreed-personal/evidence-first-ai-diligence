@@ -1,11 +1,11 @@
-# AtlasGrid Systems — illustrative investment committee memorandum
+# AtlasGrid Systems - illustrative investment committee memorandum
 
-> SYNTHETIC — NOT INVESTMENT ADVICE
+> SYNTHETIC - NOT INVESTMENT ADVICE
 
 **Provisional posture:** `REPRICE`  
 **Workflow state:** `DECISION_RECORD_INCOMPLETE` / `PENDING_FOUNDER_SIGNATURE`  
 **Knowledge cutoff:** `2026-08-29T00:00:00Z`
-**Packet receipt:** `2381c532f8fd2b56faaf39e2ab5de5e66cd10f8f04956f38435c45f6dc908b25`
+**Packet receipt:** `b7153dbb9658cd5a13a03718f220b0675b8b24104da4419b5abdb0c5a63031c5`
 
 ## Recommendation
 
@@ -34,9 +34,9 @@ The asking price fails the frozen return hurdle. The selected upfront structure 
 | Revenue | $83.9M | $134.3M | Monthly exit revenue is annualized for comparability. |
 | Normalized / lender EBITDA | $25.3M | $47.1M | Entry earnings are normalized from QoE; exit uses the lender schedule. |
 | Gross margin | 72.79% | Scenario path | Fully burdened costs remain included. |
-| Entry EV / normalized EBITDA | 8.29x | — | Price discipline is tested against normalized, not seller-adjusted, EBITDA. |
-| Entry EV / LTM revenue | 2.50x | — | Revenue multiple is a cross-check, not the return engine. |
-| Exit EV / lender EBITDA | — | 6.50x | Exit multiple is a human scenario assumption. |
+| Entry EV / normalized EBITDA | 8.29x | - | Price discipline is tested against normalized, not seller-adjusted, EBITDA. |
+| Entry EV / LTM revenue | 2.50x | - | Revenue multiple is a cross-check, not the return engine. |
+| Exit EV / lender EBITDA | - | 6.50x | Exit multiple is a human scenario assumption. |
 
 ## Leverage, liquidity, and covenant workpaper
 
@@ -50,7 +50,7 @@ The asking price fails the frozen return hurdle. The selected upfront structure 
 
 ## Sensitivity and distributional downside
 
-The named downside is a deterministic stress case. The conditional distribution is a separate set of 1,000 correlated scenario paths—not a forecast—and must not be read as investment accuracy.
+The named downside is a deterministic stress case. The conditional distribution is a separate set of 1,000 correlated scenario paths-not a forecast-and must not be read as investment accuracy.
 
 | Conditional path statistic | p10 | p50 | p90 |
 |---|---:|---:|---:|
@@ -83,7 +83,7 @@ Mission-critical grid software can support an attractive control investment, but
 - Price realization after renewal test
 - Support automation with identified synthetic effect
 
-### Team judgment — synthetic room only
+### Team judgment - synthetic room only
 
 No person-level management conclusion is identified from this synthetic data room. The observations below describe retained operating evidence and explicit diligence gaps, not reference-checked executive assessment.
 
@@ -91,7 +91,7 @@ No person-level management conclusion is identified from this synthetic data roo
 |---|---|
 | Observable operating strengths | Synthetic operating teams retained monthly customer, billing, support, and P&L records sufficient for definition-level diligence. Synthetic support leadership executed a randomized pod rollout with measured operational outcomes. |
 | Unproven capabilities | Management's ability to sustain complete-cohort retention under a redesigned renewal architecture. Finance's ability to close parent-account, credit, customer-success cost, and lender-EBITDA definition gaps. |
-| Key-person risk | OPEN — the synthetic room contains no org chart, succession evidence, references, or person-level performance record; CRO and CFO execution dependency remains unverified. |
+| Key-person risk | OPEN - the synthetic room contains no org chart, succession evidence, references, or person-level performance record; CRO and CFO execution dependency remains unverified. |
 | Required hires / capacity | Value-creation PMO lead with source-to-KPI accountability. Revenue-operations owner for parent-level retention and contract-definition governance. |
 
 ### Falsifiers and open diligence
@@ -100,10 +100,10 @@ No person-level management conclusion is identified from this synthetic data roo
 - Top parent above 15%
 - Normalized EBITDA below $20M
 - Downside covenant breach inside 18 months
-- OPEN: Master agreement and termination-right sample
-- OPEN: Customer-parent legal mapping
-- OPEN: QoE support for each add-back
-- OPEN: Lender definition of covenant EBITDA
+- OPEN **AG-D01 · HIGH · PRE_SIGNING** - Master agreement and termination-right sample Owner: Deal counsel. Decision consequence: Remain HOLD and reduce live-ARR credit if cancellation rights are broader than modeled.
+- OPEN **AG-D02 · HIGH · PRE_IC** - Customer-parent legal mapping Owner: Commercial diligence lead. Decision consequence: Recompute parent concentration and reprice if the top-parent threshold is breached.
+- OPEN **AG-D03 · HIGH · PRE_DEBT_COMMITMENT** - QoE support for each add-back Owner: QoE lead. Decision consequence: Remove unsupported EBITDA and rerun leverage, covenants, maximum bid, and returns.
+- OPEN **AG-D04 · CRITICAL · PRE_DEBT_COMMITMENT** - Lender definition of covenant EBITDA Owner: Financing lead. Decision consequence: Do not advance debt terms until covenant headroom is recomputed under the executed definition.
 
 ### Risk, mitigant, owner, and consequence
 
@@ -151,7 +151,7 @@ This packet is generated from a fictional, deterministic data room. Synthetic ca
 
 ## Receipt appendix
 
-- Case analysis: `0508ccd12213370890ddcb057fddcd868976b43736b4f7a793ca6ce6a2e0c68b`
+- Case analysis: `0cc1447ad9e6669596a2e2d520104fba9f25d1e3427c770530e330595ac0c037`
 - ASK result: `3fc1d932f0ae4a103297016cae838c7a5fae816bd233656e3c9c39c96871ff52`
 - SELECTED result: `66d382862891fb661b406a7aa92e480641b4226e2b0420fbdbcdc1f3fbec3a8f`
 - DOWNSIDE result: `f8b17edccdf559abd5a4eff12297f80e6cce03068b608faa9e88db889a86dfc4`
