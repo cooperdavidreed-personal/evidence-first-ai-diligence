@@ -28,6 +28,8 @@ function validateFormula(formula: FormulaEntry, metrics: Map<string, TypedMetric
     else if (formula.operation === "DIVIDE") expected = left / right;
     else if (formula.operation === "MIN") expected = Math.min(...values);
     else if (formula.operation === "MAX") expected = Math.max(...values);
+    else if (formula.operation === "SUM_POSITIVE") expected = values.filter((value) => value > 0).reduce((sum, value) => sum + value, 0);
+    else if (formula.operation === "ABS_SUM_NEGATIVE") expected = -values.filter((value) => value < 0).reduce((sum, value) => sum + value, 0);
     else expected = values.reduce((sum, value) => sum + value, 0);
     const tolerance = Math.abs(Number(output.quantum)) / 2 + Number.EPSILON * Math.max(1, Math.abs(expected)) * 8;
     if (!Number.isFinite(expected) || Math.abs(Number(output.value) - expected) > tolerance) throw new Error(`formula_value_mismatch:${formula.formula_id}`);
@@ -44,6 +46,8 @@ function validateFormula(formula: FormulaEntry, metrics: Map<string, TypedMetric
     expected = left / right;
   } else if (formula.operation === "MIN") expected = left < right ? left : right;
   else if (formula.operation === "MAX") expected = left > right ? left : right;
+  else if (formula.operation === "SUM_POSITIVE") expected = integerValues.filter((value) => value > 0n).reduce((sum, value) => sum + value, 0n);
+  else if (formula.operation === "ABS_SUM_NEGATIVE") expected = -integerValues.filter((value) => value < 0n).reduce((sum, value) => sum + value, 0n);
   else expected = integerValues.reduce((sum, value) => sum + value, 0n);
   if (exactInteger(output.value) !== expected) throw new Error(`formula_value_mismatch:${formula.formula_id}`);
 }
@@ -82,11 +86,17 @@ function validateCase(candidate: unknown): asserts candidate is CaseData {
   if (metrics.size !== metricRegistry.length) throw new Error("metric_registry_duplicate");
   if (!record(candidate.decision) || !array(candidate.decision.metric_pairs)) throw new Error("decision_metric_pairs_missing");
   for (const pair of candidate.decision.metric_pairs) {
-    if (!record(pair) || typeof pair.metric_id !== "string" || typeof pair.observed_value !== "string" || typeof pair.operator !== "string" || typeof pair.threshold_value !== "string" || typeof pair.status !== "string") throw new Error("decision_metric_pair_invalid");
+    if (!record(pair) || typeof pair.metric !== "string" || typeof pair.metric_id !== "string" || typeof pair.observed_value !== "string" || typeof pair.operator !== "string" || typeof pair.threshold !== "string" || typeof pair.threshold_value !== "string" || typeof pair.status !== "string") throw new Error("decision_metric_pair_invalid");
     const metric = metrics.get(pair.metric_id);
     if (!metric || metric.value !== pair.observed_value) throw new Error("decision_metric_binding_invalid");
+    if (pair.metric !== metric.label) throw new Error("decision_metric_label_mismatch");
     const observed = Number(pair.observed_value);
     const threshold = Number(pair.threshold_value);
+    const thresholdMatch = pair.threshold.match(/^(>=|<=|>|<|==)(-?[0-9]+(?:\.[0-9]+)?)(%|x| months)$/);
+    const suffix = metric.unit === "decimal_rate" || metric.unit === "percent" ? "%" : metric.unit === "multiple" ? "x" : metric.unit === "modeled_months_funded_minimum" ? " months" : null;
+    if (!thresholdMatch || thresholdMatch[1] !== pair.operator || suffix !== thresholdMatch[3]) throw new Error("decision_metric_threshold_display_mismatch");
+    const visibleThreshold = Number(thresholdMatch[2]) / (metric.unit === "decimal_rate" ? 100 : 1);
+    if (!Number.isFinite(visibleThreshold) || visibleThreshold !== threshold) throw new Error("decision_metric_threshold_value_mismatch");
     const clears = pair.operator === ">=" ? observed >= threshold : pair.operator === "<=" ? observed <= threshold : pair.operator === ">" ? observed > threshold : pair.operator === "<" ? observed < threshold : pair.operator === "==" ? observed === threshold : null;
     if (clears === null || pair.status !== (clears ? "CLEARS" : "MISSES")) throw new Error("decision_metric_status_invalid");
   }

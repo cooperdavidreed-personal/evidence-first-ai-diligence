@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from decimal import Decimal, ROUND_HALF_EVEN
 from pathlib import Path
 from typing import Any
@@ -522,6 +523,8 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
         metric = metrics.get(pair["metric_id"])
         if metric is None:
             raise UnderwritingError("decision_metric_orphan")
+        if pair["metric"] != metric["label"]:
+            raise UnderwritingError("decision_metric_label_mismatch")
         observed = Decimal(pair["observed_value"])
         if observed != Decimal(metric["value"]):
             raise UnderwritingError("decision_metric_value_mismatch")
@@ -533,6 +536,29 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
         if pair["status"] != expected_status:
             raise UnderwritingError("decision_metric_status_mismatch")
         unit = metric["unit"]
+        threshold_match = re.fullmatch(
+            r"(>=|<=|>|<|==)(-?[0-9]+(?:\.[0-9]+)?)(%|x| months)",
+            pair["threshold"],
+        )
+        if threshold_match is None or threshold_match.group(1) != pair["operator"]:
+            raise UnderwritingError("decision_metric_threshold_display_mismatch")
+        visible_threshold = Decimal(threshold_match.group(2))
+        suffix = threshold_match.group(3)
+        expected_suffix = {
+            "decimal_rate": "%",
+            "percent": "%",
+            "multiple": "x",
+            "modeled_months_funded_minimum": " months",
+        }.get(unit)
+        if suffix != expected_suffix:
+            raise UnderwritingError("decision_metric_threshold_unit_mismatch")
+        structured_visible_threshold = (
+            visible_threshold / Decimal(100)
+            if unit == "decimal_rate"
+            else visible_threshold
+        )
+        if structured_visible_threshold != threshold:
+            raise UnderwritingError("decision_metric_threshold_value_mismatch")
         if unit == "decimal_rate":
             expected_display = f"{quantize(observed * 100)}%"
         elif unit == "multiple":
@@ -582,6 +608,10 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             expected = min(left, right)
         elif operation == "SUM":
             expected = sum(values)
+        elif operation == "SUM_POSITIVE":
+            expected = sum(value for value in values if value > 0)
+        elif operation == "ABS_SUM_NEGATIVE":
+            expected = -sum(value for value in values if value < 0)
         elif operation == "DATED_XIRR":
             from datetime import date
 

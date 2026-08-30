@@ -21,8 +21,8 @@ on Ubuntu/macOS remains `NOT_RUN` until a separately authorized push.
   regression checks, deterministic tagged five-page PDFs for both cases,
   typed diligence and value-creation contracts, chart contracts, keyboard DAG
   traversal, and a frozen 16-mutant falsification ledger.
-- Python: `154/154` locally on the primary Python 3.12 environment. The same
-  `154/154` suite passes locally under Python 3.11, 3.12, and 3.13. This is a
+- Python: `159/159` locally on the primary Python 3.12 environment. The same
+  `159/159` suite passes locally under Python 3.11, 3.12, and 3.13. This is a
   local interpreter matrix, not hosted CI.
 - React: `15/15`. Playwright: `6 passed / 2 intentionally skipped` because the
   memo print contract runs once per case rather than redundantly per viewport.

@@ -154,6 +154,54 @@ def source_room_allowlist(root: Path) -> set[str]:
     return reviewed
 
 
+def validate_blind_review_binding(root: Path) -> None:
+    """Reject a current PASS that is not bound to the retained IC snapshots."""
+
+    result_path = root / "verification" / "blind-review-result.md"
+    text = result_path.read_text(encoding="utf-8")
+    state_match = re.search(r"^State: `([A-Z_]+)`$", text, flags=re.MULTILINE)
+    if state_match is None:
+        raise ValueError("blind_review_state_missing")
+    state = state_match.group(1)
+    if state == "SUPERSEDED_NOT_CURRENT":
+        if "Current blind review: `NOT_RUN`" not in text:
+            raise ValueError("blind_review_superseded_boundary_missing")
+        return
+    if state != "PASS":
+        raise ValueError(f"blind_review_state_invalid:{state}")
+
+    protocol_path = root / "verification" / "blind-review-protocol.json"
+    protocol_sha256 = hashlib.sha256(protocol_path.read_bytes()).hexdigest()
+    protocol_match = re.search(r"^- Protocol SHA-256: `([0-9a-f]{64})`", text, flags=re.MULTILINE)
+    if protocol_match is None or protocol_match.group(1) != protocol_sha256:
+        raise ValueError("blind_review_protocol_digest_mismatch")
+
+    visual_manifest = json.loads(
+        (root / "verification" / "visual-evidence.json").read_text(encoding="utf-8")
+    )
+    visual_digests = {
+        item["path"]: item["sha256"]
+        for item in visual_manifest.get("files", [])
+        if isinstance(item, dict) and isinstance(item.get("path"), str)
+    }
+    expected = {
+        "AtlasGrid": visual_digests.get(
+            "dist/visual-evidence/desktop-atlasgrid-systems-ic-snapshot.png"
+        ),
+        "Helios": visual_digests.get(
+            "dist/visual-evidence/desktop-helios-compute-control-ic-snapshot.png"
+        ),
+    }
+    for label, digest_value in expected.items():
+        digest_match = re.search(
+            rf"^- {label} image SHA-256: `([0-9a-f]{{64}})`",
+            text,
+            flags=re.MULTILINE,
+        )
+        if digest_value is None or digest_match is None or digest_match.group(1) != digest_value:
+            raise ValueError(f"blind_review_image_digest_mismatch:{label.lower()}")
+
+
 def main() -> int:
     result = subprocess.run(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
@@ -175,6 +223,10 @@ def main() -> int:
     except (OSError, ValueError, json.JSONDecodeError) as error:
         failures.append(f"portfolio source rooms: {error}")
         reviewed_source_files = set()
+    try:
+        validate_blind_review_binding(ROOT)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        failures.append(f"verification/blind-review-result.md: {error}")
     for raw in files:
         relative = raw.decode("utf-8", errors="strict")
         path = ROOT / relative

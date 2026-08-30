@@ -1457,10 +1457,11 @@ def _helios(
         if row["month"] in ltm_months
     )
     optimizer_adoption = Decimal("0.65")
+    optimizer_multiplicative_savings = Decimal(str(1 - math.exp(rct_effect)))
     optimizer_annual_cash_delta = int(
         (
             Decimal(ltm_compute_cost_cents)
-            * Decimal(str(abs(rct_effect)))
+            * optimizer_multiplicative_savings
             * optimizer_adoption
         ).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN)
     )
@@ -1492,9 +1493,10 @@ def _helios(
             credit_classification="MIXED_CAUSAL_SYNTHETIC_AND_SCENARIO",
             source_analysis_ids=["HX-01", "HX-06"],
             mapping={
-                "formula": "ltm_compute_cost_cents * abs(precommitted_unadjusted_optimizer_itt) * adoption_rate",
+                "formula": "ltm_compute_cost_cents * (1 - exp(precommitted_unadjusted_optimizer_itt_log_points)) * adoption_rate",
                 "ltm_compute_cost_cents": ltm_compute_cost_cents,
-                "precommitted_unadjusted_optimizer_itt": format(Decimal(str(rct_effect)), "f"),
+                "precommitted_unadjusted_optimizer_itt_log_points": format(Decimal(str(rct_effect)), "f"),
+                "multiplicative_cost_savings_rate": format(optimizer_multiplicative_savings, "f"),
                 "adoption_rate": format(optimizer_adoption, "f"),
                 "exit_multiple_on_annual_cash": "12.0",
                 "causal_boundary": "Synthetic ITT identifies the planted test population only; adoption and valuation multiple remain scenario judgments.",
@@ -1702,8 +1704,8 @@ def _helios(
             _decision_pair(metric="Ordinary-cohort NRR", metric_id="helios-hx-02-ordinary_nrr", operator=">=", threshold=">=105%", threshold_value="105", observed=f"{quantize(ordinary_nrr * 100)}%", observed_value=quantize(ordinary_nrr * 100)),
             _decision_pair(metric="Gross margin", metric_id="helios-hx-01-gross_margin", operator=">=", threshold=">=70%", threshold_value="70", observed=f"{quantize(gross_margin * 100)}%", observed_value=quantize(gross_margin * 100)),
             _decision_pair(metric="Post-close runway", metric_id="helios-hx-03-post_close_runway_floor", operator=">=", threshold=">=18 months", threshold_value="18", observed=f">={quantize(post_close_runway_floor)} modeled months", observed_value=post_close_runway_floor),
-            _decision_pair(metric="Milestone gross XIRR", metric_id="helios-MILESTONE-gross-xirr", operator=">=", threshold=">=30%", threshold_value="0.30", observed=f"{quantize(selected_vc.gross_xirr * 100)}%", observed_value=selected_vc.gross_xirr),
-            _decision_pair(metric="Milestone gross MOIC", metric_id="helios-MILESTONE-gross-moic", operator=">=", threshold=">=3.0x", threshold_value="3.0", observed=f"{quantize(selected_vc.gross_moic)}x", observed_value=selected_vc.gross_moic),
+            _decision_pair(metric="Milestone · Series C gross XIRR", metric_id="helios-MILESTONE-gross-xirr", operator=">=", threshold=">=30%", threshold_value="0.30", observed=f"{quantize(selected_vc.gross_xirr * 100)}%", observed_value=selected_vc.gross_xirr),
+            _decision_pair(metric="Series C gross MOIC", metric_id="helios-MILESTONE-gross-moic", operator=">=", threshold=">=3.0x", threshold_value="3.0", observed=f"{quantize(selected_vc.gross_moic)}x", observed_value=selected_vc.gross_moic),
             _decision_pair(metric="Modeled loss probability", metric_id="helios-hx-09-probability_below_1x", operator="<=", threshold="<=10%", threshold_value="10", observed=f"{quantize(loss_probability * 100)}% (MC SE {quantize(loss_probability_mce_pp)} pp)", observed_value=quantize(loss_probability * 100)),
         ],
         "verification_sources": ["HX-01", "HX-02", "HX-03", "HX-04", "HX-06", "HX-09"],
@@ -1789,7 +1791,7 @@ def _helios(
         "vcValueCreationBridge": vc_value_creation_bridge,
         "valueCreation": [
             {"priority": 1, "initiative": "Ordinary-cohort expansion", "kpi": "Non-design-partner NRR", "baseline": f"{quantize(ordinary_nrr * 100)}%", "target": "125%", "owner": "CRO", "timing": "Days 1–180", "dependency": "HX-02 ordinary-cohort definition and referenceable non-design-partner renewal evidence", "implementation_cost": "$1.2M", "milestone": "Cohort playbooks and referenceable renewal evidence by quarter 2", "stop_rule": "Stop expansion credit if two ordinary cohorts fall below 105% NRR.", "value": f"Formula: ordinary ARR × NRR gap × gross margin × 50% realization; ${quantize(ordinary_monthly_cash_delta / 100_000_000)}M monthly cash and ${quantize(ordinary_exit_delta / 100_000_000)}M exit-equity scenario credit", "credit_classification": "HUMAN_JUDGMENT", "risk": "Design-partner tactics do not transfer", "lineage": ["hx-nrr", "hx-runway"]},
-            {"priority": 2, "initiative": "Optimizer unit economics", "kpi": "Fully burdened gross margin", "baseline": f"{quantize(gross_margin * 100)}%", "target": "74%", "owner": "CTO", "timing": "Pre-tranche through Month 12", "dependency": "HX-06 synthetic randomized test plus a production replication tied to provider invoices", "implementation_cost": "$2.0M", "milestone": "Replicate randomized log-cost effect in production before tranche test", "stop_rule": "Stop optimizer credit if the production replication interval crosses zero.", "value": f"Formula: LTM compute cost × |precommitted unadjusted ITT| × 65% adoption; ${quantize(optimizer_monthly_cash_delta / 100_000_000)}M monthly cash and ${quantize(optimizer_exit_delta / 100_000_000)}M exit-equity scenario credit", "credit_classification": "MIXED_CAUSAL_SYNTHETIC_AND_SCENARIO", "risk": "Provider price changes or workload mix invalidate transferred savings", "lineage": ["hx-margin", "hx-optimizer", "hx-runway"]},
+            {"priority": 2, "initiative": "Optimizer unit economics", "kpi": "Fully burdened gross margin", "baseline": f"{quantize(gross_margin * 100)}%", "target": "74%", "owner": "CTO", "timing": "Pre-tranche through Month 12", "dependency": "HX-06 synthetic randomized test plus a production replication tied to provider invoices", "implementation_cost": "$2.0M", "milestone": "Replicate randomized log-cost effect in production before tranche test", "stop_rule": "Stop optimizer credit if the production replication interval crosses zero.", "value": f"Formula: LTM compute cost × (1 − exp(log-point ITT)) × 65% adoption; ${quantize(optimizer_monthly_cash_delta / 100_000_000)}M monthly cash and ${quantize(optimizer_exit_delta / 100_000_000)}M exit-equity scenario credit", "credit_classification": "MIXED_CAUSAL_SYNTHETIC_AND_SCENARIO", "risk": "Provider price changes or workload mix invalidate transferred savings", "lineage": ["hx-margin", "hx-optimizer", "hx-runway"]},
             {"priority": 3, "initiative": "Enterprise sales governance", "kpi": "Stage-to-close forecast error", "baseline": f"{inflated_count} inflated opportunities", "target": "<15% forecast error", "owner": "CRO / Finance", "timing": "Days 1–100", "dependency": "HX-04 complete stage-history audit and a governed CRM stage dictionary", "implementation_cost": "$0.8M", "milestone": "Opportunity-level stage audit and forecast council by day 45", "stop_rule": "Keep the tranche withheld when stage history is incomplete or forecast error remains at or above 15%.", "value": "Avoids an illustrative shortfall-round trigger; unidentified forecast effect receives zero base-case credit", "credit_classification": "DESCRIPTIVE", "risk": "Enterprise cycle elongation remains unidentified", "lineage": ["hx-pipeline", "hx-runway"]},
         ],
         "screenedOutLevers": [

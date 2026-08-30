@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from ic_evidence_lab.canonical import canonical_json
-from scripts.scan_public import reviewed_binary_allowlist
+from scripts.scan_public import reviewed_binary_allowlist, validate_blind_review_binding
 
 
 ROOT = Path(__file__).parents[1]
@@ -62,3 +62,38 @@ def test_reviewed_binary_allowlist_fails_closed_on_digest_mismatch(
     manifest_path.write_bytes(canonical_json(manifest) + b"\n")
     with pytest.raises(ValueError, match="visual_manifest_file_digest_mismatch"):
         reviewed_binary_allowlist(tmp_path)
+
+
+def test_superseded_blind_review_is_explicitly_not_current() -> None:
+    validate_blind_review_binding(ROOT)
+
+
+def test_current_blind_review_fails_when_snapshot_digest_is_stale(tmp_path: Path) -> None:
+    verification = tmp_path / "verification"
+    verification.mkdir(parents=True)
+    protocol = b'{"schema_version":"test"}\n'
+    (verification / "blind-review-protocol.json").write_bytes(protocol)
+    (verification / "visual-evidence.json").write_text(
+        json.dumps(
+            {
+                "files": [
+                    {"path": "dist/visual-evidence/desktop-atlasgrid-systems-ic-snapshot.png", "sha256": "a" * 64},
+                    {"path": "dist/visual-evidence/desktop-helios-compute-control-ic-snapshot.png", "sha256": "b" * 64},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    (verification / "blind-review-result.md").write_text(
+        "\n".join(
+            [
+                "State: `PASS`",
+                f"- Protocol SHA-256: `{hashlib.sha256(protocol).hexdigest()}`",
+                f"- AtlasGrid image SHA-256: `{'0' * 64}`",
+                f"- Helios image SHA-256: `{'b' * 64}`",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="blind_review_image_digest_mismatch:atlasgrid"):
+        validate_blind_review_binding(tmp_path)

@@ -60,7 +60,7 @@ export interface SourceLocator {
 
 export interface FormulaEntry {
   formula_id: string;
-  operation: "ADD" | "SUBTRACT" | "MULTIPLY" | "DIVIDE" | "MIN" | "MAX" | "SUM" | "DATED_XIRR";
+  operation: "ADD" | "SUBTRACT" | "MULTIPLY" | "DIVIDE" | "MIN" | "MAX" | "SUM" | "SUM_POSITIVE" | "ABS_SUM_NEGATIVE" | "DATED_XIRR";
   operand_ids: string[];
   output_metric_id: string;
   output_unit: string;

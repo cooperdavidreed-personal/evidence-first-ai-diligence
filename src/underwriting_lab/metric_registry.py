@@ -167,6 +167,12 @@ def build_case_metric_contract(
     # Every analysis output receives one deterministic registry identifier. This
     # closes the audit gap between receipt-backed values and the values rendered
     # in the econometric and lineage drawers.
+    decision_metric_labels = {
+        "helios-hx-01-gross_margin": "Gross margin",
+        "helios-hx-02-ordinary_nrr": "Ordinary-cohort NRR",
+        "helios-hx-03-post_close_runway_floor": "Post-close runway",
+        "helios-hx-09-probability_below_1x": "Modeled loss probability",
+    }
     for receipt in case["analyses"]:
         analysis_id = receipt["analysis_id"]
         for output in receipt["outputs"]:
@@ -186,9 +192,10 @@ def build_case_metric_contract(
             classification = receipt["classification"]
             if value == "ABSTAIN":
                 classification = "NOT_IDENTIFIED"
+            metric_id = f"{case['caseId']}-{analysis_id.lower()}-{output_name}"
             add(
-                metric_id=f"{case['caseId']}-{analysis_id.lower()}-{output_name}",
-                label=output_name.replace("_", " ").title(),
+                metric_id=metric_id,
+                label=decision_metric_labels.get(metric_id, output_name.replace("_", " ").title()),
                 value=value,
                 display_value=(
                     value
@@ -220,6 +227,14 @@ def build_case_metric_contract(
             transaction = result["engine_inputs"]["transaction"]
             debt = result["debt_schedule"]
             period = f"{result['engine_inputs']['close_date']} through month 60"
+            sponsor_cash_flow_ids = (
+                [
+                    f"{base}-sponsor-cash-flow-{index:02d}"
+                    for index, _ in enumerate(result["sponsor_cash_flows"], start=1)
+                ]
+                if scenario_key == "selected"
+                else []
+            )
             common = {
                 "period": period,
                 "classification": "SCENARIO",
@@ -260,12 +275,23 @@ def build_case_metric_contract(
             final_cash = debt["months"][-1]["ending_cash_cents"]
             add_cents(f"{base}-exit-cash", "Exit cash", final_cash)
             add_cents(f"{base}-exit-equity", "Exit equity", result["exit_equity_value_cents"])
-            add(metric_id=f"{base}-gross-irr", label="Gross IRR", value=result["gross_xirr"], display_value=_percent(result["gross_xirr"]), unit="decimal_rate", quantum="0.0001", **common)
-            add(metric_id=f"{base}-gross-moic", label="Gross MOIC", value=result["gross_moic"], display_value=_multiple(result["gross_moic"]), unit="multiple", quantum="0.0001", **common)
+            add(
+                metric_id=f"{base}-gross-irr", label="Gross IRR", value=result["gross_xirr"],
+                display_value=_percent(result["gross_xirr"]), unit="decimal_rate", quantum="0.00000000000001" if scenario_key == "selected" else "0.0001",
+                formula_id="pe-formula-selected-gross-irr" if scenario_key == "selected" else None,
+                operand_ids=sponsor_cash_flow_ids,
+                **common,
+            )
+            add(
+                metric_id=f"{base}-gross-moic", label="Gross MOIC", value=result["gross_moic"],
+                display_value=_multiple(result["gross_moic"]), unit="multiple", quantum="0.0001",
+                formula_id="pe-formula-selected-gross-moic" if scenario_key == "selected" else None,
+                operand_ids=[f"{base}-sponsor-proceeds", f"{base}-sponsor-invested"] if scenario_key == "selected" else [],
+                **common,
+            )
             add_cents(f"{base}-earnout", "Earnout paid", result["earnout_cents"])
 
             if scenario_key == "selected":
-                sponsor_cash_flow_ids: list[str] = []
                 for index, flow in enumerate(result["sponsor_cash_flows"], start=1):
                     metric_id = f"{base}-sponsor-cash-flow-{index:02d}"
                     add(
@@ -282,15 +308,32 @@ def build_case_metric_contract(
                         assumption_ids=[f"{scenario_id}.engine_inputs"],
                         downstream_ids=["ag-return", "decision"],
                     )
-                    sponsor_cash_flow_ids.append(metric_id)
-                formulas.append(
-                    _formula(
-                        "pe-formula-headline-dated-xirr",
-                        "DATED_XIRR",
-                        sponsor_cash_flow_ids,
-                        "ag-return",
-                        "decimal_rate",
-                    )
+                sponsor_invested = -sum(
+                    int(flow["amount_cents"])
+                    for flow in result["sponsor_cash_flows"]
+                    if int(flow["amount_cents"]) < 0
+                )
+                sponsor_proceeds = sum(
+                    int(flow["amount_cents"])
+                    for flow in result["sponsor_cash_flows"]
+                    if int(flow["amount_cents"]) > 0
+                )
+                add_cents(
+                    f"{base}-sponsor-invested", "Sponsor invested capital", sponsor_invested,
+                    formula_id="pe-formula-selected-sponsor-invested", operand_ids=sponsor_cash_flow_ids,
+                )
+                add_cents(
+                    f"{base}-sponsor-proceeds", "Sponsor proceeds", sponsor_proceeds,
+                    formula_id="pe-formula-selected-sponsor-proceeds", operand_ids=sponsor_cash_flow_ids,
+                )
+                formulas.extend(
+                    [
+                        _formula("pe-formula-selected-sponsor-invested", "ABS_SUM_NEGATIVE", sponsor_cash_flow_ids, f"{base}-sponsor-invested", "cents"),
+                        _formula("pe-formula-selected-sponsor-proceeds", "SUM_POSITIVE", sponsor_cash_flow_ids, f"{base}-sponsor-proceeds", "cents"),
+                        _formula("pe-formula-selected-gross-moic", "DIVIDE", [f"{base}-sponsor-proceeds", f"{base}-sponsor-invested"], f"{base}-gross-moic", "multiple"),
+                        _formula("pe-formula-selected-gross-irr", "DATED_XIRR", sponsor_cash_flow_ids, f"{base}-gross-irr", "decimal_rate"),
+                        _formula("pe-formula-headline-dated-xirr", "DATED_XIRR", sponsor_cash_flow_ids, "ag-return", "decimal_rate"),
+                    ]
                 )
 
             for month in debt["months"]:

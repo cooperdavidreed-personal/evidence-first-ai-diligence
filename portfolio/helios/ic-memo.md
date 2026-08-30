@@ -7,7 +7,7 @@
 **Authority:** `DECISION_RECORD_INCOMPLETE` / `PENDING_FOUNDER_SIGNATURE` / no delegated investment authority.
 
 **Knowledge cutoff:** `2026-08-29T00:00:00Z`
-**Packet receipt:** `6df879922ff80372f1ee8218ac75d715bb8c8fc805802a8b69d792ad201c7fe7`
+**Packet receipt:** `5ea2a76fa53499c6e8eb9f10cc4b60c84afa7d4aae0f5b07a98244149350b8cf`
 
 ## Recommendation and executable terms
 
@@ -125,18 +125,18 @@ Declared scenario-state priors: Base 30.00%; Downside 15.00%; Financing Shortfal
 
 ## Value creation and board cadence
 
-Combined full-model impact: **$3.1M minimum cash**, **$3.9M Series C proceeds**, **0.35% gross XIRR**, including an explicit **-$0 interaction residual**.
+Combined full-model impact: **$3M minimum cash**, **$3.8M Series C proceeds**, **0.35% gross XIRR**, including an explicit **$0 interaction residual**.
 
 | Initiative | Evidence class | Baseline / target | Owner | Modeled consequence | Stop rule / risk |
 |---|---|---|---|---|---|
 | Ordinary-cohort expansion | HUMAN_JUDGMENT | 117.07% / 125% | CRO | $75,504/month cash; $9.1M exit value; $1.5M cost | Design-partner tactics do not transfer |
-| Optimizer unit economics | MIXED_CAUSAL_SYNTHETIC_AND_SCENARIO | 70.61% / 74% | CTO | $56,142/month cash; $8.1M exit value; $2M cost | Provider price changes or workload mix invalidate transferred savings |
+| Optimizer unit economics | MIXED_CAUSAL_SYNTHETIC_AND_SCENARIO | 70.61% / 74% | CTO | $53,661/month cash; $7.7M exit value; $2M cost | Provider price changes or workload mix invalidate transferred savings |
 | Enterprise sales governance | DESCRIPTIVE | 48 inflated opportunities / <15% forecast error | CRO / Finance | $0/month cash; $0 exit value; $1.2M cost | Enterprise cycle elongation remains unidentified |
 
 ### Economic mapping register
 
 - **Ordinary-cohort expansion:** ordinary_base_arr_cents * max(0, target_nrr - observed_nrr) * gross_margin * 50% realization. Inputs: exit_multiple_on_annual_cash=10.0; gross_margin=0.7061223762551445; observed_nrr=1.1706504793654182; ordinary_base_arr_cents=3234114396; realization_factor=0.50; target_nrr=1.25
-- **Optimizer unit economics:** ltm_compute_cost_cents * abs(precommitted_unadjusted_optimizer_itt) * adoption_rate. Inputs: adoption_rate=0.65; causal_boundary=Synthetic ITT identifies the planted test population only; adoption and valuation multiple remain scenario judgments.; exit_multiple_on_annual_cash=12.0; ltm_compute_cost_cents=1138084029; precommitted_unadjusted_optimizer_itt=-0.09107139999999998
+- **Optimizer unit economics:** ltm_compute_cost_cents * (1 - exp(precommitted_unadjusted_optimizer_itt_log_points)) * adoption_rate. Inputs: adoption_rate=0.65; causal_boundary=Synthetic ITT identifies the planted test population only; adoption and valuation multiple remain scenario judgments.; exit_multiple_on_annual_cash=12.0; ltm_compute_cost_cents=1138084029; multiplicative_cost_savings_rate=0.08704747623808384; precommitted_unadjusted_optimizer_itt_log_points=-0.09107139999999998
 - **Enterprise sales governance:** zero_base_case_credit_until_stage_history_and_conversion_design_are_identified. Inputs: modeled_value_credit_cents=0
 
 | Phase | Timing | Owner | Milestone | KPI | Stop rule |
@@ -165,4 +165,4 @@ This packet is generated from a fictional deterministic room. Synthetic causal e
 - MILESTONE result: `f9ff468695bb5ee3fea76121b21a4bbb590792a3987b30a5e374dd77b9d9aeb8`
 - DOWNSIDE result: `c52a91b04b7c6ad14e1f92e125df355f32658d6128daaf364f4171b6a02e64fe`
 - Sensitivity book: `de3b3f187e9322e5dcaff775f2e05ab119bfb413d65c3439035ba7c7f1915bbf`
-- Value-creation bridge: `fd0ecafe8af8d0f3c5cc3be1a2143ec3c9f61d57f26cd607e4f02f47fc69ef68`
+- Value-creation bridge: `8996c0dd3d67eeec9d120e9a34d9188d12e95406385082ce7edd0bdbc461fc9e`

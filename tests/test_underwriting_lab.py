@@ -211,8 +211,8 @@ def test_helios_contract_gates(generated: dict[str, tuple[Path, dict]]) -> None:
         assert bridge["cash_at_exit_cents"] == case["vcEngine"][key]["cash_by_month"][-1]["ending_cash_cents"]
         assert case["vcEngine"][key]["waterfall"]["exit_value_cents"] == bridge["exit_equity_value_cents"]
     pairs = {item["metric"]: item for item in case["decision"]["metric_pairs"]}
-    assert pairs["Milestone gross XIRR"]["status"] == "CLEARS"
-    assert pairs["Milestone gross MOIC"]["status"] == "CLEARS"
+    assert pairs["Milestone · Series C gross XIRR"]["status"] == "CLEARS"
+    assert pairs["Series C gross MOIC"]["status"] == "CLEARS"
     assert pairs["Modeled loss probability"]["status"] == "CLEARS"
     assert pairs["Post-close runway"]["observed"].startswith(">=60")
 
