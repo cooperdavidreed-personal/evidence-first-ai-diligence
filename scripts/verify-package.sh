@@ -32,6 +32,7 @@ expected_underwriting = {
     "pe-value-creation-bridge-v2.schema.json",
     "scenario-book.schema.json",
     "source-locator-v2.schema.json",
+    "source-locator-v3.schema.json",
     "sources-and-uses-v2.schema.json",
     "temporal-scan-v1.schema.json",
     "thesis-graph.schema.json",

@@ -13,6 +13,8 @@ from PIL import Image, ImageChops, ImageStat
 ROOT = Path(__file__).resolve().parents[1]
 BASELINE = ROOT / "dist" / "visual-evidence"
 CANDIDATE = ROOT / "dist" / "visual-candidates"
+ACCESSIBILITY_BASELINE = ROOT / "verification" / "accessibility-evidence"
+ACCESSIBILITY_CANDIDATE = ROOT / "dist" / "accessibility-candidates"
 MAX_CHANGED_PIXEL_RATIO = 0.02
 MAX_RMS_CHANNEL_DELTA = 3.0
 
@@ -63,6 +65,17 @@ def main() -> int:
             failures.append(f"missing_candidate:{file_name}")
         elif reference_comparable and _sha256(baseline_pdf) != _sha256(candidate_pdf):
             failures.append(f"pdf_byte_regression:{file_name}")
+    accessibility_baselines = sorted(ACCESSIBILITY_BASELINE.glob("*.json"))
+    if len(accessibility_baselines) != 4:
+        failures.append(
+            f"accessibility_baseline_count:{len(accessibility_baselines)}"
+        )
+    for baseline in accessibility_baselines:
+        candidate = ACCESSIBILITY_CANDIDATE / baseline.name
+        if not candidate.is_file():
+            failures.append(f"missing_accessibility_candidate:{baseline.name}")
+        elif baseline.read_bytes() != candidate.read_bytes():
+            failures.append(f"accessibility_evidence_drift:{baseline.name}")
     if failures:
         raise SystemExit("visual-regression FAIL:\n" + "\n".join(failures))
     if reference_comparable:
@@ -70,12 +83,14 @@ def main() -> int:
             "visual-regression=PASS reference_platform=darwin "
             f"pngs={len(baseline_pngs)} changed_pixel_limit={MAX_CHANGED_PIXEL_RATIO:.2%} "
             f"rms_limit={MAX_RMS_CHANNEL_DELTA:.1f} pdf_byte_matches=2/2"
+            f" accessibility_matches={len(accessibility_baselines)}/4"
         )
     else:
         print(
             "visual-regression=NOT_COMPARABLE "
             f"platform={sys.platform} candidates={len(baseline_pngs)} dimensions=PASS "
             "pdf_candidates=2/2; browser, overflow, and axe flows remain enforced"
+            f" accessibility_matches={len(accessibility_baselines)}/4"
         )
     return 0
 

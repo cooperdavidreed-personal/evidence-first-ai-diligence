@@ -15,7 +15,9 @@ excluded from the V2 release bundle and Pages artifact set.
 2. Inspect all five views, scenario controls, and metric lineage.
 3. Open each case packet under `portfolio/`.
 4. Verify `verification/visual-evidence.json` against its PNG and PDF bytes.
-5. Inspect `candidate-artifacts.json`, which binds every staged Pages artifact.
+5. Build the Pages candidate, then inspect its generated
+   `candidate-artifacts.json`, which binds every staged artifact. This file is
+   a build output and is not claimed as a committed repository file.
 
 ## Verified locally
 
@@ -25,7 +27,8 @@ excluded from the V2 release bundle and Pages artifact set.
 - Clean wheel installation asserts the exact packaged kernel and underwriting
   schema asset sets, including every V2 schema.
 - Pages and release-bundle automation stage the V2 workbench, both case
-  packets, the visual manifest and bound evidence, and the retained PDFs.
+  packets, both manifest-bound synthetic source rooms, the visual manifest,
+  four accessibility evidence records, bound screenshots, and retained PDFs.
 
 Hosted CI and anonymous public access must be checked after publication. This
 project does not make investment decisions or provide investment advice.

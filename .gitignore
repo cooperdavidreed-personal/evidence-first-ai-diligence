@@ -6,6 +6,7 @@
 /state/
 /workbench/node_modules/
 /workbench/dist/
+/workbench/public/source-pack/
 /workbench/test-results/
 /workbench/playwright-report/
 /workbench/*.tsbuildinfo

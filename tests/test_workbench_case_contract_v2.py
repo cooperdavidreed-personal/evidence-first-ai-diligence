@@ -63,11 +63,12 @@ def test_every_analysis_output_has_stable_metric_and_lineage(cases: dict[str, di
                 metric = metrics[metric_id]
                 assert metric["value"] == output["value"]
                 assert metric["governing_receipt_sha256"] == receipt["receipt_sha256"]
+                inputs = {(item["artifact_id"], item["sha256"]) for item in receipt["inputs"]}
                 expected_locators = {
-                    f"locator-{item['node_id']}"
-                    for item in case["lineage"]
+                    item["locator_id"]
+                    for item in case["sourceLocators"]
                     if item["analysis_id"] == receipt["analysis_id"]
-                    and output["name"] in item["output_names"]
+                    and (item["artifact_id"], item["artifact_sha256"]) in inputs
                 }
                 assert expected_locators
                 assert set(metric["source_locator_ids"]) == expected_locators

@@ -82,12 +82,13 @@ def atlasgrid_experiment_fixture(
 
 
 def helios_optimizer_fixture(master_seed: int) -> list[dict[str, Any]]:
-    """Return the exact precommitted 60/60 synthetic optimizer experiment."""
+    """Return a disclosed restricted-randomization 60/60 optimizer experiment."""
     rng = _stream_rng(master_seed, "helios/experiments")
     baselines = rng.normal(0, 0.17, 120)
     noises = rng.normal(0, 0.08, 120)
     treated_customers: set[int] | None = None
-    for _ in range(1_000):
+    accepted_proposal = 0
+    for proposal in range(1, 1_001):
         candidate = set(int(item) for item in rng.permutation(120)[:60])
         treated_values = np.array([baselines[idx] for idx in candidate])
         control_values = np.array(
@@ -99,6 +100,7 @@ def helios_optimizer_fixture(master_seed: int) -> list[dict[str, Any]]:
         balance_smd = (treated_values.mean() - control_values.mean()) / pooled_sd
         if abs(balance_smd) <= 0.15:
             treated_customers = candidate
+            accepted_proposal = proposal
             break
     if treated_customers is None:
         raise UnderwritingError("optimizer_assignment_balance_not_found")
@@ -108,6 +110,14 @@ def helios_optimizer_fixture(master_seed: int) -> list[dict[str, Any]]:
             "treatment": int(idx in treated_customers),
             "baseline_log_cost": f"{float(baselines[idx]):.6f}",
             "outcome_log_cost_change": f"{-0.11 * int(idx in treated_customers) + float(noises[idx]):.6f}",
+            "assignment_mechanism": "RESTRICTED_SEEDED_PERMUTATION_60_OF_120",
+            "assignment_proposal": accepted_proposal,
+            "balance_smd_threshold": "0.15",
+            "maximum_assignment_proposals": 1_000,
+            "assignment_acceptance_uses_outcomes": "false",
+            "assignment_seed_commitment": hashlib.sha256(
+                f"{master_seed}:{CONTRACT_VERSION}:helios/experiments".encode()
+            ).hexdigest(),
         }
         for idx in range(120)
     ]

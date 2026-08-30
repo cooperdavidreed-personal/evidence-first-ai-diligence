@@ -14,6 +14,15 @@ export function visualEvidencePath(fileName: string): string {
   return path;
 }
 
+export function writeAccessibilityEvidence(fileName: string, value: object): void {
+  const root = updateBaselines
+    ? "verification/accessibility-evidence"
+    : "dist/accessibility-candidates";
+  const path = resolve(repositoryRoot, root, fileName);
+  mkdirSync(dirname(path), {recursive: true});
+  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
 export async function captureVisualEvidence(page: Page, fileName: string, fullPage = false): Promise<void> {
   await page.screenshot({
     path: visualEvidencePath(fileName),

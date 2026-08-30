@@ -13,7 +13,7 @@ This portfolio candidate combines a deterministic Python analytics layer with a 
 
 ## What makes it substantive
 
-The application does not begin with a chat box or a generated memo. It begins with versioned data-room manifests, precommitted analysis specifications, exact accounting bridges, and explicit causal classifications. Each displayed headline number opens a lineage record binding the metric to an artifact, field, and analysis receipt.
+The application does not begin with a chat box or a generated memo. It begins with versioned data-room manifests, precommitted analysis specifications, exact accounting bridges, and explicit causal classifications. Each displayed headline number opens a lineage record binding the metric to its governing receipt and every declared analysis input. Locator-v3 records retain a structured source excerpt, exact selection digest, committed repository path, and public-candidate path; the staged source pack is rebuilt only from manifest-declared synthetic files.
 
 The workbench presents five shared views for both cases:
 
@@ -60,11 +60,14 @@ The existing `ic-evidence-lab` CLI and evidence-kernel behavior remain intact.
 - The same seed produces byte-identical canonical data-room files and manifest digests.
 - Verification truth lives outside the runtime case directory and is not serialized into the React payload.
 - Analysis receipts declare question, population, cutoff, method, outputs, uncertainty or diagnostics, assumptions, classification, and input digests.
+- The repository retains the reviewable synthetic source rooms used by the two golden cases. Generation and public staging fail closed on undeclared files, truth artifacts, unsafe paths, or digest drift.
 - Scenario books, thesis graphs, decisions, and receipts are independently hash-bound.
 - Helios uses four distinct financing regimes—milestone-funded, tranche-withheld plus Series D, down round, and financing shortfall—inside a 1,000-path distribution that also varies operating cash, exit value, and two-sided exit timing.
 - Six seeded smoke-recovery runs test 45 planted-truth conditions. Separate frozen 500-seed interval ledgers recover AtlasGrid endpoints at 477/500, 472/500, and 471/500 and the Helios optimizer endpoint at 476/500. These are synthetic estimator checks—not backtested investment performance.
 - Venture proceeds are checked against an independent exact waterfall implementation over 500 random exits and each discovered conversion breakpoint at one cent below, at, and above the boundary.
 - Every Helios headline ownership, MOIC, XIRR, cash, and waterfall value is bound to explicit operands, dated cash flows, formulas, source locators, and governing receipts.
+- AtlasGrid's maximum-bid solver enforces the base IRR/MOIC hurdle and the named downside IRR/MOIC, liquidity, default, and covenant floors; one additional cent must fail at least one frozen constraint. Seller rollover is explicitly dilutive pro-rata contributed equity and conserves exit proceeds to the cent.
+- The retained browser evidence covers all five views for both cases at 1440x900 and 390x844, including first-viewport terms, keyboard DAG traversal, metric-to-source inspection, and four exact-match Axe evidence records. This is bounded route evidence, not comprehensive WCAG certification.
 - `NOT_IDENTIFIED` analyses abstain rather than convert correlation into causal claims.
 
 See [Underwriting Architecture](docs/UNDERWRITING-ARCHITECTURE.md), the controlling [v2 Benchmark Contract](docs/V2-BENCHMARK-CONTRACT.md), [v2 Model-Integrity Contract](docs/V2-MODEL-INTEGRITY-CONTRACT.md), [v2 Econometrics Contract](docs/ECONOMETRICS-CONTRACT-V2.md), and [Build Provenance](docs/BUILD-PROVENANCE.md). The original [product](docs/UNDERWRITING-PRODUCT-CONTRACT.md) and [econometrics](docs/ECONOMETRICS-CONTRACT.md) contracts are retained only as historical v1 context.

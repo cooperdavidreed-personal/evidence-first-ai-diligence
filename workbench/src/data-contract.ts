@@ -70,10 +70,18 @@ function validateCase(candidate: unknown): asserts candidate is CaseData {
   if (!record(candidate.renderManifest) || candidate.renderManifest.schema_version !== "underwriting.render-manifest/v2") throw new Error("render_manifest_invalid");
   const metricRegistry = candidate.metricRegistry as TypedMetricRecord[];
   const formulaRegistry = candidate.formulaRegistry as FormulaEntry[];
-  const sourceLocators = candidate.sourceLocators as Array<{locator_id: string}>;
+  const sourceLocators = candidate.sourceLocators as Array<{
+    locator_id: string;
+    schema_version: string;
+    repository_path: string;
+    published_path: string;
+    selection_sha256: string;
+    excerpt_sha256: string;
+  }>;
   const metrics = new Map(metricRegistry.map((item) => [item.metric_id, item]));
   if (metrics.size !== metricRegistry.length) throw new Error("metric_registry_duplicate");
   const locators = new Set(sourceLocators.map((item) => item.locator_id));
+  if (sourceLocators.some((item) => item.schema_version !== "underwriting.source-locator/v3" || !item.repository_path.startsWith(`portfolio/${candidate.caseId}/data-room/data/`) || !item.published_path.startsWith(`/source-pack/${candidate.caseId}/data/`) || !/^[0-9a-f]{64}$/.test(item.selection_sha256) || !/^[0-9a-f]{64}$/.test(item.excerpt_sha256))) throw new Error("source_locator_v3_invalid");
   for (const metric of metricRegistry) {
     if (!metric.metric_id || !metric.display_value || !metric.governing_receipt_sha256 || metric.state !== "CURRENT") throw new Error("metric_record_invalid");
     if (metric.source_locator_ids.some((id) => !locators.has(id))) throw new Error("metric_locator_orphan");

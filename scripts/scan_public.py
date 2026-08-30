@@ -16,6 +16,10 @@ ROOT = Path(__file__).resolve().parents[1]
 MAX_FILE_BYTES = 10 * 1024 * 1024
 FORBIDDEN_PATH_PARTS = {"evidence", "state", ".venv", "dist", "__pycache__"}
 REVIEWED_BINARY_ROOTS = {"dist/visual-evidence", "output/pdf"}
+SOURCE_ROOM_ROOTS = {
+    "atlasgrid": "portfolio/atlasgrid/data-room",
+    "helios": "portfolio/helios/data-room",
+}
 PATTERNS = {
     "absolute-user-path": re.compile(rb"/(?:Users|home)/[^/\s]+/"),
     "aws-access-key": re.compile(b"AKIA" + rb"[0-9A-Z]{16}"),
@@ -66,6 +70,34 @@ def reviewed_binary_allowlist(root: Path) -> set[str]:
     return reviewed
 
 
+def source_room_allowlist(root: Path) -> set[str]:
+    reviewed: set[str] = set()
+    for case_id, relative_root in SOURCE_ROOM_ROOTS.items():
+        manifest_relative = f"{relative_root}/manifest.json"
+        manifest_path = root / manifest_relative
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest_body = dict(manifest)
+        expected_manifest_sha256 = manifest_body.pop("manifest_sha256", None)
+        if (
+            manifest.get("case_id") != case_id
+            or manifest.get("synthetic") is not True
+            or expected_manifest_sha256
+            != hashlib.sha256(canonical_json(manifest_body)).hexdigest()
+        ):
+            raise ValueError(f"source_room_manifest_invalid:{case_id}")
+        reviewed.add(manifest_relative)
+        for artifact in manifest["artifacts"]:
+            relative = Path(artifact["path"])
+            if relative.is_absolute() or ".." in relative.parts or "truth" in relative.parts:
+                raise ValueError(f"source_room_path_unsafe:{case_id}:{relative}")
+            public_relative = f"{relative_root}/{relative.as_posix()}"
+            path = root / public_relative
+            if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != artifact["sha256"]:
+                raise ValueError(f"source_room_artifact_mismatch:{public_relative}")
+            reviewed.add(public_relative)
+    return reviewed
+
+
 def main() -> int:
     result = subprocess.run(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
@@ -82,6 +114,11 @@ def main() -> int:
     except (OSError, ValueError, json.JSONDecodeError) as error:
         failures.append(f"verification/visual-evidence.json: {error}")
         reviewed_binaries = set()
+    try:
+        reviewed_source_files = source_room_allowlist(ROOT)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        failures.append(f"portfolio source rooms: {error}")
+        reviewed_source_files = set()
     for raw in files:
         relative = raw.decode("utf-8", errors="strict")
         path = ROOT / relative
@@ -92,6 +129,12 @@ def main() -> int:
             Path(relative).parts
         ):
             failures.append(f"{relative}: private or generated path")
+            continue
+        if any(
+            relative == room_root or relative.startswith(f"{room_root}/")
+            for room_root in SOURCE_ROOM_ROOTS.values()
+        ) and relative not in reviewed_source_files:
+            failures.append(f"{relative}: undeclared source-room file")
             continue
         if path.is_symlink():
             failures.append(f"{relative}: symlink is not allowed")

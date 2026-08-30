@@ -40,15 +40,21 @@ export interface Metric {
 }
 
 export interface SourceLocator {
+  schema_version: "underwriting.source-locator/v3";
   locator_id: string;
   artifact_id: string;
   artifact_path: string;
+  repository_path: string;
+  published_path: string;
   artifact_sha256: string;
-  locator_kind: "CSV_COLUMN_SET" | "JSON_FIELDS" | "TEXT_RANGE";
-  selector: string;
+  locator_kind: "CSV_CELLS" | "JSON_POINTERS" | "TEXT_SPAN";
+  selector: Record<string, unknown>;
+  evidence_role: "ANALYSIS_INPUT";
   period: string;
   analysis_id: string;
-  retained_excerpt: string;
+  selection_sha256: string;
+  retained_excerpt: Record<string, unknown>;
+  excerpt_sha256: string;
   locator_sha256: string;
 }
 

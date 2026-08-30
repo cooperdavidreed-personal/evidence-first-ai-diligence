@@ -46,7 +46,7 @@ function EvidenceDrawer({caseData, metric, onClose}: {caseData: CaseData; metric
       <p className="drawer-detail">{metric.detail}</p>
       {registered && <dl className="method-grid registry-detail"><div><dt>Exact value / quantum</dt><dd>{registered.value} · {registered.quantum} {registered.unit}</dd></div><div><dt>Period / state</dt><dd>{registered.period} · {registered.state}</dd></div><div><dt>Governing receipt</dt><dd><code>{registered.governing_receipt_sha256}</code></dd></div><div><dt>Downstream</dt><dd>{registered.downstream_ids.join(", ") || "No downstream binding"}</dd></div></dl>}
       {formula && <section className="formula-inspection"><span>Formula</span><strong>{formula.formula_id} · {formula.operation}</strong><ol>{operands.map((item) => <li key={item!.metric_id}><code>{item!.metric_id}</code> = {item!.value} {item!.unit}</li>)}</ol></section>}
-      {locators.length > 0 && <section className="locator-inspection"><span>Precise source locators</span>{locators.map((item) => <article key={item!.locator_id}><strong>{item!.artifact_path}</strong><code>{item!.locator_kind}: {item!.selector}</code><small>{item!.period} · {item!.retained_excerpt}</small><code>{item!.artifact_sha256}</code></article>)}</section>}
+      {locators.length > 0 && <section className="locator-inspection"><span>Precise source locators</span>{locators.map((item) => <article key={item!.locator_id}><strong>{item!.artifact_path}</strong><code>{item!.locator_kind}: {JSON.stringify(item!.selector)}</code><small>{item!.period} · complete synthetic source universe retained</small><pre>{JSON.stringify(item!.retained_excerpt, null, 2)}</pre><a href={item!.published_path} target="_blank" rel="noreferrer">Open committed synthetic source ↗</a><code>artifact {item!.artifact_sha256}</code><code>selection {item!.selection_sha256}</code></article>)}</section>}
       <ol className="lineage-flow">
         {nodes.map((node) => {
           const artifact = caseData.artifacts.find((item) => item.artifact_id === node.artifact_id);
@@ -103,6 +103,10 @@ function Snapshot({caseData, openMetric}: {caseData: CaseData; openMetric: (metr
           <h2 id="decision-title">{caseData.vcEngine ? "CONDITIONAL INVEST" : caseData.decision.decision}</h2>
           <p>{caseData.decision.attribution}</p>
         </div>
+        <div className="snapshot-term-row">
+          {caseData.peEngine && <PESnapshotTerms caseData={caseData} openMetric={openMetric} />}
+          {caseData.vcEngine && <VCSnapshotTerms caseData={caseData} openMetric={openMetric} />}
+        </div>
         <div className="decision-rationale">
           <p>{caseData.decision.rationale}</p>
           <div className="condition-line"><span>{caseData.investmentAdjudication.replaceAll("_", " ")}</span><span>{caseData.workflowDisposition}</span><span>{caseData.decision.status.replaceAll("_", " ")}</span>{caseData.decision.signature_status && <span>{caseData.decision.signature_status.replaceAll("_", " ")}</span>}</div>
@@ -110,8 +114,6 @@ function Snapshot({caseData, openMetric}: {caseData: CaseData; openMetric: (metr
           <ul className="condition-list">{caseData.decision.conditions.map((condition) => <li key={condition}>{condition}</li>)}</ul>
         </div>
       </section>
-      {caseData.peEngine && <PESnapshotTerms caseData={caseData} openMetric={openMetric} />}
-      {caseData.vcEngine && <VCSnapshotTerms caseData={caseData} openMetric={openMetric} />}
       <section aria-labelledby="metrics-title">
         <div className="section-heading"><p className="kicker">Decision economics</p><h2 id="metrics-title">What must be true</h2></div>
         <div className="metric-ledger">

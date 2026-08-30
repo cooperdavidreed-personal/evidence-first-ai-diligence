@@ -103,6 +103,9 @@ def test_atlasgrid_contract_gates(generated: dict[str, tuple[Path, dict]]) -> No
     assert receipts["AG-04"]["diagnostics"][0]["status"] == "PASS"
     assert receipts["AG-05"]["diagnostics"][1]["status"] == "PASS"
     assert receipts["AG-06"]["classification"] == "PREDICTIVE_ASSOCIATION"
+    ag06_diagnostics = {item["name"]: item for item in receipts["AG-06"]["diagnostics"]}
+    assert "slope_first_stage_covariance" in ag06_diagnostics
+    assert "zero investment model credit" in ag06_diagnostics["confounding_audit"]["value"]
     ag07_diagnostics = {item["name"]: item for item in receipts["AG-07"]["diagnostics"]}
     assert ag07_diagnostics["risk_score_smd"]["status"] == "PASS"
     ag08_diagnostics = {item["name"]: item for item in receipts["AG-08"]["diagnostics"]}
@@ -154,12 +157,18 @@ def test_atlasgrid_displayed_returns_bind_to_cash_flow_engine(generated: dict[st
         "ag-parent-concentration-to-terms",
         "ag-hazard-to-downside-nrr",
         "ag-pricing-rct-to-renewal-credit",
+        "ag-realized-price-association-zero-credit",
         "ag-support-did-to-retention-lever",
     }
     for mapping in mappings.values():
         expected_mapping_digest = mapping.pop("mapping_sha256")
         assert expected_mapping_digest == digest(mapping)
     assert mappings["ag-pricing-rct-to-renewal-credit"]["model_credit"].startswith("0 from price")
+    assert mappings["ag-realized-price-association-zero-credit"]["model_credit"] == "0"
+    assert all(
+        "AG-06" not in lever["source_analysis_ids"]
+        for lever in case["valueCreationBridge"]["standalone"]
+    )
     assert mappings["ag-support-did-to-retention-lever"]["credit_classification"] == "CAUSAL_SYNTHETIC_ONLY"
 
 
@@ -176,6 +185,11 @@ def test_helios_contract_gates(generated: dict[str, tuple[Path, dict]]) -> None:
     assert any(item["status"] == "ABSTAIN" for item in receipts["HX-05"]["diagnostics"])
     hx06_diagnostics = {item["name"]: item for item in receipts["HX-06"]["diagnostics"]}
     assert hx06_diagnostics["baseline_cost_smd"]["status"] == "PASS"
+    assert hx06_diagnostics["assignment_mechanism"]["value"] == "RESTRICTED_SEEDED_PERMUTATION_60_OF_120"
+    assert 1 <= int(hx06_diagnostics["assignment_proposal"]["value"]) <= 1_000
+    assert hx06_diagnostics["assignment_acceptance_uses_outcomes"]["status"] == "PASS"
+    assert hx06_diagnostics["treatment_count"]["value"] == "60"
+    assert hx06_diagnostics["control_count"]["value"] == "60"
     assert receipts["HX-07"]["state"] == "ABSTAIN"
     assert receipts["HX-08"]["diagnostics"][0]["status"] == "PASS"
     assert receipts["HX-09"]["diagnostics"][2]["status"] == "PASS"

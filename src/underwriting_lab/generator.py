@@ -256,7 +256,8 @@ def _atlasgrid(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, A
             "cap_cents": 2_000_000_000,
             "full_payout_at_percent_of_threshold": "120.00",
             "payment_month": 25,
-            "funding": "additional_sponsor_equity"
+            "funding": "additional_sponsor_equity",
+            "rollover_dilution_treatment": "DILUTIVE_PRO_RATA_CONTRIBUTED_EQUITY"
         }
     }
     write_json(case_root / "data/debt_terms.json", debt_terms)

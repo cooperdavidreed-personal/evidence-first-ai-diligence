@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from pathlib import Path
 import re
 from typing import Any
 
 from .contracts import UnderwritingError, digest
+from .source_evidence import compile_source_evidence
 
 
 def _decimal(value: int | str | Decimal) -> str:
@@ -86,33 +88,28 @@ def _multiple(decimal_value: str) -> str:
     return f"{Decimal(decimal_value).quantize(Decimal('0.01'))}x"
 
 
-def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
+def build_case_metric_contract(
+    case: dict[str, Any], *, source_root: Path
+) -> dict[str, Any]:
     """Compile stable source, metric, formula, and render inventories.
 
     The registry contains exact values. Formatting is retained separately so the
     browser never has to infer an underwriting value from presentation text.
     """
 
-    locator_by_lineage: dict[str, str] = {}
-    source_locators: list[dict[str, Any]] = []
-    artifacts = {item["artifact_id"]: item for item in case["artifacts"]}
-    for item in case["lineage"]:
-        artifact = artifacts[item["artifact_id"]]
-        locator_id = f"locator-{item['node_id']}"
-        locator_by_lineage[item["node_id"]] = locator_id
-        body = {
-            "locator_id": locator_id,
-            "artifact_id": item["artifact_id"],
-            "artifact_path": artifact["path"],
-            "artifact_sha256": artifact["sha256"],
-            "locator_kind": "JSON_FIELDS" if artifact["path"].endswith(".json") else "CSV_COLUMN_SET",
-            "selector": item["field"],
-            "period": case["decision"].get("as_of", "NOT_APPLICABLE"),
-            "analysis_id": item["analysis_id"],
-            "retained_excerpt": f"Fields {item['field']} under retained artifact digest.",
-        }
-        body["locator_sha256"] = digest(body)
-        source_locators.append(body)
+    source_locators, locators_by_analysis = compile_source_evidence(case, source_root)
+    lineage_by_id = {item["node_id"]: item for item in case["lineage"]}
+
+    def locators_for_lineage(lineage_ids: list[str]) -> list[str]:
+        return list(
+            dict.fromkeys(
+                locator_id
+                for lineage_id in lineage_ids
+                for locator_id in locators_by_analysis[
+                    lineage_by_id[lineage_id]["analysis_id"]
+                ]
+            )
+        )
 
     metrics: list[dict[str, Any]] = []
     formulas: list[dict[str, Any]] = []
@@ -137,7 +134,7 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
             display_value=summary["value"], unit="display_native", quantum="0.01",
             period=case["decision"].get("as_of", "NOT_APPLICABLE"),
             classification=summary["classification"],
-            locator_ids=[locator_by_lineage[item] for item in lineage_ids],
+            locator_ids=locators_for_lineage(lineage_ids),
             receipt_sha256=case["analysis_sha256"] if "analysis_sha256" in case else case["manifest_sha256"],
             downstream_ids=["decision"],
         )
@@ -149,13 +146,7 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
         analysis_id = receipt["analysis_id"]
         for output in receipt["outputs"]:
             output_name = output["name"]
-            locator_ids = [
-                locator_by_lineage[item["node_id"]]
-                for item in case["lineage"]
-                if item["analysis_id"] == analysis_id
-                and output_name in item["output_names"]
-            ]
-            locator_ids = list(dict.fromkeys(locator_ids))
+            locator_ids = list(locators_by_analysis[analysis_id])
             if not locator_ids:
                 raise UnderwritingError(
                     f"analysis_output_lineage_missing:{analysis_id}:{output_name}"
@@ -207,7 +198,7 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
             common = {
                 "period": period,
                 "classification": "SCENARIO",
-                "locator_ids": [locator_by_lineage["ag-reprice"]],
+                "locator_ids": list(locators_by_analysis["AG-10"]),
                 "receipt_sha256": receipt,
                 "assumption_ids": [f"{scenario_id}.engine_inputs"],
                 "downstream_ids": ["decision"],
@@ -279,7 +270,7 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
         distribution = engine["distribution"]
         distribution_common = {
             "period": "conditional close-through-exit paths", "classification": "SCENARIO",
-            "locator_ids": [locator_by_lineage["ag-distribution"]],
+            "locator_ids": list(locators_by_analysis["AG-11"]),
             "receipt_sha256": distribution["receipt_sha256"],
             "assumption_ids": ["pe-correlation-structure"], "downstream_ids": ["decision"],
         }
@@ -289,7 +280,7 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
         for cell in engine["sensitivities"]["one_way"] + engine["sensitivities"]["entry_exit_matrix"]:
             common = {
                 "period": "close through month 60", "classification": "SCENARIO",
-                "locator_ids": [locator_by_lineage["ag-reprice"]],
+                "locator_ids": list(locators_by_analysis["AG-10"]),
                 "receipt_sha256": cell["receipt_sha256"],
                 "assumption_ids": [cell["cell_id"]], "downstream_ids": ["decision"],
             }
@@ -303,7 +294,9 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
         bridge = case["valueCreationBridge"]
         bridge_common = {
             "period": "close through month 60", "classification": "SCENARIO",
-            "locator_ids": [locator_by_lineage["ag-nrr"], locator_by_lineage["ag-support"], locator_by_lineage["ag-margin"]],
+            "locator_ids": locators_for_lineage(
+                ["ag-nrr", "ag-support", "ag-margin"]
+            ),
             "receipt_sha256": bridge["receipt_sha256"], "assumption_ids": ["value-creation-book"],
             "downstream_ids": ["decision"],
         }
@@ -331,7 +324,7 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
             quantum="1",
             period="as of underwriting cutoff",
             classification="DESCRIPTIVE",
-            locator_ids=[locator_by_lineage["hx-pipeline"]],
+            locator_ids=list(locators_by_analysis["HX-04"]),
             receipt_sha256=pipeline_receipt["receipt_sha256"],
             assumption_ids=["complete_stage_history_audit"],
             downstream_ids=["series-c-tranche"],
@@ -345,7 +338,7 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
             quantum="1",
             period="pre-tranche condition",
             classification="SCENARIO",
-            locator_ids=[locator_by_lineage["hx-optimizer"]],
+            locator_ids=list(locators_by_analysis["HX-06"]),
             receipt_sha256=optimizer_receipt["receipt_sha256"],
             assumption_ids=["production_replication_required"],
             downstream_ids=["series-c-tranche"],
@@ -358,11 +351,9 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
             common = {
                 "period": "projection origin through month 60",
                 "classification": "SCENARIO",
-                "locator_ids": [
-                    locator_by_lineage["hx-ownership"],
-                    locator_by_lineage["hx-runway"],
-                    locator_by_lineage["hx-return"],
-                ],
+                "locator_ids": locators_for_lineage(
+                    ["hx-ownership", "hx-runway", "hx-return"]
+                ),
                 "receipt_sha256": receipt,
                 "assumption_ids": [f"{scenario_id}.engine_inputs"],
                 "downstream_ids": ["decision"],
@@ -657,7 +648,7 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
         distribution_common = {
             "period": "conditional close-through-exit paths",
             "classification": "SCENARIO",
-            "locator_ids": [locator_by_lineage["hx-return"]],
+            "locator_ids": list(locators_by_analysis["HX-09"]),
             "receipt_sha256": distribution["receipt_sha256"],
             "assumption_ids": ["vc-distribution-priors"],
             "downstream_ids": ["decision"],
@@ -686,7 +677,7 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
             common = {
                 "period": "projection origin through selected exit",
                 "classification": "SCENARIO",
-                "locator_ids": [locator_by_lineage["hx-return"], locator_by_lineage["hx-runway"]],
+                "locator_ids": locators_for_lineage(["hx-return", "hx-runway"]),
                 "receipt_sha256": cell["receipt_sha256"],
                 "assumption_ids": [cell["cell_id"]],
                 "downstream_ids": ["decision"],
@@ -700,7 +691,9 @@ def build_case_metric_contract(case: dict[str, Any]) -> dict[str, Any]:
         bridge_common = {
             "period": "projection origin through month 60",
             "classification": "SCENARIO",
-            "locator_ids": [locator_by_lineage["hx-nrr"], locator_by_lineage["hx-margin"], locator_by_lineage["hx-pipeline"], locator_by_lineage["hx-runway"]],
+            "locator_ids": locators_for_lineage(
+                ["hx-nrr", "hx-margin", "hx-pipeline", "hx-runway"]
+            ),
             "receipt_sha256": bridge["receipt_sha256"],
             "assumption_ids": ["vc-value-creation-book"],
             "downstream_ids": ["decision"],

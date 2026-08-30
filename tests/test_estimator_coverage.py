@@ -68,6 +68,13 @@ def test_helios_optimizer_fixture_is_balanced_and_preserves_plant() -> None:
     rows = helios_optimizer_fixture(20260829)
     assert len(rows) == 120
     assert sum(int(row["treatment"]) for row in rows) == 60
+    assert rows == helios_optimizer_fixture(20260829)
+    assert {row["assignment_mechanism"] for row in rows} == {
+        "RESTRICTED_SEEDED_PERMUTATION_60_OF_120"
+    }
+    assert {row["assignment_acceptance_uses_outcomes"] for row in rows} == {"false"}
+    assert 1 <= int(rows[0]["assignment_proposal"]) <= 1_000
+    assert int(rows[0]["maximum_assignment_proposals"]) == 1_000
 
 
 def test_seed_permutations_kill_first_n_assignment_mutant() -> None:

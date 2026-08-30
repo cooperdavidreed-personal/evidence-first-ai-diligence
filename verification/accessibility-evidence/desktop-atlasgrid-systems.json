@@ -1,0 +1,77 @@
+{
+  "boundary": "Automated Axe scan for critical and serious findings plus tested root overflow; not comprehensive WCAG conformance.",
+  "case": "AtlasGrid Systems",
+  "project": "desktop",
+  "scans": [
+    {
+      "view": "IC Snapshot",
+      "axe_violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "node_count": 1
+        }
+      ],
+      "critical_or_serious_count": 0,
+      "root_client_width": 1440,
+      "root_scroll_width": 1440
+    },
+    {
+      "view": "Thesis & Evidence",
+      "axe_violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "node_count": 1
+        }
+      ],
+      "critical_or_serious_count": 0,
+      "root_client_width": 1440,
+      "root_scroll_width": 1440
+    },
+    {
+      "view": "Econometric Lab",
+      "axe_violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "node_count": 1
+        }
+      ],
+      "critical_or_serious_count": 0,
+      "root_client_width": 1440,
+      "root_scroll_width": 1440
+    },
+    {
+      "view": "Underwriting Room",
+      "axe_violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "node_count": 1
+        }
+      ],
+      "critical_or_serious_count": 0,
+      "root_client_width": 1440,
+      "root_scroll_width": 1440
+    },
+    {
+      "view": "Value Creation",
+      "axe_violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "node_count": 1
+        }
+      ],
+      "critical_or_serious_count": 0,
+      "root_client_width": 1440,
+      "root_scroll_width": 1440
+    }
+  ],
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "workbench_data_sha256": "8c2791ffdc4b59710e11386f0b0789c8c041fa31f9f8616d56891e77515e2b0d"
+}

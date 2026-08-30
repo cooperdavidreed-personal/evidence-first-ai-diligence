@@ -7,7 +7,7 @@
 **Authority:** `DECISION_RECORD_INCOMPLETE` / `PENDING_FOUNDER_SIGNATURE` / no delegated investment authority.
 
 **Knowledge cutoff:** `2026-08-29T00:00:00Z`
-**Packet receipt:** `50cb867349419de230b2d2c6815d3250ff0b698521defec8a431d2eccb4a8339`
+**Packet receipt:** `c7744a4f463d863f03a23940586323ea3c6404197dc02599a3a91600efcf9008`
 
 ## Recommendation and executable terms
 
@@ -152,7 +152,7 @@ This packet is generated from a fictional deterministic room. Synthetic causal e
 
 ## Receipt appendix
 
-- Case analysis: `0c9046fb877b09dc84ad8225e079ae7c3c79f76c5efa4680374e637e9c31424d`
+- Case analysis: `a7e5ae2f95eabac12fc068d2160a4327f381069ac0b3b6ca804f336c09235003`
 - BASE result: `25e42585f6c9cd97a030d3d79dcb69c9aa70795ec76da82e822b8e2a6f0f3417`
 - MILESTONE result: `9cf24ca939951b9d65eecd0ce26b2721d39f4f0c48578e6a0a9093cbcf2203e8`
 - DOWNSIDE result: `8c4a2cfe0cafaa5a6340c8f0419f32e97ca590eab1ef8ac25cac9576affe2d20`

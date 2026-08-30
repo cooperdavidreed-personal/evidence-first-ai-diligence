@@ -43,6 +43,8 @@ def build(repo: Path, destination: Path, workbench_dist: Path) -> None:
     staged: list[tuple[Path, str]] = []
     for source in sorted(path for path in workbench_dist.rglob("*") if path.is_file()):
         relative = source.relative_to(workbench_dist)
+        if relative.parts[:1] == ("source-pack",):
+            continue
         target = destination / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
@@ -53,6 +55,42 @@ def build(repo: Path, destination: Path, workbench_dist: Path) -> None:
     for case in ("atlasgrid", "helios"):
         for name in ("ic-memo.html", "ic-memo.md", "model-appendix.json", "packet-receipt.json"):
             staged.append((_copy_file(repo, destination, f"portfolio/{case}/{name}"), "case-packet"))
+        source_manifest_path = repo / "portfolio" / case / "data-room" / "manifest.json"
+        source_manifest = json.loads(source_manifest_path.read_text(encoding="utf-8"))
+        source_files = [("manifest.json", None), *[(item["path"], item["sha256"]) for item in source_manifest["artifacts"]]]
+        for relative, expected_sha256 in source_files:
+            relative_path = Path(relative)
+            if relative_path.is_absolute() or ".." in relative_path.parts or "truth" in relative_path.parts:
+                raise RuntimeError(f"source room contains unsafe path: {relative}")
+            source_relative = f"portfolio/{case}/data-room/{relative}"
+            target_relative = f"source-pack/{case}/{relative}"
+            source = repo / source_relative
+            if not source.is_file():
+                raise FileNotFoundError(f"missing source room artifact: {source_relative}")
+            if expected_sha256 is not None and hashlib.sha256(source.read_bytes()).hexdigest() != expected_sha256:
+                raise RuntimeError(f"source room digest mismatch: {source_relative}")
+            target = destination / target_relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+            staged.append((target, "synthetic-data-room"))
+
+    accessibility_root = repo / "verification" / "accessibility-evidence"
+    accessibility_files = sorted(accessibility_root.glob("*.json"))
+    if len(accessibility_files) != 4:
+        raise RuntimeError(
+            f"expected four accessibility evidence files, got {len(accessibility_files)}"
+        )
+    for source in accessibility_files:
+        staged.append(
+            (
+                _copy_file(
+                    repo,
+                    destination,
+                    f"verification/accessibility-evidence/{source.name}",
+                ),
+                "accessibility-evidence",
+            )
+        )
 
     visual_manifest_path = repo / "verification/visual-evidence.json"
     visual_manifest = json.loads(visual_manifest_path.read_text(encoding="utf-8"))

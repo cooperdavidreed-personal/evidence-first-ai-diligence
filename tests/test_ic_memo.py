@@ -42,7 +42,7 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
     markdown = artifacts["memo"].read_text(encoding="utf-8")
     assert "`REPRICE`" in markdown
     assert "22.57%" in markdown
-    assert "$212.4M" in markdown
+    assert "$211M" in markdown
     assert "Synthetic causal estimates recover planted assignment mechanisms only" in markdown
     for section in [
         "## Operating case and valuation bridge",

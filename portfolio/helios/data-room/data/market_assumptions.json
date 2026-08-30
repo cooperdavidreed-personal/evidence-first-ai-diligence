@@ -1,0 +1,1 @@
+{"adoption_prior":"Beta(1,1)","credible_interval":"90%","schema_version":"helios.market-assumptions/v1","stage_probabilities":{"1":"0.08","2":"0.16","3":"0.32","4":"0.52","5":"0.74","6":"0.88"},"tier_mid_spend_cents":[240000000,192000000,144000000,96000000,48000000],"universe_counts":[5000,7500,9500,11000,8000]}

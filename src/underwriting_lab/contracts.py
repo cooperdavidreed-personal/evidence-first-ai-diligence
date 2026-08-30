@@ -393,7 +393,7 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
     analyses = {item["analysis_id"] for item in case["analyses"]}
     locators: dict[str, dict[str, Any]] = {}
     for locator in case["sourceLocators"]:
-        _validate_named_hash(locator, "source-locator-v2.schema.json", "locator_sha256")
+        _validate_named_hash(locator, "source-locator-v3.schema.json", "locator_sha256")
         locator_id = locator["locator_id"]
         if locator_id in locators:
             raise UnderwritingError("source_locator_duplicate")
@@ -403,6 +403,31 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             raise UnderwritingError("source_locator_artifact_mismatch")
         if locator["analysis_id"] not in analyses:
             raise UnderwritingError("source_locator_analysis_orphan")
+        if digest(locator["retained_excerpt"]) != locator["excerpt_sha256"]:
+            raise UnderwritingError("source_locator_excerpt_digest_mismatch")
+        expected_repository_path = (
+            f"portfolio/{case['caseId']}/data-room/{locator['artifact_path']}"
+        )
+        expected_published_path = (
+            f"/source-pack/{case['caseId']}/{locator['artifact_path']}"
+        )
+        if (
+            locator["repository_path"] != expected_repository_path
+            or locator["published_path"] != expected_published_path
+        ):
+            raise UnderwritingError("source_locator_public_path_mismatch")
+
+    expected_input_pairs = {
+        (receipt["analysis_id"], input_item["artifact_id"])
+        for receipt in case["analyses"]
+        for input_item in receipt["inputs"]
+    }
+    observed_input_pairs = {
+        (locator["analysis_id"], locator["artifact_id"])
+        for locator in locators.values()
+    }
+    if observed_input_pairs != expected_input_pairs:
+        raise UnderwritingError("source_locator_input_closure_mismatch")
 
     metrics: dict[str, dict[str, Any]] = {}
     for metric in case["metricRegistry"]:
@@ -429,10 +454,8 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             if metric["governing_receipt_sha256"] != receipt["receipt_sha256"]:
                 raise UnderwritingError(f"analysis_output_receipt_mismatch:{metric_id}")
             expected_locator_ids = {
-                f"locator-{item['node_id']}"
-                for item in case["lineage"]
-                if item["analysis_id"] == receipt["analysis_id"]
-                and output["name"] in item["output_names"]
+                f"locator-{receipt['analysis_id'].lower()}-{item['artifact_id']}"
+                for item in receipt["inputs"]
             }
             if not expected_locator_ids:
                 raise UnderwritingError(

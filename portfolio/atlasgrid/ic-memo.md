@@ -5,7 +5,7 @@
 **Provisional posture:** `REPRICE`  
 **Workflow state:** `DECISION_RECORD_INCOMPLETE` / `PENDING_FOUNDER_SIGNATURE`  
 **Knowledge cutoff:** `2026-08-29T00:00:00Z`
-**Packet receipt:** `b7153dbb9658cd5a13a03718f220b0675b8b24104da4419b5abdb0c5a63031c5`
+**Packet receipt:** `9cbc662ad80b1c3fb8f33b36f2eb930176af217a93f23f300f9d703a9d3c11a2`
 
 ## Recommendation
 
@@ -21,7 +21,7 @@ The asking price fails the frozen return hurdle. The selected upfront structure 
 
 ## Price and structure
 
-- Maximum upfront bid under the fixed selected terms: **$212.4M**.
+- Maximum upfront bid under the fixed selected terms: **$211M**.
 - Selected sponsor equity at close: **$102M**.
 - Funded term debt at face: **$120M**; the undrawn revolver remains liquidity capacity, not a source.
 - Selected contingent earnout paid in the modeled base case: **$4.5M**; downside payout: **$0**.
@@ -119,6 +119,7 @@ No person-level management conclusion is identified from this synthetic data roo
 
 | Evidence | Observed | Model mapping | Credit class | Decision response |
 |---|---|---|---|---|
+| AG-06 | -3.49 percentage-point association | 0 | PREDICTIVE_ASSOCIATION_ZERO_MODEL_CREDIT | Retain only as a confounding exhibit; use the randomized offer ITT to falsify pricing upside |
 | AG-03 | 20.39% top-10 parent concentration | 0 | DESCRIPTIVE_ZERO_DIRECT_MODEL_CREDIT | HOLD condition and contingent consideration tied to verified live ARR |
 | AG-05 | 4.18% annualized descriptive logo churn | Scenario calibration only; no causal claim | DESCRIPTIVE_SCENARIO_ANCHOR | Downside floor must survive retention compression |
 | AG-07 | -6.69 percentage-point renewal ITT | 0 from price increase; +1.5pp NRR remains HUMAN_JUDGMENT | CAUSAL_SYNTHETIC_ONLY_ZERO_UPSIDE_CREDIT | Do not underwrite broad price-led expansion without a safer renewal design |
@@ -151,9 +152,9 @@ This packet is generated from a fictional, deterministic data room. Synthetic ca
 
 ## Receipt appendix
 
-- Case analysis: `0cc1447ad9e6669596a2e2d520104fba9f25d1e3427c770530e330595ac0c037`
-- ASK result: `3fc1d932f0ae4a103297016cae838c7a5fae816bd233656e3c9c39c96871ff52`
-- SELECTED result: `66d382862891fb661b406a7aa92e480641b4226e2b0420fbdbcdc1f3fbec3a8f`
-- DOWNSIDE result: `f8b17edccdf559abd5a4eff12297f80e6cce03068b608faa9e88db889a86dfc4`
-- Sensitivity book: `b7d66b72a7f885837532656df1a7fd04cb23f624eb7c72b87a246243379f40d0`
-- Value-creation bridge: `f4be3c6462396efccd04a6f83c0f19cf06059a204ed4397b58cf3a9b9d44fb3a`
+- Case analysis: `7571c5065c99c56d425379ef4fd3de6455f3bcb1a3c0f59847c17dfb5f4ed44f`
+- ASK result: `d167ef1482b25877dab3e9115a03eeaa89492c92e36da902c71b35f2fde766d0`
+- SELECTED result: `c50fdfea9c6754f5b41824537c524ebdbd76658c23f97ccd2671cd912674161b`
+- DOWNSIDE result: `5a43686feffed8735cd002e463a82f0b9019bdc28ee6301277573426bf4e843f`
+- Sensitivity book: `b10e5acdd6fc70cb08b5d8e35ba552f351ff6e87418266e4b846cdab78aa527a`
+- Value-creation bridge: `bbe29a3ee368bd7bd3537946a22ba167f805e4eb83eb2f078d0a48ce21e6154a`

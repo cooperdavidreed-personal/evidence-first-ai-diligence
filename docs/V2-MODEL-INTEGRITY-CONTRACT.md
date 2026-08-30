@@ -328,6 +328,9 @@ The default earnout is contingent consideration, not a certain EV haircut:
 - payment date: month 25;
 - funding: additional sponsor equity, not debt, unless a separately modeled
   source is declared; and
+- rollover treatment: additional sponsor equity is dilutive, so sponsor and
+  rollover exit proceeds are allocated pro rata to cumulative contributed
+  equity and reconcile exactly to total exit equity; and
 - downside: no payout when the threshold is not met.
 
 The upfront-EV solver holds this earnout contract fixed. Every payout is a

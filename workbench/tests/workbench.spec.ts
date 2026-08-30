@@ -1,7 +1,14 @@
 import AxeBuilder from "@axe-core/playwright";
+import {createHash} from "node:crypto";
+import {readFileSync} from "node:fs";
+import {resolve} from "node:path";
 import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
 
-import {captureVisualEvidence} from "./visual-evidence";
+import {captureVisualEvidence, writeAccessibilityEvidence} from "./visual-evidence";
+
+const workbenchDataSha256 = createHash("sha256")
+  .update(readFileSync(resolve(import.meta.dirname, "../src/data/cases.json")))
+  .digest("hex");
 
 const viewChecks = {
   "IC Snapshot": /What must be true/,
@@ -23,6 +30,14 @@ async function assertBoundedAndAccessible(page: Page) {
       .map((element) => `${element.tagName.toLowerCase()}.${element.className}:${Math.round(element.getBoundingClientRect().right)}`),
   }));
   expect(width.scroll, `overflowing elements: ${width.offenders.join(", ")}`).toBeLessThanOrEqual(width.client);
+  return {
+    axe_violations: scan.violations
+      .map((violation) => ({id: violation.id, impact: violation.impact ?? "unknown", node_count: violation.nodes.length}))
+      .sort((left, right) => left.id.localeCompare(right.id)),
+    critical_or_serious_count: scan.violations.filter((violation) => ["critical", "serious"].includes(violation.impact ?? "")).length,
+    root_client_width: width.client,
+    root_scroll_width: width.scroll,
+  };
 }
 
 async function assertInFirstViewport(page: Page, locator: Locator, label: string) {
@@ -37,6 +52,7 @@ async function assertInFirstViewport(page: Page, locator: Locator, label: string
 
 for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
   test(`${caseName} complete keyboard, interaction, visual, and accessibility flow`, async ({page}, testInfo: TestInfo) => {
+    const accessibilityScans: Array<Record<string, unknown>> = [];
     await page.goto("/");
     await page.evaluate(() => window.scrollTo({top: 0, left: 0, behavior: "instant"}));
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThanOrEqual(5);
@@ -55,9 +71,14 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
     ] as Array<[Locator, string]>;
     if (caseName === "Helios Compute Control") {
       firstViewportChecks.push([page.getByRole("button", {name: /Milestone · Series C funded capital/}), "capital and ownership terms"]);
+      firstViewportChecks.push([page.getByRole("button", {name: /Milestone · Series C fully diluted ownership/}), "fully diluted ownership"]);
+      firstViewportChecks.push([page.getByRole("button", {name: /Base.*gross XIRR/i}), "base gross return"]);
+      firstViewportChecks.push([page.getByRole("button", {name: /Downside.*gross XIRR/i}), "downside gross return"]);
     } else {
       firstViewportChecks.push([page.getByRole("button", {name: /Upfront EV/}), "selected entry price"]);
-      if (testInfo.project.name === "desktop") firstViewportChecks.push([page.getByRole("button", {name: /Funded term debt/}), "selected financing structure"]);
+      firstViewportChecks.push([page.getByRole("button", {name: /Funded term debt/}), "selected financing structure"]);
+      firstViewportChecks.push([page.getByRole("button", {name: /Earnout threshold \/ cap/}), "contingent consideration"]);
+      firstViewportChecks.push([page.getByRole("button", {name: /Gross IRR/}).first(), "selected gross return"]);
     }
     for (const [locator, label] of firstViewportChecks) await assertInFirstViewport(page, locator, label);
 
@@ -65,7 +86,12 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
     await lineageTrigger.focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("dialog")).toBeVisible();
-    await expect(page.getByText("Transformation").first()).toBeVisible();
+    await expect(page.getByText("Precise source locators").first()).toBeVisible();
+    const sourceLink = page.getByRole("link", {name: "Open committed synthetic source ↗"}).first();
+    await expect(sourceLink).toBeVisible();
+    await expect(page.getByRole("dialog").locator(".locator-inspection pre").first()).toContainText(/CSV_ROWS|JSON_VALUE|TEXT_SPAN/);
+    const sourceResponse = await page.request.get(await sourceLink.evaluate((element) => (element as HTMLAnchorElement).href));
+    expect(sourceResponse.status()).toBe(200);
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).not.toBeVisible();
     await expect(lineageTrigger).toBeFocused();
@@ -104,6 +130,15 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
           await page.keyboard.press("Enter");
           expect(await graph.locator(".dag-node.active").count()).toBeGreaterThan(1);
           expect(await graph.locator(".dag-node.muted").count()).toBeGreaterThan(0);
+          const decisionId = await selectedNode.getAttribute("data-node-id");
+          await page.keyboard.press("ArrowLeft");
+          await expect.poll(async () => graph.locator(".dag-node:focus").getAttribute("data-node-id")).not.toBe(decisionId);
+          const upstream = graph.locator(".dag-node:focus");
+          const upstreamId = await upstream.getAttribute("data-node-id");
+          await expect(upstream).toHaveAttribute("aria-selected", "true");
+          await page.keyboard.press("ArrowRight");
+          await expect.poll(async () => graph.locator(".dag-node:focus").getAttribute("data-node-id")).not.toBe(upstreamId);
+          await expect(graph.locator(".dag-node:focus")).toHaveAttribute("aria-selected", "true");
           await page.getByRole("button", {name: "Clear path"}).click();
         } else {
           await expect(graph).toBeHidden();
@@ -161,7 +196,7 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
         await expect(page.getByRole("heading", {name: "Screened-out levers"})).toBeVisible();
         await expect(page.getByLabel("Prioritized value-creation initiatives")).toContainText("Implementation cost");
       }
-      await assertBoundedAndAccessible(page);
+      accessibilityScans.push({view, ...await assertBoundedAndAccessible(page)});
       const slug = view.toLowerCase().replaceAll(" ", "-").replaceAll("&", "and");
       const caseSlug = caseName.toLowerCase().replaceAll(" ", "-");
       await page.evaluate(() => {
@@ -172,5 +207,14 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
       await captureVisualEvidence(page, `${testInfo.project.name}-${caseSlug}-${slug}.png`);
     }
     expect(chartIds.size).toBe(4);
+    const caseSlug = caseName.toLowerCase().replaceAll(" ", "-");
+    writeAccessibilityEvidence(`${testInfo.project.name}-${caseSlug}.json`, {
+      boundary: "Automated Axe scan for critical and serious findings plus tested root overflow; not comprehensive WCAG conformance.",
+      case: caseName,
+      project: testInfo.project.name,
+      scans: accessibilityScans,
+      viewport: page.viewportSize(),
+      workbench_data_sha256: workbenchDataSha256,
+    });
   });
 }

@@ -17,6 +17,22 @@ def _candidate_repo(root: Path) -> Path:
         case_root.mkdir(parents=True)
         for name in ("ic-memo.html", "ic-memo.md", "model-appendix.json", "packet-receipt.json"):
             (case_root / name).write_text(f"{case}:{name}")
+        room = case_root / "data-room"
+        (room / "data").mkdir(parents=True)
+        source = room / "data" / "source.csv"
+        source.write_text("id,value\n1,synthetic\n")
+        source_sha256 = hashlib.sha256(source.read_bytes()).hexdigest()
+        source_manifest = {
+            "synthetic": True,
+            "artifacts": [
+                {"path": "data/source.csv", "sha256": source_sha256}
+            ],
+        }
+        (room / "manifest.json").write_text(json.dumps(source_manifest))
+    accessibility_root = repo / "verification" / "accessibility-evidence"
+    accessibility_root.mkdir(parents=True)
+    for name in ("desktop-atlasgrid.json", "mobile-atlasgrid.json", "desktop-helios.json", "mobile-helios.json"):
+        (accessibility_root / name).write_text('{"status":"PASS"}\n')
     png = repo / "dist/visual-evidence/proof.png"
     pdf = repo / "output/pdf/memo.pdf"
     png.parent.mkdir(parents=True)
@@ -45,7 +61,7 @@ def _candidate_repo(root: Path) -> Path:
     }
     manifest["manifest_sha256"] = hashlib.sha256(canonical_json(manifest)).hexdigest()
     manifest_path = repo / "verification/visual-evidence.json"
-    manifest_path.parent.mkdir(parents=True)
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_bytes(canonical_json(manifest) + b"\n")
     return repo
 
@@ -66,6 +82,8 @@ def test_pages_stage_v2_workbench_and_bound_candidate_artifacts(tmp_path: Path) 
     for case in ("atlasgrid", "helios"):
         for name in ("ic-memo.html", "ic-memo.md", "model-appendix.json", "packet-receipt.json"):
             assert (destination / "portfolio" / case / name).is_file()
+        assert (destination / "source-pack" / case / "manifest.json").is_file()
+        assert (destination / "source-pack" / case / "data" / "source.csv").is_file()
     assert (destination / "verification/visual-evidence.json").is_file()
     assert (destination / "output/pdf/memo.pdf").is_file()
     assert not (destination / "demo").exists()
@@ -73,7 +91,7 @@ def test_pages_stage_v2_workbench_and_bound_candidate_artifacts(tmp_path: Path) 
     manifest = json.loads((destination / "candidate-artifacts.json").read_text())
     assert manifest["schema_version"] == "underwriting.portfolio-candidate/v2"
     roles = {entry["role"] for entry in manifest["artifacts"]}
-    assert {"v2-workbench", "case-packet", "visual-manifest", "visual-evidence", "print-pdf"} <= roles
+    assert {"v2-workbench", "case-packet", "synthetic-data-room", "accessibility-evidence", "visual-manifest", "visual-evidence", "print-pdf"} <= roles
     for entry in manifest["artifacts"]:
         artifact = destination / entry["path"]
         assert artifact.stat().st_size == entry["bytes"]

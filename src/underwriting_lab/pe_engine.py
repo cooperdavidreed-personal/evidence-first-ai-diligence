@@ -64,6 +64,7 @@ class PETransactionAssumptions:
     hold_months: int = 60
     earnout_threshold_arr_cents: int | None = None
     earnout_cap_cents: int = 0
+    earnout_equity_treatment: str = "DILUTIVE_PRO_RATA_CONTRIBUTED_EQUITY"
 
 
 @dataclass(frozen=True)
@@ -77,6 +78,8 @@ class PECaseResult:
     sponsor_cash_flows: tuple[DatedCashFlow, ...]
     exit_enterprise_value_cents: int
     exit_equity_value_cents: int
+    sponsor_exit_proceeds_cents: int
+    seller_rollover_exit_proceeds_cents: int
     earnout_cents: int
     gross_moic: Decimal
     gross_xirr: Decimal
@@ -107,6 +110,8 @@ class PECaseResult:
             ],
             "exit_enterprise_value_cents": self.exit_enterprise_value_cents,
             "exit_equity_value_cents": self.exit_equity_value_cents,
+            "sponsor_exit_proceeds_cents": self.sponsor_exit_proceeds_cents,
+            "seller_rollover_exit_proceeds_cents": self.seller_rollover_exit_proceeds_cents,
             "earnout_cents": self.earnout_cents,
             "gross_moic": format(self.gross_moic, "f"),
             "gross_xirr": format(self.gross_xirr, "f"),
@@ -375,6 +380,8 @@ def _validate_transaction_assumptions(transaction: PETransactionAssumptions) -> 
         raise UnderwritingError("pe_interest_convention_unsupported")
     if transaction.paydown_priority != ("REVOLVER", "TERM"):
         raise UnderwritingError("pe_paydown_priority_unsupported")
+    if transaction.earnout_equity_treatment != "DILUTIVE_PRO_RATA_CONTRIBUTED_EQUITY":
+        raise UnderwritingError("pe_earnout_equity_treatment_unsupported")
 
 
 def _engine_inputs(
@@ -555,8 +562,21 @@ def run_pe_case(
     cash_flows = [DatedCashFlow(close_date, -sources_and_uses.sponsor_equity_cents)]
     if earnout:
         cash_flows.append(DatedCashFlow(_add_months(close_date, 25), -earnout))
+    sponsor_contributed_equity = sources_and_uses.sponsor_equity_cents + earnout
+    total_contributed_equity = sponsor_contributed_equity + transaction.seller_rollover_cents
+    if sponsor_contributed_equity <= 0 or total_contributed_equity <= 0:
+        raise UnderwritingError("pe_sponsor_equity_required")
+    sponsor_exit_proceeds = round_cents(
+        Decimal(exit_equity_value)
+        * Decimal(sponsor_contributed_equity)
+        / Decimal(total_contributed_equity)
+    )
+    seller_rollover_exit_proceeds = exit_equity_value - sponsor_exit_proceeds
     cash_flows.append(
-        DatedCashFlow(_add_months(close_date, transaction.hold_months), exit_equity_value)
+        DatedCashFlow(
+            _add_months(close_date, transaction.hold_months),
+            sponsor_exit_proceeds,
+        )
     )
     total_invested = -sum(item.amount_cents for item in cash_flows if item.amount_cents < 0)
     total_proceeds = sum(item.amount_cents for item in cash_flows if item.amount_cents > 0)
@@ -583,6 +603,8 @@ def run_pe_case(
         sponsor_cash_flows=tuple(cash_flows),
         exit_enterprise_value_cents=exit_enterprise_value,
         exit_equity_value_cents=exit_equity_value,
+        sponsor_exit_proceeds_cents=sponsor_exit_proceeds,
+        seller_rollover_exit_proceeds_cents=seller_rollover_exit_proceeds,
         earnout_cents=earnout,
         gross_moic=gross_moic,
         gross_xirr=gross_xirr,
@@ -598,19 +620,45 @@ def solve_maximum_bid(
     *,
     operating: PEOperatingAssumptions,
     transaction: PETransactionAssumptions,
+    downside_operating: PEOperatingAssumptions,
+    downside_transaction: PETransactionAssumptions,
     minimum_irr: Decimal,
     minimum_moic: Decimal,
+    minimum_downside_irr: Decimal,
+    minimum_downside_moic: Decimal,
+    minimum_downside_liquidity_cents: int,
     low_cents: int,
     high_cents: int,
 ) -> int:
     def clears(entry_enterprise_value_cents: int) -> bool:
-        candidate = PETransactionAssumptions(
-            **{**asdict(transaction), "entry_enterprise_value_cents": entry_enterprise_value_cents}
+        base_candidate = replace(
+            transaction,
+            entry_enterprise_value_cents=entry_enterprise_value_cents,
         )
-        result = run_pe_case(
-            scenario_id="max-bid-candidate", operating=operating, transaction=candidate
+        downside_candidate = replace(
+            downside_transaction,
+            entry_enterprise_value_cents=entry_enterprise_value_cents,
         )
-        return result.gross_xirr >= minimum_irr and result.gross_moic >= minimum_moic
+        base_result = run_pe_case(
+            scenario_id="MAX_BID_BASE_CANDIDATE",
+            operating=operating,
+            transaction=base_candidate,
+        )
+        downside_result = run_pe_case(
+            scenario_id="MAX_BID_DOWNSIDE_CANDIDATE",
+            operating=downside_operating,
+            transaction=downside_candidate,
+        )
+        return (
+            base_result.gross_xirr >= minimum_irr
+            and base_result.gross_moic >= minimum_moic
+            and downside_result.gross_xirr >= minimum_downside_irr
+            and downside_result.gross_moic >= minimum_downside_moic
+            and downside_result.debt_schedule.minimum_liquidity_cents
+            >= minimum_downside_liquidity_cents
+            and not downside_result.debt_schedule.has_payment_default
+            and downside_result.debt_schedule.first_covenant_breach_month is None
+        )
 
     return maximum_bid_cents(
         low_cents=low_cents,

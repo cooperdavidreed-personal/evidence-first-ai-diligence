@@ -26,6 +26,8 @@ for (const memo of [
       path: rawPdfPath,
       format: "Letter",
       printBackground: true,
+      tagged: true,
+      outline: true,
       margin: {top: "0.35in", right: "0.35in", bottom: "0.35in", left: "0.35in"},
     });
     normalizeChromiumPdf(rawPdfPath, `${memo.slug}-ic-memo-letter.pdf`);

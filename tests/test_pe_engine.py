@@ -111,8 +111,13 @@ def test_maximum_bid_is_solved_with_terms_and_operations_fixed() -> None:
     maximum_bid = solve_maximum_bid(
         operating=_base_operating(),
         transaction=transaction,
+        downside_operating=_downside_operating(),
+        downside_transaction=replace(transaction, exit_multiple=Decimal("5.0")),
         minimum_irr=Decimal("0.22"),
         minimum_moic=Decimal("2.00"),
+        minimum_downside_irr=Decimal("0.05"),
+        minimum_downside_moic=Decimal("1.25"),
+        minimum_downside_liquidity_cents=300_000_000,
         low_cents=15_000_000_000,
         high_cents=26_000_000_000,
     )
@@ -127,8 +132,88 @@ def test_maximum_bid_is_solved_with_terms_and_operations_fixed() -> None:
         operating=_base_operating(),
         transaction=replace(transaction, entry_enterprise_value_cents=maximum_bid + 1),
     )
+    downside_at_limit = run_pe_case(
+        scenario_id="MAX_BID_DOWNSIDE",
+        operating=_downside_operating(),
+        transaction=replace(
+            transaction,
+            entry_enterprise_value_cents=maximum_bid,
+            exit_multiple=Decimal("5.0"),
+        ),
+    )
+    downside_above_limit = run_pe_case(
+        scenario_id="ABOVE_MAX_BID_DOWNSIDE",
+        operating=_downside_operating(),
+        transaction=replace(
+            transaction,
+            entry_enterprise_value_cents=maximum_bid + 1,
+            exit_multiple=Decimal("5.0"),
+        ),
+    )
     assert at_limit.gross_xirr >= Decimal("0.22") and at_limit.gross_moic >= Decimal("2")
-    assert above_limit.gross_xirr < Decimal("0.22") or above_limit.gross_moic < Decimal("2")
+    assert downside_at_limit.gross_xirr >= Decimal("0.05")
+    assert downside_at_limit.gross_moic >= Decimal("1.25")
+    assert downside_at_limit.debt_schedule.minimum_liquidity_cents >= 300_000_000
+    assert downside_at_limit.debt_schedule.first_covenant_breach_month is None
+    assert not downside_at_limit.debt_schedule.has_payment_default
+    assert (
+        above_limit.gross_xirr < Decimal("0.22")
+        or above_limit.gross_moic < Decimal("2")
+        or downside_above_limit.gross_xirr < Decimal("0.05")
+        or downside_above_limit.gross_moic < Decimal("1.25")
+        or downside_above_limit.debt_schedule.minimum_liquidity_cents < 300_000_000
+        or downside_above_limit.debt_schedule.first_covenant_breach_month is not None
+        or downside_above_limit.debt_schedule.has_payment_default
+    )
+
+
+def test_seller_rollover_receives_exit_proceeds_and_conserves_equity() -> None:
+    transaction = replace(
+        _transaction(21_000_000_000, exit_multiple="6.5", earnout=True),
+        seller_rollover_cents=2_000_000_000,
+    )
+    result = run_pe_case(
+        scenario_id="ROLLOVER",
+        operating=_base_operating(),
+        transaction=transaction,
+    )
+    sponsor_contributed = result.sources_and_uses.sponsor_equity_cents + result.earnout_cents
+    total_contributed = sponsor_contributed + transaction.seller_rollover_cents
+    assert result.sponsor_exit_proceeds_cents + result.seller_rollover_exit_proceeds_cents == result.exit_equity_value_cents
+    assert result.seller_rollover_exit_proceeds_cents > 0
+    assert result.sponsor_cash_flows[-1].amount_cents == result.sponsor_exit_proceeds_cents
+    expected_sponsor = int(
+        (Decimal(result.exit_equity_value_cents) * Decimal(sponsor_contributed) / Decimal(total_contributed)).quantize(Decimal("1"))
+    )
+    assert result.sponsor_exit_proceeds_cents == expected_sponsor
+
+
+def test_zero_rollover_assigns_all_exit_equity_to_sponsor() -> None:
+    result = run_pe_case(
+        scenario_id="NO_ROLLOVER",
+        operating=_base_operating(),
+        transaction=_transaction(21_000_000_000, exit_multiple="6.5", earnout=True),
+    )
+    assert result.seller_rollover_exit_proceeds_cents == 0
+    assert result.sponsor_exit_proceeds_cents == result.exit_equity_value_cents
+    assert result.sponsor_cash_flows[-1].amount_cents == result.exit_equity_value_cents
+
+
+def test_unsupported_earnout_equity_treatment_fails_closed() -> None:
+    transaction = replace(
+        _transaction(21_000_000_000, exit_multiple="6.5", earnout=True),
+        earnout_equity_treatment="UNDECLARED",
+    )
+    try:
+        run_pe_case(
+            scenario_id="UNDECLARED_ROLLOVER_TREATMENT",
+            operating=_base_operating(),
+            transaction=transaction,
+        )
+    except Exception as exc:
+        assert "pe_earnout_equity_treatment_unsupported" in str(exc)
+    else:  # pragma: no cover - must fail closed
+        raise AssertionError("undeclared rollover treatment was accepted")
 
 
 def test_pe_receipt_is_bound_and_evidence_input_changes_propagate() -> None:
