@@ -137,7 +137,7 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
           await page.keyboard.press("Enter");
           expect(await graph.locator(".dag-node.active").count()).toBeGreaterThan(1);
           expect(await graph.locator(".dag-node.muted").count()).toBeGreaterThan(0);
-          await graph.evaluate((element) => element.scrollIntoView({block: "start", inline: "nearest"}));
+          await graph.evaluate((element) => element.scrollIntoView({block: "center", inline: "nearest"}));
           await expect(selectedNode).toBeInViewport();
           await captureVisualEvidence(page, `desktop-${evidenceCaseSlug}-selected-thesis-path.png`);
           const decisionId = await selectedNode.getAttribute("data-node-id");
