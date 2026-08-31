@@ -8,6 +8,22 @@ const exactInteger = (value: string): bigint => {
   return BigInt(value);
 };
 
+export function compareDecimalStrings(left: string, right: string): -1 | 0 | 1 {
+  const parse = (value: string) => {
+    const match = value.match(/^(-?)([0-9]+)(?:\.([0-9]+))?$/);
+    if (!match) throw new Error("decimal_comparison_operand_invalid");
+    const fraction = match[3] ?? "";
+    const magnitude = BigInt(`${match[2]}${fraction}`);
+    return {coefficient: match[1] ? -magnitude : magnitude, scale: fraction.length};
+  };
+  const a = parse(left);
+  const b = parse(right);
+  const scale = Math.max(a.scale, b.scale);
+  const normalizedLeft = a.coefficient * 10n ** BigInt(scale - a.scale);
+  const normalizedRight = b.coefficient * 10n ** BigInt(scale - b.scale);
+  return normalizedLeft < normalizedRight ? -1 : normalizedLeft > normalizedRight ? 1 : 0;
+}
+
 const xnpv = (rate: number, dated: Array<{date: number; value: number}>): number => {
   if (rate <= -1) throw new Error("formula_xirr_rate_out_of_domain");
   const origin = Math.min(...dated.map((item) => item.date));
@@ -167,7 +183,7 @@ export function assertWorkbenchCase(candidate: unknown): asserts candidate is Ca
   if (!array(candidate.ownershipCadence) || candidate.ownershipCadence.length !== 5) throw new Error("ownership_cadence_invalid");
   if (!record(candidate.dealContext)) throw new Error("deal_context_invalid");
   const dealContext = candidate.dealContext;
-  if (dealContext.schema_version !== "underwriting.deal-context/v1" || !array(dealContext.competition) || dealContext.competition.length < 3 || ["company_one_liner", "product", "customer", "market", "go_to_market", "team", "process", "evidence_boundary", "context_sha256"].some((key) => typeof dealContext[key] !== "string" || !dealContext[key])) throw new Error("deal_context_invalid");
+  if (dealContext.schema_version !== "underwriting.deal-context/v1" || !array(dealContext.competition) || dealContext.competition.length < 3 || ["investment_question", "company_one_liner", "product", "customer", "market", "go_to_market", "team", "process", "evidence_boundary", "context_sha256"].some((key) => typeof dealContext[key] !== "string" || !dealContext[key])) throw new Error("deal_context_invalid");
   const cadence = candidate.ownershipCadence as Array<Record<string, unknown>>;
   if (cadence.map((item) => item.phase).join(",") !== "Pre-close,Day 1,Day 30,Day 100,Year 1" || cadence.some((item) => ["timing", "owner", "milestone", "kpi", "stop_rule"].some((key) => typeof item[key] !== "string" || !item[key]))) throw new Error("ownership_cadence_sequence_invalid");
   if (!record(candidate.renderManifest) || candidate.renderManifest.schema_version !== "underwriting.render-manifest/v2") throw new Error("render_manifest_invalid");
@@ -195,14 +211,15 @@ export function assertWorkbenchCase(candidate: unknown): asserts candidate is Ca
     const metric = metrics.get(pair.metric_id);
     if (!metric || metric.value !== pair.observed_value) throw new Error("decision_metric_binding_invalid");
     if (pair.metric !== metric.label) throw new Error("decision_metric_label_mismatch");
-    const observed = Number(pair.observed_value);
-    const threshold = Number(pair.threshold_value);
+    const observed = pair.observed_value;
+    const threshold = pair.threshold_value;
     const thresholdMatch = pair.threshold.match(/^(>=|<=|>|<|==)(-?[0-9]+(?:\.[0-9]+)?)(%|x| months)$/);
     const suffix = metric.unit === "decimal_rate" || metric.unit === "percent" ? "%" : metric.unit === "multiple" ? "x" : metric.unit === "modeled_months_funded_minimum" ? " months" : null;
     if (!thresholdMatch || thresholdMatch[1] !== pair.operator || suffix !== thresholdMatch[3]) throw new Error("decision_metric_threshold_display_mismatch");
     const visibleThreshold = Number(thresholdMatch[2]) / (metric.unit === "decimal_rate" ? 100 : 1);
-    if (!Number.isFinite(visibleThreshold) || visibleThreshold !== threshold) throw new Error("decision_metric_threshold_value_mismatch");
-    const clears = pair.operator === ">=" ? observed >= threshold : pair.operator === "<=" ? observed <= threshold : pair.operator === ">" ? observed > threshold : pair.operator === "<" ? observed < threshold : pair.operator === "==" ? observed === threshold : null;
+    if (!Number.isFinite(visibleThreshold) || compareDecimalStrings(String(visibleThreshold), threshold) !== 0) throw new Error("decision_metric_threshold_value_mismatch");
+    const comparison = compareDecimalStrings(observed, threshold);
+    const clears = pair.operator === ">=" ? comparison >= 0 : pair.operator === "<=" ? comparison <= 0 : pair.operator === ">" ? comparison > 0 : pair.operator === "<" ? comparison < 0 : pair.operator === "==" ? comparison === 0 : null;
     if (clears === null || pair.status !== (clears ? "CLEARS" : "MISSES")) throw new Error("decision_metric_status_invalid");
   }
   if (!array(candidate.decision.condition_states) || !array(candidate.decision.conditions)) throw new Error("decision_condition_states_missing");

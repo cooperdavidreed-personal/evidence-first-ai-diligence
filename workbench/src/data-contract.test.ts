@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vitest";
 import rawData from "./data/cases.json";
-import {assertWorkbenchData} from "./data-contract";
+import {assertWorkbenchData, compareDecimalStrings} from "./data-contract";
 
 describe("workbench v2 data contract", () => {
   it("validates both exact generated cases and ten browser identities", () => {
@@ -23,6 +23,19 @@ describe("workbench v2 data contract", () => {
     output.value = "1";
     output.display_value = "$0";
     expect(() => assertWorkbenchData(candidate)).toThrow(/formula_value_mismatch/);
+  });
+
+  it("requires the engine-authored investment question in the browser contract", () => {
+    const candidate: unknown = structuredClone(rawData);
+    assertWorkbenchData(candidate);
+    candidate.cases[0].dealContext.investment_question = "";
+    expect(() => assertWorkbenchData(candidate)).toThrow(/deal_context_invalid/);
+  });
+
+  it("compares hurdle operands without binary-float boundary drift", () => {
+    expect(compareDecimalStrings("0.3000000000000000001", "0.3")).toBe(1);
+    expect(compareDecimalStrings("2.000", "2")).toBe(0);
+    expect(compareDecimalStrings("-0.0001", "0")).toBe(-1);
   });
 
   it("recomputes dated XIRR from every retained dated cash flow", () => {

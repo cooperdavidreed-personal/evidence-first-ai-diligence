@@ -49,8 +49,9 @@ on Ubuntu/macOS remains `NOT_RUN` until a separately authorized push.
   selected terms, modeled return, open-condition count, and “not approved” state.
 - Canonical AtlasGrid entry-price and Helios exit-value controls rerun retained
   engine cells; they are not display-only calculators. Their displayed hurdle,
-  strategy consequence, recommendation impact, and receipt all come from the
-  retained analytical record.
+  strategy consequence, recommendation impact, and receipt are rendered from
+  retained analytical operands. Hurdle status is derived with exact decimal
+  comparison against engine-authored thresholds rather than binary floats.
 - Contextual source inspection presents business meaning before hashes. Legacy
   routes migrate deterministically to their new canonical URLs.
 
@@ -58,7 +59,7 @@ on Ubuntu/macOS remains `NOT_RUN` until a separately authorized push.
 
 - Python: `177/177` pass locally on Python 3.11, 3.12, and 3.13 in isolated
   environments. This is a local interpreter matrix, not hosted CI.
-- React: `18/18` unit/data-contract tests pass.
+- React: `20/20` unit/data-contract tests pass.
 - Playwright: `12 active passed / 2 intentionally skipped`; memo print proof runs
   once per case rather than redundantly per viewport.
 - Visual evidence: 30 manifest-bound PNGs cover the landing page, six primary

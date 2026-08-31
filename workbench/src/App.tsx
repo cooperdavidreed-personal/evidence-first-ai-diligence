@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {registeredMetric} from "./data-contract";
+import {compareDecimalStrings, registeredMetric} from "./data-contract";
 import {caseCatalog, isCaseId, loadCase, type CaseId} from "./case-data";
 import {ChartRegistryCaption} from "./chart-registry";
 import { PESnapshotTerms, PEUnderwritingRoom, PEValueCreation } from "./pe";
@@ -565,13 +565,13 @@ function DealContext({caseData}: {caseData: CaseData}) {
 type CanonicalCell = {cell_id: string; assumption_label: string; gross_xirr: string; gross_moic: string};
 
 type DecisionMetricPair = NonNullable<CaseData["decision"]["metric_pairs"]>[number];
-const thresholdClears = (observed: number, pair: DecisionMetricPair) => {
-  const threshold = Number(pair.threshold_value);
-  if (pair.operator === ">=") return observed >= threshold;
-  if (pair.operator === "<=") return observed <= threshold;
-  if (pair.operator === ">") return observed > threshold;
-  if (pair.operator === "<") return observed < threshold;
-  return observed === threshold;
+const thresholdClears = (observed: string, pair: DecisionMetricPair) => {
+  const comparison = compareDecimalStrings(observed, pair.threshold_value);
+  if (pair.operator === ">=") return comparison >= 0;
+  if (pair.operator === "<=") return comparison <= 0;
+  if (pair.operator === ">") return comparison > 0;
+  if (pair.operator === "<") return comparison < 0;
+  return comparison === 0;
 };
 
 function AssumptionLab({caseData, routeState, onRouteState}: {caseData: CaseData; routeState: RouteControls; onRouteState: (state: RouteControls) => void}) {
@@ -586,13 +586,13 @@ function AssumptionLab({caseData, routeState, onRouteState}: {caseData: CaseData
   const irrPair = caseData.decision.metric_pairs?.find((item) => item.metric_id === irrMetricId);
   const moicPair = caseData.decision.metric_pairs?.find((item) => item.metric_id === moicMetricId);
   if (!irrPair || !moicPair) throw new Error("canonical_assumption_hurdle_missing");
-  const clears = thresholdClears(Number(selected.gross_xirr), irrPair) && thresholdClears(Number(selected.gross_moic), moicPair);
+  const clears = thresholdClears(selected.gross_xirr, irrPair) && thresholdClears(selected.gross_moic, moicPair);
   const label = caseData.peEngine ? "Entry enterprise value" : "Exit equity value";
   const peCell = caseData.peEngine ? selected as CanonicalCell & {sponsor_cash_flows: Array<{amount_cents: number}>; minimum_covenant_headroom: string; receipt_sha256: string} : null;
-  const vcCell = caseData.vcEngine ? selected as CanonicalCell & {target_ownership: string; minimum_cash_cents: number; receipt_sha256: string} : null;
+  const vcCell = caseData.vcEngine ? selected as CanonicalCell & {target_ownership: string; minimum_cash_cents: number; pool_exit_treatment: "FULLY_GRANTED_COMMON" | "UNISSUED_CANCELLED"; receipt_sha256: string} : null;
   const strategyConsequence = peCell
     ? `Sponsor equity at close ${asMoney(Math.abs(peCell.sponsor_cash_flows[0].amount_cents))} · minimum covenant headroom ${Number(peCell.minimum_covenant_headroom).toFixed(2)}x.`
-    : `Series C ownership ${asPercent(vcCell!.target_ownership)} · minimum modeled cash ${asMoney(vcCell!.minimum_cash_cents)}.`;
+    : `Series C ownership ${asPercent(vcCell!.target_ownership)} · minimum modeled cash ${asMoney(vcCell!.minimum_cash_cents)} · option pool ${vcCell!.pool_exit_treatment === "FULLY_GRANTED_COMMON" ? "modeled as fully granted common at exit" : "cancelled before exit"}.`;
   const receipt = peCell?.receipt_sha256 ?? vcCell!.receipt_sha256;
   return <section className="assumption-lab" aria-labelledby="assumption-title">
     <div><p className="kicker">Test the decisive assumption</p><h2 id="assumption-title">{label}</h2><p>Each choice reruns the canonical engine cell. This is not a display-only calculator.</p></div>

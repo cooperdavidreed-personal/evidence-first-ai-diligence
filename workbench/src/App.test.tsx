@@ -63,6 +63,7 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
     await user.click(screen.getByRole("button", {name: "$400M"}));
     expect(screen.getByText("14.72%")).toBeInTheDocument();
     expect(screen.getByText("1.90x")).toBeInTheDocument();
+    expect(screen.getByText(/option pool modeled as fully granted common at exit/)).toBeInTheDocument();
   });
 
   it("migrates legacy routes deterministically", async () => {

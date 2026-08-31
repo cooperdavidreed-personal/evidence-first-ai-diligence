@@ -68,6 +68,7 @@ for (const candidate of [
     await expect(page.getByText(/Recommendation impact:/)).toBeVisible();
     await page.getByRole("button", {name: assumption}).click();
     await expect(page.getByText(/Return hurdle fails/)).toBeVisible();
+    if (candidate.id === "helios") await expect(page.getByText(/option pool modeled as fully granted common at exit/)).toBeVisible();
     await expect(page).toHaveURL(candidate.id === "atlasgrid" ? /driver=entry_enterprise_value_cents/ : /driver=exit_value/);
 
     const lineage = page.getByRole("button", {name: /Inspect lineage/}).first();
