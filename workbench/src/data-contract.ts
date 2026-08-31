@@ -75,11 +75,19 @@ function validateDisplay(metric: TypedMetricRecord): void {
   let observed: number | null = null;
   let tolerance = 0;
   if (metric.unit === "cents") {
+    if (text === "<$1; immaterial" && Math.abs(raw) < 100) {
+      observed = raw;
+      tolerance = 0;
+    } else if (/^-?<\$0\.1M$/.test(text) && Math.abs(raw) < 10_000_000) {
+      observed = raw;
+      tolerance = 0;
+    } else {
     const match = text.match(/^(-)?\$([0-9]+(?:\.[0-9]+)?)M$|^\$0$/);
     if (!match) throw new Error(`metric_display_invalid:${metric.metric_id}`);
     observed = text === "$0" ? 0 : (match[1] ? -1 : 1) * Number(match[2]) * 100_000_000;
     const decimals = text.includes(".") ? text.split(".")[1].replace(/[^0-9].*$/, "").length : 0;
     tolerance = 100_000_000 / (2 * Math.pow(10, decimals)) + 1;
+    }
   } else if (metric.unit === "decimal_rate" || metric.unit === "percent") {
     const match = text.match(/^(-?[0-9]+(?:\.[0-9]+)?)%$/);
     if (!match) throw new Error(`metric_display_invalid:${metric.metric_id}`);

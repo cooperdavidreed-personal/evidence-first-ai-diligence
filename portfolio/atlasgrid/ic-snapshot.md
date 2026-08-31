@@ -10,11 +10,11 @@ The asking price does not compensate for definition quality, concentration, full
 
 | Measure | Result | Basis |
 |---|---:|---|
-| Repriced return | 23.26% | 2.80x MOIC · five-year hold |
-| Complete-cohort NRR | 99.87% | Management active-only view: 105.51% |
-| Top-10 parent concentration | 20.39% | Entity view: 3.39% |
-| Fully burdened gross margin | 72.79% | Reported view: 80.48% |
-| Normalized LTM EBITDA | $25.93M | Seller-adjusted: $34.94M |
+| Repriced return | 23.3% | 2.8x MOIC · five-year hold |
+| Complete-cohort NRR | 99.9% | Management active-only view: 105.5% |
+| Top-10 parent concentration | 20.4% | Entity view: 3.4% |
+| Fully burdened gross margin | 72.8% | Reported view: 80.5% |
+| Normalized LTM EBITDA | $25.9M | Seller-adjusted: $34.9M |
 
 ## What blocks advancement
 

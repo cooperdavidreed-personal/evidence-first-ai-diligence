@@ -45,8 +45,8 @@ def main() -> int:
     manifest = json.loads((ROOT / "verification" / "visual-evidence.json").read_text())
     manifest_paths = [entry["path"] for entry in [*manifest["files"], *manifest["print_files"]] if entry["path"].endswith(".png")]
     baseline_pngs = [ROOT / relative for relative in manifest_paths]
-    if len(baseline_pngs) != 30:
-        raise SystemExit(f"visual-regression FAIL: expected 30 manifest-bound baselines, got {len(baseline_pngs)}")
+    if len(baseline_pngs) != 32:
+        raise SystemExit(f"visual-regression FAIL: expected 32 manifest-bound baselines, got {len(baseline_pngs)}")
     failures: list[str] = []
     reference_comparable = sys.platform == "darwin"
     for baseline in baseline_pngs:

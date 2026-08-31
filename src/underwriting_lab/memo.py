@@ -201,7 +201,7 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
         "## Recommendation and executable terms",
         "",
         decision["rationale"],
-        f"**Binding loss hurdle:** {loss_hurdle['observed']} versus {loss_hurdle['threshold']}; status `{loss_hurdle['status']}`. The conditional posture is not funding approval while this test and the diligence gates remain open.",
+        f"**Binding loss hurdle:** {Decimal(loss_hurdle['observed_value']):.1f}% versus {loss_hurdle['threshold']}; status `{loss_hurdle['status']}`. The conditional posture is not funding approval while this test and the diligence gates remain open.",
         "",
         "| Term | Exact selected-case position |",
         "|---|---|",

@@ -10,11 +10,11 @@ Hold because the scenario-weighted probability below 1.0x is 20%, above the bind
 
 | Measure | Result | Basis |
 |---|---:|---|
-| Fully funded ownership | 20.00% | $25M close + $15M contingent on $160M pre-money |
-| Ordinary-cohort NRR | 117.07% | Pooled with design partners: 135.36% |
-| Blended gross margin | 70.61% | LTM, including telemetry and support |
-| Runway | 17.26 mo | Burn multiple: 0.78x |
-| Modeled serviceable spend | $20.90B | 90% tier intervals; tier 5 abstained |
+| Fully funded ownership | 20.0% | $25M close + $15M contingent on $160M pre-money |
+| Ordinary-cohort NRR | 117.1% | Pooled with design partners: 135.4% |
+| Blended gross margin | 70.6% | LTM, including telemetry and support |
+| Runway | 17.3 mo | Burn multiple: 0.8x |
+| Modeled serviceable spend | $20.9B | 90% tier intervals; tier 5 abstained |
 
 ## What blocks advancement
 

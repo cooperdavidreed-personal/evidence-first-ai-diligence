@@ -75,17 +75,23 @@ for (const candidate of [
     await expect(page.getByRole("heading", {name: candidate.name})).toBeVisible();
     await expect(page.getByRole("heading", {name: candidate.question})).toBeVisible();
     await expect(page.getByText("SYNTHETIC — NOT INVESTMENT ADVICE", {exact: true})).toBeVisible();
-    await expect(page.getByRole("navigation", {name: "Primary investment views"}).getByRole("button")).toHaveCount(6);
+    await expect(page.getByRole("navigation", {name: "Primary investment views"}).getByRole("button")).toHaveCount(4);
     await settleAtTop(page);
     scans.push({view: "Overview", ...await accessibilitySnapshot(page)});
     await captureVisualEvidence(page, `${testInfo.project.name}-${caseSlug}-overview.png`);
 
-    const assumption = candidate.id === "atlasgrid" ? "$220M" : "$400M";
-    await expect(page.getByText(/Recommendation impact:/)).toBeVisible();
+    const assumption = candidate.id === "atlasgrid" ? "$220M" : "30.0% annual growth";
+    await expect(page.getByText(/Decision impact:/)).toBeVisible();
     await page.getByRole("button", {name: assumption}).click();
-    await expect(page.getByText(/Return hurdle fails/)).toBeVisible();
+    await expect(page.getByText(candidate.id === "atlasgrid" ? /Return hurdle fails/ : /The binding loss test/)).toBeVisible();
     if (candidate.id === "helios") await expect(page.getByText(/option pool modeled as fully granted common at exit/)).toBeVisible();
-    await expect(page).toHaveURL(candidate.id === "atlasgrid" ? /driver=entry_enterprise_value_cents/ : /driver=exit_value/);
+    await expect(page).toHaveURL(candidate.id === "atlasgrid" ? /driver=entry_enterprise_value_cents/ : /driver=annual_revenue_growth/);
+
+    await expect(page.getByText("Private to this browser.")).toBeVisible();
+    await page.getByRole("button", {name: "Review approval"}).first().click();
+    await expect(page.getByText(/This records analyst judgment only/)).toBeVisible();
+    await page.getByRole("button", {name: "Cancel"}).click();
+    await expect(page.getByRole("button", {name: /Estimated effect/})).toBeVisible();
 
     const lineage = page.getByRole("button", {name: /Inspect lineage/}).first();
     await lineage.focus();

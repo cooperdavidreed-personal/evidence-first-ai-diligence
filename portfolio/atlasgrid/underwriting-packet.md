@@ -12,9 +12,9 @@ The asking price fails the frozen return hurdle. The selected upfront structure 
 
 | Case | Upfront EV | Gross IRR | Gross MOIC | Exit debt | Minimum liquidity | Covenant breach |
 |---|---:|---:|---:|---:|---:|---|
-| Seller ask | $240M | 17.62% | 2.25x | $16.4M | $3.2M | None |
-| Selected | $210M | 23.26% | 2.80x | $16.4M | $3.2M | None |
-| Downside | $210M | 6.16% | 1.35x | $45.6M | $3.2M | None |
+| Seller ask | $240M | 17.6% | 2.3x | $16.4M | $3.2M | None |
+| Selected | $210M | 23.3% | 2.8x | $16.4M | $3.2M | None |
+| Downside | $210M | 6.2% | 1.3x | $45.6M | $3.2M | None |
 
 ## Price and structure
 
@@ -51,21 +51,21 @@ The named downside is a deterministic stress case. The conditional distribution 
 
 | Conditional path statistic | p10 | p50 | p90 |
 |---|---:|---:|---:|
-| Gross MOIC | 1.12x | 2.73x | 4.82x |
-| Gross IRR | 2.35% | 22.65% | 38.79% |
+| Gross MOIC | 1.1x | 2.7x | 4.8x |
+| Gross IRR | 2.3% | 22.6% | 38.8% |
 
-- Probability below 1.0x MOIC: **7.80%** (Monte Carlo SE **0.85 pp**, 1,000 draws).
-- Probability of a modeled covenant breach: **0.30%** (Monte Carlo SE **0.17 pp**, 1,000 draws).
-- Probability of modeled payment default: **0.00%** (Monte Carlo SE **0.00 pp**, 1,000 draws).
-- Named downside floor: **6.16% IRR / 1.35x MOIC**; distributional p10: **2.35% / 1.12x**.
+- Probability below 1.0x MOIC: **7.8%** (Monte Carlo SE **0.85 pp**, 1,000 draws).
+- Probability of a modeled covenant breach: **0.3%** (Monte Carlo SE **0.17 pp**, 1,000 draws).
+- Probability of modeled payment default: **0.0%** (Monte Carlo SE **0.00 pp**, 1,000 draws).
+- Named downside floor: **6.2% IRR / 1.3x MOIC**; distributional p10: **2.3% / 1.1x**.
 
 ### Entry value × exit multiple sensitivity
 
 | Entry / exit | 5.5x | 6.5x | 7.5x |
 |---|---:|---:|---:|
-| $200M | 21.47% / 2.60x | 25.84% / 3.10x | 29.68% / 3.60x |
-| $210M | 18.98% / 2.35x | 23.26% / 2.80x | 27.02% / 3.25x |
-| $220M | 16.77% / 2.15x | 20.97% / 2.56x | 24.66% / 2.97x |
+| $200M | 21.5% / 2.6x | 25.8% / 3.1x | 29.7% / 3.6x |
+| $210M | 19.0% / 2.4x | 23.3% / 2.8x | 27.0% / 3.3x |
+| $220M | 16.8% / 2.1x | 21.0% / 2.6x | 24.7% / 3.0x |
 
 ## Underwriting thesis and counterthesis
 
@@ -120,9 +120,9 @@ Pure human-judgment effects are presented as an **≈$33-$99M illustrative 50-15
 
 | Initiative | Credit class | Implementation cost | Exit EBITDA | Exit debt | Exit equity | IRR impact |
 |---|---|---:|---:|---:|---:|---:|
-| Renewal architecture | Analyst judgment | $1.5M | $6M | -$10.2M | $49.1M | 3.43% |
-| Support automation | Synthetic causal analysis plus analyst judgment | $2M | $1.9M | -$3.8M | $16.3M | 1.29% |
-| Delivery cost reset | Analyst judgment | $2.5M | $1.9M | -$4.4M | $17M | 1.39% |
+| Renewal architecture | Analyst judgment | $1.5M | $6M | -$10.2M | $49.1M | 3.4% |
+| Support automation | Synthetic causal analysis plus analyst judgment | $2M | $1.9M | -$3.8M | $16.3M | 1.3% |
+| Delivery cost reset | Analyst judgment | $2.5M | $1.9M | -$4.4M | $17M | 1.4% |
 
 ### Ownership cadence and board control
 

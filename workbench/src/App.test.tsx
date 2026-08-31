@@ -52,18 +52,18 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
   it("reruns canonical PE and VC assumption cells from the overview", async () => {
     const user = userEvent.setup();
     render(<App />);
-    expect(screen.getAllByText("23.26%").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("23.3%").length).toBeGreaterThan(0);
     expect(screen.getByText(/>=22% IRR/)).toBeInTheDocument();
     expect(screen.getByText(/Sponsor equity at close/)).toBeInTheDocument();
     expect(screen.getByText(/Decision impact:/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", {name: "$220M"}));
-    expect(screen.getByText("20.97%")).toBeInTheDocument();
+    expect(screen.getByText("21.0%")).toBeInTheDocument();
     expect(screen.getByText(/Return hurdle fails/)).toBeInTheDocument();
     expect(window.location.hash).toContain("driver=entry_enterprise_value_cents");
     await user.click(screen.getByRole("button", {name: "VC / Growth Helios Compute Control"}));
-    await user.click(screen.getByRole("button", {name: "$400M"}));
-    expect(screen.getByText("14.72%")).toBeInTheDocument();
-    expect(screen.getByText("1.90x")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: "30.0% annual growth"}));
+    expect(screen.getByText("36.6%")).toBeInTheDocument();
+    expect(screen.getByText("4.3x")).toBeInTheDocument();
     expect(screen.getByText(/option pool modeled as fully granted common at exit/)).toBeInTheDocument();
   });
 
@@ -126,8 +126,33 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
     render(<App />);
     await user.click(screen.getByRole("button", {name: /Memo/}));
     expect(screen.getAllByRole("heading", {name: "AtlasGrid Systems"})).toHaveLength(2);
-    expect(screen.getByRole("button", {name: "Print one-page memo"})).toBeInTheDocument();
+    expect(screen.getByRole("link", {name: "Open one-page IC snapshot"})).toHaveAttribute("href", "output/pdf/atlasgrid-ic-snapshot-letter.pdf");
+    expect(screen.getByRole("link", {name: "Open underwriting packet"})).toBeInTheDocument();
     expect(screen.getByText("Requires investment committee approval")).toBeInTheDocument();
+  });
+
+  it("keeps human judgment separate and requires confirmation for assumption review", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    expect(screen.getByText("Private to this browser.")).toBeInTheDocument();
+    const note = screen.getByRole("textbox", {name: "Private analyst note"});
+    await user.type(note, "Confirm parent concentration before IOI.");
+    await user.click(screen.getByRole("button", {name: "Save private note"}));
+    await user.click(screen.getAllByRole("button", {name: "Review approval"})[0]);
+    expect(screen.getByText(/This records analyst judgment only/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: "Confirm approved"}));
+    expect(screen.getAllByText("approved").length).toBeGreaterThan(0);
+  });
+
+  it("distinguishes source classes and states the model-hypothesis boundary", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const evidenceMenu = screen.getByText("Evidence").closest("details")!;
+    if (!evidenceMenu.open) await user.click(screen.getByText("Evidence"));
+    await user.click(screen.getByRole("button", {name: "Sources"}));
+    expect(screen.getByRole("heading", {name: /Keep facts, representations, assumptions, and judgment separate/})).toBeInTheDocument();
+    expect(screen.getByText(/A future model may propose, but cannot approve/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Management representation · synthetic/).length).toBeGreaterThan(0);
   });
 
   it("searches retained sources and deep-links analyses", async () => {

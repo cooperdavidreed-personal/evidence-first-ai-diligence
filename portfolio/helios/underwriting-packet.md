@@ -9,7 +9,7 @@
 ## Recommendation and executable terms
 
 Hold because the scenario-weighted probability below 1.0x is 20%, above the binding 10% maximum. The proposed milestone financing is a path to reconsideration, not a current investment recommendation.
-**Binding loss hurdle:** 20.00% (MC SE 1.26 pp) versus <=10%; status Misses. The conditional posture is not funding approval while this test and the diligence gates remain open.
+**Binding loss hurdle:** 20.0% versus <=10%; status Misses. The conditional posture is not funding approval while this test and the diligence gates remain open.
 
 | Term | Exact selected-case position |
 |---|---|
@@ -18,9 +18,9 @@ Hold because the scenario-weighted probability below 1.0x is 20%, above the bind
 | Valuation | $160M pre-money / $200M fully funded post-money |
 | Series C ownership | 13.51% at first close / 20.00% fully funded |
 | Option pool | 1,611,031 unissued shares after refresh; pre-money holders bear the refresh |
-| Selected milestone returns | 56.33% gross XIRR / 8.17x gross MOIC |
-| Down-round returns | 7.34% gross XIRR / 1.43x gross MOIC |
-| Shortfall case | Bridge at month 36; 17.78% / 2.27x |
+| Selected milestone returns | 56.3% gross XIRR / 8.2x gross MOIC |
+| Down-round returns | 7.3% gross XIRR / 1.4x gross MOIC |
+| Shortfall case | Bridge at month 36; 17.8% / 2.3x |
 
 ## Product, market, customers, competition, and business model
 
@@ -52,10 +52,10 @@ These are role-level evidence states, not invented biographies or reference-chec
 
 | Scenario | Funded Series C | Ownership | Minimum cash | Exit proceeds | Gross XIRR | Gross MOIC |
 |---|---:|---:|---:|---:|---:|---:|
-| BASE | $25M | 12.94% | $13.4M | $160.3M | 44.97% | 6.41x |
-| MILESTONE | $40M | 20.00% | $17M | $326.9M | 56.33% | 8.17x |
-| DOWNSIDE | $25M | 10.14% | $9M | $35.6M | 7.34% | 1.43x |
-| Financing shortfall | $25M | 10.79% | $250,000 | $56.7M | 17.78% | 2.27x |
+| BASE | $25M | 12.94% | $13.4M | $160.3M | 45.0% | 6.4x |
+| MILESTONE | $40M | 20.00% | $17M | $326.9M | 56.3% | 8.2x |
+| DOWNSIDE | $25M | 10.14% | $9M | $35.6M | 7.3% | 1.4x |
+| Financing shortfall | $25M | 10.79% | $250,000 | $56.7M | 17.8% | 2.3x |
 
 | Selected event | Month | Status | Cash | New shares | Fully diluted shares |
 |---|---:|---|---:|---:|---:|
@@ -86,8 +86,8 @@ The selected exit equity value is not a naked outcome assumption. It is derived 
 | Exit-value operand | Selected milestone case | Classification |
 |---|---:|---|
 | Observed LTM revenue | $57M | Retained synthetic P&L |
-| Annual revenue growth / hold | 48.00% / 5 years | Scenario |
-| Terminal revenue / exit multiple | $404.4M / 4.00x | Scenario |
+| Annual revenue growth / hold | 48.0% / 5 years | Scenario |
+| Terminal revenue / exit multiple | $404.4M / 4.0x | Scenario |
 | Exit enterprise value / cash | $1,617.6M / $17M | Accounting bridge; net debt is -$17M |
 | Exit equity value | $1,634.6M | Waterfall operand |
 
@@ -99,25 +99,25 @@ Exit value basis is `Equity value`. Unissued option-pool shares are treated as f
 | Series B | CONVERT | $0 | $208.4M | $208.4M |
 | Series C | CONVERT | $0 | $326.9M | $326.9M |
 
-Series C invests $40M in dated funded tranches and receives $326.9M at exit: **56.33% gross XIRR / 8.17x gross MOIC**.
+Series C invests $40M in dated funded tranches and receives $326.9M at exit: **56.3% gross XIRR / 8.2x gross MOIC**.
 
 ## Conditional distribution and sensitivity
 
 The 1,000 retained paths replay the full financing ledger and exact waterfall. They are scenario priors, not a forecast or evidence of real-world accuracy.
 
-Declared scenario-state priors: Base 30.00%; Downside 15.00%; Financing Shortfall 10.00%; Milestone 45.00%.
+Declared scenario-state priors: Base 30.0%; Downside 15.0%; Financing Shortfall 10.0%; Milestone 45.0%.
 
 | Statistic | p10 | p50 | p90 |
 |---|---:|---:|---:|
-| Gross MOIC | 0.00x | 5.06x | 9.92x |
-| Gross XIRR | -100.00% | 36.36% | 61.82% |
+| Gross MOIC | 0.0x | 5.1x | 9.9x |
+| Gross XIRR | -100.0% | 36.4% | 61.8% |
 
-- Probability below 1.0x: **20.00%** (Monte Carlo SE **1.26 pp**, 1,000 draws).
-- Sensitivity book: 13 full-engine cells across exit value, exit date, later-round price, and milestone state.
+- Probability below 1.0x: **20.0%** (Monte Carlo SE **1.26 pp**, 1,000 draws).
+- Sensitivity book: 14 full-engine cells across exit value, exit date, later-round price, and milestone state.
 
 ## Value creation and board cadence
 
-Combined full-model impact: **$3M minimum cash**, **$3.4M Series C proceeds**, **0.34% gross XIRR**, including an explicit **$0 interaction residual**.
+Combined full-model impact: **$3M minimum cash**, **$3.4M Series C proceeds**, **0.3% gross XIRR**, including an explicit **$0 interaction residual**.
 
 | Initiative | Evidence class | Baseline / target | Owner | Modeled consequence | Stop rule / risk |
 |---|---|---|---|---|---|

@@ -60,6 +60,11 @@ def _decision() -> dict:
                 "blocks_advancement": True,
                 "consequence": "Do not advance the illustrative transaction.",
                 "linked_condition_ids": ["founder-review"],
+                "evidence_state": "PRESENT",
+                "evidence_metric_ids": ["atlasgrid-REPRICE-gross-irr"],
+                "analysis_ids": ["AG-10"],
+                "source_locator_ids": ["locator-source"],
+                "consequence_target": "sensitivity",
             }],
             "buckets": {
                 "failed_quantitative_hurdles": [],

@@ -7,9 +7,9 @@ This appendix retains reproducibility records, raw identifiers, mappings, and fo
 ## Content identity
 
 - Manifest SHA-256: `41f2d6e51d1a97ffa1a54ca8cf317bfbc24894495d1ce2f961c6500f9bc536e3`
-- Analysis SHA-256: `5c786ba47c290b40bef93ccbe8ee81199a9236f29c0de88bda6137b7fc8127be`
-- Decision SHA-256: `5b97ad7efe5760afca4356cb7da682aae20236d6a646e8def7d64eea277e7628`
-- Packet SHA-256: `227777aceb5327f71ba365bfb131e58f0640cc320df909ebca95bbbb5a06866c`
+- Analysis SHA-256: `73fd00ef5b8a7fceb994a38e0be4ced4f74fd3fdea3151a84787eff0ce77a324`
+- Decision SHA-256: `f0abf7aac68c1086252c6f1cffe700ccec2e7f0ff333db216d0fd67d4b263f80`
+- Packet SHA-256: `ac8c1e162d6f190ecaa25e31901bfdcfefee290ceefac8c7ce7339d026359dfa`
 
 ## Analysis receipts
 

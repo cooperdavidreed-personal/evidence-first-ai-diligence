@@ -30,7 +30,7 @@ def test_langchain_case_does_not_promote_url_only_sources() -> None:
 
 def test_reviewed_portfolio_binaries_are_manifest_bound() -> None:
     reviewed = reviewed_binary_allowlist(ROOT)
-    assert len(reviewed) == 32
+    assert len(reviewed) == 38
     assert "dist/visual-evidence/desktop-investor-workspace-landing.png" in reviewed
     assert "dist/visual-evidence/desktop-atlasgrid-systems-contextual-source-drawer.png" in reviewed
     assert "dist/visual-evidence/mobile-helios-compute-control-overview.png" in reviewed

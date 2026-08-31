@@ -7,7 +7,10 @@ import shutil
 from pathlib import Path
 
 from ic_evidence_lab.canonical import canonical_json
-from scripts.scan_public import validate_source_room
+try:
+    from scripts.scan_public import validate_source_room
+except ModuleNotFoundError:  # Direct script execution sets sys.path[0] to scripts/.
+    from scan_public import validate_source_room
 
 
 def _copy_file(repo: Path, destination: Path, relative: str) -> Path:
