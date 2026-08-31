@@ -91,7 +91,10 @@ def _decision_pair(
     threshold_value: Decimal | float | int | str,
     observed: str,
     observed_value: Decimal | float | int | str,
+    designation: str = "BINDING",
 ) -> dict[str, str]:
+    if designation not in {"BINDING", "INFORMATIONAL"}:
+        raise UnderwritingError("decision_hurdle_designation_invalid")
     observed_decimal = Decimal(str(observed_value))
     threshold_decimal = Decimal(str(threshold_value))
     clears = {
@@ -112,7 +115,50 @@ def _decision_pair(
         "observed": observed,
         "observed_value": format(observed_decimal, "f"),
         "status": "CLEARS" if clears else "MISSES",
+        "designation": designation,
     }
+
+
+def _condition_state(
+    *,
+    condition_id: str,
+    text: str,
+    metric_pairs: list[dict[str, str]],
+    metric_ids: tuple[str, ...] = (),
+    designation: str = "BINDING",
+    state: str | None = None,
+) -> dict[str, Any]:
+    if designation not in {"BINDING", "INFORMATIONAL"}:
+        raise UnderwritingError("decision_condition_designation_invalid")
+    pairs_by_id = {item["metric_id"]: item for item in metric_pairs}
+    if any(metric_id not in pairs_by_id for metric_id in metric_ids):
+        raise UnderwritingError("decision_condition_metric_orphan")
+    if state is None:
+        if designation == "INFORMATIONAL":
+            state = "INFORMATIONAL"
+        elif not metric_ids:
+            state = "OPEN_DILIGENCE"
+        elif all(pairs_by_id[metric_id]["status"] == "CLEARS" for metric_id in metric_ids):
+            state = "CLEARS_QUANTITATIVELY"
+        else:
+            state = "MISSES_HURDLE"
+    if state == "CLEARS_QUANTITATIVELY" and not metric_ids:
+        raise UnderwritingError("decision_condition_clear_without_metric")
+    return {
+        "condition_id": condition_id,
+        "text": text,
+        "state": state,
+        "designation": designation,
+        "metric_ids": list(metric_ids),
+    }
+
+
+def _open_condition_count(condition_states: list[dict[str, Any]]) -> int:
+    return sum(
+        item["designation"] == "BINDING"
+        and item["state"] != "CLEARS_QUANTITATIVELY"
+        for item in condition_states
+    )
 
 
 def _diagnostic(
@@ -147,6 +193,63 @@ def _bind_specs(receipts: list[dict[str, Any]], manifest: dict[str, Any]) -> Non
         receipt["receipt_sha256"] = digest(receipt)
 
 
+def _complete_evidence_mappings(
+    receipts: list[dict[str, Any]],
+    mappings: list[dict[str, Any]],
+    credit_tiers: dict[str, str],
+) -> list[dict[str, Any]]:
+    allowed = {"BASE_CASE", "VALUE_CREATION_BRIDGE", "SCENARIO_ONLY", "ZERO"}
+    receipt_by_id = {item["analysis_id"]: item for item in receipts}
+    if set(credit_tiers) != set(receipt_by_id) or not set(credit_tiers.values()).issubset(allowed):
+        raise UnderwritingError("evidence_credit_tier_contract_invalid")
+    mapped = {item["source_analysis_id"]: item for item in mappings}
+    if not set(mapped).issubset(receipt_by_id):
+        raise UnderwritingError("evidence_mapping_analysis_orphan")
+    for analysis_id, receipt in receipt_by_id.items():
+        tier = credit_tiers[analysis_id]
+        mapping = mapped.get(analysis_id)
+        if mapping is None:
+            first_output = receipt["outputs"][0] if receipt["outputs"] else None
+            mapping = {
+                "mapping_id": f"{analysis_id.lower()}-engine-authored-treatment",
+                "source_analysis_id": analysis_id,
+                "source_receipt_sha256": receipt["receipt_sha256"],
+                "observed_value": (
+                    f'{first_output["name"]}: {first_output["value"]} {first_output["unit"]}'
+                    if first_output
+                    else "No estimate retained"
+                ),
+                "target_assumption_or_condition": {
+                    "BASE_CASE": "Base underwriting evidence",
+                    "VALUE_CREATION_BRIDGE": "Value-creation bridge only",
+                    "SCENARIO_ONLY": "Declared scenario range only",
+                    "ZERO": "No operating, transaction, or valuation assumption",
+                }[tier],
+                "credit_classification": receipt["classification"],
+                "model_credit": {
+                    "BASE_CASE": "Bounded base-case evidence",
+                    "VALUE_CREATION_BRIDGE": "No base-case credit; bounded bridge treatment only",
+                    "SCENARIO_ONLY": "Scenario calibration only",
+                    "ZERO": "0",
+                }[tier],
+                "decision_response": {
+                    "BASE_CASE": "Use within the declared method and population boundary",
+                    "VALUE_CREATION_BRIDGE": "Keep separate from entry underwriting and disclose transfer assumptions",
+                    "SCENARIO_ONLY": "Use for sensitivity or downside framing, not factual prediction",
+                    "ZERO": "Retain as diligence, falsification, or identification-boundary evidence",
+                }[tier],
+            }
+            mappings.append(mapping)
+        mapping["credit_tier"] = tier
+    if len({item["source_analysis_id"] for item in mappings}) != len(receipts):
+        raise UnderwritingError("evidence_mapping_duplicate_or_missing")
+    for mapping in mappings:
+        mapping["mapping_sha256"] = digest(
+            {key: value for key, value in mapping.items() if key != "mapping_sha256"}
+        )
+    return mappings
+
+
 def _metric(
     metric_id: str,
     label: str,
@@ -165,6 +268,46 @@ def _metric(
         "classification": classification,
         "lineage": lineage,
     }
+
+
+def _illustrative_value_range(cents: int) -> str:
+    low = Decimal(abs(cents)) * Decimal("0.5") / Decimal(100_000_000)
+    high = Decimal(abs(cents)) * Decimal("1.5") / Decimal(100_000_000)
+    def two_significant(value: Decimal) -> str:
+        if value == 0:
+            return "0"
+        places = 1 - value.adjusted()
+        quantum = Decimal(1).scaleb(-places)
+        return format(value.quantize(quantum), "f")
+
+    return f"≈${two_significant(low)}–${two_significant(high)}M, illustrative and unverified"
+
+
+def _deal_context(
+    *,
+    one_liner: str,
+    product: str,
+    customer: str,
+    market: str,
+    competition: list[str],
+    go_to_market: str,
+    team: str,
+    process: str,
+) -> dict[str, Any]:
+    body: dict[str, Any] = {
+        "schema_version": "underwriting.deal-context/v1",
+        "company_one_liner": one_liner,
+        "product": product,
+        "customer": customer,
+        "market": market,
+        "competition": competition,
+        "go_to_market": go_to_market,
+        "team": team,
+        "process": process,
+        "evidence_boundary": "Synthetic narrative context; not external market evidence or a real company claim.",
+    }
+    body["context_sha256"] = digest(body)
+    return body
 
 
 def _scenario_book(case_id: str, scenarios: list[dict[str, str]], distribution: dict[str, Any]) -> dict[str, Any]:
@@ -726,6 +869,19 @@ def _atlasgrid(
         ],
     )
     value_by_id = {item.lever_id: item for item in value_bridge.standalone}
+    support_margin_costs = dict(base_operating.implementation_costs_by_month)
+    support_margin_costs[1] = support_margin_costs.get(1, 0) + 100_000_000
+    support_margin_costs[2] = support_margin_costs.get(2, 0) + 100_000_000
+    support_margin_case = run_pe_case(
+        scenario_id="VALUE_support-margin-only",
+        operating=replace(
+            base_operating,
+            gross_margin=base_operating.gross_margin + Decimal("0.010"),
+            implementation_costs_by_month=tuple(sorted(support_margin_costs.items())),
+        ),
+        transaction=selected_transaction,
+    )
+    support_margin_only_value = support_margin_case.exit_equity_value_cents - selected_case.exit_equity_value_cents
 
     receipts = [
         analysis_receipt(
@@ -904,6 +1060,7 @@ def _atlasgrid(
             "observed_value": f"{quantize(implied_offer_scale * 100)} percentage-point association",
             "target_assumption_or_condition": "No transaction, operating, bid, or value-creation assumption",
             "credit_classification": "PREDICTIVE_ASSOCIATION_ZERO_MODEL_CREDIT",
+            "credit_tier": "ZERO",
             "model_credit": "0",
             "decision_response": "Retain only as a confounding exhibit; use the randomized offer ITT to falsify pricing upside",
         },
@@ -914,6 +1071,7 @@ def _atlasgrid(
             "observed_value": f"{quantize(parent_concentration * 100)}% top-10 parent concentration",
             "target_assumption_or_condition": "Parent-account legal mapping and termination-right condition",
             "credit_classification": "DESCRIPTIVE_ZERO_DIRECT_MODEL_CREDIT",
+            "credit_tier": "ZERO",
             "model_credit": "0",
             "decision_response": "HOLD condition and contingent consideration tied to verified live ARR",
         },
@@ -924,6 +1082,7 @@ def _atlasgrid(
             "observed_value": f"{quantize(annualized_churn * 100)}% annualized descriptive logo churn",
             "target_assumption_or_condition": "DOWNSIDE full-cohort NRR of 97%",
             "credit_classification": "DESCRIPTIVE_SCENARIO_ANCHOR",
+            "credit_tier": "SCENARIO_ONLY",
             "model_credit": "Scenario calibration only; no causal claim",
             "decision_response": "Downside floor must survive retention compression",
         },
@@ -934,6 +1093,7 @@ def _atlasgrid(
             "observed_value": f"{quantize(rct_effect * 100)} percentage-point renewal ITT",
             "target_assumption_or_condition": "Renewal architecture value lever",
             "credit_classification": "CAUSAL_SYNTHETIC_ONLY_ZERO_UPSIDE_CREDIT",
+            "credit_tier": "ZERO",
             "model_credit": "0 from price increase; +1.5pp NRR remains HUMAN_JUDGMENT",
             "decision_response": "Do not underwrite broad price-led expansion without a safer renewal design",
         },
@@ -944,12 +1104,28 @@ def _atlasgrid(
             "observed_value": f"{quantize(did_churn)} bps gross-churn ATT",
             "target_assumption_or_condition": "Support lever NRR delta",
             "credit_classification": "CAUSAL_SYNTHETIC_ONLY",
+            "credit_tier": "VALUE_CREATION_BRIDGE",
             "model_credit": f"{quantize(-did_churn)} bps NRR-equivalent; 100 bps margin uplift remains HUMAN_JUDGMENT",
             "decision_response": "Separate identified synthetic retention credit from unverified margin credit",
         },
     ]
-    for mapping in evidence_mappings:
-        mapping["mapping_sha256"] = digest(mapping)
+    evidence_mappings = _complete_evidence_mappings(
+        receipts,
+        evidence_mappings,
+        {
+            "AG-01": "BASE_CASE",
+            "AG-02": "BASE_CASE",
+            "AG-03": "ZERO",
+            "AG-04": "BASE_CASE",
+            "AG-05": "SCENARIO_ONLY",
+            "AG-06": "ZERO",
+            "AG-07": "ZERO",
+            "AG-08": "VALUE_CREATION_BRIDGE",
+            "AG-09": "ZERO",
+            "AG-10": "BASE_CASE",
+            "AG-11": "SCENARIO_ONLY",
+        },
+    )
     lineages = [
         lineage_item(node_id="ag-revenue", label="Revenue and ARR reconciliation", artifact_id="billing-ledger", field="invoice_id,entity_id,period,invoice_cents,credit_cents,recognized_revenue_cents,booked_arr_cents,live_arr_cents", analysis_id="AG-01", output_names=["live_arr", "booked_arr", "implementation_dependent_arr", "management_year_5_revenue", "base_year_5_revenue"], transformation="Exact invoice, credit, recognized-revenue, and ARR-definition bridge", downstream="Revenue quality, forecast credibility, and entry-price conditions"),
         lineage_item(node_id="ag-nrr", label="Full-cohort NRR", artifact_id="customer-month", field="entity_id,month,mrr_cents", analysis_id="AG-02", output_names=["full_cohort_grr", "full_cohort_nrr", "active_only_nrr"], transformation="Frozen base cohort ARR bridge including churned entities", downstream="Retention thesis and renewal initiative"),
@@ -963,6 +1139,18 @@ def _atlasgrid(
         lineage_item(node_id="ag-price-rct", label="Renewal pricing randomized test", artifact_id="pricing-experiment", field="account_id,assignment,renewal_indicator,risk_score", analysis_id="AG-07", output_names=["renewal_itt"], transformation="Precommitted randomized intention-to-treat difference in renewal probability", downstream="Pricing falsifier and zero-upside renewal credit"),
         lineage_item(node_id="ag-distribution", label="Conditional return distribution", artifact_id="debt-terms", field="scenario distributions", analysis_id="AG-11", output_names=["p10_moic", "p50_moic", "p90_moic", "probability_below_1x", "probability_covenant_breach", "probability_payment_default"], transformation="One thousand seeded correlated operating and exit paths, each rerunning monthly cash, debt, and returns", downstream="Downside range; not a forecast"),
     ]
+    metric_pairs = [
+        _decision_pair(metric="Gross IRR", metric_id="atlasgrid-ASK-gross-irr", operator=">=", threshold=">=22%", threshold_value="0.22", observed=f"{quantize(ask_irr * 100)}%", observed_value=ask_irr, designation="INFORMATIONAL"),
+        _decision_pair(metric="Gross IRR", metric_id="atlasgrid-SELECTED-gross-irr", operator=">=", threshold=">=22%", threshold_value="0.22", observed=f"{quantize(reprice_irr * 100)}%", observed_value=reprice_irr),
+        _decision_pair(metric="Gross MOIC", metric_id="atlasgrid-SELECTED-gross-moic", operator=">=", threshold=">=2.0x", threshold_value="2.0", observed=f"{quantize(reprice_moic)}x", observed_value=reprice_moic),
+        _decision_pair(metric="Gross IRR", metric_id="atlasgrid-MAX_BID_DOWNSIDE-gross-irr", operator=">=", threshold=">=5%", threshold_value="0.05", observed=f"{quantize(maximum_bid_downside_case.gross_xirr * 100)}%", observed_value=maximum_bid_downside_case.gross_xirr, designation="INFORMATIONAL"),
+        _decision_pair(metric="Gross MOIC", metric_id="atlasgrid-MAX_BID_DOWNSIDE-gross-moic", operator=">=", threshold=">=1.25x", threshold_value="1.25", observed=f"{quantize(maximum_bid_downside_case.gross_moic)}x", observed_value=maximum_bid_downside_case.gross_moic, designation="INFORMATIONAL"),
+    ]
+    condition_states = [
+        _condition_state(condition_id="ag-cancellation-rights", text="Validate cancellation-for-convenience exposure", metric_pairs=metric_pairs),
+        _condition_state(condition_id="ag-parent-agreements", text="Tie parent accounts to master agreements", metric_pairs=metric_pairs),
+        _condition_state(condition_id="ag-live-arr-earnout", text="Cap earnout against verified live ARR", metric_pairs=metric_pairs),
+    ]
     decision = {
         "schema_version": "underwriting.decision-record/v1",
         "decision": "REPRICE",
@@ -971,13 +1159,11 @@ def _atlasgrid(
         "signature_status": "PENDING_FOUNDER_SIGNATURE",
         "as_of": CUTOFF,
         "rationale": "The asking price does not compensate for definition quality, concentration, fully burdened margins, or leverage fragility. A restructured entry with the same debt quantum clears the declared return hurdles.",
-        "conditions": ["Validate cancellation-for-convenience exposure", "Tie parent accounts to master agreements", "Cap earnout against verified live ARR"],
-        "open_conditions": 3,
+        "conditions": [item["text"] for item in condition_states],
+        "condition_states": condition_states,
+        "open_conditions": _open_condition_count(condition_states),
         "terms": ["Illustrative $210M enterprise value", "Same declared debt quantum", "Earnout capped against verified live ARR"],
-        "metric_pairs": [
-            _decision_pair(metric="Gross IRR", metric_id="atlasgrid-SELECTED-gross-irr", operator=">=", threshold=">=22%", threshold_value="0.22", observed=f"{quantize(reprice_irr * 100)}%", observed_value=reprice_irr),
-            _decision_pair(metric="Gross MOIC", metric_id="atlasgrid-SELECTED-gross-moic", operator=">=", threshold=">=2.0x", threshold_value="2.0", observed=f"{quantize(reprice_moic)}x", observed_value=reprice_moic),
-        ],
+        "metric_pairs": metric_pairs,
         "verification_sources": ["AG-02", "AG-03", "AG-04", "AG-10", "AG-11"],
         "failure_consequences": ["Do not advance at seller ask", "Retain HOLD until open diligence conditions are adjudicated"],
     }
@@ -995,6 +1181,16 @@ def _atlasgrid(
         "investmentAdjudication": "PENDING_HUMAN",
         "workflowDisposition": _workflow_disposition(receipts, decision),
         "disclosure": manifest["disclosure"],
+        "dealContext": _deal_context(
+            one_liner="Vertical SaaS for regulated electric-utility grid planning, outage coordination, and field-work compliance.",
+            product="Annual enterprise subscriptions combine system planning, work orchestration, regulatory reporting, and implementation services.",
+            customer="Regional utilities and municipal power operators; parent-level concentration and cancellation rights matter more than subsidiary logos.",
+            market="A durable regulated-software niche with long replacement cycles; this synthetic case does not assert an externally verified market size.",
+            competition=["Legacy utility suites", "Internal utility workflows", "Specialist point solutions"],
+            go_to_market="Direct enterprise sales, multi-year implementations, and expansion across operating subsidiaries inside the same utility parent.",
+            team="Domain-led management with open finance, revenue-operations, and value-creation execution questions.",
+            process="Illustrative control buyout; seller asks $240M and the underwriting case tests a $210M structure with contingent consideration.",
+        ),
         "decision": decision,
         "summaryMetrics": [
             _metric("ag-return", "Repriced return", f"{quantize(reprice_irr * 100)}%", f"{quantize(reprice_moic)}x MOIC · five-year hold", "SCENARIO", ["ag-reprice"]),
@@ -1066,9 +1262,9 @@ def _atlasgrid(
         "evidenceMappings": evidence_mappings,
         "valueCreationBridge": value_bridge.receipt(),
         "valueCreation": [
-            {"priority": 1, "initiative": "Renewal architecture", "kpi": "Complete-cohort NRR", "baseline": f"{quantize(full_nrr * 100)}%", "target": f"{quantize((Decimal(str(full_nrr)) + Decimal('0.015')) * 100)}%", "owner": "Chief Revenue Officer", "timing": "Days 1–100", "dependency": "AG-02 complete-cohort definition and AG-07 price-risk boundary", "implementation_cost": "$1.5M", "milestone": "Segment playbooks live by day 90", "stop_rule": "Stop upside credit if complete-cohort NRR or renewal loss worsens.", "value": f"${quantize(value_by_id['renewal'].exit_equity_delta_cents / 100_000_000)}M exit equity · {quantize(value_by_id['renewal'].gross_xirr_delta * 10_000)} bps IRR · ${quantize(value_by_id['renewal'].exit_ebitda_delta_cents / 100_000_000)}M exit EBITDA", "credit_classification": value_by_id["renewal"].credit_classification, "risk": "Price-driven churn; AG-07 contributes zero upside credit", "lineage": ["ag-nrr", "ag-price-rct"]},
-            {"priority": 2, "initiative": "Support automation", "kpi": "Resolution time", "baseline": f"{quantize(np.mean([float(row['resolution_hours']) for row in rollout if int(row['post']) == 0]))} hours", "target": "17.5 hours", "owner": "Chief Customer Officer", "timing": "Days 30–120", "dependency": "AG-08 synthetic pod experiment and verified workload transfer", "implementation_cost": "$2.0M", "milestone": "20-pod rollout by day 120", "stop_rule": "Stop rollout if resolution or churn diagnostics cross the declared adverse boundary.", "value": f"${quantize(value_by_id['support'].exit_equity_delta_cents / 100_000_000)}M exit equity · {quantize(value_by_id['support'].gross_xirr_delta * 10_000)} bps IRR · ${quantize(-value_by_id['support'].exit_debt_delta_cents / 100_000_000)}M incremental deleveraging", "credit_classification": value_by_id["support"].credit_classification, "risk": "AG-08 maps only the churn effect; the 100 bps margin uplift is human judgment", "lineage": ["ag-support"]},
-            {"priority": 3, "initiative": "Delivery cost reset", "kpi": "Burdened gross margin", "baseline": f"{quantize(burdened_gm * 100)}%", "target": f"{quantize((Decimal(str(burdened_gm)) + Decimal('0.015')) * 100)}%", "owner": "CFO", "timing": "Pre-close through Day 100", "dependency": "AG-04 fully burdened cost dictionary and account contribution ledger", "implementation_cost": "$2.5M", "milestone": "Account contribution ledger and vendor plan by day 30", "stop_rule": "Withdraw credit if service quality deteriorates or ledger coverage stays below 95%.", "value": f"${quantize(value_by_id['delivery'].exit_equity_delta_cents / 100_000_000)}M exit equity · {quantize(value_by_id['delivery'].gross_xirr_delta * 10_000)} bps IRR · ${quantize(value_by_id['delivery'].exit_ebitda_delta_cents / 100_000_000)}M exit EBITDA", "credit_classification": value_by_id["delivery"].credit_classification, "risk": "Human scenario with zero causal credit", "lineage": ["ag-margin", "ag-ebitda"]},
+            {"priority": 1, "initiative": "Renewal architecture", "kpi": "Complete-cohort NRR", "baseline": f"{quantize(full_nrr * 100)}%", "target": f"{quantize((Decimal(str(full_nrr)) + Decimal('0.015')) * 100)}%", "owner": "Chief Revenue Officer", "timing": "Days 1–100", "dependency": "AG-02 complete-cohort definition and AG-07 price-risk boundary", "implementation_cost": "$1.5M", "milestone": "Segment playbooks live by day 90", "stop_rule": "Stop upside credit if complete-cohort NRR or renewal loss worsens.", "value": _illustrative_value_range(value_by_id["renewal"].exit_equity_delta_cents), "credit_classification": value_by_id["renewal"].credit_classification, "risk": "Price-driven churn; AG-07 contributes zero upside credit", "lineage": ["ag-nrr", "ag-price-rct"]},
+            {"priority": 2, "initiative": "Support automation", "kpi": "Resolution time", "baseline": f"{quantize(np.mean([float(row['resolution_hours']) for row in rollout if int(row['post']) == 0]))} hours", "target": "17.5 hours", "owner": "Chief Customer Officer", "timing": "Days 30–120", "dependency": "AG-08 synthetic pod experiment and verified workload transfer", "implementation_cost": "$2.0M", "milestone": "20-pod rollout by day 120", "stop_rule": "Stop rollout if resolution or churn diagnostics cross the declared adverse boundary.", "value": f"Identified synthetic retention effect is reported separately; {_illustrative_value_range(support_margin_only_value)} margin-only range", "credit_classification": value_by_id["support"].credit_classification, "risk": "AG-08 maps only the churn effect; the 100 bps margin uplift is human judgment", "lineage": ["ag-support"]},
+            {"priority": 3, "initiative": "Delivery cost reset", "kpi": "Burdened gross margin", "baseline": f"{quantize(burdened_gm * 100)}%", "target": f"{quantize((Decimal(str(burdened_gm)) + Decimal('0.015')) * 100)}%", "owner": "CFO", "timing": "Pre-close through Day 100", "dependency": "AG-04 fully burdened cost dictionary and account contribution ledger", "implementation_cost": "$2.5M", "milestone": "Account contribution ledger and vendor plan by day 30", "stop_rule": "Withdraw credit if service quality deteriorates or ledger coverage stays below 95%.", "value": _illustrative_value_range(value_by_id["delivery"].exit_equity_delta_cents), "credit_classification": value_by_id["delivery"].credit_classification, "risk": "Human scenario with zero causal credit", "lineage": ["ag-margin", "ag-ebitda"]},
         ],
         "screenedOutLevers": [
             {"lever": "Broad renewal price increase", "evidence_state": "CAUSAL_SYNTHETIC_ONLY_ADVERSE", "reason_screened_out": "AG-07 estimates renewal loss under the tested offer; no upside is credited.", "reconsideration_trigger": "A separately powered design demonstrates expansion without violating the renewal-loss stop rule."},
@@ -1252,6 +1448,7 @@ def _helios(
             events=tuple(funding_event(item) for item in book["events"]),
             target_holder_id=financing_plan["target_holder_id"],
             exit_valuation=book["exit_valuation"],
+            pool_exit_treatment="FULLY_GRANTED_COMMON",
         )
         scenario_results[book["scenario_id"]] = run_vc_scenario(
             assumptions=assumptions,
@@ -1281,6 +1478,12 @@ def _helios(
         },
         exit_multiple_low=Decimal(venture_scenarios["exit_value_multiple_low"]),
         exit_multiple_high=Decimal(venture_scenarios["exit_value_multiple_high"]),
+        catastrophe_probability=Decimal(venture_scenarios["catastrophe_probability"]),
+        catastrophe_exit_multiple_low=Decimal(venture_scenarios["catastrophe_exit_multiple_low"]),
+        catastrophe_exit_multiple_high=Decimal(venture_scenarios["catastrophe_exit_multiple_high"]),
+        loss_probability_band_low=Decimal(venture_scenarios["loss_probability_band_low"]),
+        loss_probability_band_high=Decimal(venture_scenarios["loss_probability_band_high"]),
+        prior_rationale=venture_scenarios["prior_rationale"],
     )
     moic_q = [Decimal(value) for value in vc_distribution["moic_quantiles"]]
     irr_q = [Decimal(value) for value in vc_distribution["xirr_quantiles"]]
@@ -1333,6 +1536,7 @@ def _helios(
             "gross_moic": format(result.gross_moic, "f"),
             "gross_xirr": format(result.gross_xirr, "f"),
             "target_ownership": format(result.target_ownership, "f"),
+            "pool_exit_treatment": result.assumptions.pool_exit_treatment,
             "minimum_cash_cents": result.minimum_cash_cents,
             "target_proceeds_cents": result.target_proceeds_cents,
             "target_cash_flows": list(result.target_cash_flows),
@@ -1350,7 +1554,7 @@ def _helios(
         body["receipt_sha256"] = digest(body)
         vc_sensitivity_cells.append(body)
 
-    for exit_value in (80_000_000_000, 120_000_000_000, 160_000_000_000):
+    for exit_value in (40_000_000_000, 80_000_000_000, 120_000_000_000):
         add_vc_sensitivity(
             "exit_value",
             f"${exit_value // 100_000_000}M",
@@ -1398,9 +1602,15 @@ def _helios(
             state,
             replace(vc_sensitivity_base, events=events),
         )
+    for pool_treatment in ("UNISSUED_CANCELLED", "FULLY_GRANTED_COMMON"):
+        add_vc_sensitivity(
+            "pool_exit_treatment",
+            "Unissued cancelled" if pool_treatment == "UNISSUED_CANCELLED" else "Fully granted common",
+            replace(vc_sensitivity_base, pool_exit_treatment=pool_treatment),
+        )
     vc_sensitivity_book: dict[str, Any] = {
         "schema_version": "underwriting.vc-sensitivity-book/v2",
-        "axis_order": ["exit_value", "exit_date", "later_round_price", "milestone_state"],
+        "axis_order": ["exit_value", "exit_date", "later_round_price", "milestone_state", "pool_exit_treatment"],
         "cells": vc_sensitivity_cells,
     }
     vc_sensitivity_book["receipt_sha256"] = digest(vc_sensitivity_book)
@@ -1704,6 +1914,42 @@ def _helios(
         ),
     ]
     _bind_specs(receipts, manifest)
+    evidence_mappings = _complete_evidence_mappings(
+        receipts,
+        [
+            {
+                "mapping_id": "hx-market-model-to-scenario",
+                "source_analysis_id": "HX-05",
+                "source_receipt_sha256": next(item for item in receipts if item["analysis_id"] == "HX-05")["receipt_sha256"],
+                "observed_value": f"${quantize(tam / 100_000_000_000)}B modeled serviceable spend",
+                "target_assumption_or_condition": "Market-size scenario bands",
+                "credit_classification": "PREDICTIVE_ASSOCIATION",
+                "model_credit": "Scenario calibration only; tier five remains unidentified",
+                "decision_response": "Do not convert the modeled universe into automatic valuation credit",
+            },
+            {
+                "mapping_id": "hx-optimizer-rct-to-value-creation",
+                "source_analysis_id": "HX-06",
+                "source_receipt_sha256": next(item for item in receipts if item["analysis_id"] == "HX-06")["receipt_sha256"],
+                "observed_value": f"{quantize(rct_effect, '0.0001')} log-point synthetic ITT",
+                "target_assumption_or_condition": "Optimizer value-creation bridge",
+                "credit_classification": "CAUSAL_SYNTHETIC_ONLY",
+                "model_credit": "No base-case credit; adoption and valuation remain scenario judgments",
+                "decision_response": "Require replication before releasing contingent capital",
+            },
+        ],
+        {
+            "HX-01": "BASE_CASE",
+            "HX-02": "BASE_CASE",
+            "HX-03": "BASE_CASE",
+            "HX-04": "ZERO",
+            "HX-05": "SCENARIO_ONLY",
+            "HX-06": "VALUE_CREATION_BRIDGE",
+            "HX-07": "ZERO",
+            "HX-08": "BASE_CASE",
+            "HX-09": "SCENARIO_ONLY",
+        },
+    )
     lineages = [
         lineage_item(node_id="hx-nrr", label="Go-forward NRR", artifact_id="customer-month", field="customer_id,month,revenue_cents,design_partner", analysis_id="HX-02", output_names=["pooled_nrr", "ordinary_nrr"], transformation="Frozen cohort bridge with design partners separately identified", downstream="Growth durability and financing milestones"),
         lineage_item(node_id="hx-margin", label="Blended gross margin", artifact_id="monthly-pnl", field="revenue_cents,cogs_cents", analysis_id="HX-01", output_names=["ltm_revenue", "ltm_cogs", "gross_margin"], transformation="Integer-cent LTM revenue less compute, telemetry, and support costs", downstream="Runway and margin milestones"),
@@ -1717,25 +1963,36 @@ def _helios(
         lineage_item(node_id="hx-return", label="Series C return distribution", artifact_id="venture-scenarios", field="draws,scenario_state_weights,exit_value_multiple_low,exit_value_multiple_high,path_method", analysis_id="HX-09", output_names=["p10_moic", "p50_moic", "p90_moic", "p10_xirr", "p50_xirr", "p90_xirr", "probability_below_1x", "probability_at_least_3x"], transformation="One-thousand seeded full event-ledger, waterfall, MOIC, and dated-XIRR reruns under four visible scenario-state priors", downstream="Conditional venture outcome range; not a forecast"),
         lineage_item(node_id="hx-team", label="Role-level team diligence", artifact_id="team-diligence", field="roles[*].role,strength,gap,evidence_state,financing_consequence", analysis_id="HX-09", output_names=["p50_moic"], transformation="Role-specific evidence-state and financing-consequence register", downstream="Closing conditions and board ownership"),
     ]
+    metric_pairs = [
+        _decision_pair(metric="Ordinary-cohort NRR", metric_id="helios-hx-02-ordinary_nrr", operator=">=", threshold=">=105%", threshold_value="105", observed=f"{quantize(ordinary_nrr * 100)}%", observed_value=quantize(ordinary_nrr * 100)),
+        _decision_pair(metric="Gross margin", metric_id="helios-hx-01-gross_margin", operator=">=", threshold=">=70%", threshold_value="70", observed=f"{quantize(gross_margin * 100)}%", observed_value=quantize(gross_margin * 100)),
+        _decision_pair(metric="Post-close runway", metric_id="helios-hx-03-post_close_runway_floor", operator=">=", threshold=">=18 months", threshold_value="18", observed=f">={quantize(post_close_runway_floor)} modeled months", observed_value=post_close_runway_floor),
+        _decision_pair(metric="Milestone · Series C gross XIRR", metric_id="helios-MILESTONE-gross-xirr", operator=">=", threshold=">=30%", threshold_value="0.30", observed=f"{quantize(selected_vc.gross_xirr * 100)}%", observed_value=selected_vc.gross_xirr),
+        _decision_pair(metric="Series C gross MOIC", metric_id="helios-MILESTONE-gross-moic", operator=">=", threshold=">=3.0x", threshold_value="3.0", observed=f"{quantize(selected_vc.gross_moic)}x", observed_value=selected_vc.gross_moic),
+        _decision_pair(metric="Modeled loss probability", metric_id="helios-hx-09-probability_below_1x", operator="<=", threshold="<=10%", threshold_value="10", observed=f"{quantize(loss_probability * 100)}% (MC SE {quantize(loss_probability_mce_pp)} pp)", observed_value=quantize(loss_probability * 100)),
+    ]
+    condition_states = [
+        _condition_state(condition_id="hx-ordinary-nrr", text="Ordinary-cohort NRR at or above 105%", metric_pairs=metric_pairs, metric_ids=("helios-hx-02-ordinary_nrr",)),
+        _condition_state(condition_id="hx-gross-margin", text="Gross margin at or above 70%", metric_pairs=metric_pairs, metric_ids=("helios-hx-01-gross_margin",)),
+        _condition_state(condition_id="hx-milestone-return", text="Milestone case gross XIRR at or above 30% and gross MOIC at or above 3.0x", metric_pairs=metric_pairs, metric_ids=("helios-MILESTONE-gross-xirr", "helios-MILESTONE-gross-moic")),
+        _condition_state(condition_id="hx-loss-range", text="Modeled probability below 1.0x at or below 10%", metric_pairs=metric_pairs, metric_ids=("helios-hx-09-probability_below_1x",)),
+        _condition_state(condition_id="hx-pipeline-history", text="Pipeline stage-history audit complete", metric_pairs=metric_pairs),
+        _condition_state(condition_id="hx-optimizer-replication", text="Optimizer RCT effect replicated", metric_pairs=metric_pairs),
+        _condition_state(condition_id="hx-runway", text="At least 18 modeled months post-close runway", metric_pairs=metric_pairs, metric_ids=("helios-hx-03-post_close_runway_floor",)),
+    ]
     decision = {
         "schema_version": "underwriting.decision-record/v1",
-        "decision": "INVEST",
+        "decision": "CONDITIONAL_INVEST",
         "attribution": "Cooper David Reed — illustrative IC",
         "status": "DECISION_RECORD_INCOMPLETE",
         "signature_status": "PENDING_FOUNDER_SIGNATURE",
         "as_of": CUTOFF,
         "rationale": "Invest only if the 30% XIRR, 3.0x MOIC, and 10% modeled probability-below-1.0x hurdles clear and milestone funding stays tied to retention, pipeline, and margin evidence.",
-        "conditions": ["Ordinary-cohort NRR at or above 105%", "Gross margin at or above 70%", "Milestone case gross XIRR at or above 30% and gross MOIC at or above 3.0x", "Modeled probability below 1.0x at or below 10%", "Pipeline stage-history audit complete", "Optimizer RCT effect replicated", "At least 18 modeled months post-close runway"],
-        "open_conditions": 7,
+        "conditions": [item["text"] for item in condition_states],
+        "condition_states": condition_states,
+        "open_conditions": _open_condition_count(condition_states),
         "terms": ["Illustrative $25M first close + $15M conditional tranche", "$160M pre-money; 12% post-financing unissued pool", "1x non-participating Series C; pre-money holders bear pool refresh"],
-        "metric_pairs": [
-            _decision_pair(metric="Ordinary-cohort NRR", metric_id="helios-hx-02-ordinary_nrr", operator=">=", threshold=">=105%", threshold_value="105", observed=f"{quantize(ordinary_nrr * 100)}%", observed_value=quantize(ordinary_nrr * 100)),
-            _decision_pair(metric="Gross margin", metric_id="helios-hx-01-gross_margin", operator=">=", threshold=">=70%", threshold_value="70", observed=f"{quantize(gross_margin * 100)}%", observed_value=quantize(gross_margin * 100)),
-            _decision_pair(metric="Post-close runway", metric_id="helios-hx-03-post_close_runway_floor", operator=">=", threshold=">=18 months", threshold_value="18", observed=f">={quantize(post_close_runway_floor)} modeled months", observed_value=post_close_runway_floor),
-            _decision_pair(metric="Milestone · Series C gross XIRR", metric_id="helios-MILESTONE-gross-xirr", operator=">=", threshold=">=30%", threshold_value="0.30", observed=f"{quantize(selected_vc.gross_xirr * 100)}%", observed_value=selected_vc.gross_xirr),
-            _decision_pair(metric="Series C gross MOIC", metric_id="helios-MILESTONE-gross-moic", operator=">=", threshold=">=3.0x", threshold_value="3.0", observed=f"{quantize(selected_vc.gross_moic)}x", observed_value=selected_vc.gross_moic),
-            _decision_pair(metric="Modeled loss probability", metric_id="helios-hx-09-probability_below_1x", operator="<=", threshold="<=10%", threshold_value="10", observed=f"{quantize(loss_probability * 100)}% (MC SE {quantize(loss_probability_mce_pp)} pp)", observed_value=quantize(loss_probability * 100)),
-        ],
+        "metric_pairs": metric_pairs,
         "verification_sources": ["HX-01", "HX-02", "HX-03", "HX-04", "HX-06", "HX-09"],
         "failure_consequences": ["Do not release the second tranche", "Retain HOLD until milestone evidence and founder adjudication"],
     }
@@ -1748,6 +2005,16 @@ def _helios(
         "investmentAdjudication": "PENDING_HUMAN",
         "workflowDisposition": _workflow_disposition(receipts, decision),
         "disclosure": manifest["disclosure"],
+        "dealContext": _deal_context(
+            one_liner="Cloud cost-control software that helps enterprises govern and optimize volatile GPU infrastructure spend.",
+            product="Usage telemetry, policy controls, workload optimization, and finance reporting for teams operating across compute providers.",
+            customer="AI-native and enterprise infrastructure teams; ordinary cohorts are separated from hand-picked design partners.",
+            market="A large but tier-uncertain spend universe modeled from synthetic adoption evidence; no external TAM fact is claimed.",
+            competition=["Cloud-native cost tools", "FinOps platforms", "Internal infrastructure tooling"],
+            go_to_market="Technical design partners seed adoption, followed by enterprise security review and usage-linked expansion.",
+            team="Strong product insight is assumed, while commercial repeatability, finance controls, and provider-risk ownership remain open.",
+            process="Illustrative Series C with a $25M first close and $15M tranche withheld behind operating and diligence milestones.",
+        ),
         "decision": decision,
         "summaryMetrics": [
             _metric("hx-ownership", "Fully funded ownership", f"{quantize(series_c_ownership * 100)}%", "$25M close + $15M contingent on $160M pre-money", "ACCOUNTING_IDENTITY", ["hx-ownership"]),
@@ -1826,6 +2093,7 @@ def _helios(
             {"lever": "Unconditioned sales acceleration", "evidence_state": "NOT_IDENTIFIED", "reason_screened_out": "Pipeline history contains overstated stages and mature conversion is not observed, so no acceleration credit enters the base case.", "reconsideration_trigger": "Two independently reconciled cohorts meet the declared stage-to-close and forecast-error thresholds."},
             {"lever": "Category-wide pricing uplift", "evidence_state": "NOT_EVIDENCED", "reason_screened_out": "No randomized or quasi-experimental willingness-to-pay evidence exists in the retained room.", "reconsideration_trigger": "A precommitted pricing design measures retention, expansion, and usage effects in ordinary customers."},
         ],
+        "evidenceMappings": evidence_mappings,
         "lineage": lineages,
         "artifacts": list(artifacts.values()),
     }

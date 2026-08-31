@@ -60,4 +60,13 @@ describe("workbench v2 data contract", () => {
     unitCase.formulaRegistry[0].output_unit = "multiple";
     expect(() => assertWorkbenchData(unitCandidate)).toThrow(/formula_output_unit_mismatch/);
   });
+
+  it("rejects promotion of AG-08 into the base case", () => {
+    const candidate: unknown = structuredClone(rawData);
+    assertWorkbenchData(candidate);
+    const atlasgrid = candidate.cases.find((item) => item.caseId === "atlasgrid")!;
+    const ag08 = atlasgrid.evidenceMappings?.find((item) => item.source_analysis_id === "AG-08")!;
+    ag08.credit_tier = "BASE_CASE";
+    expect(() => assertWorkbenchData(candidate)).toThrow(/ag08_base_case_credit_forbidden/);
+  });
 });

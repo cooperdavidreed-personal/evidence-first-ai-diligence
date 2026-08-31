@@ -351,6 +351,7 @@ export interface VCScenarioResult {
     participation_cap_multiple: string | null;
   }>;
   unissued_pool_shares: number;
+  pool_exit_treatment: "UNISSUED_CANCELLED" | "FULLY_GRANTED_COMMON";
   cash_by_month: VCCashMonth[];
   first_cash_exhaustion_month_without_contingent_financing: number | null;
   minimum_cash_cents: number;
@@ -373,13 +374,14 @@ export interface VCScenarioResult {
 
 export interface VCSensitivityCell {
   cell_id: string;
-  axis: "exit_value" | "exit_date" | "later_round_price" | "milestone_state";
+  axis: "exit_value" | "exit_date" | "later_round_price" | "milestone_state" | "pool_exit_treatment";
   assumption_label: string;
   engine_inputs_sha256: string;
   result_receipt_sha256: string;
   gross_moic: string;
   gross_xirr: string;
   target_ownership: string;
+  pool_exit_treatment: "UNISSUED_CANCELLED" | "FULLY_GRANTED_COMMON";
   minimum_cash_cents: number;
   target_proceeds_cents: number;
   target_cash_flows: Array<{date: string; amount_cents: number}>;
@@ -401,6 +403,18 @@ export interface VCEngine {
     xirr_quantiles: string[];
     probability_below_one: string;
     probability_below_one_monte_carlo_se_pp: string;
+    priors: {
+      schema_version: string;
+      catastrophe_probability: string;
+      catastrophe_exit_multiple_low: string;
+      catastrophe_exit_multiple_high: string;
+      continuous_exit_multiple_high: string;
+      loss_probability_band_low: string;
+      loss_probability_band_high: string;
+      rationale: string;
+      classification: "SYNTHETIC_SCENARIO_NOT_FORECAST";
+      receipt_sha256: string;
+    };
     receipt_sha256: string;
   };
   sensitivities: {
@@ -478,6 +492,7 @@ export interface EvidenceMapping {
   observed_value: string;
   target_assumption_or_condition: string;
   credit_classification: string;
+  credit_tier: "BASE_CASE" | "VALUE_CREATION_BRIDGE" | "SCENARIO_ONLY" | "ZERO";
   model_credit: string;
   decision_response: string;
   mapping_sha256: string;
@@ -510,12 +525,32 @@ export interface CaseData {
   analysis_sha256: string;
   investmentAdjudication: "PENDING_HUMAN";
   workflowDisposition: "HOLD";
+  dealContext: {
+    schema_version: "underwriting.deal-context/v1";
+    company_one_liner: string;
+    product: string;
+    customer: string;
+    market: string;
+    competition: string[];
+    go_to_market: string;
+    team: string;
+    process: string;
+    evidence_boundary: string;
+    context_sha256: string;
+  };
   decision: {
-    decision: "REPRICE" | "INVEST" | "PASS";
+    decision: "REPRICE" | "CONDITIONAL_INVEST" | "INVEST" | "PASS";
     attribution: string;
     status: string;
     rationale: string;
     conditions: string[];
+    condition_states: Array<{
+      condition_id: string;
+      text: string;
+      state: "CLEARS_QUANTITATIVELY" | "MISSES_HURDLE" | "OPEN_DILIGENCE" | "INFORMATIONAL";
+      designation: "BINDING" | "INFORMATIONAL";
+      metric_ids: string[];
+    }>;
     open_conditions: number;
     signature_status?: string;
     as_of?: string;
@@ -529,6 +564,7 @@ export interface CaseData {
       observed: string;
       observed_value: string;
       status: string;
+      designation: "BINDING" | "INFORMATIONAL";
     }>;
     verification_sources?: string[];
     failure_consequences?: string[];

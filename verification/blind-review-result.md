@@ -1,6 +1,12 @@
 # Blind first-viewport comprehension result
 
-State: `PASS`
+State: `SUPERSEDED_NOT_CURRENT`
+
+Current blind review: `NOT_RUN`
+
+The investor-workspace redesign replaced both previously bound IC Snapshot
+images and their navigation context. The historical result below is retained as
+provenance only and is not acceptance evidence for the current candidate.
 
 Two fresh read-only reviewers independently passed the frozen protocol against
 the retained desktop IC Snapshot images. Each reviewer received only one image

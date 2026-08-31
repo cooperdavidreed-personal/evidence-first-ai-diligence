@@ -125,6 +125,7 @@ class VCScenarioAssumptions:
     events: tuple[FundingEvent, ...]
     target_holder_id: str
     exit_valuation: Mapping[str, Any] | None = None
+    pool_exit_treatment: str = "UNISSUED_CANCELLED"
 
     def __post_init__(self) -> None:
         if self.scenario_id not in {"BASE", "MILESTONE", "DOWNSIDE", "FINANCING_SHORTFALL"}:
@@ -133,6 +134,8 @@ class VCScenarioAssumptions:
             raise UnderwritingError("vc_exit_month_invalid")
         if self.exit_value_cents < 0:
             raise UnderwritingError("vc_exit_value_invalid")
+        if self.pool_exit_treatment not in {"UNISSUED_CANCELLED", "FULLY_GRANTED_COMMON"}:
+            raise UnderwritingError("vc_pool_exit_treatment_invalid")
         if self.exit_valuation is not None:
             bridge = self.exit_valuation
             required = {
@@ -238,6 +241,7 @@ class VCScenarioResult:
             "holders": [asdict(item) for item in self.holders],
             "preferences": [_preference_dict(item) for item in self.preferences],
             "unissued_pool_shares": self.unissued_pool_shares,
+            "pool_exit_treatment": self.assumptions.pool_exit_treatment,
             "cash_by_month": list(self.cash_by_month),
             "first_cash_exhaustion_month_without_contingent_financing": (
                 self.first_cash_exhaustion_month_without_contingent_financing
@@ -296,6 +300,7 @@ def _scenario_inputs(item: VCScenarioAssumptions) -> dict[str, Any]:
         "events": [_event_dict(event) for event in item.events],
         "target_holder_id": item.target_holder_id,
         "exit_valuation": dict(item.exit_valuation) if item.exit_valuation is not None else None,
+        "pool_exit_treatment": item.pool_exit_treatment,
     }
 
 
@@ -752,9 +757,12 @@ def run_vc_scenario(
         if cash < 0:
             raise UnderwritingError(f"vc_cash_exhausted:{assumptions.scenario_id}:{month}")
 
+    waterfall_holders = list(holders.values())
+    if assumptions.pool_exit_treatment == "FULLY_GRANTED_COMMON" and unissued_pool_shares:
+        waterfall_holders.append(Holder("OPTION_POOL", "COMMON", unissued_pool_shares))
     waterfall = solve_waterfall(
         exit_value_cents=assumptions.exit_value_cents,
-        holders=holders.values(),
+        holders=waterfall_holders,
         preferences=preferences.values(),
     )
     target_holder = holders.get(assumptions.target_holder_id)
@@ -834,9 +842,25 @@ def simulate_vc_distribution(
     scenario_weights: Mapping[str, Decimal] | None = None,
     exit_multiple_low: Decimal = Decimal("0.35"),
     exit_multiple_high: Decimal = Decimal("1.85"),
+    catastrophe_probability: Decimal = Decimal("0"),
+    catastrophe_exit_multiple_low: Decimal = Decimal("0"),
+    catastrophe_exit_multiple_high: Decimal = Decimal("0.18"),
+    loss_probability_band_low: Decimal | None = None,
+    loss_probability_band_high: Decimal | None = None,
+    prior_rationale: str = "No explicit catastrophe prior supplied.",
 ) -> dict[str, Any]:
     if draws < 500:
         raise UnderwritingError("vc_distribution_draws_below_minimum")
+    if not Decimal("0") <= catastrophe_probability < Decimal("1"):
+        raise UnderwritingError("vc_catastrophe_probability_invalid")
+    if not Decimal("0") <= catastrophe_exit_multiple_low <= catastrophe_exit_multiple_high <= exit_multiple_high:
+        raise UnderwritingError("vc_catastrophe_multiple_invalid")
+    if (loss_probability_band_low is None) != (loss_probability_band_high is None):
+        raise UnderwritingError("vc_loss_probability_band_incomplete")
+    if loss_probability_band_low is not None and not (
+        Decimal("0") <= loss_probability_band_low <= loss_probability_band_high <= Decimal("1")
+    ):
+        raise UnderwritingError("vc_loss_probability_band_invalid")
     rng = random.Random(seed)
     templates = {item.scenario_id: item for item in (scenario_results or (base_result,))}
     if base_result.scenario_id not in templates:
@@ -873,11 +897,17 @@ def simulate_vc_distribution(
     for index in range(draws):
         template_id = rng.choices(canonical_order, weights=weights, k=1)[0]
         template = templates[template_id]
-        shock = Decimal(str(rng.gauss(0, 1)))
-        multiple = min(
-            exit_multiple_high,
-            max(exit_multiple_low, Decimal("1") + shock * Decimal("0.32")),
-        )
+        catastrophe = rng.random() < float(catastrophe_probability)
+        if catastrophe:
+            multiple = catastrophe_exit_multiple_low + (
+                catastrophe_exit_multiple_high - catastrophe_exit_multiple_low
+            ) * Decimal(str(rng.random()))
+        else:
+            shock = Decimal(str(rng.gauss(0, 1)))
+            multiple = min(
+                exit_multiple_high,
+                max(exit_multiple_low, Decimal("1") + shock * Decimal("0.32")),
+            )
         timing_delta = max(-12, min(18, int(round(rng.gauss(2, 7)))))
         operating_factor = Decimal(
             str(
@@ -956,6 +986,7 @@ def simulate_vc_distribution(
             "realized_timing_delta_months": exit_month - template.assumptions.exit_month,
             "liquidity_supported_exit_ceiling_month": liquidity_supported_ceiling,
             "operating_cash_factor": format(operating_factor, "f"),
+            "prior_state": "CATASTROPHE" if catastrophe else "CONTINUOUS",
             "milestone_state": next(
                 (
                     event.milestone_state
@@ -986,6 +1017,24 @@ def simulate_vc_distribution(
         (probability_below_one * (Decimal(1) - probability_below_one) / Decimal(draws)).sqrt()
         * Decimal(100)
     ).quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN)
+    if loss_probability_band_low is not None and not (
+        loss_probability_band_low <= probability_below_one <= loss_probability_band_high
+    ):
+        raise UnderwritingError(
+            f"vc_loss_probability_outside_precommitted_band:{probability_below_one}"
+        )
+    priors: dict[str, Any] = {
+        "schema_version": "underwriting.vc-distribution-priors/v1",
+        "catastrophe_probability": format(catastrophe_probability, "f"),
+        "catastrophe_exit_multiple_low": format(catastrophe_exit_multiple_low, "f"),
+        "catastrophe_exit_multiple_high": format(catastrophe_exit_multiple_high, "f"),
+        "continuous_exit_multiple_high": format(exit_multiple_high, "f"),
+        "loss_probability_band_low": format(loss_probability_band_low, "f") if loss_probability_band_low is not None else None,
+        "loss_probability_band_high": format(loss_probability_band_high, "f") if loss_probability_band_high is not None else None,
+        "rationale": prior_rationale,
+        "classification": "SYNTHETIC_SCENARIO_NOT_FORECAST",
+    }
+    priors["receipt_sha256"] = digest(priors)
     body = {
         "schema_version": "underwriting.vc-distribution/v2",
         "seed": seed,
@@ -1003,6 +1052,7 @@ def simulate_vc_distribution(
         "xirr_quantiles": [format(irrs[index], "f") for index in indices],
         "probability_below_one": format(probability_below_one, "f"),
         "probability_below_one_monte_carlo_se_pp": format(probability_below_one_monte_carlo_se_pp, "f"),
+        "priors": priors,
         "path_records": records,
     }
     body["receipt_sha256"] = digest(body)

@@ -133,7 +133,7 @@ def test_decision_label_and_threshold_semantics_fail_closed(atlasgrid_v2: dict) 
     ]
     for field, value, error in mutations:
         case = deepcopy(atlasgrid_v2)
-        pair = case["decision"]["metric_pairs"][0]
+        pair = next(item for item in case["decision"]["metric_pairs"] if item["designation"] == "BINDING")
         pair[field] = value
         decision_body = dict(case["decision"])
         decision_body.pop("decision_sha256")

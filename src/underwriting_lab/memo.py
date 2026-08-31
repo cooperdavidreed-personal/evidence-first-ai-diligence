@@ -18,6 +18,18 @@ def _money(cents: int) -> str:
     return f"{sign}${amount / 100:,.0f}"
 
 
+def _illustrative_money_range(cents: int) -> str:
+    def two_significant_millions(value_cents: Decimal) -> str:
+        millions = value_cents / Decimal(100_000_000)
+        quantum = Decimal(1).scaleb(millions.adjusted() - 1)
+        rendered = format(millions.quantize(quantum), "f")
+        return rendered.rstrip("0").rstrip(".") if "." in rendered else rendered
+
+    low = two_significant_millions(Decimal(cents) * Decimal("0.50"))
+    high = two_significant_millions(Decimal(cents) * Decimal("1.50"))
+    return f"≈${low}–${high}M"
+
+
 def _percent(decimal: str) -> str:
     return f"{Decimal(decimal) * 100:.2f}%"
 
@@ -163,6 +175,12 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
             strict=True,
         )
     )
+    pool_exit_copy = (
+        "Unissued option-pool shares are treated as fully granted common at exit "
+        "and share pro rata in residual proceeds."
+        if selected["pool_exit_treatment"] == "FULLY_GRANTED_COMMON"
+        else "Unissued option-pool shares are cancelled before exit and receive no proceeds."
+    )
     lines = [
         f"# {packet['company']} — illustrative venture investment committee memorandum",
         "",
@@ -257,7 +275,7 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
         f"| Exit enterprise value / cash | {_money(packet['operating_exit_bridges']['milestone']['exit_enterprise_value_cents'])} / {_money(packet['operating_exit_bridges']['milestone']['cash_at_exit_cents'])} | Accounting bridge; net debt is {_money(packet['operating_exit_bridges']['milestone']['net_debt_cents'])} |",
         f"| Exit equity value | {_money(packet['operating_exit_bridges']['milestone']['exit_equity_value_cents'])} | Waterfall operand |",
         "",
-        f"Exit value basis is `{packet['exit_value_basis']}`. Unissued pool shares receive zero proceeds. Class proceeds conserve to {_money(selected['waterfall']['exit_value_cents'])} with a {selected['waterfall']['conservation_residual_cents']}-cent residual.",
+        f"Exit value basis is `{packet['exit_value_basis']}`. {pool_exit_copy} Class proceeds conserve to {_money(selected['waterfall']['exit_value_cents'])} with a {selected['waterfall']['conservation_residual_cents']}-cent residual.",
         "",
         "| Class | Election | Preference | Residual | Total proceeds |",
         "|---|---|---:|---:|---:|",
@@ -492,7 +510,7 @@ def _memo_markdown(packet: dict[str, Any]) -> str:
         "## Value creation",
         "",
         f"Combined modeled exit-equity impact is **{_money(bridge['combined_exit_equity_delta_cents'])}**, equal to **{_money(bridge['sum_standalone_exit_equity_delta_cents'])}** of standalone effects plus an explicit **{_money(bridge['interaction_residual_cents'])}** interaction residual.",
-        f"Of the standalone value, **{_money(pure_human_value)}** is pure human judgment and **{_money(mixed_value)}** is mixed synthetic-causal and human judgment. No value-creation total is presented as an identified real-world effect.",
+        f"Pure human-judgment effects are presented as an **{_illustrative_money_range(pure_human_value)} illustrative 50–150% range** around the selected scenario; **{_money(mixed_value)}** is mixed synthetic-causal and human judgment. No value-creation total is presented as an identified real-world effect.",
         "",
         "| Initiative | Credit class | Implementation cost | Exit EBITDA | Exit debt | Exit equity | IRR impact |",
         "|---|---|---:|---:|---:|---:|---:|",
@@ -568,9 +586,10 @@ def _memo_html(markdown: str, packet: dict[str, Any]) -> str:
     if in_table:
         paragraphs.append("</tbody></table>")
     style = """
-    @page{size:letter;margin:.55in .55in .66in;@bottom-left{content:"Underwriting Intelligence Lab";font:7.5px monospace;color:#586269}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:7.5px monospace;color:#586269}}*{box-sizing:border-box}body{margin:0;color:#20262b;font:11px/1.43 Arial,sans-serif}h1,h2,h3{font-family:Georgia,serif;font-weight:500;break-after:avoid-page}h1{font-size:30px;border-bottom:2px solid #20262b;padding-bottom:12px}h2{font-size:19px;margin-top:24px;border-bottom:1px solid #aaa;padding-bottom:5px}h3{font-size:14px}aside{border:1px solid #8a3d2f;color:#8a3d2f;padding:8px;font:700 9px monospace;break-inside:avoid}p{margin:6px 0;orphans:3;widows:3}p:has(+table),h2:has(+p),h3:has(+p){break-after:avoid-page}.bullet{padding-left:12px}.receipt-title{margin-top:18px}.receipt-row{display:inline-block;width:50%;margin:2px 0;padding-right:8px;font-size:8px;line-height:1.25;vertical-align:top}code{font:9px monospace;color:#234fa4;overflow-wrap:anywhere}.receipt-row code{font-size:7px}table{width:100%;border-collapse:collapse;margin:9px 0 16px;break-inside:avoid-page}th,td{border-bottom:1px solid #ccc;padding:5.5px;text-align:left;vertical-align:top}th{font:700 8.5px monospace;text-transform:uppercase;color:#586269}tr{break-inside:avoid}footer{display:block;clear:both;margin-top:8px;border-top:1px solid #20262b;padding-top:4px;font:7.5px monospace;color:#586269;break-inside:avoid}@media print{footer{display:none}}@media screen{body{max-width:900px;margin:40px auto;padding:40px;background:#fbf9f4}}
+    @page{size:letter;margin:.55in .55in .66in;@bottom-left{content:"Underwriting Intelligence Lab";font:7.5px monospace;color:#586269}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:7.5px monospace;color:#586269}}*{box-sizing:border-box}body{margin:0;color:#20262b;font:11px/1.43 Arial,sans-serif}h1,h2,h3{font-family:Georgia,serif;font-weight:500;break-after:avoid-page}h1{font-size:30px;border-bottom:2px solid #20262b;padding-bottom:12px}h2{font-size:19px;margin-top:24px;border-bottom:1px solid #aaa;padding-bottom:5px}h3{font-size:14px}aside{border:1px solid #8a3d2f;color:#8a3d2f;padding:8px;font:700 9px monospace;break-inside:avoid}p{margin:6px 0;orphans:3;widows:3}p:has(+table),h2:has(+p),h3:has(+p){break-after:avoid-page}.bullet{padding-left:12px}.receipt-title{margin-top:18px}.receipt-row{display:inline-block;width:50%;margin:2px 0;padding-right:8px;font-size:8px;line-height:1.25;vertical-align:top}code{font:9px monospace;color:#234fa4;overflow-wrap:anywhere}.receipt-row code{font-size:7px}table{width:100%;border-collapse:collapse;margin:9px 0 16px;break-inside:avoid-page}th,td{border-bottom:1px solid #ccc;padding:5.5px;text-align:left;vertical-align:top}th{font:700 8.5px monospace;text-transform:uppercase;color:#586269}tr{break-inside:avoid}footer{display:block;clear:both;margin-top:8px;border-top:1px solid #20262b;padding-top:4px;font:7.5px monospace;color:#586269;break-inside:avoid}.atlasgrid-memo{font-size:10.1px;line-height:1.36}.atlasgrid-memo h1{font-size:28px;padding-bottom:9px}.atlasgrid-memo h2{font-size:17px;margin-top:18px;padding-bottom:4px}.atlasgrid-memo h3{font-size:13px;margin:12px 0 5px}.atlasgrid-memo p{margin:4px 0}.atlasgrid-memo table{margin:7px 0 12px}.atlasgrid-memo th,.atlasgrid-memo td{padding:4.5px}.atlasgrid-memo th{font-size:8px}.atlasgrid-memo code{font-size:8.5px}@media print{footer{display:none}}@media screen{body{max-width:900px;margin:40px auto;padding:40px;background:#fbf9f4}}
     """
-    return f"<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>{escape(packet['company'])} IC memorandum</title><style>{style}</style></head><body>{''.join(paragraphs)}<footer>Packet {packet['packet_sha256']} · {escape(packet['disclosure'])}</footer></body></html>"
+    body_class = f"{escape(packet['case_id'])}-memo"
+    return f"<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>{escape(packet['company'])} IC memorandum</title><style>{style}</style></head><body class='{body_class}'>{''.join(paragraphs)}<footer>Packet {packet['packet_sha256']} · {escape(packet['disclosure'])}</footer></body></html>"
 
 
 def build_ic_packet_from_case(case: dict[str, Any], output_dir: str | Path) -> dict[str, Path]:

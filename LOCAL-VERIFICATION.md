@@ -1,90 +1,90 @@
 # Local verification receipt
 
-Status: `DETERMINISTIC LOCAL PASS — INDEPENDENT EXACT-SHA REVIEW PENDING`
+Status: `USABILITY CANDIDATE IN LOCAL VERIFICATION — OBSERVED PRACTITIONER TESTING NOT RUN`
 
-Exact base: `28893ad630ce7dea50f890448263d8096d75132f`
+Exact redesign base: `9b5cdc3b10b6b6cfd88fb4a14eef7d5a58df7a43`
 
-Candidate head: the commit containing this receipt. Its exact SHA is recorded
-in the external mission acceptance receipt after the clean exact-head run so
-the repository does not contain a circular self-hash claim.
+Candidate head: the commit containing this receipt. Its exact SHA is recorded in
+the external mission acceptance receipt after the clean exact-head run so this
+repository does not contain a circular self-hash claim.
 
-Environment: macOS, Python 3.11–3.13, Node 22, pnpm 11.19.0, Chrome. Hosted CI
+Environment: macOS, Python 3.11–3.13, Node 22, pnpm 11.19.0, Chromium. Hosted CI
 on Ubuntu/macOS remains `NOT_RUN` until a separately authorized push.
 
-## Deterministic gate state
+## Phase 1 — frozen redesign contract
 
-- The accepted pre-audit commit `d1c888b` is superseded: an exact-commit audit
-  found a failing public scan, nondeterministic PDF bytes, capture-only visual
-  checks, incomplete displayed-number lineage, stale documentation, and a
-  legacy release bundle.
-- The repair adds manifest-bound public binary review, read-only visual
-  regression checks, deterministic tagged five-page PDFs for both cases,
-  typed diligence and value-creation contracts, chart contracts, keyboard DAG
-  traversal, and a frozen 16-mutant falsification ledger.
-- Python: `176/176` locally on the primary Python 3.12 environment. The same
-  `176/176` suite passes locally under isolated Python 3.11, 3.12, and 3.13
-  environments. This is a
-  local interpreter matrix, not hosted CI.
-- React: `30/30`. Playwright: `12 active passed / 2 intentionally skipped`
-  because the memo print contract runs once per case rather than redundantly
-  per viewport.
-- Visual evidence: 26 retained PNGs reproduce within the frozen read-only
-  thresholds; both PDF byte comparisons and all four retained accessibility
-  evidence files match. Automated serious/critical Axe findings are zero on
-  the tested routes and viewports; comprehensive WCAG compliance is not
-  claimed.
-- The production build emits one validated dynamic payload per case. Direct
-  AtlasGrid and Helios loads remain below the frozen 1,100 KB initial gzip
-  budget, and a browser network test proves that the alternate case is not
-  requested before a case switch.
-- Both PDFs pass the retained contract: 5 pages each, tagged structure,
-  deterministic metadata, no encryption, and no horizontal clipping in the
-  browser print proof.
-- Source evidence: 25 manifest-declared files are committed across the two
-  synthetic data rooms. Locator v3 closes all declared analysis-input pairs
-  (`24/24` AtlasGrid and `20/20` Helios), binds each complete source artifact
-  plus exact granular review rows, cells, pointers, or text spans, and stages
-  only manifest-bound files for public review.
-- Package, public scan, security, mutation, toolkit-integration, and estimator
-  recovery gates pass on the current repair bytes. The clean-tree candidate
-  verifier passes from a frozen environment and asserts no tracked, staged, or
-  undeclared untracked drift at exit. The wheel contains 24 underwriting schemas
-  plus the four preserved kernel schemas.
-- The complete metric, formula, and render contract is deterministically rebuilt
-  from authoritative engine objects during validation. Eight planted coherent-
-  digest mutations cover PE and VC scenarios, sensitivities, retained
-  distribution paths, and value-creation bridges; each is rejected when the
-  registry diverges from its engine object.
-- The prior static slide demo was retired as `QUALITY_SHORT`. Its source-bound
-  replacement passes mechanical media/provenance verification at 150.0 seconds,
-  1440 by 900, H.264, 30 fps, with no audio and exact SRT/WebVTT captions. It is
-  bound to clean source commit `2536482962604d3c80a9b5cb75f8c3254b566f03`;
-  founder viewing remains pending.
-
-## Provider and integrity state
-
-- Claude model-integrity/econometrics advisory: `PRODUCED` before the v2 repair
+- The controlling redesign contract and blocker ledger were frozen before
   implementation.
-- Grok benchmark countercase and AtlasGrid PE review: `PRODUCED`; the retained
-  PE review scored 92 with no critical or high finding. Later exact-head Codex
-  audits found additional model-integrity defects and supersede that score.
-- The prior exact-head finance and rendered-product audits returned
-  `QUALITY_SHORT`: one coherent registry-to-engine tamper was accepted and the
-  film briefly described the wrong active scenario. Both findings are repaired
-  and covered by planted tests or source-bound media verification. Fresh
-  exact-head review is still required and does not substitute for Claude.
-- Claude frozen-benchmark review was previously `HELD_PROVIDER` after a native
-  signed-in 429 usage hold. Exact-candidate final integrated acceptance is
-  `PENDING`; no API-key, paid, or identity-changing fallback is authorized.
-- Mission capsule history: `MISSION_INTEGRITY_SHORT`. Episode 00 recorded a
-  different capsule digest from the current file. The current capsule is
-  frozen; future provider events must be append-only receipts.
+- Claude supplied architecture and finance/econometrics critique through its
+  native signed-in CLI. Grok supplied a separate product red team. Codex was the
+  sole filesystem writer.
+- The literal target is usability-candidate readiness, not release, practitioner
+  validation, enterprise adoption, or investment accuracy.
 
-## Boundaries
+## Phase 2 — analytical credibility repairs
 
-Any eventual local pass establishes behavior of the named synthetic bytes. It
-does not prove semantic truth, real diligence accuracy, production reliability,
-comprehensive WCAG compliance, public availability, hiring impact, investment
-performance, or enterprise adoption. CoreWeave, FinanceBench, FinRank,
-Fin-RATE, hosted CI, publication, resume wording, and human investment
-adjudication remain `NOT_RUN` or outside this mission.
+- Decision condition states and analysis-credit tiers now come from the engine;
+  React does not infer them by array index, substring, or case-specific position.
+- AtlasGrid AG-08 is explicitly credited to the value-creation bridge and has a
+  planted-red rejection test. Its margin-only uncertainty is separated from the
+  identified retention effect.
+- AtlasGrid stress priors, dependence assumptions, probability bands, maximum-
+  bid downside constraints, and human-judgment ranges are explicit and tested.
+- Helios uses a canonical `CONDITIONAL_INVEST` posture, explicit milestone and
+  return gates, a 20% synthetic catastrophe prior, exit-value sensitivities, and
+  fully granted versus cancelled option-pool treatment. The exact waterfall
+  oracle and proceeds-conservation checks remain in force.
+- Both cases carry a versioned company, product, customer, market, competition,
+  GTM, team, process, and evidence-boundary contract.
+
+## Phase 3 — investor workspace
+
+- A no-instruction landing page leads into six familiar primary views:
+  Overview, Thesis, Financials & Returns, Risks & Diligence, Value Creation, and
+  Memo. Explore, Sources, Methodology, and Audit details remain secondary.
+- The first Overview viewport exposes the IC question, analytical recommendation,
+  selected terms, modeled return, open-condition count, and “not approved” state.
+- Canonical AtlasGrid entry-price and Helios exit-value controls rerun retained
+  engine cells; they are not display-only calculators.
+- Contextual source inspection presents business meaning before hashes. Legacy
+  routes migrate deterministically to their new canonical URLs.
+
+## Phase 4 — first-time interaction evidence
+
+- Python: `177/177` pass locally on Python 3.11, 3.12, and 3.13 in isolated
+  environments. This is a local interpreter matrix, not hosted CI.
+- React: `18/18` unit/data-contract tests pass.
+- Playwright: `12 active passed / 2 intentionally skipped`; memo print proof runs
+  once per case rather than redundantly per viewport.
+- Visual evidence: 30 manifest-bound PNGs cover the landing page, six primary
+  views for both cases at 1440x900 and 390x844, contextual source drawers, and
+  both print memos. Two normalized US Letter PDFs are separately bound.
+- Four retained accessibility records show zero critical/serious Axe findings on
+  the tested routes; root-overflow assertions pass. This is not comprehensive
+  WCAG compliance.
+- A live in-app browser check confirmed the recommendation/terms/return block is
+  visible before scrolling at desktop and mobile widths, case switching reaches
+  the correct Helios posture, and the 390px route has no root overflow.
+- The explanation-free seven-task practitioner protocol is committed at
+  `docs/OBSERVED-USABILITY-PROTOCOL.md`; execution is `NOT_RUN`.
+
+## Preserved foundation and supply-chain gates
+
+- The accepted evidence-kernel interfaces and deterministic regressions remain
+  in scope. Money uses integer cents or declared decimal arithmetic; runtime
+  payloads exclude planted truth.
+- The production build emits one lazy payload per case. Chunk budgets, package
+  contents, public scan, secret/path checks, mutation gates, source-room binding,
+  PDF contracts, and visual-manifest identity are part of the clean candidate
+  verifier.
+- Hosted CI, anonymous access, publication, deployment, CoreWeave, FinanceBench,
+  FinRank, Fin-RATE, narrated media, resume/LinkedIn mutation, and investment
+  adjudication remain `NOT_RUN` or outside this mission.
+
+## Claim boundary
+
+Any final local pass establishes behavior of the named synthetic bytes only. It
+does not prove semantic truth, private-company access, real diligence accuracy,
+production reliability, observed practitioner usability, comprehensive WCAG
+compliance, public availability, hiring impact, investment performance, or
+enterprise adoption.

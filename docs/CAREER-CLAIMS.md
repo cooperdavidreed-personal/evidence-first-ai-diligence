@@ -4,11 +4,11 @@ All wording remains draft-only until the repository, workbench, and named verifi
 
 | Candidate claim | Required proof | Current state |
 |---|---|---|
-| Built a shared PE/VC underwriting workbench | committed AtlasGrid and Helios cases, five shared views, reproducible local build | `VERIFIED_LOCAL` |
+| Built a shared PE/VC underwriting workbench | committed AtlasGrid and Helios cases, six shared investor views, reproducible local build | `VERIFIED_LOCAL` |
 | Bound displayed metrics to source and method lineage | fail-closed compiler, nested digests, clickable lineage, tamper tests | `VERIFIED_LOCAL` |
 | Applied econometric identification discipline | declared estimands, uncertainty, diagnostics, causal classes, abstentions, smoke recovery, and two fixed 500-seed coverage ledgers | `VERIFIED_LOCAL_SYNTHETIC` |
 | Modeled buyout and venture economics | exact accounting/debt/capitalization bridges, event-derived milestone funding, dated cash flows, independent waterfall oracle, and seeded full-engine scenarios | `VERIFIED_LOCAL_SYNTHETIC` |
-| Produced an investor-oriented portfolio interface | responsive screenshots, automated interaction/a11y checks, accepted visual baseline, and exact-image blind comprehension reviews | `VERIFIED_LOCAL_BLIND_SUBAGENT_REVIEW` |
+| Produced an investor-oriented portfolio interface | investor-first landing and six-view workflow, responsive screenshots, automated interaction/a11y checks, and exact-head independent review | `VERIFIED_LOCAL_AUTOMATED — OBSERVED PRACTITIONER TESTING NOT RUN` |
 | Used governed multi-model collaboration | provider receipts, one-writer enforcement, independent review | `PARTIAL — CLAUDE AND GROK ADVISORY PRODUCED; CURRENT EXACT-HEAD CLAUDE ACCEPTANCE NOT RUN` |
 | Preserved the evidence kernel | full suite and 24-case deterministic regression | `VERIFIED_LOCAL` |
 | Publicly available | anonymous repository and artifact checks | `NOT PUBLISHED` |
@@ -19,4 +19,6 @@ Potential résumé wording after public verification and founder approval:
 
 > Built an evidence-bound PE/VC underwriting workbench spanning synthetic SaaS buyout and AI-infrastructure growth cases; linked accounting, econometric, scenario, and value-creation outputs to content-addressed data and reproducible analysis receipts.
 
-Do not publish test denominators, performance language, “enterprise-grade,” or “investment accuracy” claims without a current public receipt that supports the exact words.
+Do not publish test denominators, performance language, “enterprise-grade,”
+“practitioner validated,” or “investment accuracy” claims without a current
+public receipt that supports the exact words.

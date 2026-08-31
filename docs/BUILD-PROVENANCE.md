@@ -20,7 +20,7 @@ No API-key or paid fallback route is authorized. No provider output is case evid
 | Investor-experience architecture and comprehension review | Claude | `ACCEPT_ARCHITECTURE` | Read-only review required posture-versus-authority, explicit terms and hurdle consequences, three distinct Helios runway bases, progressive lineage, and mobile information preservation before implementation |
 | Investor-product countercase | Grok | `FAILED_RETRYABLE — PARTIAL ADVISORY ONLY` | Partial findings were retained as unverified advice; no Grok output was admitted as case evidence or acceptance |
 | Productization implementation and blind first-viewport checks | Codex plus fresh read-only subagents | `LOCAL PASS` | AtlasGrid was completed and blind-read before Helios; both first views passed the frozen comprehension questions without filesystem writes by reviewers |
-| Exact-image comprehension review | Two fresh read-only Codex subagents | `BLIND PASS 2/2` | Both exact desktop Snapshot digests independently passed all five frozen comprehension questions with zero reviewer writes; separate full-baseline visual review remains local mission evidence |
+| Historical exact-image comprehension review | Two fresh read-only Codex subagents | `SUPERSEDED_NOT_CURRENT` | The prior Snapshot-bound review passed 2/2, but the redesign replaced those images and routes. Current blind review and observed practitioner testing are `NOT_RUN`. |
 | Investor-experience exact-final-commit acceptance | Claude | `NOT RUN` | Commissioned only after the immutable source-bound demo and clean candidate commit exist |
 
 Durable provider stdout, state events, and episode receipts live in the excluded local mission directory, not the proposed public package.

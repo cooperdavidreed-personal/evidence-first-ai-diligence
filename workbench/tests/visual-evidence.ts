@@ -25,7 +25,9 @@ export function writeAccessibilityEvidence(fileName: string, value: object): voi
 
 export async function captureVisualEvidence(page: Page, fileName: string, fullPage = false): Promise<void> {
   const isCanonicalWorkbenchRoute = fileName.endsWith(".png")
+    && !fileName.includes("-landing")
     && !fileName.includes("-lineage-drawer")
+    && !fileName.includes("-contextual-source-drawer")
     && !fileName.includes("-selected-thesis-path")
     && !fileName.includes("-ic-memo");
   if (isCanonicalWorkbenchRoute) {
@@ -50,7 +52,7 @@ export async function captureVisualEvidence(page: Page, fileName: string, fullPa
     const inFrame = (top: number, bottom: number) => top >= 0 && bottom <= state.viewportHeight;
     if (state.scrollY !== 0 || state.visualTop !== 0 || !inFrame(state.brandTop, state.brandBottom)
       || !inFrame(state.disclosureTop, state.disclosureBottom) || !inFrame(state.navTop, state.navBottom)
-      || state.disclosureText !== "SYNTHETIC — NOT INVESTMENT ADVICE" || state.navControls !== 5) {
+      || state.disclosureText !== "SYNTHETIC — NOT INVESTMENT ADVICE" || state.navControls !== 6) {
       throw new Error(`canonical_visual_precondition_failed:${fileName}:${JSON.stringify(state)}`);
     }
   }

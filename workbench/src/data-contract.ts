@@ -165,6 +165,9 @@ export function assertWorkbenchCase(candidate: unknown): asserts candidate is Ca
   if (new Set(priorities).size !== priorities.length || priorities.some((item, index) => item !== index + 1)) throw new Error("value_creation_priority_invalid");
   if (!array(candidate.screenedOutLevers) || candidate.screenedOutLevers.length === 0 || candidate.screenedOutLevers.some((item) => !record(item) || ["lever", "evidence_state", "reason_screened_out", "reconsideration_trigger"].some((key) => typeof item[key] !== "string" || !item[key]))) throw new Error("screened_out_lever_invalid");
   if (!array(candidate.ownershipCadence) || candidate.ownershipCadence.length !== 5) throw new Error("ownership_cadence_invalid");
+  if (!record(candidate.dealContext)) throw new Error("deal_context_invalid");
+  const dealContext = candidate.dealContext;
+  if (dealContext.schema_version !== "underwriting.deal-context/v1" || !array(dealContext.competition) || dealContext.competition.length < 3 || ["company_one_liner", "product", "customer", "market", "go_to_market", "team", "process", "evidence_boundary", "context_sha256"].some((key) => typeof dealContext[key] !== "string" || !dealContext[key])) throw new Error("deal_context_invalid");
   const cadence = candidate.ownershipCadence as Array<Record<string, unknown>>;
   if (cadence.map((item) => item.phase).join(",") !== "Pre-close,Day 1,Day 30,Day 100,Year 1" || cadence.some((item) => ["timing", "owner", "milestone", "kpi", "stop_rule"].some((key) => typeof item[key] !== "string" || !item[key]))) throw new Error("ownership_cadence_sequence_invalid");
   if (!record(candidate.renderManifest) || candidate.renderManifest.schema_version !== "underwriting.render-manifest/v2") throw new Error("render_manifest_invalid");
@@ -188,7 +191,7 @@ export function assertWorkbenchCase(candidate: unknown): asserts candidate is Ca
   }
   if (!record(candidate.decision) || !array(candidate.decision.metric_pairs)) throw new Error("decision_metric_pairs_missing");
   for (const pair of candidate.decision.metric_pairs) {
-    if (!record(pair) || typeof pair.metric !== "string" || typeof pair.metric_id !== "string" || typeof pair.observed_value !== "string" || typeof pair.operator !== "string" || typeof pair.threshold !== "string" || typeof pair.threshold_value !== "string" || typeof pair.status !== "string") throw new Error("decision_metric_pair_invalid");
+    if (!record(pair) || typeof pair.metric !== "string" || typeof pair.metric_id !== "string" || typeof pair.observed_value !== "string" || typeof pair.operator !== "string" || typeof pair.threshold !== "string" || typeof pair.threshold_value !== "string" || typeof pair.status !== "string" || !["BINDING", "INFORMATIONAL"].includes(String(pair.designation))) throw new Error("decision_metric_pair_invalid");
     const metric = metrics.get(pair.metric_id);
     if (!metric || metric.value !== pair.observed_value) throw new Error("decision_metric_binding_invalid");
     if (pair.metric !== metric.label) throw new Error("decision_metric_label_mismatch");
@@ -202,6 +205,24 @@ export function assertWorkbenchCase(candidate: unknown): asserts candidate is Ca
     const clears = pair.operator === ">=" ? observed >= threshold : pair.operator === "<=" ? observed <= threshold : pair.operator === ">" ? observed > threshold : pair.operator === "<" ? observed < threshold : pair.operator === "==" ? observed === threshold : null;
     if (clears === null || pair.status !== (clears ? "CLEARS" : "MISSES")) throw new Error("decision_metric_status_invalid");
   }
+  if (!array(candidate.decision.condition_states) || !array(candidate.decision.conditions)) throw new Error("decision_condition_states_missing");
+  const pairs = new Map((candidate.decision.metric_pairs as Array<Record<string, unknown>>).map((pair) => [String(pair.metric_id), pair]));
+  const conditions = candidate.decision.condition_states as Array<Record<string, unknown>>;
+  if ((candidate.decision.conditions as unknown[]).join("|") !== conditions.map((item) => item.text).join("|")) throw new Error("decision_condition_text_mismatch");
+  const openConditions = conditions.filter((item) => item.designation === "BINDING" && item.state !== "CLEARS_QUANTITATIVELY").length;
+  if (candidate.decision.open_conditions !== openConditions) throw new Error("decision_open_condition_count_mismatch");
+  for (const condition of conditions) {
+    if (!array(condition.metric_ids) || !["BINDING", "INFORMATIONAL"].includes(String(condition.designation))) throw new Error("decision_condition_invalid");
+    const linked = condition.metric_ids.map((id) => pairs.get(String(id)));
+    if (linked.some((item) => !item)) throw new Error("decision_condition_metric_orphan");
+    if (condition.state === "CLEARS_QUANTITATIVELY" && (linked.length === 0 || linked.some((item) => item?.status !== "CLEARS"))) throw new Error("decision_condition_false_clear");
+    if (condition.state === "MISSES_HURDLE" && (linked.length === 0 || linked.every((item) => item?.status === "CLEARS"))) throw new Error("decision_condition_false_miss");
+  }
+  if (!array(candidate.evidenceMappings) || !array(candidate.analyses)) throw new Error("evidence_mapping_missing");
+  const mappings = candidate.evidenceMappings as Array<Record<string, unknown>>;
+  const analysisIds = new Set((candidate.analyses as Array<Record<string, unknown>>).map((item) => String(item.analysis_id)));
+  if (mappings.length !== analysisIds.size || new Set(mappings.map((item) => String(item.source_analysis_id))).size !== analysisIds.size || mappings.some((item) => !analysisIds.has(String(item.source_analysis_id)) || !["BASE_CASE", "VALUE_CREATION_BRIDGE", "SCENARIO_ONLY", "ZERO"].includes(String(item.credit_tier)))) throw new Error("evidence_mapping_coverage_invalid");
+  if (candidate.caseId === "atlasgrid" && mappings.find((item) => item.source_analysis_id === "AG-08")?.credit_tier !== "VALUE_CREATION_BRIDGE") throw new Error("ag08_base_case_credit_forbidden");
   const locators = new Set(sourceLocators.map((item) => item.locator_id));
   if (sourceLocators.some((item) => item.schema_version !== "underwriting.source-locator/v3" || !item.repository_path.startsWith(`portfolio/${candidate.caseId}/data-room/data/`) || !item.published_path.startsWith(`source-pack/${candidate.caseId}/data/`) || item.published_path.startsWith("/") || !/^[0-9a-f]{64}$/.test(item.selection_sha256) || !/^[0-9a-f]{64}$/.test(item.excerpt_sha256))) throw new Error("source_locator_v3_invalid");
   for (const metric of metricRegistry) {

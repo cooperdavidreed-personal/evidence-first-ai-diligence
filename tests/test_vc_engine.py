@@ -271,6 +271,28 @@ def test_unissued_pool_receives_no_exit_proceeds() -> None:
     assert "OPTION_POOL" not in result.waterfall.class_proceeds_cents
 
 
+def test_fully_granted_pool_is_a_conservative_exit_sensitivity() -> None:
+    holders, preferences = _opening()
+    cancelled = _run("MILESTONE")
+    granted = run_vc_scenario(
+        assumptions=replace(
+            _scenario("MILESTONE"), pool_exit_treatment="FULLY_GRANTED_COMMON"
+        ),
+        opening_cash_cents=1_900_000_000,
+        initial_holders=holders,
+        initial_preferences=preferences,
+        unissued_pool_shares=1_400_000,
+    )
+    assert granted.target_proceeds_cents <= cancelled.target_proceeds_cents
+    assert granted.gross_moic <= cancelled.gross_moic
+    assert (
+        sum(granted.waterfall.class_proceeds_cents.values())
+        + granted.waterfall.common_proceeds_cents
+        == granted.waterfall.exit_value_cents
+    )
+    assert granted.receipt()["pool_exit_treatment"] == "FULLY_GRANTED_COMMON"
+
+
 def test_waterfall_conserves_and_changes_conversion_at_boundaries() -> None:
     holders, preferences = _opening()
     profiles = set()

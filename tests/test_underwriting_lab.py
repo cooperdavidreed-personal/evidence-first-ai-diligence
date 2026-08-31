@@ -58,7 +58,16 @@ def test_generated_manifests_and_outputs_validate(generated: dict[str, tuple[Pat
         graph_validator.validate(analysis["thesisGraph"])
         assert analysis["investmentAdjudication"] == "PENDING_HUMAN"
         assert analysis["workflowDisposition"] == "HOLD"
-        assert analysis["decision"]["open_conditions"] == len(analysis["decision"]["conditions"])
+        context = dict(analysis["dealContext"])
+        assert context.pop("context_sha256") == digest(context)
+        assert len(context["competition"]) >= 3
+        states = analysis["decision"]["condition_states"]
+        assert analysis["decision"]["conditions"] == [item["text"] for item in states]
+        assert analysis["decision"]["open_conditions"] == sum(
+            item["designation"] == "BINDING"
+            and item["state"] != "CLEARS_QUANTITATIVELY"
+            for item in states
+        )
         for receipt in analysis["analyses"]:
             receipt_validator.validate(receipt)
 
@@ -113,6 +122,7 @@ def test_atlasgrid_contract_gates(generated: dict[str, tuple[Path, dict]]) -> No
     assert ag08_diagnostics["pretrend_slope_gap"]["status"] == "PASS"
     assert receipts["AG-09"]["state"] == "ABSTAIN"
     assert receipts["AG-10"]["diagnostics"][0]["status"] == "PASS"
+    assert Decimal(case["peEngine"]["distribution"]["probability_covenant_breach"]) > 0
 
 
 def test_atlasgrid_displayed_returns_bind_to_cash_flow_engine(generated: dict[str, tuple[Path, dict]]) -> None:
@@ -151,15 +161,13 @@ def test_atlasgrid_displayed_returns_bind_to_cash_flow_engine(generated: dict[st
     ag09_lever = next(item for item in bridge["standalone"] if "AG-09" in item["source_analysis_ids"])
     assert ag09_lever["credit_classification"] == "HUMAN_JUDGMENT"
     assert all("no standalone value" not in item["value"].lower() for item in case["valueCreation"])
+    for initiative in case["valueCreation"]:
+        if "HUMAN_JUDGMENT" in initiative["credit_classification"]:
+            assert "illustrative and unverified" in initiative["value"]
+            assert "–" in initiative["value"]
 
     mappings = {item["mapping_id"]: dict(item) for item in case["evidenceMappings"]}
-    assert set(mappings) == {
-        "ag-parent-concentration-to-terms",
-        "ag-hazard-to-downside-nrr",
-        "ag-pricing-rct-to-renewal-credit",
-        "ag-realized-price-association-zero-credit",
-        "ag-support-did-to-retention-lever",
-    }
+    assert len(mappings) == 11
     for mapping in mappings.values():
         expected_mapping_digest = mapping.pop("mapping_sha256")
         assert expected_mapping_digest == digest(mapping)
@@ -170,11 +178,26 @@ def test_atlasgrid_displayed_returns_bind_to_cash_flow_engine(generated: dict[st
         for lever in case["valueCreationBridge"]["standalone"]
     )
     assert mappings["ag-support-did-to-retention-lever"]["credit_classification"] == "CAUSAL_SYNTHETIC_ONLY"
+    assert mappings["ag-support-did-to-retention-lever"]["credit_tier"] == "VALUE_CREATION_BRIDGE"
+    support = next(item for item in case["valueCreation"] if item["initiative"] == "Support automation")
+    assert "margin-only range" in support["value"]
+
+    promoted = json.loads(json.dumps(case))
+    ag08 = next(item for item in promoted["evidenceMappings"] if item["source_analysis_id"] == "AG-08")
+    ag08["credit_tier"] = "BASE_CASE"
+    ag08_body = dict(ag08)
+    ag08_body.pop("mapping_sha256")
+    ag08["mapping_sha256"] = digest(ag08_body)
+    promoted_body = dict(promoted)
+    promoted_body.pop("analysis_sha256")
+    promoted["analysis_sha256"] = digest(promoted_body)
+    with pytest.raises(UnderwritingError, match="ag08_base_case_credit_forbidden"):
+        validate_workbench_case(promoted)
 
 
 def test_helios_contract_gates(generated: dict[str, tuple[Path, dict]]) -> None:
     _, case = generated["helios"]
-    assert case["decision"]["decision"] == "INVEST"
+    assert case["decision"]["decision"] == "CONDITIONAL_INVEST"
     receipts = {item["analysis_id"]: item for item in case["analyses"]}
     assert receipts["HX-01"]["diagnostics"][0]["status"] == "PASS"
     assert receipts["HX-02"]["diagnostics"][0]["status"] == "PASS"
@@ -213,7 +236,11 @@ def test_helios_contract_gates(generated: dict[str, tuple[Path, dict]]) -> None:
     pairs = {item["metric"]: item for item in case["decision"]["metric_pairs"]}
     assert pairs["Milestone · Series C gross XIRR"]["status"] == "CLEARS"
     assert pairs["Series C gross MOIC"]["status"] == "CLEARS"
-    assert pairs["Modeled loss probability"]["status"] == "CLEARS"
+    assert pairs["Modeled loss probability"]["status"] == "MISSES"
+    assert pairs["Modeled loss probability"]["designation"] == "BINDING"
+    probability = Decimal(case["vcEngine"]["distribution"]["probability_below_one"])
+    priors = case["vcEngine"]["distribution"]["priors"]
+    assert Decimal(priors["loss_probability_band_low"]) <= probability <= Decimal(priors["loss_probability_band_high"])
     assert pairs["Post-close runway"]["observed"].startswith(">=60")
 
 

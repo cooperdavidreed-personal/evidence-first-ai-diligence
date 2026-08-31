@@ -17,7 +17,7 @@ def main() -> int:
     args = parser.parse_args()
     root = Path(__file__).parents[1]
     evidence = root / "dist" / "visual-evidence"
-    views = ("ic-snapshot", "thesis-and-evidence", "econometric-lab", "underwriting-room", "value-creation")
+    views = ("overview", "thesis", "financials", "risks", "value-creation", "memo")
     cases = ("atlasgrid-systems", "helios-compute-control")
     files = []
     for viewport, dimensions in (("desktop", "1440x900"), ("mobile", "390x844")):
@@ -34,19 +34,30 @@ def main() -> int:
                         "bytes": path.stat().st_size,
                     }
                 )
+    for viewport, dimensions in (("desktop", "1440x900"), ("mobile", "390x844")):
+        path = evidence / f"{viewport}-investor-workspace-landing.png"
+        if not path.is_file():
+            raise SystemExit(f"missing_landing_evidence:{path.name}")
+        files.append(
+            {
+                "path": path.relative_to(root).as_posix(),
+                "viewport": dimensions,
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                "bytes": path.stat().st_size,
+            }
+        )
     for case in cases:
-        for interaction in ("lineage-drawer", "selected-thesis-path"):
-            path = evidence / f"desktop-{case}-{interaction}.png"
-            if not path.is_file():
-                raise SystemExit(f"missing_interaction_evidence:{path.name}")
-            files.append(
-                {
-                    "path": path.relative_to(root).as_posix(),
-                    "viewport": "1440x900",
-                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-                    "bytes": path.stat().st_size,
-                }
-            )
+        path = evidence / f"desktop-{case}-contextual-source-drawer.png"
+        if not path.is_file():
+            raise SystemExit(f"missing_interaction_evidence:{path.name}")
+        files.append(
+            {
+                "path": path.relative_to(root).as_posix(),
+                "viewport": "1440x900",
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                "bytes": path.stat().st_size,
+            }
+        )
     print_files = []
     for path, format_name in (
         (evidence / "desktop-atlasgrid-ic-memo.png", "full-page PNG"),
@@ -68,7 +79,7 @@ def main() -> int:
         "schema_version": "underwriting.visual-evidence/v1",
         "files": files,
         "print_files": print_files,
-        "scope": "Five views, two synthetic cases, desktop and mobile; open lineage drawers and selected thesis paths retained at desktop; automated all-rule axe scan and root-overflow assertion per route; AtlasGrid and Helios IC memos retained as full-page PNG and normalized US Letter PDF proofs.",
+        "scope": "Investor-first landing plus six primary views for two synthetic cases at desktop and mobile; contextual source drawers retained at desktop; automated critical/serious Axe scan and root-overflow assertion per tested route; AtlasGrid and Helios IC memos retained as full-page PNG and normalized US Letter PDF proofs. Observed practitioner usability remains NOT_RUN.",
     }
     manifest["manifest_sha256"] = hashlib.sha256(canonical_json(manifest)).hexdigest()
     output = root / "verification" / "visual-evidence.json"

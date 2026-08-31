@@ -7,7 +7,7 @@ This portfolio candidate combines a deterministic Python analytics layer with a 
 - **AtlasGrid Systems:** a 60-month vertical-SaaS buyout that exposes retention survivorship, parent-level concentration, underburdened gross margin, challenged EBITDA add-backs, and leverage fragility. Illustrative IC decision: `REPRICE`.
 - **Helios Compute Control:** an AI-infrastructure growth investment that separates design-partner performance from ordinary cohorts, recomputes pipeline, models tiered market adoption, and runs exact event-by-event dilution, milestone, runway, preference-waterfall, and dated-return mechanics. Illustrative IC disposition: `CONDITIONAL INVEST`, pending human approval and executable milestones.
 
-> **Status: LOCAL CANDIDATE IN VERIFICATION — NOT YET ACCEPTED FOR FOUNDER REVIEW**
+> **Status: USABILITY CANDIDATE IN LOCAL VERIFICATION — OBSERVED PRACTITIONER TESTING NOT RUN**
 >
 > Both companies and all underlying records are fictional. Every screen states `SYNTHETIC — NOT INVESTMENT ADVICE`. The workbench does not fetch private data, make autonomous investment decisions, or establish real-world investment accuracy. Hosted CI and public release are `NOT RUN`.
 
@@ -15,19 +15,22 @@ This portfolio candidate combines a deterministic Python analytics layer with a 
 
 The application does not begin with a chat box or a generated memo. It begins with versioned data-room manifests, precommitted analysis specifications, exact accounting bridges, and explicit causal classifications. Each displayed headline number opens a lineage record binding the metric to its governing receipt and every declared analysis input. Locator-v3 records retain a structured source excerpt, exact selection digest, committed repository path, and public-candidate path; the staged source pack is rebuilt only from manifest-declared synthetic files.
 
-The workbench presents five shared views for both cases:
+The investor workspace presents six shared decision views for both cases:
 
-1. **IC Snapshot** — decision, terms, returns, decisive drivers, and falsifiers.
-2. **Thesis & Evidence** — thesis, counterthesis, contradictions, diligence requests, and lineage.
-3. **Econometric Lab** — estimand, population, method, uncertainty, diagnostics, and naive-versus-identified comparisons.
-4. **Underwriting Room** — scenario selection, sensitivities, capital mechanics, and seeded return distributions.
+1. **Overview** — IC question, analytical recommendation, company context, material assumption, terms, returns, and advancement gate.
+2. **Thesis** — value drivers, counterthesis, falsifiers, and the evidence-to-decision map.
+3. **Financials & Returns** — scenarios, sensitivities, capital mechanics, and seeded return distributions.
+4. **Risks & Diligence** — open conditions, owners, consequences, and management questions.
 5. **Value Creation** — evidence-linked initiatives, KPI baselines, owners, milestones, risks, and value bridges.
+6. **Memo** — a print-ready one-page committee summary with the next required action.
 
-The productized reader adds a 60-second IC brief, an explicit authority bar, a
-predeclared hurdle ledger, a searchable deal-room index, progressive
-business-to-audit lineage, and stable URLs for case, room, scenario, driver,
-sensitivity cell, and metric focus. See the controlling [Investor Experience
-Contract](docs/INVESTOR-EXPERIENCE-CONTRACT.md).
+The supporting layer retains deal exploration, sources, econometric methodology,
+and audit receipts without making those technical surfaces the default journey.
+A no-instruction landing page, a 60-second IC brief, explicit authority boundary,
+canonical assumption controls, searchable source room, progressive
+business-to-audit lineage, and stable deep links are all exercised locally. See
+the controlling [Investor Workspace Redesign Contract](docs/INVESTOR-WORKSPACE-REDESIGN-CONTRACT.md)
+and the [Observed Usability Protocol](docs/OBSERVED-USABILITY-PROTOCOL.md).
 
 ## Run locally
 
@@ -92,7 +95,7 @@ review candidate until the release packet and rendered film are approved.
 - Venture proceeds are checked against an independent exact waterfall implementation over 500 random exits and each discovered conversion breakpoint at one cent below, at, and above the boundary.
 - Every Helios headline ownership, MOIC, XIRR, cash, and waterfall value is bound to explicit operands, dated cash flows, formulas, source locators, and governing receipts.
 - AtlasGrid's maximum-bid solver enforces the base IRR/MOIC hurdle and the named downside IRR/MOIC, liquidity, default, and covenant floors; one additional cent must fail at least one frozen constraint. Seller rollover is explicitly dilutive pro-rata contributed equity and conserves exit proceeds to the cent.
-- The retained browser evidence covers all five views for both cases at 1440x900 and 390x844, including first-viewport terms, keyboard DAG traversal, metric-to-source inspection, and four exact-match Axe evidence records. This is bounded route evidence, not comprehensive WCAG certification.
+- The retained browser evidence covers all six primary views for both cases at 1440x900 and 390x844, plus the landing page, case switching, canonical assumption changes, contextual source inspection, and four exact-match Axe evidence records. This is bounded automated route evidence, not observed practitioner usability or comprehensive WCAG certification.
 - `NOT_IDENTIFIED` analyses abstain rather than convert correlation into causal claims.
 
 See [Underwriting Architecture](docs/UNDERWRITING-ARCHITECTURE.md), the controlling [v2 Benchmark Contract](docs/V2-BENCHMARK-CONTRACT.md), [v2 Model-Integrity Contract](docs/V2-MODEL-INTEGRITY-CONTRACT.md), [v2 Econometrics Contract](docs/ECONOMETRICS-CONTRACT-V2.md), [Performance Budget](docs/PERFORMANCE-BUDGET.md), [Founder Interview Guide](docs/COOPER-INTERVIEW-GUIDE.md), and [Build Provenance](docs/BUILD-PROVENANCE.md). The original [product](docs/UNDERWRITING-PRODUCT-CONTRACT.md) and [econometrics](docs/ECONOMETRICS-CONTRACT.md) contracts are retained only as historical v1 context.

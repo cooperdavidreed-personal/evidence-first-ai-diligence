@@ -74,8 +74,12 @@ def _formula(
 
 def _money(cents: int) -> str:
     value = (Decimal(abs(cents)) / Decimal(100_000_000)).quantize(Decimal("0.1"))
-    if value == 0:
+    if cents == 0:
         return "$0"
+    if value == 0:
+        precise = Decimal(abs(cents)) / Decimal(100_000_000)
+        sign = "−" if cents < 0 else ""
+        return f"{sign}${format(precise, 'f')}M"
     sign = "−" if cents < 0 else ""
     return f"{sign}${value}M".replace(".0M", "M")
 

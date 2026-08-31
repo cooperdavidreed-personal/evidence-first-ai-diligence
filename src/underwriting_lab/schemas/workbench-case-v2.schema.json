@@ -3,7 +3,7 @@
   "title": "Underwriting workbench case v2",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "caseId", "company", "caseType", "synthetic", "investmentAdjudication", "workflowDisposition", "disclosure", "decision", "summaryMetrics", "thesis", "chartRegistry", "teamAssessment", "ownershipCadence", "falsifierStates", "analyses", "distributionLineage", "scenarios", "returnsDistribution", "evidenceMappings", "valueCreation", "screenedOutLevers", "lineage", "artifacts", "temporalScan", "manifest_sha256", "scenarioBook", "thesisGraph", "sourceLocators", "formulaRegistry", "metricRegistry", "renderManifest", "analysis_sha256"],
+  "required": ["schema_version", "caseId", "company", "caseType", "synthetic", "investmentAdjudication", "workflowDisposition", "disclosure", "dealContext", "decision", "summaryMetrics", "thesis", "chartRegistry", "teamAssessment", "ownershipCadence", "falsifierStates", "analyses", "distributionLineage", "scenarios", "returnsDistribution", "evidenceMappings", "valueCreation", "screenedOutLevers", "lineage", "artifacts", "temporalScan", "manifest_sha256", "scenarioBook", "thesisGraph", "sourceLocators", "formulaRegistry", "metricRegistry", "renderManifest", "analysis_sha256"],
   "properties": {
     "schema_version": {"const": "underwriting.workbench-case/v2"},
     "caseId": {"enum": ["atlasgrid", "helios"]},
@@ -13,6 +13,24 @@
     "investmentAdjudication": {"const": "PENDING_HUMAN"},
     "workflowDisposition": {"type": "string", "minLength": 1},
     "disclosure": {"const": "SYNTHETIC — NOT INVESTMENT ADVICE"},
+    "dealContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "company_one_liner", "product", "customer", "market", "competition", "go_to_market", "team", "process", "evidence_boundary", "context_sha256"],
+      "properties": {
+        "schema_version": {"const": "underwriting.deal-context/v1"},
+        "company_one_liner": {"type": "string", "minLength": 20},
+        "product": {"type": "string", "minLength": 20},
+        "customer": {"type": "string", "minLength": 20},
+        "market": {"type": "string", "minLength": 20},
+        "competition": {"type": "array", "minItems": 3, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "go_to_market": {"type": "string", "minLength": 20},
+        "team": {"type": "string", "minLength": 20},
+        "process": {"type": "string", "minLength": 20},
+        "evidence_boundary": {"type": "string", "minLength": 20},
+        "context_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
     "decision": {"type": "object"},
     "summaryMetrics": {"type": "array", "minItems": 1},
     "thesis": {

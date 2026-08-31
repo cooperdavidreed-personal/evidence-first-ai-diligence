@@ -19,10 +19,14 @@
     "correlation_structure": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema_version", "common_factor", "drivers", "bounds"],
+      "required": ["schema_version", "common_factor", "classification", "loss_probability_band_low", "loss_probability_band_high", "rationale", "drivers", "bounds"],
       "properties": {
         "schema_version": {"const": "underwriting.pe-correlation-structure/v2"},
         "common_factor": {"type": "string", "minLength": 1},
+        "classification": {"const": "SYNTHETIC_SCENARIO_NOT_FORECAST"},
+        "loss_probability_band_low": {"type": "string", "pattern": "^[0-9]+(?:\\.[0-9]+)?$"},
+        "loss_probability_band_high": {"type": "string", "pattern": "^[0-9]+(?:\\.[0-9]+)?$"},
+        "rationale": {"type": "string", "minLength": 40},
         "drivers": {"type": "object", "minProperties": 4},
         "bounds": {"type": "object", "minProperties": 4}
       }

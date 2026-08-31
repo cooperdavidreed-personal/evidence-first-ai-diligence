@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 import sys
 
@@ -41,9 +42,11 @@ def _compare_png(baseline: Path, candidate: Path) -> tuple[float, float]:
 
 
 def main() -> int:
-    baseline_pngs = sorted(BASELINE.glob("*.png"))
-    if len(baseline_pngs) != 26:
-        raise SystemExit(f"visual-regression FAIL: expected 26 baselines, got {len(baseline_pngs)}")
+    manifest = json.loads((ROOT / "verification" / "visual-evidence.json").read_text())
+    manifest_paths = [entry["path"] for entry in [*manifest["files"], *manifest["print_files"]] if entry["path"].endswith(".png")]
+    baseline_pngs = [ROOT / relative for relative in manifest_paths]
+    if len(baseline_pngs) != 30:
+        raise SystemExit(f"visual-regression FAIL: expected 30 manifest-bound baselines, got {len(baseline_pngs)}")
     failures: list[str] = []
     reference_comparable = sys.platform == "darwin"
     for baseline in baseline_pngs:

@@ -730,17 +730,23 @@ def simulate_pe_distribution(
     correlation_structure = {
         "schema_version": "underwriting.pe-correlation-structure/v2",
         "common_factor": "standard_normal",
+        "classification": "SYNTHETIC_SCENARIO_NOT_FORECAST",
+        "loss_probability_band_low": "0.05",
+        "loss_probability_band_high": "0.20",
+        "rationale": "A bounded synthetic stress prior exercises correlated retention, bookings, margin, exit-multiple, and cash-cost deterioration; it is a model-risk test, not an empirical default forecast.",
         "drivers": {
             "full_cohort_nrr": {"common_loading": "0.020", "idiosyncratic_loading": "0.005"},
             "annual_new_arr_rate": {"common_loading": "0.020", "idiosyncratic_loading": "0.010"},
             "gross_margin": {"common_loading": "0.010", "idiosyncratic_loading": "0.005"},
-            "exit_multiple": {"common_loading": "0.400", "idiosyncratic_loading": "0.350"},
+            "exit_multiple": {"common_loading": "0.500", "idiosyncratic_loading": "0.400"},
+            "annual_cash_rate": {"common_loading": "-0.020", "idiosyncratic_loading": "0.025"},
         },
         "bounds": {
             "full_cohort_nrr": ["0.94", "1.04"],
             "annual_new_arr_rate": ["0.08", "0.16"],
             "gross_margin": ["0.70", "0.78"],
-            "exit_multiple": ["5.00", "8.50"],
+            "exit_multiple": ["4.50", "9.00"],
+            "annual_cash_rate": ["0.07", "0.18"],
         },
     }
     moics: list[Decimal] = []
@@ -749,7 +755,7 @@ def simulate_pe_distribution(
     path_records: list[dict[str, object]] = []
     for draw in range(draws):
         common = Decimal(str(rng.gauss(0, 1)))
-        idiosyncratic = [Decimal(str(rng.gauss(0, 1))) for _ in range(4)]
+        idiosyncratic = [Decimal(str(rng.gauss(0, 1))) for _ in range(5)]
         nrr = min(
             Decimal("1.04"),
             max(Decimal("0.94"), operating.full_cohort_nrr + common * Decimal("0.020") + idiosyncratic[0] * Decimal("0.005")),
@@ -763,8 +769,12 @@ def simulate_pe_distribution(
             max(Decimal("0.70"), operating.gross_margin + common * Decimal("0.010") + idiosyncratic[2] * Decimal("0.005")),
         )
         exit_multiple = min(
-            Decimal("8.50"),
-            max(Decimal("5.00"), transaction.exit_multiple + common * Decimal("0.400") + idiosyncratic[3] * Decimal("0.350")),
+            Decimal("9.00"),
+            max(Decimal("4.50"), transaction.exit_multiple + common * Decimal("0.500") + idiosyncratic[3] * Decimal("0.400")),
+        )
+        annual_cash_rate = min(
+            Decimal("0.18"),
+            max(Decimal("0.07"), transaction.annual_cash_rate - common * Decimal("0.020") + idiosyncratic[4] * Decimal("0.025")),
         )
         path = run_pe_case(
             scenario_id=f"DISTRIBUTION_{draw:05d}",
@@ -774,7 +784,11 @@ def simulate_pe_distribution(
                 annual_new_arr_rate=new_arr,
                 gross_margin=gross_margin,
             ),
-            transaction=replace(transaction, exit_multiple=exit_multiple),
+            transaction=replace(
+                transaction,
+                exit_multiple=exit_multiple,
+                annual_cash_rate=annual_cash_rate,
+            ),
         )
         moics.append(path.gross_moic)
         xirrs.append(path.gross_xirr)
@@ -791,6 +805,7 @@ def simulate_pe_distribution(
                 "annual_new_arr_rate": format(new_arr, "f"),
                 "gross_margin": format(gross_margin, "f"),
                 "exit_multiple": format(exit_multiple, "f"),
+                "annual_cash_rate": format(annual_cash_rate, "f"),
             },
             "engine_inputs_sha256": path.engine_inputs_sha256,
             "result_receipt_sha256": result_receipt_sha256,

@@ -627,6 +627,12 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
         "distribution_seed_offset": 41,
         "exit_value_multiple_low": "0.05",
         "exit_value_multiple_high": "1.85",
+        "catastrophe_probability": "0.20",
+        "catastrophe_exit_multiple_low": "0.00",
+        "catastrophe_exit_multiple_high": "0.02",
+        "loss_probability_band_low": "0.15",
+        "loss_probability_band_high": "0.40",
+        "prior_rationale": "Synthetic Series C stress prior chosen before recomputation to make capital-loss risk decision-relevant; it is not an empirical forecast.",
         "path_method": "WEIGHTED_SCENARIO_STATE_PLUS_OPERATING_EXIT_AND_TIMING_FULL_ENGINE_REPLAY",
         "scenario_state_weights": {
             "MILESTONE": "0.45",

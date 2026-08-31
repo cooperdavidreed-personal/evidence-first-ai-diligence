@@ -5,7 +5,7 @@
 **Provisional posture:** `REPRICE`  
 **Workflow state:** `DECISION_RECORD_INCOMPLETE` / `PENDING_FOUNDER_SIGNATURE`  
 **Knowledge cutoff:** `2026-08-29T00:00:00Z`
-**Packet receipt:** `e6e8e4ca90f4673d7e7f1a22d7ea76f9eba9df3d63a86c5fafe649bb75ff447f`
+**Packet receipt:** `6b7db71ec6270ff91bcd78b77d0d7d80e6dced4ccd159f005bdf21599d0294ba`
 
 ## Recommendation
 
@@ -54,13 +54,13 @@ The named downside is a deterministic stress case. The conditional distribution 
 
 | Conditional path statistic | p10 | p50 | p90 |
 |---|---:|---:|---:|
-| Gross MOIC | 1.24x | 2.81x | 4.72x |
-| Gross IRR | 4.39% | 23.30% | 38.07% |
+| Gross MOIC | 1.12x | 2.73x | 4.82x |
+| Gross IRR | 2.35% | 22.65% | 38.79% |
 
-- Probability below 1.0x MOIC: **5.40%** (Monte Carlo SE **0.71 pp**, 1,000 draws).
-- Probability of a modeled covenant breach: **0.00%** (Monte Carlo SE **0.00 pp**, 1,000 draws).
+- Probability below 1.0x MOIC: **7.80%** (Monte Carlo SE **0.85 pp**, 1,000 draws).
+- Probability of a modeled covenant breach: **0.30%** (Monte Carlo SE **0.17 pp**, 1,000 draws).
 - Probability of modeled payment default: **0.00%** (Monte Carlo SE **0.00 pp**, 1,000 draws).
-- Named downside floor: **6.16% IRR / 1.35x MOIC**; distributional p10: **4.39% / 1.24x**.
+- Named downside floor: **6.16% IRR / 1.35x MOIC**; distributional p10: **2.35% / 1.12x**.
 
 ### Entry value × exit multiple sensitivity
 
@@ -124,11 +124,17 @@ No person-level management conclusion is identified from this synthetic data roo
 | AG-05 | 4.18% annualized descriptive logo churn | Scenario calibration only; no causal claim | DESCRIPTIVE_SCENARIO_ANCHOR | Downside floor must survive retention compression |
 | AG-07 | -6.69 percentage-point renewal ITT | 0 from price increase; +1.5pp NRR remains HUMAN_JUDGMENT | CAUSAL_SYNTHETIC_ONLY_ZERO_UPSIDE_CREDIT | Do not underwrite broad price-led expansion without a safer renewal design |
 | AG-08 | -15.88 bps gross-churn ATT | 15.88 bps NRR-equivalent; 100 bps margin uplift remains HUMAN_JUDGMENT | CAUSAL_SYNTHETIC_ONLY | Separate identified synthetic retention credit from unverified margin credit |
+| AG-01 | live_arr: 7618909476 cents | Bounded base-case evidence | ACCOUNTING_IDENTITY | Use within the declared method and population boundary |
+| AG-02 | full_cohort_grr: 94.65 percent | Bounded base-case evidence | DESCRIPTIVE | Use within the declared method and population boundary |
+| AG-04 | reported_gross_margin: 80.48 percent | Bounded base-case evidence | ACCOUNTING_IDENTITY | Use within the declared method and population boundary |
+| AG-09 | No estimate retained | 0 | NOT_IDENTIFIED | Retain as diligence, falsification, or identification-boundary evidence |
+| AG-10 | ask_irr: 17.62 percent | Bounded base-case evidence | SCENARIO | Use within the declared method and population boundary |
+| AG-11 | p10_moic: 1.12 multiple | Scenario calibration only | SCENARIO | Use for sensitivity or downside framing, not factual prediction |
 
 ## Value creation
 
 Combined modeled exit-equity impact is **$84.3M**, equal to **$82.5M** of standalone effects plus an explicit **$1.8M** interaction residual.
-Of the standalone value, **$66.2M** is pure human judgment and **$16.3M** is mixed synthetic-causal and human judgment. No value-creation total is presented as an identified real-world effect.
+Pure human-judgment effects are presented as an **≈$33-$99M illustrative 50-150% range** around the selected scenario; **$16.3M** is mixed synthetic-causal and human judgment. No value-creation total is presented as an identified real-world effect.
 
 | Initiative | Credit class | Implementation cost | Exit EBITDA | Exit debt | Exit equity | IRR impact |
 |---|---|---:|---:|---:|---:|---:|
@@ -152,7 +158,7 @@ This packet is generated from a fictional, deterministic data room. Synthetic ca
 
 ## Receipt appendix
 
-- Case analysis: `c4afa396eadaf191dde43fb88c6dbee23baadbc5ab9bd2c8cae829b9e1663c8b`
+- Case analysis: `88108aeec8c845da12e27f884557b7ca8687d12211b7c2e25acdb5470029b8b5`
 - ASK result: `eec74d74673f9fd6dab705cc5b49015287738efedc77532dc829285756354653`
 - SELECTED result: `d747f18826ce3c27bc04271ea5193a1c56c3e36c8e7460ab9a045daea46cdeea`
 - DOWNSIDE result: `cadcdffd6280a15e45459ff2253cfc57634cc108fc05ee3a90dd4013d4a33832`

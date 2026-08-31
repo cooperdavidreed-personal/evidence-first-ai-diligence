@@ -1,0 +1,61 @@
+{
+  "boundary": "Automated Axe scan found no critical or serious issue and tested root overflow is zero; this is not comprehensive WCAG conformance.",
+  "case": "Helios Compute Control",
+  "project": "mobile",
+  "scans": [
+    {
+      "view": "Overview",
+      "critical_or_serious_count": 0,
+      "violations": [],
+      "root_client_width": 390,
+      "root_scroll_width": 390
+    },
+    {
+      "view": "Thesis",
+      "critical_or_serious_count": 0,
+      "violations": [],
+      "root_client_width": 390,
+      "root_scroll_width": 390
+    },
+    {
+      "view": "Financials & Returns",
+      "critical_or_serious_count": 0,
+      "violations": [],
+      "root_client_width": 390,
+      "root_scroll_width": 390
+    },
+    {
+      "view": "Risks & Diligence",
+      "critical_or_serious_count": 0,
+      "violations": [],
+      "root_client_width": 390,
+      "root_scroll_width": 390
+    },
+    {
+      "view": "Value Creation",
+      "critical_or_serious_count": 0,
+      "violations": [],
+      "root_client_width": 390,
+      "root_scroll_width": 390
+    },
+    {
+      "view": "Memo",
+      "critical_or_serious_count": 0,
+      "violations": [],
+      "root_client_width": 390,
+      "root_scroll_width": 390
+    },
+    {
+      "view": "Methodology",
+      "critical_or_serious_count": 0,
+      "violations": [],
+      "root_client_width": 390,
+      "root_scroll_width": 390
+    }
+  ],
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "workbench_data_sha256": "41ee34bf06a66ae5e0779b05b4d941b5b1dfc15af63441d78629102d9cbc8c28"
+}
