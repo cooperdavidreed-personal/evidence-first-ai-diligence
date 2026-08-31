@@ -143,7 +143,7 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
     const user = userEvent.setup();
     render(<App />);
     for (const caseData of candidate.cases) {
-      if (caseData.caseId === "helios") await user.click(screen.getByRole("button", {name: "VC / Growth Helios Compute Control"}));
+      await user.click(screen.getByRole("button", {name: new RegExp(caseData.company)}));
       const registered = new Set(caseData.metricRegistry.map((item) => item.metric_id));
       for (const targetView of ["Overview", "Financials & Returns", "Value Creation"]) {
         await user.click(screen.getByRole("button", {name: new RegExp(targetView)}));
