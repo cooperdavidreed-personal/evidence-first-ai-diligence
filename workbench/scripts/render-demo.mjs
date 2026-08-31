@@ -105,6 +105,7 @@ try {
   await until(107);
 
   await page.getByRole("button", {name: /Helios Compute Control/}).click();
+  await page.getByRole("heading", {name: "Helios Compute Control"}).waitFor({state: "visible"});
   await page.getByRole("button", {name: /IC Snapshot/}).click();
   await cue("09 · ONE SYSTEM, TWO ASSET CLASSES", "Helios reuses the same evidence, judgment, scenario, and receipt contracts for a milestone-financed AI infrastructure investment.");
   await until(119);
