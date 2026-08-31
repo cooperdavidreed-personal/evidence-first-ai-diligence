@@ -65,7 +65,7 @@ The existing `ic-evidence-lab` CLI and evidence-kernel behavior remain intact.
 The former static-card reel was retired as `QUALITY SHORT`. Its replacement is
 a 150-second silent, captioned recording of the real local workbench through
 ordinary controls. The retained manifest binds the media to clean source commit
-`f4a957cf8c7eea32029a97cb6b2d35f0b0f9f95b`, the exact source closure, captions,
+`2536482962604d3c80a9b5cb75f8c3254b566f03`, the exact source closure, captions,
 toolchain, and video digest. Founder viewing and public release remain pending:
 
 ```bash

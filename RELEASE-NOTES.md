@@ -5,9 +5,9 @@
 
 The candidate release surface is the static React V2 underwriting workbench,
 the AtlasGrid and Helios synthetic case packets, the hash-bound visual-evidence
-manifest and screenshots, and the retained IC-memo PDFs. The earlier silent
-slide demo remains `QUALITY_SHORT`; it is legacy evidence and is deliberately
-excluded from the V2 release bundle and Pages artifact set.
+manifest and screenshots, the retained IC-memo PDFs, and a source-bound
+150-second recording of the real workbench. The earlier static-card film remains
+`QUALITY_SHORT`; it was replaced rather than included in the release surface.
 
 ## Inspect in under five minutes
 
@@ -15,7 +15,8 @@ excluded from the V2 release bundle and Pages artifact set.
 2. Inspect all five views, scenario controls, and metric lineage.
 3. Open each case packet under `portfolio/`.
 4. Verify `verification/visual-evidence.json` against its PNG and PDF bytes.
-5. Build the Pages candidate, then inspect its generated
+5. Watch and verify `demo/release/underwriting-intelligence-lab-demo.mp4`.
+6. Build the Pages candidate, then inspect its generated
    `candidate-artifacts.json`, which binds every staged artifact. This file is
    a build output and is not claimed as a committed repository file.
 

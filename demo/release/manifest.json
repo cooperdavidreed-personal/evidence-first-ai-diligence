@@ -12,10 +12,10 @@
   "duration_seconds": 150,
   "fps": 30,
   "limitations": "Synthetic cases; recorded browser walkthrough; no production or investment-performance claim.",
-  "manifest_sha256": "9480123a216dedbf0043b5817acf533ca6736d3feaabc0038cee0ceefb81afb2",
+  "manifest_sha256": "c150d4302ab279ccb78f58a34bf69389405837c5de68c05b48c54ec2d6477db9",
   "resolution": "1440x900",
   "schema_version": "underwriting.demo-manifest/v2",
-  "sha256": "288806309f583288c50e40a47f773c05184310b2edc17020a8a6186ff8bbdfaa",
+  "sha256": "c4de72e7f78bc7e833cc9b6bc6123f1ce926373a911e635b61931a229ac95822",
   "source_closure": [
     {
       "path": "demo/captions.srt",
@@ -59,7 +59,7 @@
     },
     {
       "path": "workbench/scripts/render-demo.mjs",
-      "sha256": "a24eadcced4827683fb1c4b614245f2bb04684d3c53f0282c742a969e846fab6"
+      "sha256": "681a4ad97d94047725f172a81572f16fc61491d069db07df91ed9e5711345789"
     },
     {
       "path": "workbench/src/App.test.tsx",
@@ -142,9 +142,9 @@
       "sha256": "0bc43e6ec8c670fb8877fa6c43ba96e2b5b8c27e69e5393b66d6577826fdf7d0"
     }
   ],
-  "source_closure_sha256": "b6fe788bcd8a251e6932e71fb62e261a01f8be75aa257737b71bf13539ff0d76",
-  "source_commit": "f4a957cf8c7eea32029a97cb6b2d35f0b0f9f95b",
-  "source_tree_oid": "4fb5e2ce51226290bfc72997cf03c71e1e38b81e",
+  "source_closure_sha256": "98ba213d5eb16cdeb6f4a27d087b765cd5e99b7d6e1fe1c3992a95b0ec7c0ef4",
+  "source_commit": "2536482962604d3c80a9b5cb75f8c3254b566f03",
+  "source_tree_oid": "bf7da232b55049c9fe91e4659fc827d2ba5ae443",
   "status": "RENDERED_LOCAL_FOUNDER_REVIEW_PENDING",
   "toolchain": {
     "ffmpeg": "ffmpeg version 8.1.2 Copyright (c) 2000-2026 the FFmpeg developers",
