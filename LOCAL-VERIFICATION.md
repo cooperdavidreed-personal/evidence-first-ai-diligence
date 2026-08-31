@@ -1,6 +1,6 @@
 # Local verification receipt
 
-Status: `DETERMINISTIC LOCAL CANDIDATE — EXACT-SHA REVIEW PENDING`
+Status: `DETERMINISTIC LOCAL PASS — INDEPENDENT EXACT-SHA REVIEW PENDING`
 
 Exact base: `28893ad630ce7dea50f890448263d8096d75132f`
 
@@ -21,8 +21,9 @@ on Ubuntu/macOS remains `NOT_RUN` until a separately authorized push.
   regression checks, deterministic tagged five-page PDFs for both cases,
   typed diligence and value-creation contracts, chart contracts, keyboard DAG
   traversal, and a frozen 16-mutant falsification ledger.
-- Python: `168/168` locally on the primary Python 3.12 environment. The same
-  `168/168` suite passes locally under Python 3.11, 3.12, and 3.13. This is a
+- Python: `176/176` locally on the primary Python 3.12 environment. The same
+  `176/176` suite passes locally under isolated Python 3.11, 3.12, and 3.13
+  environments. This is a
   local interpreter matrix, not hosted CI.
 - React: `30/30`. Playwright: `12 active passed / 2 intentionally skipped`
   because the memo print contract runs once per case rather than redundantly
@@ -45,10 +46,10 @@ on Ubuntu/macOS remains `NOT_RUN` until a separately authorized push.
   plus exact granular review rows, cells, pointers, or text spans, and stages
   only manifest-bound files for public review.
 - Package, public scan, security, mutation, toolkit-integration, and estimator
-  recovery gates pass on the current repair bytes. Exact-head clean-tree
-  candidate verification is `NOT RUN` until the source and demo artifact commits
-  are immutable. The wheel contains 24 underwriting schemas plus the four
-  preserved kernel schemas.
+  recovery gates pass on the current repair bytes. The clean-tree candidate
+  verifier passes from a frozen environment and asserts no tracked, staged, or
+  undeclared untracked drift at exit. The wheel contains 24 underwriting schemas
+  plus the four preserved kernel schemas.
 - The complete metric, formula, and render contract is deterministically rebuilt
   from authoritative engine objects during validation. Eight planted coherent-
   digest mutations cover PE and VC scenarios, sensitivities, retained
@@ -67,9 +68,11 @@ on Ubuntu/macOS remains `NOT_RUN` until a separately authorized push.
 - Grok benchmark countercase and AtlasGrid PE review: `PRODUCED`; the retained
   PE review scored 92 with no critical or high finding. Later exact-head Codex
   audits found additional model-integrity defects and supersede that score.
-- Fresh exact-head finance and rendered-product audits are commissioned only
-  after the source-bound demo and candidate commit are immutable; they do not
-  substitute for Claude.
+- The prior exact-head finance and rendered-product audits returned
+  `QUALITY_SHORT`: one coherent registry-to-engine tamper was accepted and the
+  film briefly described the wrong active scenario. Both findings are repaired
+  and covered by planted tests or source-bound media verification. Fresh
+  exact-head review is still required and does not substitute for Claude.
 - Claude frozen-benchmark review was previously `HELD_PROVIDER` after a native
   signed-in 429 usage hold. Exact-candidate final integrated acceptance is
   `PENDING`; no API-key, paid, or identity-changing fallback is authorized.
