@@ -54,7 +54,7 @@ def build(repo: Path, destination: Path, workbench_dist: Path) -> None:
     staged.append((destination / ".nojekyll", "pages-control"))
 
     for case in ("atlasgrid", "helios"):
-        for name in ("ic-memo.html", "ic-memo.md", "model-appendix.json", "packet-receipt.json"):
+        for name in ("ic-snapshot.html", "ic-snapshot.md", "underwriting-packet.html", "underwriting-packet.md", "technical-appendix.html", "technical-appendix.md", "model-appendix.json", "packet-receipt.json"):
             staged.append((_copy_file(repo, destination, f"portfolio/{case}/{name}"), "case-packet"))
         room_relative = f"portfolio/{case}/data-room"
         validate_source_room(repo, case, room_relative)

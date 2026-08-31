@@ -3,9 +3,6 @@
 > SYNTHETIC - NOT INVESTMENT ADVICE
 
 **Provisional posture:** `REPRICE`  
-**Workflow state:** `DECISION_RECORD_INCOMPLETE` / `PENDING_FOUNDER_SIGNATURE`  
-**Knowledge cutoff:** `2026-08-29T00:00:00Z`
-**Packet receipt:** `665a2ac72d2e49c3d32dcd61b113272cc2c1e49e7e6cce7069f96dac261bead9`
 
 ## Recommendation
 
@@ -100,10 +97,11 @@ No person-level management conclusion is identified from this synthetic data roo
 - Top parent above 15%
 - Normalized EBITDA below $20M
 - Downside covenant breach inside 18 months
-- OPEN **AG-D01 · HIGH · PRE_SIGNING** - Master agreement and termination-right sample Owner: Deal counsel. Decision consequence: Remain HOLD and reduce live-ARR credit if cancellation rights are broader than modeled.
-- OPEN **AG-D02 · HIGH · PRE_IC** - Customer-parent legal mapping Owner: Commercial diligence lead. Decision consequence: Recompute parent concentration and reprice if the top-parent threshold is breached.
-- OPEN **AG-D03 · HIGH · PRE_DEBT_COMMITMENT** - QoE support for each add-back Owner: QoE lead. Decision consequence: Remove unsupported EBITDA and rerun leverage, covenants, maximum bid, and returns.
-- OPEN **AG-D04 · CRITICAL · PRE_DEBT_COMMITMENT** - Lender definition of covenant EBITDA Owner: Financing lead. Decision consequence: Do not advance debt terms until covenant headroom is recomputed under the executed definition.
+- **Validate cancellation rights** Owner: Deal counsel. If unresolved: Reduce live-ARR credit or reprice if cancellation rights are broader than modeled.
+- **Reconcile parent concentration** Owner: Commercial diligence lead. If unresolved: Re-underwrite concentration and price if master agreements reveal greater parent exposure.
+- **Support seller EBITDA add-backs** Owner: QoE lead. If unresolved: Remove unsupported EBITDA and rerun leverage, covenants, maximum bid, and returns.
+- **Confirm lender EBITDA and covenant definitions** Owner: Financing lead. If unresolved: Do not commit debt until add-backs, liquidity, and covenant headroom reconcile.
+- **Cap earnout to verified live ARR** Owner: Deal lead / counsel. If unresolved: Do not credit implementation-dependent or cancellable revenue in contingent consideration.
 
 ### Risk, mitigant, owner, and consequence
 
@@ -115,22 +113,6 @@ No person-level management conclusion is identified from this synthetic data roo
 | Renewal economics | Safer renewal design and replicated measurement | CRO | Zero broad price-led upside credit |
 | Downside leverage | Monthly covenant and liquidity rerun | Financing lead | Reduce funded debt or entry value |
 
-## Evidence-to-model credit
-
-| Evidence | Observed | Model mapping | Credit class | Decision response |
-|---|---|---|---|---|
-| AG-06 | -3.49 percentage-point association | 0 | PREDICTIVE_ASSOCIATION_ZERO_MODEL_CREDIT | Retain only as a confounding exhibit; use the randomized offer ITT to falsify pricing upside |
-| AG-03 | 20.39% top-10 parent concentration | 0 | DESCRIPTIVE_ZERO_DIRECT_MODEL_CREDIT | HOLD condition and contingent consideration tied to verified live ARR |
-| AG-05 | 4.18% annualized descriptive logo churn | Scenario calibration only; no causal claim | DESCRIPTIVE_SCENARIO_ANCHOR | Downside floor must survive retention compression |
-| AG-07 | -6.69 percentage-point renewal ITT | 0 from price increase; +1.5pp NRR remains HUMAN_JUDGMENT | CAUSAL_SYNTHETIC_ONLY_ZERO_UPSIDE_CREDIT | Do not underwrite broad price-led expansion without a safer renewal design |
-| AG-08 | -15.88 bps gross-churn ATT | 15.88 bps NRR-equivalent; 100 bps margin uplift remains HUMAN_JUDGMENT | CAUSAL_SYNTHETIC_ONLY | Separate identified synthetic retention credit from unverified margin credit |
-| AG-01 | live_arr: 7618909476 cents | Bounded base-case evidence | ACCOUNTING_IDENTITY | Use within the declared method and population boundary |
-| AG-02 | full_cohort_grr: 94.65 percent | Bounded base-case evidence | DESCRIPTIVE | Use within the declared method and population boundary |
-| AG-04 | reported_gross_margin: 80.48 percent | Bounded base-case evidence | ACCOUNTING_IDENTITY | Use within the declared method and population boundary |
-| AG-09 | No estimate retained | 0 | NOT_IDENTIFIED | Retain as diligence, falsification, or identification-boundary evidence |
-| AG-10 | ask_irr: 17.62 percent | Bounded base-case evidence | SCENARIO | Use within the declared method and population boundary |
-| AG-11 | p10_moic: 1.12 multiple | Scenario calibration only | SCENARIO | Use for sensitivity or downside framing, not factual prediction |
-
 ## Value creation
 
 Combined modeled exit-equity impact is **$84.3M**, equal to **$82.5M** of standalone effects plus an explicit **$1.8M** interaction residual.
@@ -138,9 +120,9 @@ Pure human-judgment effects are presented as an **≈$33-$99M illustrative 50-15
 
 | Initiative | Credit class | Implementation cost | Exit EBITDA | Exit debt | Exit equity | IRR impact |
 |---|---|---:|---:|---:|---:|---:|
-| Renewal architecture | HUMAN_JUDGMENT | $1.5M | $6M | -$10.2M | $49.1M | 3.43% |
-| Support automation | MIXED_CAUSAL_SYNTHETIC_AND_HUMAN_JUDGMENT | $2M | $1.9M | -$3.8M | $16.3M | 1.29% |
-| Delivery cost reset | HUMAN_JUDGMENT | $2.5M | $1.9M | -$4.4M | $17M | 1.39% |
+| Renewal architecture | Analyst judgment | $1.5M | $6M | -$10.2M | $49.1M | 3.43% |
+| Support automation | Synthetic causal analysis plus analyst judgment | $2M | $1.9M | -$3.8M | $16.3M | 1.29% |
+| Delivery cost reset | Analyst judgment | $2.5M | $1.9M | -$4.4M | $17M | 1.39% |
 
 ### Ownership cadence and board control
 
@@ -155,12 +137,3 @@ Pure human-judgment effects are presented as an **≈$33-$99M illustrative 50-15
 ## Analytical boundary
 
 This packet is generated from a fictional, deterministic data room. Synthetic causal estimates recover planted assignment mechanisms only. Conditional simulations are scenario distributions, not forecasts. The record is unsigned, the diligence conditions remain open, and no investment authority is delegated to the software.
-
-## Receipt appendix
-
-- Case analysis: `d26795225b4f3a3ea325c121999301e81f52a6b574ea6cbe00be1fdb42a55dba`
-- ASK result: `eec74d74673f9fd6dab705cc5b49015287738efedc77532dc829285756354653`
-- SELECTED result: `d747f18826ce3c27bc04271ea5193a1c56c3e36c8e7460ab9a045daea46cdeea`
-- DOWNSIDE result: `cadcdffd6280a15e45459ff2253cfc57634cc108fc05ee3a90dd4013d4a33832`
-- Sensitivity book: `cdc8443044fd97707d9d2ba6c92fa5a3aabc92005767867df71371f6175fb11d`
-- Value-creation bridge: `d9ae1665d82e65933afc4abbe7added3fc668a93f2edb8584d8c169646b960b2`

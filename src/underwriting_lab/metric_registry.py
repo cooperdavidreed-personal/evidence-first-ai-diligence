@@ -77,9 +77,7 @@ def _money(cents: int) -> str:
     if cents == 0:
         return "$0"
     if value == 0:
-        precise = Decimal(abs(cents)) / Decimal(100_000_000)
-        sign = "−" if cents < 0 else ""
-        return f"{sign}${format(precise, 'f')}M"
+        return "<$1; immaterial" if abs(cents) < 100 else ("−<$0.1M" if cents < 0 else "<$0.1M")
     sign = "−" if cents < 0 else ""
     return f"{sign}${value}M".replace(".0M", "M")
 
@@ -89,7 +87,7 @@ def _percent(decimal_value: str) -> str:
 
 
 def _multiple(decimal_value: str) -> str:
-    return f"{Decimal(decimal_value).quantize(Decimal('0.01'))}x"
+    return f"{Decimal(decimal_value).quantize(Decimal('0.1'))}x"
 
 
 def _quantum_for(value: int | str | Decimal) -> str:
@@ -1129,6 +1127,15 @@ def build_case_metric_contract(
             ):
                 add(render=False, metric_id=metric_id, label=label, value=value, display_value=_money(value) if unit == "cents" else f"{value:,}", unit=unit, quantum="1", **common)
             formula_stem = f"vc-formula-{cell['cell_id']}"
+            exit_bridge = cell["operating_exit_bridge"]
+            terminal_id = f"{prefix}-terminal-revenue"
+            exit_multiple_id = f"{prefix}-exit-revenue-multiple"
+            exit_ev_id = f"{prefix}-exit-enterprise-value"
+            exit_equity_id = f"{prefix}-exit-equity-value"
+            add(metric_id=terminal_id, label="Terminal revenue", value=exit_bridge["terminal_revenue_cents"], display_value=_money(exit_bridge["terminal_revenue_cents"]), unit="cents", quantum="1", **common)
+            add(metric_id=exit_multiple_id, label="Exit revenue multiple", value=exit_bridge["exit_revenue_multiple"], display_value=_multiple(exit_bridge["exit_revenue_multiple"]), unit="multiple", quantum=_quantum_for(exit_bridge["exit_revenue_multiple"]), **common)
+            add(metric_id=exit_ev_id, label="Exit enterprise value", value=exit_bridge["exit_enterprise_value_cents"], display_value=_money(exit_bridge["exit_enterprise_value_cents"]), unit="cents", quantum="1", formula_id=f"{formula_stem}-exit-ev", operand_ids=[terminal_id, exit_multiple_id], **common)
+            add(metric_id=exit_equity_id, label="Exit equity value", value=exit_bridge["exit_equity_value_cents"], display_value=_money(exit_bridge["exit_equity_value_cents"]), unit="cents", quantum="1", formula_id=f"{formula_stem}-exit-equity", operand_ids=[exit_ev_id, ending_cash_ids[-1]], **common)
             add(metric_id=f"{prefix}-gross-moic", label="Gross MOIC", value=cell["gross_moic"], display_value=_multiple(cell["gross_moic"]), unit="multiple", quantum=_quantum_for(cell["gross_moic"]), formula_id=f"{formula_stem}-moic", operand_ids=[proceeds_id, invested_id], **common)
             add(metric_id=f"{prefix}-gross-xirr", label="Gross XIRR", value=cell["gross_xirr"], display_value=_percent(cell["gross_xirr"]), unit="decimal_rate", quantum=_quantum_for(cell["gross_xirr"]), formula_id=f"{formula_stem}-xirr", operand_ids=cash_flow_ids, **common)
             add(metric_id=f"{prefix}-ownership", label="Series C ownership", value=cell["target_ownership"], display_value=_percent(cell["target_ownership"]), unit="decimal_rate", quantum=_quantum_for(cell["target_ownership"]), formula_id=f"{formula_stem}-ownership", operand_ids=[target_shares_id, fully_diluted_id], **common)
@@ -1138,6 +1145,8 @@ def build_case_metric_contract(
                 _formula(f"{formula_stem}-xirr", "DATED_XIRR", cash_flow_ids, f"{prefix}-gross-xirr", "decimal_rate"),
                 _formula(f"{formula_stem}-ownership", "DIVIDE", [target_shares_id, fully_diluted_id], f"{prefix}-ownership", "decimal_rate"),
                 _formula(f"{formula_stem}-minimum-cash", "MIN", ending_cash_ids, f"{prefix}-minimum-cash", "cents"),
+                _formula(f"{formula_stem}-exit-ev", "MULTIPLY", [terminal_id, exit_multiple_id], exit_ev_id, "cents"),
+                _formula(f"{formula_stem}-exit-equity", "ADD", [exit_ev_id, ending_cash_ids[-1]], exit_equity_id, "cents"),
             ])
         bridge = case["vcValueCreationBridge"]
         bridge_common = {

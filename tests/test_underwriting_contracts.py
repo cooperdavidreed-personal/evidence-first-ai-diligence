@@ -24,6 +24,7 @@ def _decision() -> dict:
         "as_of": "2026-08-31T23:59:59Z",
         "rationale": "Illustrative economics require repricing and verification before any human adjudication.",
         "terms": ["Entry enterprise value no greater than $210M"],
+        "path_to_yes": ["Reprice and complete diligence before review"],
         "metric_pairs": [
             {
                 "metric": "Gross IRR",
@@ -46,6 +47,37 @@ def _decision() -> dict:
             "metric_ids": [],
         }],
         "open_conditions": 1,
+        "issue_summary": {
+            "schema_version": "underwriting.issue-summary/v1",
+            "issues": [{
+                "issue_id": "founder-review",
+                "title": "Complete investment review",
+                "owner": "Deal lead",
+                "stage": "PRE_IC",
+                "materiality": "HIGH",
+                "kind": "DILIGENCE",
+                "state": "OPEN",
+                "blocks_advancement": True,
+                "consequence": "Do not advance the illustrative transaction.",
+                "linked_condition_ids": ["founder-review"],
+            }],
+            "buckets": {
+                "failed_quantitative_hurdles": [],
+                "advancement_blockers": ["founder-review"],
+                "pre_ic_requirements": ["founder-review"],
+                "pre_signing_requirements": [],
+                "pre_debt_commitment_requirements": [],
+                "nonblocking_diligence": [],
+            },
+            "counts": {
+                "failed_quantitative_hurdles": 0,
+                "advancement_blockers": 1,
+                "pre_ic_requirements": 1,
+                "pre_signing_requirements": 0,
+                "pre_debt_commitment_requirements": 0,
+                "nonblocking_diligence": 0,
+            },
+        },
         "verification_sources": ["AG-10 analysis receipt"],
         "failure_consequences": ["Do not advance the illustrative transaction"],
     }

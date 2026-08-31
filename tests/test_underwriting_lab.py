@@ -197,7 +197,15 @@ def test_atlasgrid_displayed_returns_bind_to_cash_flow_engine(generated: dict[st
 
 def test_helios_contract_gates(generated: dict[str, tuple[Path, dict]]) -> None:
     _, case = generated["helios"]
-    assert case["decision"]["decision"] == "CONDITIONAL_INVEST"
+    assert case["decision"]["decision"] == "HOLD"
+    assert case["decision"]["issue_summary"]["counts"] == {
+        "failed_quantitative_hurdles": 1,
+        "advancement_blockers": 6,
+        "pre_ic_requirements": 4,
+        "pre_signing_requirements": 2,
+        "pre_debt_commitment_requirements": 0,
+        "nonblocking_diligence": 0,
+    }
     receipts = {item["analysis_id"]: item for item in case["analyses"]}
     assert receipts["HX-01"]["diagnostics"][0]["status"] == "PASS"
     assert receipts["HX-02"]["diagnostics"][0]["status"] == "PASS"

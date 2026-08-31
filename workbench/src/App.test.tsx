@@ -28,14 +28,15 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
     expect(window.location.hash).toBe("#/v2/atlasgrid/overview");
   });
 
-  it("puts the investment question, company context, and six primary sections first", () => {
+  it("puts the investment question, company context, and four primary sections first", () => {
     render(<App />);
     expect(screen.getByRole("heading", {name: "Do we meet the $240M ask, counter at $210M, or walk?"})).toBeInTheDocument();
     expect(screen.getByText(/regulated electric-utility grid planning/)).toBeInTheDocument();
     expect(screen.getByText("SYNTHETIC — NOT INVESTMENT ADVICE")).toBeInTheDocument();
-    for (const name of ["Overview", "Thesis", "Financials & Returns", "Risks & Diligence", "Value Creation", "Memo"]) {
+    for (const name of ["Overview", "Financials", "Risks", "Memo"]) {
       expect(screen.getByRole("button", {name: new RegExp(name)})).toBeInTheDocument();
     }
+    expect(screen.getByText("Evidence")).toBeInTheDocument();
   });
 
   it("switches strategy while preserving the human-authority boundary", async () => {
@@ -43,9 +44,9 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
     render(<App />);
     await user.click(screen.getByRole("button", {name: "VC / Growth Helios Compute Control"}));
     await waitFor(() => expect(screen.getByRole("heading", {name: "Helios Compute Control"})).toBeInTheDocument());
-    expect(screen.getByRole("heading", {name: "CONDITIONAL INVEST"})).toBeInTheDocument();
-    expect(screen.getByText(/Analytical posture only/)).toBeInTheDocument();
-    expect(screen.getAllByText(/PENDING HUMAN/).length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", {name: "HOLD"})).toBeInTheDocument();
+    expect(screen.getAllByText(/Requires investment committee approval/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/20%, above the binding 10% maximum/).length).toBeGreaterThan(0);
   });
 
   it("reruns canonical PE and VC assumption cells from the overview", async () => {
@@ -54,7 +55,7 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
     expect(screen.getAllByText("23.26%").length).toBeGreaterThan(0);
     expect(screen.getByText(/>=22% IRR/)).toBeInTheDocument();
     expect(screen.getByText(/Sponsor equity at close/)).toBeInTheDocument();
-    expect(screen.getByText(/Recommendation impact:/)).toBeInTheDocument();
+    expect(screen.getByText(/Decision impact:/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", {name: "$220M"}));
     expect(screen.getByText("20.97%")).toBeInTheDocument();
     expect(screen.getByText(/Return hurdle fails/)).toBeInTheDocument();
@@ -87,7 +88,7 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
   it("keeps finance controls bound to retained engine metrics", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", {name: /Financials & Returns/}));
+    await user.click(screen.getByRole("button", {name: /Financials/}));
     await user.click(screen.getByRole("button", {name: /Upfront EV/}));
     expect(screen.getByRole("dialog", {name: "Upfront EV"})).toHaveTextContent(/Direct observation or declared assumption/);
     await user.keyboard("{Escape}");
@@ -97,7 +98,7 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
   it("presents open diligence as an investor worklist", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", {name: /Risks & Diligence/}));
+    await user.click(screen.getByRole("button", {name: /Risks/}));
     expect(screen.getByRole("heading", {name: "Resolve these before the next committee step"})).toBeInTheDocument();
     expect(screen.getByText("AG-D04")).toBeInTheDocument();
     expect(screen.getByText(/Management assessment/)).toBeInTheDocument();
@@ -106,15 +107,18 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
   it("keeps econometric credit and diagnostics in Methodology", async () => {
     const user = userEvent.setup();
     render(<App />);
+    const evidenceMenu = screen.getByText("Evidence").closest("details")!;
+    if (!evidenceMenu.open) await user.click(screen.getByText("Evidence"));
     await user.click(screen.getByRole("button", {name: "Methodology"}));
     expect(screen.getAllByText("VALUE-CREATION BRIDGE ONLY").length).toBeGreaterThan(0);
     const paired = screen.getByRole("button", {name: "Inspect lineage for Randomized offer ITT"});
     expect(paired).toHaveAttribute("data-metric-id", "atlasgrid-ag-07-renewal_itt");
   });
 
-  it("states the exact maximum-bid downside floor and cent boundary", () => {
+  it("states the recommended cap without a public one-cent claim", () => {
     render(<App />);
-    expect(screen.getByText(/Solved maximum upfront bid: \$215.4M; one additional cent must fail at least one constraint/)).toBeInTheDocument();
+    expect(screen.getByText(/Mathematical maximum: \$215.4M. The recommended cap remains \$210M/)).toBeInTheDocument();
+    expect(screen.queryByText(/one additional cent/)).not.toBeInTheDocument();
   });
 
   it("provides an accessible one-page IC memo path", async () => {
@@ -123,7 +127,7 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
     await user.click(screen.getByRole("button", {name: /Memo/}));
     expect(screen.getAllByRole("heading", {name: "AtlasGrid Systems"})).toHaveLength(2);
     expect(screen.getByRole("button", {name: "Print one-page memo"})).toBeInTheDocument();
-    expect(screen.getByText("Analytical recommendation only")).toBeInTheDocument();
+    expect(screen.getByText("Requires investment committee approval")).toBeInTheDocument();
   });
 
   it("searches retained sources and deep-links analyses", async () => {
@@ -145,7 +149,11 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
     for (const caseData of candidate.cases) {
       await user.click(screen.getByRole("button", {name: new RegExp(caseData.company)}));
       const registered = new Set(caseData.metricRegistry.map((item) => item.metric_id));
-      for (const targetView of ["Overview", "Financials & Returns", "Value Creation"]) {
+      for (const targetView of ["Overview", "Financials", "Value Creation"]) {
+        if (targetView === "Value Creation") {
+          const evidenceMenu = screen.getByText("Evidence").closest("details")!;
+          if (!evidenceMenu.open) await user.click(screen.getByText("Evidence"));
+        }
         await user.click(screen.getByRole("button", {name: new RegExp(targetView)}));
         for (const element of document.querySelectorAll<HTMLElement>("[data-metric-id]")) {
           expect(registered.has(element.dataset.metricId!), element.dataset.metricId).toBe(true);

@@ -65,14 +65,18 @@ def main() -> int:
             failures.append(
                 f"visual_drift:{candidate.name}:changed={changed_ratio:.6f}:rms={rms:.6f}"
             )
+    pdf_matches = 0
     for slug in ("atlasgrid", "helios"):
-        file_name = f"{slug}-ic-memo-letter.pdf"
-        baseline_pdf = ROOT / "output" / "pdf" / file_name
-        candidate_pdf = CANDIDATE / file_name
-        if not candidate_pdf.is_file():
-            failures.append(f"missing_candidate:{file_name}")
-        elif reference_comparable and _sha256(baseline_pdf) != _sha256(candidate_pdf):
-            failures.append(f"pdf_byte_regression:{file_name}")
+        for artifact in ("ic-snapshot", "underwriting-packet", "technical-appendix"):
+            file_name = f"{slug}-{artifact}-letter.pdf"
+            baseline_pdf = ROOT / "output" / "pdf" / file_name
+            candidate_pdf = CANDIDATE / file_name
+            if not candidate_pdf.is_file():
+                failures.append(f"missing_candidate:{file_name}")
+            elif reference_comparable and _sha256(baseline_pdf) != _sha256(candidate_pdf):
+                failures.append(f"pdf_byte_regression:{file_name}")
+            else:
+                pdf_matches += 1
     accessibility_baselines = sorted(ACCESSIBILITY_BASELINE.glob("*.json"))
     if len(accessibility_baselines) != 4:
         failures.append(
@@ -90,14 +94,14 @@ def main() -> int:
         print(
             "visual-regression=PASS reference_platform=darwin "
             f"pngs={len(baseline_pngs)} changed_pixel_limit={MAX_CHANGED_PIXEL_RATIO:.2%} "
-            f"rms_limit={MAX_RMS_CHANNEL_DELTA:.1f} localized_focus_limit={MAX_LOCALIZED_FOCUS_DRIFT_RATIO:.2%} pdf_byte_matches=2/2"
+            f"rms_limit={MAX_RMS_CHANNEL_DELTA:.1f} localized_focus_limit={MAX_LOCALIZED_FOCUS_DRIFT_RATIO:.2%} pdf_byte_matches={pdf_matches}/6"
             f" accessibility_matches={len(accessibility_baselines)}/4"
         )
     else:
         print(
             "visual-regression=NOT_COMPARABLE "
             f"platform={sys.platform} candidates={len(baseline_pngs)} dimensions=PASS "
-            "pdf_candidates=2/2; browser, overflow, and axe flows remain enforced"
+            f"pdf_candidates={pdf_matches}/6; browser, overflow, and axe flows remain enforced"
             f" accessibility_matches={len(accessibility_baselines)}/4"
         )
     return 0

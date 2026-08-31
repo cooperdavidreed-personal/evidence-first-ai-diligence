@@ -421,13 +421,16 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
     sensitivity_sha256 = sensitivity_body.pop("receipt_sha256")
     if sensitivity_sha256 != digest(sensitivity_body):
         raise UnderwritingError("vc_sensitivity_book_digest_mismatch")
-    if sensitivity["axis_order"] != [
-        "exit_value",
-        "exit_date",
+    expected_axes = [
+        "annual_revenue_growth",
+        "exit_revenue_multiple",
+        "ordinary_cohort_nrr",
         "later_round_price",
         "milestone_state",
-        "pool_exit_treatment",
-    ]:
+    ]
+    if sensitivity.get("schema_version") != "underwriting.vc-sensitivity-book/v3":
+        raise UnderwritingError("vc_sensitivity_version_invalid")
+    if sensitivity["axis_order"] != expected_axes:
         raise UnderwritingError("vc_sensitivity_axes_invalid")
     for cell in sensitivity["cells"]:
         body = dict(cell)
@@ -436,15 +439,47 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
             raise UnderwritingError("vc_sensitivity_cell_digest_mismatch")
     if {cell["axis"] for cell in sensitivity["cells"]} != set(sensitivity["axis_order"]):
         raise UnderwritingError("vc_sensitivity_axis_missing")
-    pool_cells = {
-        cell["pool_exit_treatment"]: cell
-        for cell in sensitivity["cells"]
-        if cell["axis"] == "pool_exit_treatment"
-    }
-    if set(pool_cells) != {"UNISSUED_CANCELLED", "FULLY_GRANTED_COMMON"}:
-        raise UnderwritingError("vc_pool_exit_treatment_sensitivity_missing")
-    if pool_cells["FULLY_GRANTED_COMMON"]["target_proceeds_cents"] > pool_cells["UNISSUED_CANCELLED"]["target_proceeds_cents"]:
-        raise UnderwritingError("vc_pool_exit_treatment_not_conservative")
+    if [item["axis"] for item in sensitivity.get("axis_definitions", [])] != expected_axes:
+        raise UnderwritingError("vc_sensitivity_axis_definitions_invalid")
+    baseline_cell_ids = sensitivity.get("baseline_cell_ids", {})
+    if set(baseline_cell_ids) != set(expected_axes):
+        raise UnderwritingError("vc_sensitivity_baseline_map_invalid")
+    for axis in expected_axes:
+        axis_cells = [cell for cell in sensitivity["cells"] if cell["axis"] == axis]
+        baselines = [cell for cell in axis_cells if cell.get("is_baseline")]
+        if len(baselines) != 1 or baseline_cell_ids[axis] != baselines[0]["cell_id"]:
+            raise UnderwritingError(f"vc_sensitivity_baseline_invalid:{axis}")
+    if sensitivity.get("default_axis") not in expected_axes:
+        raise UnderwritingError("vc_sensitivity_default_axis_invalid")
+    if sensitivity.get("default_cell_id") != baseline_cell_ids[sensitivity["default_axis"]]:
+        raise UnderwritingError("vc_sensitivity_default_cell_invalid")
+    for cell in sensitivity["cells"]:
+        bridge = cell.get("operating_exit_bridge")
+        if not isinstance(bridge, dict):
+            raise UnderwritingError("vc_sensitivity_operating_bridge_missing")
+        terminal_revenue = int(
+            (
+                Decimal(int(bridge["observed_ltm_revenue_cents"]))
+                * (Decimal(1) + Decimal(str(bridge["annual_revenue_growth"])))
+                ** int(bridge["years"])
+            ).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN)
+        )
+        enterprise_value = int(
+            (terminal_revenue * Decimal(str(bridge["exit_revenue_multiple"]))).quantize(
+                Decimal("1"), rounding=ROUND_HALF_EVEN
+            )
+        )
+        if (
+            terminal_revenue != int(bridge["terminal_revenue_cents"])
+            or enterprise_value != int(bridge["exit_enterprise_value_cents"])
+            or int(bridge["cash_at_exit_cents"]) != cell["ending_cash_path_cents"][-1]
+            or int(bridge["net_debt_cents"]) != -int(bridge["cash_at_exit_cents"])
+            or int(bridge["exit_equity_value_cents"])
+            != enterprise_value + int(bridge["cash_at_exit_cents"])
+        ):
+            raise UnderwritingError("vc_sensitivity_operating_bridge_mismatch")
+        if cell.get("binding_loss_hurdle_status") != "MISSES" or cell.get("analytical_posture") != "HOLD":
+            raise UnderwritingError("vc_sensitivity_binding_posture_invalid")
     quantile_indices = [
         int((Decimal(len(records) - 1) * probability).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN))
         for probability in (Decimal("0.10"), Decimal("0.50"), Decimal("0.90"))
@@ -782,6 +817,37 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             raise UnderwritingError("decision_condition_state_invalid")
     if case["decision"]["open_conditions"] != open_conditions:
         raise UnderwritingError("decision_open_condition_count_mismatch")
+    if any(
+        condition["designation"] == "BINDING" and condition["state"] == "MISSES_HURDLE"
+        for condition in condition_states
+    ) and case["decision"]["decision"] != "HOLD":
+        raise UnderwritingError("binding_hurdle_miss_requires_hold")
+
+    issue_summary = case["decision"].get("issue_summary")
+    if not isinstance(issue_summary, dict) or issue_summary.get("schema_version") != "underwriting.issue-summary/v1":
+        raise UnderwritingError("decision_issue_summary_missing")
+    issues = issue_summary.get("issues")
+    buckets = issue_summary.get("buckets")
+    counts = issue_summary.get("counts")
+    if not isinstance(issues, list) or not isinstance(buckets, dict) or not isinstance(counts, dict):
+        raise UnderwritingError("decision_issue_summary_invalid")
+    issue_ids = [item.get("issue_id") for item in issues if isinstance(item, dict)]
+    if len(issue_ids) != len(issues) or len(issue_ids) != len(set(issue_ids)):
+        raise UnderwritingError("decision_issue_duplicate")
+    expected_buckets = {
+        "failed_quantitative_hurdles": [item["issue_id"] for item in issues if item["kind"] == "QUANTITATIVE_HURDLE" and item["state"] == "FAILED"],
+        "advancement_blockers": [item["issue_id"] for item in issues if item["blocks_advancement"]],
+        "pre_ic_requirements": [item["issue_id"] for item in issues if item["stage"] == "PRE_IC"],
+        "pre_signing_requirements": [item["issue_id"] for item in issues if item["stage"] == "PRE_SIGNING"],
+        "pre_debt_commitment_requirements": [item["issue_id"] for item in issues if item["stage"] == "PRE_DEBT_COMMITMENT"],
+        "nonblocking_diligence": [item["issue_id"] for item in issues if not item["blocks_advancement"]],
+    }
+    if buckets != expected_buckets:
+        raise UnderwritingError("decision_issue_bucket_mismatch")
+    if counts != {key: len(value) for key, value in expected_buckets.items()}:
+        raise UnderwritingError("decision_issue_count_mismatch")
+    if any(linked not in condition_ids for item in issues for linked in item["linked_condition_ids"]):
+        raise UnderwritingError("decision_issue_condition_orphan")
 
     mappings_by_analysis: dict[str, dict[str, Any]] = {}
     for mapping in case["evidenceMappings"]:
@@ -798,6 +864,15 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
     analysis_ids = {item["analysis_id"] for item in case["analyses"]}
     if set(mappings_by_analysis) != analysis_ids:
         raise UnderwritingError("evidence_mapping_coverage_mismatch")
+    for issue in issues:
+        if issue["evidence_state"] not in {"PRESENT", "PARTIAL", "ABSENT"}:
+            raise UnderwritingError("decision_issue_evidence_state_invalid")
+        if not issue["analysis_ids"] or not set(issue["analysis_ids"]).issubset(analysis_ids):
+            raise UnderwritingError("decision_issue_analysis_orphan")
+        if not issue["evidence_metric_ids"] or not set(issue["evidence_metric_ids"]).issubset(metrics):
+            raise UnderwritingError("decision_issue_metric_orphan")
+        if issue["evidence_state"] == "PRESENT" and not issue["evidence_metric_ids"]:
+            raise UnderwritingError("decision_issue_present_without_evidence")
     if case["caseId"] == "atlasgrid" and mappings_by_analysis["AG-08"]["credit_tier"] != "VALUE_CREATION_BRIDGE":
         raise UnderwritingError("ag08_base_case_credit_forbidden")
 
@@ -923,6 +998,10 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             if display == "$0":
                 observed_display = Decimal(0)
                 tolerance = Decimal("0.5")
+            elif display == "<$1; immaterial" and abs(raw_value) < Decimal(100):
+                observed_display = raw_value
+            elif display in {"<$0.1M", "-<$0.1M"} and abs(raw_value) < Decimal(10_000_000):
+                observed_display = raw_value
             elif money_match:
                 decimals = len((money_match.group(2).split(".") + [""])[1])
                 observed_display = Decimal(money_match.group(2)) * Decimal(100_000_000)

@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from "react";
+import {useEffect, useState} from "react";
 import {ChartRegistryCaption} from "./chart-registry";
 import {registeredMetric} from "./data-contract";
 import type {CaseData, Metric, PECaseResult, PESensitivityCell} from "./types";
@@ -15,8 +15,8 @@ const money = (cents: number) => new Intl.NumberFormat("en-US", {
 }).format(cents / 100);
 
 const percent = (decimal: string) => `${(Number(decimal) * 100).toFixed(1)}%`;
-const multiple = (decimal: string) => `${Number(decimal).toFixed(2)}x`;
-const leverage = (decimal: string) => `${Number(decimal).toFixed(2)}x`;
+const multiple = (decimal: string) => `${Number(decimal).toFixed(1)}x`;
+const leverage = (decimal: string) => `${Number(decimal).toFixed(1)}x`;
 
 function financeMetric(
   caseData: CaseData,
@@ -80,7 +80,7 @@ function DebtCovenant({caseData, scenario, openMetric}: {caseData: CaseData; sce
   const maximumDebt = Math.max(...months.map((item) => item.ending_term_cents + item.ending_revolver_cents), 1);
   const annual = months.filter((item) => item.month === 1 || item.month % 12 === 0);
   const minimumHeadroom = months.reduce((minimum, item) => Math.min(minimum, Number(item.covenant_headroom)), Number.POSITIVE_INFINITY);
-  return <section className="finance-panel debt-panel" aria-labelledby="debt-title">
+  return <section id="debt-covenant" className="finance-panel debt-panel" aria-labelledby="debt-title">
     <div className="panel-heading"><div><p className="kicker">Cash-generated deleveraging</p><h3 id="debt-title">Debt &amp; covenant tape</h3></div><span>{scenario.debt_schedule.first_covenant_breach_month ? `Breach M${scenario.debt_schedule.first_covenant_breach_month}` : "No modeled breach"}</span></div>
     <div className="debt-tape" aria-label="Sixty month ending debt profile">{months.map((item) => <span key={item.month} className={item.covenant_breach ? "breach" : ""} style={{height: `${Math.max(4, ((item.ending_term_cents + item.ending_revolver_cents) / maximumDebt) * 100)}%`}} title={`Month ${item.month}: ${money(item.ending_term_cents + item.ending_revolver_cents)}`} />)}</div>
     <div className="finance-metric-grid">
@@ -112,18 +112,18 @@ function ExitBridge({caseData, scenario, openMetric}: {caseData: CaseData; scena
 
 function SensitivityBook({caseData, openMetric, routeState, onRouteState}: {caseData: CaseData; openMetric: OpenMetric; routeState?: {driver?: string | null; cell?: string | null}; onRouteState?: (state: {driver?: string; cell?: string}) => void}) {
   const book = caseData.peEngine?.sensitivities;
-  const initialAxis = routeState?.driver && book?.axis_order.includes(routeState.driver) ? routeState.driver : book?.axis_order[0] ?? "";
-  const [axis, setAxis] = useState(initialAxis);
-  const cells = useMemo(() => book?.one_way.filter((item) => item.axis === axis) ?? [], [book, axis]);
-  const [selectedId, setSelectedId] = useState(routeState?.cell && cells.some((item) => item.cell_id === routeState.cell) ? routeState.cell : cells[1]?.cell_id ?? cells[0]?.cell_id ?? "");
-  useEffect(() => {const next = routeState?.cell && cells.some((item) => item.cell_id === routeState.cell) ? routeState.cell : cells[1]?.cell_id ?? cells[0]?.cell_id ?? ""; setSelectedId(next);}, [axis, cells, routeState?.cell]);
   if (!book) return null;
+  const defaultAxis = book.axis_order[0];
+  const axis = routeState?.driver && book.axis_order.includes(routeState.driver) ? routeState.driver : defaultAxis;
+  const cells = book.one_way.filter((item) => item.axis === axis);
+  const defaultCell = cells[1]?.cell_id ?? cells[0]?.cell_id ?? "";
+  const selectedId = routeState?.cell && cells.some((item) => item.cell_id === routeState.cell) ? routeState.cell : defaultCell;
   const selected = cells.find((item) => item.cell_id === selectedId) ?? cells[0];
   const axisLabels: Record<string, string> = {entry_enterprise_value_cents: "Entry EV", full_cohort_nrr: "Full-cohort NRR", gross_margin: "Gross margin", annual_cash_rate: "Cash interest", funded_term_face_cents: "Funded debt", exit_multiple: "Exit multiple"};
   const cellMetric = (cell: PESensitivityCell, suffix: string, label: string, value: string): Metric => {const registry = registeredMetric(caseData, `${caseData.caseId}-${cell.cell_id}-${suffix}`); return {metric_id: registry.metric_id, label, value: registry.display_value || value, detail: "Independent full-model sensitivity rerun with formula-bound operands.", classification: registry.classification, lineage: registry.source_locator_ids.map((id) => id.replace(/^locator-/, "")), registry};};
-  return <section className="finance-panel sensitivity-book" aria-labelledby="sensitivity-title">
-    <div className="panel-heading"><div><p className="kicker">Full-model recomputation</p><h3 id="sensitivity-title">Sensitivity book</h3></div><span>Independent reruns</span></div>
-    <div className="sensitivity-controls"><label htmlFor="axis">Driver</label><select id="axis" value={axis} onChange={(event) => {const nextAxis = event.target.value; const nextCells = book.one_way.filter((item) => item.axis === nextAxis); const nextCell = nextCells[1]?.cell_id ?? nextCells[0]?.cell_id; setAxis(nextAxis); setSelectedId(nextCell ?? ""); onRouteState?.({driver: nextAxis, cell: nextCell});}}>{book.axis_order.map((item) => <option key={item} value={item}>{axisLabels[item] ?? item}</option>)}</select><div className="scenario-tabs">{cells.map((item) => <button key={item.cell_id} aria-pressed={item.cell_id === selected?.cell_id} onClick={() => {setSelectedId(item.cell_id); onRouteState?.({driver: axis, cell: item.cell_id});}}>{item.assumption_label}</button>)}</div></div>
+  return <section id="sensitivity" className="finance-panel sensitivity-book" aria-labelledby="sensitivity-title">
+    <div className="panel-heading"><div><p className="kicker">Full-model recomputation</p><h3 id="sensitivity-title">Sensitivity book</h3></div><button type="button" className="text-action" onClick={() => {const nextAxis = book.axis_order[0]; const nextCells = book.one_way.filter((item) => item.axis === nextAxis); onRouteState?.({driver: nextAxis, cell: nextCells[1]?.cell_id ?? nextCells[0]?.cell_id});}}>Reset</button></div>
+    <div className="sensitivity-controls"><label htmlFor="axis">Driver</label><select id="axis" value={axis} onChange={(event) => {const nextAxis = event.target.value; const nextCells = book.one_way.filter((item) => item.axis === nextAxis); const nextCell = nextCells[1]?.cell_id ?? nextCells[0]?.cell_id; onRouteState?.({driver: nextAxis, cell: nextCell});}}>{book.axis_order.map((item) => <option key={item} value={item}>{axisLabels[item] ?? item}</option>)}</select><div className="scenario-tabs">{cells.map((item) => <button key={item.cell_id} aria-pressed={item.cell_id === selected?.cell_id} onClick={() => onRouteState?.({driver: axis, cell: item.cell_id})}>{item.assumption_label}</button>)}</div></div>
     {selected && <div className="finance-metric-grid sensitivity-result">
       <MetricButton metric={cellMetric(selected, "irr", "Gross IRR", percent(selected.gross_xirr))} openMetric={openMetric} />
       <MetricButton metric={cellMetric(selected, "moic", "Gross MOIC", multiple(selected.gross_moic))} openMetric={openMetric} />
@@ -134,7 +134,7 @@ function SensitivityBook({caseData, openMetric, routeState, onRouteState}: {case
   </section>;
 }
 
-export function PEUnderwritingRoom({caseData, openMetric, routeState, onRouteState}: {caseData: CaseData; openMetric: OpenMetric; routeState?: {scenario?: string | null; driver?: string | null; cell?: string | null}; onRouteState?: (state: {scenario?: string; driver?: string; cell?: string}) => void}) {
+export function PEUnderwritingRoom({caseData, openMetric, routeState, onRouteState}: {caseData: CaseData; openMetric: OpenMetric; routeState?: {scenario?: string | null; compare?: string | null; driver?: string | null; cell?: string | null}; onRouteState?: (state: {scenario?: string; compare?: string; driver?: string; cell?: string}) => void}) {
   const engine = caseData.peEngine;
   const validScenario = routeState?.scenario && ["ask", "selected", "downside"].includes(routeState.scenario) ? routeState.scenario as ScenarioKey : "selected";
   const [scenarioKey, setScenarioKey] = useState<ScenarioKey>(validScenario);
@@ -142,11 +142,14 @@ export function PEUnderwritingRoom({caseData, openMetric, routeState, onRouteSta
   if (!engine) return null;
   const scenario = engine[scenarioKey];
   const labels: Record<ScenarioKey, string> = {ask: "Seller ask", selected: "Selected", downside: "Downside"};
+  const compareKey = routeState?.compare && ["ask", "selected", "downside"].includes(routeState.compare) ? routeState.compare as ScenarioKey : "downside";
+  const comparison = engine[compareKey];
   const transaction = scenario.engine_inputs.transaction;
   const earnoutThreshold = Number(transaction.earnout_threshold_arr_cents ?? 0);
   const earnoutCap = Number(transaction.earnout_cap_cents ?? 0);
   return <div className="view-stack pe-room">
-    <section className="underwriting-head"><div><p className="kicker">Cash-flow underwriting · {labels[scenarioKey]} basis</p><h2>Price, leverage, and downside</h2><p>Every selected state is a retained Python-engine result. The browser independently replays the published formula registry—including dated XIRR—before rendering the workbench.</p></div><div className="scenario-tabs">{(["ask", "selected", "downside"] as ScenarioKey[]).map((item) => <button key={item} aria-pressed={item === scenarioKey} onClick={() => {setScenarioKey(item); onRouteState?.({scenario: item});}}>{labels[item]}</button>)}</div></section>
+    <section className="underwriting-head"><div><p className="kicker">Cash-flow underwriting · {labels[scenarioKey]} basis</p><h2>Price, leverage, and downside</h2><p>Every selected state is a retained full-model result. Dated cash flows, debt, covenants, exit proceeds, MOIC, and XIRR reconcile before display.</p></div><div><div className="scenario-tabs">{(["ask", "selected", "downside"] as ScenarioKey[]).map((item) => <button key={item} aria-pressed={item === scenarioKey} onClick={() => {setScenarioKey(item); onRouteState?.({scenario: item});}}>{labels[item]}</button>)}</div><label className="compare-control">Compare with <select value={compareKey} onChange={(event) => onRouteState?.({compare: event.target.value})}>{(["ask", "selected", "downside"] as ScenarioKey[]).map((item) => <option key={item} value={item}>{labels[item]}</option>)}</select></label></div></section>
+    <section className="scenario-comparison" aria-label="Side-by-side scenario comparison"><article><span>Selected · {labels[scenarioKey]}</span><strong>{percent(scenario.gross_xirr)} / {multiple(scenario.gross_moic)}</strong><small>{money(scenario.debt_schedule.ending_debt_cents)} exit debt</small></article><article><span>Comparison · {labels[compareKey]}</span><strong>{percent(comparison.gross_xirr)} / {multiple(comparison.gross_moic)}</strong><small>{money(comparison.debt_schedule.ending_debt_cents)} exit debt</small></article></section>
     <ChartRegistryCaption caseData={caseData} location="Underwriting Room" conclusion={`${labels[scenarioKey]} exits with ${money(scenario.debt_schedule.ending_debt_cents)} debt and ${scenario.debt_schedule.first_covenant_breach_month ? `first breaches in month ${scenario.debt_schedule.first_covenant_breach_month}` : "has no modeled covenant breach"}.`} />
     <section className="terms-ribbon">
       <MetricButton metric={financeMetric(caseData, scenario, "entry", "Upfront EV", money(scenario.sources_and_uses.uses_cents.cash_enterprise_value), "Cash enterprise value in the selected sources-and-uses schedule.")} openMetric={openMetric} />

@@ -1,11 +1,11 @@
 # Underwriting Intelligence Lab
 
-**An evidence-bound PE and VC underwriting workbench that shows where the numbers came from—and where judgment begins.**
+**Explore two evidence-linked synthetic PE and VC underwriting cases, with every important conclusion traceable to its source.**
 
 This portfolio candidate combines a deterministic Python analytics layer with a static React investment-committee workbench. Two fully synthetic cases demonstrate the same governed workflow across control buyout and venture/growth underwriting:
 
 - **AtlasGrid Systems:** a 60-month vertical-SaaS buyout that exposes retention survivorship, parent-level concentration, underburdened gross margin, challenged EBITDA add-backs, and leverage fragility. Illustrative IC decision: `REPRICE`.
-- **Helios Compute Control:** an AI-infrastructure growth investment that separates design-partner performance from ordinary cohorts, recomputes pipeline, models tiered market adoption, and runs exact event-by-event dilution, milestone, runway, preference-waterfall, and dated-return mechanics. Illustrative IC disposition: `CONDITIONAL INVEST`, pending human approval and executable milestones.
+- **Helios Compute Control:** an AI-infrastructure growth investment that separates design-partner performance from ordinary cohorts, recomputes pipeline, models tiered market adoption, and runs exact event-by-event dilution, milestone, runway, preference-waterfall, and dated-return mechanics. Illustrative IC decision: `HOLD` because the declared synthetic stress mix produces a 20% loss frequency against a binding 10% maximum.
 
 > **Status: USABILITY CANDIDATE IN LOCAL VERIFICATION — OBSERVED PRACTITIONER TESTING NOT RUN**
 >
@@ -15,17 +15,15 @@ This portfolio candidate combines a deterministic Python analytics layer with a 
 
 The application does not begin with a chat box or a generated memo. It begins with versioned data-room manifests, precommitted analysis specifications, exact accounting bridges, and explicit causal classifications. Each displayed headline number opens a lineage record binding the metric to its governing receipt and every declared analysis input. Locator-v3 records retain a structured source excerpt, exact selection digest, committed repository path, and public-candidate path; the staged source pack is rebuilt only from manifest-declared synthetic files.
 
-The investor workspace presents six shared decision views for both cases:
+The investor workspace presents four primary decision views for both cases:
 
 1. **Overview** — IC question, analytical recommendation, company context, material assumption, terms, returns, and advancement gate.
-2. **Thesis** — value drivers, counterthesis, falsifiers, and the evidence-to-decision map.
-3. **Financials & Returns** — scenarios, sensitivities, capital mechanics, and seeded return distributions.
-4. **Risks & Diligence** — open conditions, owners, consequences, and management questions.
-5. **Value Creation** — evidence-linked initiatives, KPI baselines, owners, milestones, risks, and value bridges.
-6. **Memo** — a print-ready one-page committee summary with the next required action.
+2. **Financials** — scenarios, sensitivities, capital mechanics, and seeded return distributions.
+3. **Risks** — canonical blockers, owners, stages, consequences, and management questions.
+4. **Memo** — a literal one-page committee snapshot plus links to the detailed packet and technical appendix.
 
-The supporting layer retains deal exploration, sources, econometric methodology,
-and audit receipts without making those technical surfaces the default journey.
+The supporting Evidence layer retains thesis, value-creation, deal-room, source,
+econometric, and technical records without making them the default journey.
 A no-instruction landing page, a 60-second IC brief, explicit authority boundary,
 canonical assumption controls, searchable source room, progressive
 business-to-audit lineage, and stable deep links are all exercised locally. See
@@ -65,22 +63,9 @@ The existing `ic-evidence-lab` CLI and evidence-kernel behavior remain intact.
 
 ## Render the product walkthrough
 
-The former static-card reel was retired as `QUALITY SHORT`. Its replacement is
-a 150-second silent, captioned recording of the real local workbench through
-ordinary controls. The retained manifest binds the media to clean source commit
-`2536482962604d3c80a9b5cb75f8c3254b566f03`, the exact source closure, captions,
-toolchain, and video digest. Founder viewing and public release remain pending:
-
-```bash
-uv sync --frozen --extra demo
-uv run python scripts/render_demo.py --out demo/release
-uv run python scripts/verify_demo.py --root demo/release
-```
-
-The film covers decision posture versus authority, hurdle tests, number-to-source
-inspection, deal-room search, econometric model credit, PE scenario changes,
-VC milestone failure, and the value-creation bridge. It remains a local founder-
-review candidate until the release packet and rendered film are approved.
+Demo recording and publication are outside this correction sprint. Any retained
+historical media is not part of the expert-review package and must not be used to
+represent the current candidate.
 
 ## Verification model
 

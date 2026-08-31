@@ -34,8 +34,9 @@ def test_reviewed_portfolio_binaries_are_manifest_bound() -> None:
     assert "dist/visual-evidence/desktop-investor-workspace-landing.png" in reviewed
     assert "dist/visual-evidence/desktop-atlasgrid-systems-contextual-source-drawer.png" in reviewed
     assert "dist/visual-evidence/mobile-helios-compute-control-overview.png" in reviewed
-    assert "output/pdf/atlasgrid-ic-memo-letter.pdf" in reviewed
-    assert "output/pdf/helios-ic-memo-letter.pdf" in reviewed
+    for slug in ("atlasgrid", "helios"):
+        for artifact in ("ic-snapshot", "underwriting-packet", "technical-appendix"):
+            assert f"output/pdf/{slug}-{artifact}-letter.pdf" in reviewed
     assert all(
         path.startswith("dist/visual-evidence/") or path.startswith("output/pdf/")
         for path in reviewed

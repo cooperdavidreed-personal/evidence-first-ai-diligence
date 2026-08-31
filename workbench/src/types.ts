@@ -374,8 +374,11 @@ export interface VCScenarioResult {
 
 export interface VCSensitivityCell {
   cell_id: string;
-  axis: "exit_value" | "exit_date" | "later_round_price" | "milestone_state" | "pool_exit_treatment";
+  axis: "annual_revenue_growth" | "exit_revenue_multiple" | "ordinary_cohort_nrr" | "later_round_price" | "milestone_state";
   assumption_label: string;
+  driver_value: string;
+  is_baseline: boolean;
+  baseline_scenario_id: "BASE" | "MILESTONE";
   engine_inputs_sha256: string;
   result_receipt_sha256: string;
   gross_moic: string;
@@ -388,6 +391,20 @@ export interface VCSensitivityCell {
   target_shares: number;
   fully_diluted_shares: number;
   ending_cash_path_cents: number[];
+  operating_exit_bridge: {
+    observed_ltm_revenue_cents: number;
+    annual_revenue_growth: string;
+    years: number;
+    exit_revenue_multiple: string;
+    terminal_revenue_cents: number;
+    cash_at_exit_cents: number;
+    net_debt_cents: number;
+    exit_enterprise_value_cents: number;
+    exit_equity_value_cents: number;
+  };
+  point_return_hurdle_status: "CLEARS" | "MISSES";
+  binding_loss_hurdle_status: "MISSES";
+  analytical_posture: "HOLD";
   receipt_sha256: string;
 }
 
@@ -418,7 +435,12 @@ export interface VCEngine {
     receipt_sha256: string;
   };
   sensitivities: {
+    schema_version: "underwriting.vc-sensitivity-book/v3";
     axis_order: VCSensitivityCell["axis"][];
+    axis_definitions: Array<{axis: VCSensitivityCell["axis"]; label: string; driver_unit: string; model_rule: string; source_locator_ids: string[]}>;
+    baseline_cell_ids: Record<VCSensitivityCell["axis"], string>;
+    default_axis: VCSensitivityCell["axis"];
+    default_cell_id: string;
     cells: VCSensitivityCell[];
     receipt_sha256: string;
   };
@@ -540,7 +562,7 @@ export interface CaseData {
     context_sha256: string;
   };
   decision: {
-    decision: "REPRICE" | "CONDITIONAL_INVEST" | "INVEST" | "PASS";
+    decision: "HOLD" | "REPRICE" | "CONDITIONAL_INVEST" | "INVEST" | "PASS";
     attribution: string;
     status: string;
     rationale: string;
@@ -553,9 +575,32 @@ export interface CaseData {
       metric_ids: string[];
     }>;
     open_conditions: number;
+    issue_summary: {
+      schema_version: "underwriting.issue-summary/v1";
+      issues: Array<{
+        issue_id: string;
+        title: string;
+        owner: string;
+        stage: "PRE_IC" | "PRE_SIGNING" | "PRE_DEBT_COMMITMENT" | "POST_CLOSE";
+        materiality: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+        kind: "QUANTITATIVE_HURDLE" | "DILIGENCE";
+        state: "FAILED" | "OPEN" | "CLEARED";
+        blocks_advancement: boolean;
+        consequence: string;
+        linked_condition_ids: string[];
+        evidence_state: "PRESENT" | "PARTIAL" | "ABSENT";
+        evidence_metric_ids: string[];
+        analysis_ids: string[];
+        source_locator_ids: string[];
+        consequence_target: "sensitivity" | "debt-covenant" | "cash" | "financing-events";
+      }>;
+      buckets: Record<string, string[]>;
+      counts: Record<string, number>;
+    };
     signature_status?: string;
     as_of?: string;
     terms?: string[];
+    path_to_yes: string[];
     metric_pairs?: Array<{
       metric: string;
       metric_id: string;

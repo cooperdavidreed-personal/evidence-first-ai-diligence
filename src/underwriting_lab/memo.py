@@ -31,11 +31,11 @@ def _illustrative_money_range(cents: int) -> str:
 
 
 def _percent(decimal: str) -> str:
-    return f"{Decimal(decimal) * 100:.2f}%"
+    return f"{Decimal(decimal) * 100:.1f}%"
 
 
 def _multiple(decimal: str) -> str:
-    return f"{Decimal(decimal):.2f}x"
+    return f"{Decimal(decimal):.1f}x"
 
 
 def _diligence_line(item: dict[str, Any]) -> str:
@@ -551,7 +551,7 @@ def _memo_markdown(packet: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _memo_html(markdown: str, packet: dict[str, Any]) -> str:
+def _memo_html(markdown: str, packet: dict[str, Any], artifact_kind: str = "packet") -> str:
     def inline(value: str) -> str:
         rendered = escape(value)
         rendered = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", rendered)
@@ -592,10 +592,149 @@ def _memo_html(markdown: str, packet: dict[str, Any]) -> str:
     if in_table:
         paragraphs.append("</tbody></table>")
     style = """
-    @page{size:letter;margin:.55in .55in .66in;@bottom-left{content:"Underwriting Intelligence Lab";font:7.5px monospace;color:#586269}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:7.5px monospace;color:#586269}}*{box-sizing:border-box}body{margin:0;color:#20262b;font:11px/1.43 Arial,sans-serif}h1,h2,h3{font-family:Georgia,serif;font-weight:500;break-after:avoid-page}h1{font-size:30px;border-bottom:2px solid #20262b;padding-bottom:12px}h2{font-size:19px;margin-top:24px;border-bottom:1px solid #aaa;padding-bottom:5px}h3{font-size:14px}aside{border:1px solid #8a3d2f;color:#8a3d2f;padding:8px;font:700 9px monospace;break-inside:avoid}p{margin:6px 0;orphans:3;widows:3}p:has(+table),h2:has(+p),h3:has(+p){break-after:avoid-page}.bullet{padding-left:12px}.receipt-title{margin-top:18px}.receipt-row{display:inline-block;width:50%;margin:2px 0;padding-right:8px;font-size:8px;line-height:1.25;vertical-align:top}code{font:9px monospace;color:#234fa4;overflow-wrap:anywhere}.receipt-row code{font-size:7px}table{width:100%;border-collapse:collapse;margin:9px 0 16px;break-inside:avoid-page}th,td{border-bottom:1px solid #ccc;padding:5.5px;text-align:left;vertical-align:top}th{font:700 8.5px monospace;text-transform:uppercase;color:#586269}tr{break-inside:avoid}footer{display:block;clear:both;margin-top:8px;border-top:1px solid #20262b;padding-top:4px;font:7.5px monospace;color:#586269;break-inside:avoid}.atlasgrid-memo{font-size:10.1px;line-height:1.36}.atlasgrid-memo h1{font-size:28px;padding-bottom:9px}.atlasgrid-memo h2{font-size:17px;margin-top:18px;padding-bottom:4px}.atlasgrid-memo h3{font-size:13px;margin:12px 0 5px}.atlasgrid-memo p{margin:4px 0}.atlasgrid-memo table{margin:7px 0 12px}.atlasgrid-memo th,.atlasgrid-memo td{padding:4.5px}.atlasgrid-memo th{font-size:8px}.atlasgrid-memo code{font-size:8.5px}@media print{footer{display:none}}@media screen{body{max-width:900px;margin:40px auto;padding:40px;background:#fbf9f4}}
+    @page{size:letter;margin:.55in .55in .66in;@bottom-left{content:"Underwriting Intelligence Lab";font:7.5px monospace;color:#586269}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:7.5px monospace;color:#586269}}*{box-sizing:border-box}body{margin:0;color:#20262b;font:11px/1.43 Arial,sans-serif}h1,h2,h3{font-family:Georgia,serif;font-weight:500;break-after:avoid-page}h1{font-size:30px;border-bottom:2px solid #20262b;padding-bottom:12px}h2{font-size:19px;margin-top:24px;border-bottom:1px solid #aaa;padding-bottom:5px}h3{font-size:14px}aside{border:1px solid #8a3d2f;color:#8a3d2f;padding:8px;font:700 9px monospace;break-inside:avoid}p{margin:6px 0;orphans:3;widows:3}p:has(+table),h2:has(+p),h3:has(+p){break-after:avoid-page}.bullet{padding-left:12px}.receipt-title{margin-top:18px}.receipt-row{display:inline-block;width:50%;margin:2px 0;padding-right:8px;font-size:8px;line-height:1.25;vertical-align:top}code{font:9px monospace;color:#234fa4;overflow-wrap:anywhere}.receipt-row code{font-size:7px}table{width:100%;border-collapse:collapse;margin:9px 0 16px;break-inside:avoid-page;table-layout:fixed}th,td{border-bottom:1px solid #ccc;padding:5.5px;text-align:left;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{font:700 8.5px monospace;text-transform:uppercase;color:#586269}tr{break-inside:avoid}footer{display:block;clear:both;margin-top:8px;border-top:1px solid #20262b;padding-top:4px;font:7.5px monospace;color:#586269;break-inside:avoid}.atlasgrid-memo{font-size:10.1px;line-height:1.36}.atlasgrid-memo h1{font-size:28px;padding-bottom:9px}.atlasgrid-memo h2{font-size:17px;margin-top:18px;padding-bottom:4px}.atlasgrid-memo h3{font-size:13px;margin:12px 0 5px}.atlasgrid-memo p{margin:4px 0}.atlasgrid-memo table{margin:7px 0 12px}.atlasgrid-memo th,.atlasgrid-memo td{padding:4.5px}.atlasgrid-memo th{font-size:8px}.atlasgrid-memo code{font-size:8.5px}.snapshot{font-size:9.5px;line-height:1.27}.snapshot h1{font-size:23px;margin:0 0 8px;padding-bottom:7px}.snapshot h2{font-size:14px;margin:11px 0 4px;padding-bottom:2px}.snapshot p{margin:3px 0}.snapshot table{margin:4px 0 7px}.snapshot th,.snapshot td{padding:3px;font-size:7.5px}.technical{font-size:8.5px;line-height:1.25}.technical h1{font-size:23px}.technical h2{font-size:15px;margin-top:15px}.technical h3{font-size:11px}.technical table{margin:5px 0 9px}.technical th,.technical td{padding:3px;font-size:7px}.technical code{font-size:6.5px;word-break:break-all}@media print{footer{display:none}}@media screen{body{max-width:900px;margin:40px auto;padding:40px;background:#fbf9f4}}
     """
-    body_class = f"{escape(packet['case_id'])}-memo"
+    body_class = f"{escape(packet['case_id'])}-memo {escape(artifact_kind)}"
     return f"<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>{escape(packet['company'])} IC memorandum</title><style>{style}</style></head><body class='{body_class}'>{''.join(paragraphs)}<footer>Packet {packet['packet_sha256']} · {escape(packet['disclosure'])}</footer></body></html>"
+
+
+def _remove_sections(markdown: str, headings: set[str]) -> str:
+    retained: list[str] = []
+    skipping = False
+    for line in markdown.splitlines():
+        if line.startswith("## "):
+            skipping = line[3:] in headings
+        if not skipping:
+            retained.append(line)
+    return "\n".join(retained).rstrip() + "\n"
+
+
+def _packet_markdown(markdown: str, case_id: str) -> str:
+    technical_sections = {
+        "Receipt appendix",
+        "Econometric credit and zero-credit map",
+        "Evidence-to-model credit",
+    }
+    cleaned = _remove_sections(markdown, technical_sections)
+    lines = [
+        line for line in cleaned.splitlines()
+        if not line.startswith(("**Authority:**", "**Knowledge cutoff:**", "**Packet receipt:**", "**Workflow state:**"))
+    ]
+    result = "\n".join(lines).replace("`MISSES`", "Misses").replace("`CLEARS`", "Clears")
+    practitioner_terms = {
+        "HUMAN_JUDGMENT": "Analyst judgment",
+        "MIXED_CAUSAL_SYNTHETIC_AND_HUMAN_JUDGMENT": "Synthetic causal analysis plus analyst judgment",
+        "MIXED_CAUSAL_SYNTHETIC_AND_SCENARIO": "Synthetic causal analysis plus scenario assumption",
+        "ALL_TESTS_PASS_AFTER_CURE": "All covenant tests pass after cure",
+        "BOARD_FINANCE_COMMITTEE": "Board finance committee",
+        "EQUITY_VALUE": "Equity value",
+        "FINANCING_SHORTFALL": "Financing shortfall",
+        "SERIES_A": "Series A",
+        "SERIES_B": "Series B",
+        "SERIES_C": "Series C",
+        "WITHHOLD_TRANCHE_AND_REUNDERWRITE_RUNWAY": "Withhold tranche and re-underwrite runway",
+    }
+    for raw, readable in sorted(practitioner_terms.items(), key=lambda item: len(item[0]), reverse=True):
+        result = result.replace(raw, readable)
+    result = re.sub(
+        r"(?m)^- OPEN \*\*[^*]+\*\* - (.+?) Owner: (.+?)\. Decision consequence: (.+)$",
+        r"- **\1** Owner: \2. If unresolved: \3",
+        result,
+    )
+    if case_id == "helios":
+        result = re.sub(
+            r"\*\*Conditional posture:\*\*.*",
+            "**Current decision:** HOLD - LOSS HURDLE NOT MET.",
+            result,
+        )
+    return result.rstrip() + "\n"
+
+
+def _snapshot_markdown(case: dict[str, Any]) -> str:
+    decision = case["decision"]
+    issues = decision["issue_summary"]
+    metrics = case["summaryMetrics"][:5]
+    lines = [
+        f"# {case['company']} - one-page IC snapshot",
+        "",
+        f"> {case['disclosure']}",
+        "",
+        f"## {decision['decision'].replace('_', ' ')}",
+        "",
+        decision["rationale"],
+        "",
+        "## Decision economics",
+        "",
+        "| Measure | Result | Basis |",
+        "|---|---:|---|",
+        *[f"| {item['label']} | {item['value']} | {item['detail']} |" for item in metrics],
+        "",
+        "## What blocks advancement",
+        "",
+        f"{issues['counts']['advancement_blockers']} blocking issues, including {issues['counts']['failed_quantitative_hurdles']} failed quantitative hurdle(s).",
+        "",
+        *[f"- **{item['title']}** - {item['owner']}; {item['stage'].replace('_', ' ').lower()}. {item['consequence']}" for item in issues["issues"][:4]],
+        "",
+        "## Path to yes",
+        "",
+        *[f"- {item}" for item in decision["path_to_yes"]],
+        "",
+        "**Approval:** Requires investment committee approval. No capital action is authorized.",
+        "",
+        f"Analysis cutoff: {decision['as_of'][:10]}",
+        "",
+    ]
+    return _ascii_dashes("\n".join(lines))
+
+
+def _technical_appendix_markdown(case: dict[str, Any], packet: dict[str, Any]) -> str:
+    def operand_summary(operand_ids: list[str]) -> str:
+        if len(operand_ids) <= 6:
+            return ", ".join(f"`{operand}`" for operand in operand_ids)
+        preview = ", ".join(f"`{operand}`" for operand in operand_ids[:3])
+        return (
+            f"{preview}; +{len(operand_ids) - 3} more in model-appendix.json "
+            f"(ordered-list SHA-256 `{digest(operand_ids)}`)"
+        )
+
+    lines = [
+        f"# {case['company']} - technical appendix",
+        "",
+        f"> {case['disclosure']}",
+        "",
+        "This appendix retains reproducibility records, raw identifiers, mappings, and formula definitions. It is not the investment-committee front page.",
+        "",
+        "## Content identity",
+        "",
+        f"- Manifest SHA-256: `{case['manifest_sha256']}`",
+        f"- Analysis SHA-256: `{case['analysis_sha256']}`",
+        f"- Decision SHA-256: `{case['decision']['decision_sha256']}`",
+        f"- Packet SHA-256: `{packet['packet_sha256']}`",
+        "",
+        "## Analysis receipts",
+        "",
+        "| Analysis | Classification | State | Specification | Receipt |",
+        "|---|---|---|---|---|",
+        *[f"| {item['analysis_id']} | {item['classification']} | {item['state']} | `{item['spec_sha256']}` | `{item['receipt_sha256']}` |" for item in case["analyses"]],
+        "",
+        "## Evidence-to-model mappings",
+        "",
+        "| Analysis | Credit class | Observed value | Model treatment |",
+        "|---|---|---|---|",
+        *[f"| {item['source_analysis_id']} | {item['credit_tier']} | {item['observed_value']} | {item['model_credit']} |" for item in case["evidenceMappings"]],
+        "",
+        "## Formula register",
+        "",
+        "| Formula | Operation | Output metric | Operands |",
+        "|---|---|---|---|",
+        *[f"| `{item['formula_id']}` | {item['operation']} | `{item['output_metric_id']}` | {operand_summary(item['operand_ids'])} |" for item in case["formulaRegistry"]],
+        "",
+        "## Reproducibility boundary",
+        "",
+        "All data and results are synthetic. Exact arithmetic, source locators, scenario receipts, and deterministic generation establish internal reproducibility only. They do not establish live-deal accuracy, investment approval, or real-world performance.",
+        "",
+    ]
+    return _ascii_dashes("\n".join(lines))
 
 
 def build_ic_packet_from_case(case: dict[str, Any], output_dir: str | Path) -> dict[str, Path]:
@@ -619,30 +758,41 @@ def build_ic_packet_from_case(case: dict[str, Any], output_dir: str | Path) -> d
     destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
     packet = packet_builder(case)
-    markdown = _ascii_dashes(memo_builder(packet))
-    html = _memo_html(markdown, packet)
-    memo_path = destination / "ic-memo.md"
-    html_path = destination / "ic-memo.html"
-    appendix_path = destination / "model-appendix.json"
-    memo_path.write_text(markdown, encoding="utf-8")
-    html_path.write_text(html, encoding="utf-8")
-    write_json(appendix_path, packet)
+    raw_markdown = _ascii_dashes(memo_builder(packet))
+    snapshot_markdown = _snapshot_markdown(case)
+    packet_markdown = _packet_markdown(raw_markdown, case["caseId"])
+    technical_markdown = _technical_appendix_markdown(case, packet)
+    snapshot_md_path = destination / "ic-snapshot.md"
+    snapshot_html_path = destination / "ic-snapshot.html"
+    packet_md_path = destination / "underwriting-packet.md"
+    packet_html_path = destination / "underwriting-packet.html"
+    technical_md_path = destination / "technical-appendix.md"
+    technical_html_path = destination / "technical-appendix.html"
+    model_appendix_path = destination / "model-appendix.json"
+    snapshot_md_path.write_text(snapshot_markdown, encoding="utf-8")
+    snapshot_html_path.write_text(_memo_html(snapshot_markdown, packet, "snapshot"), encoding="utf-8")
+    packet_md_path.write_text(packet_markdown, encoding="utf-8")
+    packet_html_path.write_text(_memo_html(packet_markdown, packet, "packet"), encoding="utf-8")
+    technical_md_path.write_text(technical_markdown, encoding="utf-8")
+    technical_html_path.write_text(_memo_html(technical_markdown, packet, "technical"), encoding="utf-8")
+    write_json(model_appendix_path, packet)
+    artifacts = [snapshot_md_path, snapshot_html_path, packet_md_path, packet_html_path, technical_md_path, technical_html_path, model_appendix_path]
     receipt = {
         "schema_version": "underwriting.ic-packet-receipt/v2",
         "packet_sha256": packet["packet_sha256"],
-        "artifacts": {
-            memo_path.name: sha256_file(memo_path),
-            html_path.name: sha256_file(html_path),
-            appendix_path.name: sha256_file(appendix_path),
-        },
+        "artifacts": {path.name: sha256_file(path) for path in artifacts},
     }
     receipt["receipt_sha256"] = digest(receipt)
     receipt_path = destination / "packet-receipt.json"
     write_json(receipt_path, receipt)
     return {
-        "memo": memo_path,
-        "html": html_path,
-        "appendix": appendix_path,
+        "snapshot_markdown": snapshot_md_path,
+        "snapshot_html": snapshot_html_path,
+        "packet_markdown": packet_md_path,
+        "packet_html": packet_html_path,
+        "technical_markdown": technical_md_path,
+        "technical_html": technical_html_path,
+        "appendix": model_appendix_path,
         "receipt": receipt_path,
     }
 

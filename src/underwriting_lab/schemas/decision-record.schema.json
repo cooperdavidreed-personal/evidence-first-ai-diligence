@@ -13,23 +13,31 @@
     "as_of",
     "rationale",
     "terms",
+    "path_to_yes",
     "metric_pairs",
     "conditions",
     "condition_states",
     "open_conditions",
+    "issue_summary",
     "verification_sources",
     "failure_consequences",
     "decision_sha256"
   ],
   "properties": {
     "schema_version": {"const": "underwriting.decision-record/v1"},
-    "decision": {"enum": ["REPRICE", "CONDITIONAL_INVEST", "INVEST", "PASS"]},
+    "decision": {"enum": ["HOLD", "REPRICE", "CONDITIONAL_INVEST", "INVEST", "PASS"]},
     "attribution": {"const": "Cooper David Reed — illustrative IC"},
     "status": {"enum": ["DECISION_RECORD_WELL_FORMED", "DECISION_RECORD_INCOMPLETE"]},
     "signature_status": {"enum": ["PENDING_FOUNDER_SIGNATURE", "SIGNED"]},
     "as_of": {"type": "string", "format": "date-time"},
     "rationale": {"type": "string", "minLength": 30},
     "terms": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "path_to_yes": {
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
@@ -73,6 +81,56 @@
       }
     },
     "open_conditions": {"type": "integer", "minimum": 0},
+    "issue_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "issues", "buckets", "counts"],
+      "properties": {
+        "schema_version": {"const": "underwriting.issue-summary/v1"},
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["issue_id", "title", "owner", "stage", "materiality", "kind", "state", "blocks_advancement", "consequence", "linked_condition_ids", "evidence_state", "evidence_metric_ids", "analysis_ids", "source_locator_ids", "consequence_target"],
+            "properties": {
+              "issue_id": {"type": "string", "minLength": 1},
+              "title": {"type": "string", "minLength": 1},
+              "owner": {"type": "string", "minLength": 1},
+              "stage": {"enum": ["PRE_IC", "PRE_SIGNING", "PRE_DEBT_COMMITMENT", "POST_CLOSE"]},
+              "materiality": {"enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]},
+              "kind": {"enum": ["QUANTITATIVE_HURDLE", "DILIGENCE"]},
+              "state": {"enum": ["FAILED", "OPEN", "CLEARED"]},
+              "blocks_advancement": {"type": "boolean"},
+              "consequence": {"type": "string", "minLength": 1},
+              "linked_condition_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+              "evidence_state": {"enum": ["PRESENT", "PARTIAL", "ABSENT"]},
+              "evidence_metric_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+              "analysis_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+              "source_locator_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+              "consequence_target": {"enum": ["sensitivity", "debt-covenant", "cash", "financing-events"]}
+            }
+          }
+        },
+        "buckets": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["failed_quantitative_hurdles", "advancement_blockers", "pre_ic_requirements", "pre_signing_requirements", "pre_debt_commitment_requirements", "nonblocking_diligence"],
+          "properties": {
+            "failed_quantitative_hurdles": {"type": "array", "items": {"type": "string"}},
+            "advancement_blockers": {"type": "array", "items": {"type": "string"}},
+            "pre_ic_requirements": {"type": "array", "items": {"type": "string"}},
+            "pre_signing_requirements": {"type": "array", "items": {"type": "string"}},
+            "pre_debt_commitment_requirements": {"type": "array", "items": {"type": "string"}},
+            "nonblocking_diligence": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "counts": {
+          "type": "object",
+          "additionalProperties": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
     "verification_sources": {
       "type": "array",
       "minItems": 1,

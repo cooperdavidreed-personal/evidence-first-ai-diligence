@@ -60,10 +60,15 @@ def main() -> int:
         )
     print_files = []
     for path, format_name in (
-        (evidence / "desktop-atlasgrid-ic-memo.png", "full-page PNG"),
-        (root / "output" / "pdf" / "atlasgrid-ic-memo-letter.pdf", "US Letter PDF"),
-        (evidence / "desktop-helios-ic-memo.png", "full-page PNG"),
-        (root / "output" / "pdf" / "helios-ic-memo-letter.pdf", "US Letter PDF"),
+        (evidence / "desktop-atlasgrid-ic-snapshot.png", "one-page snapshot PNG"),
+        (evidence / "desktop-atlasgrid-underwriting-packet.png", "underwriting packet PNG"),
+        (evidence / "desktop-helios-ic-snapshot.png", "one-page snapshot PNG"),
+        (evidence / "desktop-helios-underwriting-packet.png", "underwriting packet PNG"),
+        *tuple(
+            (root / "output" / "pdf" / f"{slug}-{artifact}-letter.pdf", "US Letter PDF")
+            for slug in ("atlasgrid", "helios")
+            for artifact in ("ic-snapshot", "underwriting-packet", "technical-appendix")
+        ),
     ):
         if not path.is_file():
             raise SystemExit(f"missing_print_evidence:{path.name}")
@@ -79,7 +84,7 @@ def main() -> int:
         "schema_version": "underwriting.visual-evidence/v1",
         "files": files,
         "print_files": print_files,
-        "scope": "Investor-first landing plus six primary views for two synthetic cases at desktop and mobile; contextual source drawers retained at desktop; automated critical/serious Axe scan and root-overflow assertion per tested route; AtlasGrid and Helios IC memos retained as full-page PNG and normalized US Letter PDF proofs. Observed practitioner usability remains NOT_RUN.",
+        "scope": "Investor-first landing plus four primary views and the supporting Evidence layer for two synthetic cases at desktop and mobile; contextual source drawers retained at desktop; automated critical/serious Axe scan and root-overflow assertion per tested route; each case retains a one-page snapshot, detailed underwriting packet, and technical appendix as normalized US Letter PDF proof. Observed practitioner usability remains NOT_RUN.",
     }
     manifest["manifest_sha256"] = hashlib.sha256(canonical_json(manifest)).hexdigest()
     output = root / "verification" / "visual-evidence.json"

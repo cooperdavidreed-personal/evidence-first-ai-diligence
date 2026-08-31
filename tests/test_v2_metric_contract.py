@@ -279,10 +279,10 @@ def test_sensitivity_and_value_creation_outputs_are_formula_closed(
         (
             helios_v2,
             (
-                "helios-vc-exit_value-2-gross-xirr",
-                "helios-vc-exit_value-2-gross-moic",
-                "helios-vc-exit_value-2-ownership",
-                "helios-vc-exit_value-2-minimum-cash",
+                "helios-vc-annual_revenue_growth-2-gross-xirr",
+                "helios-vc-annual_revenue_growth-2-gross-moic",
+                "helios-vc-annual_revenue_growth-2-ownership",
+                "helios-vc-annual_revenue_growth-2-minimum-cash",
                 "helios-value-optimizer-unit-economics-target_proceeds_delta_cents",
                 "helios-value-combined_target_proceeds_delta_cents",
                 "helios-value-interaction_residual_cents",
@@ -348,7 +348,7 @@ def test_declared_investment_metric_cannot_drop_its_formula(helios_v2: dict) -> 
             "atlasgrid-value-renewal-exit_equity_delta_cents-result",
         ),
         ("helios_v2", "helios-DOWNSIDE-preference-series_c-invested"),
-        ("helios_v2", "helios-vc-exit_value-2-ending-cash-01"),
+        ("helios_v2", "helios-vc-annual_revenue_growth-2-ending-cash-01"),
         ("helios_v2", "helios-distribution-path-0000-xirr"),
         (
             "helios_v2",

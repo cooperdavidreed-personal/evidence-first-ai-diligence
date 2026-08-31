@@ -17,7 +17,7 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
     case = json.loads(analysis_path.read_text(encoding="utf-8"))
     artifacts = build_ic_packet_from_case(case, tmp_path / "packet")
     repeated = build_ic_packet_from_case(case, tmp_path / "packet-repeat")
-    for artifact_name in ("memo", "html", "appendix", "receipt"):
+    for artifact_name in artifacts:
         assert artifacts[artifact_name].read_bytes() == repeated[artifact_name].read_bytes()
     packet = json.loads(artifacts["appendix"].read_text(encoding="utf-8"))
     packet_body = dict(packet)
@@ -36,12 +36,20 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
     receipt_body = dict(receipt)
     receipt_digest = receipt_body.pop("receipt_sha256")
     assert receipt_digest == digest(receipt_body)
-    for name, path in (("ic-memo.md", artifacts["memo"]), ("ic-memo.html", artifacts["html"]), ("model-appendix.json", artifacts["appendix"])):
+    for name, path in (
+        ("ic-snapshot.md", artifacts["snapshot_markdown"]),
+        ("ic-snapshot.html", artifacts["snapshot_html"]),
+        ("underwriting-packet.md", artifacts["packet_markdown"]),
+        ("underwriting-packet.html", artifacts["packet_html"]),
+        ("technical-appendix.md", artifacts["technical_markdown"]),
+        ("technical-appendix.html", artifacts["technical_html"]),
+        ("model-appendix.json", artifacts["appendix"]),
+    ):
         assert receipt["artifacts"][name] == sha256_file(path)
 
-    markdown = artifacts["memo"].read_text(encoding="utf-8")
+    markdown = artifacts["packet_markdown"].read_text(encoding="utf-8")
     assert "`REPRICE`" in markdown
-    assert "23.26%" in markdown
+    assert "23.3%" in markdown
     assert "$215.4M" in markdown
     assert "Synthetic causal estimates recover planted assignment mechanisms only" in markdown
     for section in [
@@ -52,20 +60,29 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
         "### Team judgment - synthetic room only",
         "## Value creation",
         "### Ownership cadence and board control",
-        "## Receipt appendix",
     ]:
         assert section in markdown
+    assert "## Receipt appendix" not in markdown
+    assert "## Evidence-to-model credit" not in markdown
     assert "Probability below 1.0x MOIC" in markdown
     assert "Probability of a modeled covenant breach" in markdown
     assert "≈$33-$99M illustrative 50-150% range" in markdown
     assert "Of the standalone value, **$66.2M**" not in markdown
     assert markdown.count("Monte Carlo SE") >= 3
-    assert "OPEN **AG-D04 · CRITICAL · PRE_DEBT_COMMITMENT**" in markdown
+    assert "Confirm lender EBITDA and covenant definitions" in markdown
+    assert "PRE_DEBT_COMMITMENT" not in markdown
     assert "{'request_id'" not in markdown
     assert not set("—–‑−").intersection(markdown)
     for phase in ("Pre-close", "Day 1", "Day 30", "Day 100", "Year 1"):
         assert f"| {phase} |" in markdown
-    html = artifacts["html"].read_text(encoding="utf-8")
+    snapshot = artifacts["snapshot_markdown"].read_text(encoding="utf-8")
+    assert "# AtlasGrid Systems - one-page IC snapshot" in snapshot
+    assert "Requires investment committee approval" in snapshot
+    assert "SHA-256" not in snapshot
+    technical = artifacts["technical_markdown"].read_text(encoding="utf-8")
+    assert "## Formula register" in technical
+    assert "## Evidence-to-model mappings" in technical
+    html = artifacts["packet_html"].read_text(encoding="utf-8")
     assert "@page{size:letter" in html
     assert packet_digest in html
 
@@ -115,10 +132,11 @@ def test_helios_ic_packet_reconciles_engine_terms_and_receipts(tmp_path: Path) -
     case = json.loads(analysis_path.read_text(encoding="utf-8"))
     artifacts = build_ic_packet_from_case(case, tmp_path / "packet")
     repeated = build_ic_packet_from_case(case, tmp_path / "packet-repeat")
-    for artifact_name in ("memo", "html", "appendix", "receipt"):
+    for artifact_name in artifacts:
         assert artifacts[artifact_name].read_bytes() == repeated[artifact_name].read_bytes()
-    markdown = artifacts["memo"].read_text(encoding="utf-8")
-    assert "OPEN **HX-D04 · CRITICAL · PRE_SIGNING**" in markdown
+    markdown = artifacts["packet_markdown"].read_text(encoding="utf-8")
+    assert "Reconcile executed financing terms" in markdown
+    assert "PRE_SIGNING" not in markdown
     assert "{'request_id'" not in markdown
     assert not set("—–‑−").intersection(markdown)
     packet = json.loads(artifacts["appendix"].read_text(encoding="utf-8"))
@@ -129,30 +147,41 @@ def test_helios_ic_packet_reconciles_engine_terms_and_receipts(tmp_path: Path) -
     for key in ("base", "milestone", "downside", "financing_shortfall"):
         assert packet["scenarios"][key]["receipt_sha256"] == case["vcEngine"][key]["receipt_sha256"]
         assert packet["scenarios"][key]["gross_xirr"] == case["vcEngine"][key]["gross_xirr"]
-    markdown = artifacts["memo"].read_text(encoding="utf-8")
+    markdown = artifacts["packet_markdown"].read_text(encoding="utf-8")
     for section in (
         "## Recommendation and executable terms",
         "## Product, market, customers, competition, and business model",
         "## Cap table and financing-event bridge",
         "## Milestone financing and monthly runway",
         "## Preference waterfall and investor return bridge",
-        "## Econometric credit and zero-credit map",
         "## Value creation and board cadence",
-        "## Receipt appendix",
     ):
         assert section in markdown
+    assert "## Econometric credit and zero-credit map" not in markdown
+    assert "## Receipt appendix" not in markdown
+    assert "**Current decision:** HOLD - LOSS HURDLE NOT MET." in markdown
     assert "Selected milestone returns" in markdown
-    assert "**Binding loss hurdle:** 20.00%" in markdown
-    assert "status `MISSES`" in markdown
+    assert "**Binding loss hurdle:** 20.0%" in markdown
+    assert "status Misses" in markdown
     assert "fully granted common at exit" in markdown
     assert "Unissued pool shares receive zero proceeds" not in markdown
     assert "Monte Carlo SE" in markdown
     assert "gross XIRR" in markdown
-    assert "no delegated investment authority" in markdown
+    snapshot = artifacts["snapshot_markdown"].read_text(encoding="utf-8")
+    assert "## HOLD" in snapshot
+    assert "20%, above the binding 10% maximum" in snapshot
+    assert "SHA-256" not in snapshot
+    technical = artifacts["technical_markdown"].read_text(encoding="utf-8")
+    assert "HX-09" in technical
+    assert "## Formula register" in technical
     receipt = json.loads(artifacts["receipt"].read_text(encoding="utf-8"))
     for name, path in (
-        ("ic-memo.md", artifacts["memo"]),
-        ("ic-memo.html", artifacts["html"]),
+        ("ic-snapshot.md", artifacts["snapshot_markdown"]),
+        ("ic-snapshot.html", artifacts["snapshot_html"]),
+        ("underwriting-packet.md", artifacts["packet_markdown"]),
+        ("underwriting-packet.html", artifacts["packet_html"]),
+        ("technical-appendix.md", artifacts["technical_markdown"]),
+        ("technical-appendix.html", artifacts["technical_html"]),
         ("model-appendix.json", artifacts["appendix"]),
     ):
         assert receipt["artifacts"][name] == sha256_file(path)

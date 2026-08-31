@@ -15,7 +15,7 @@ def _candidate_repo(root: Path) -> Path:
     for case in ("atlasgrid", "helios"):
         case_root = repo / "portfolio" / case
         case_root.mkdir(parents=True)
-        for name in ("ic-memo.html", "ic-memo.md", "model-appendix.json", "packet-receipt.json"):
+        for name in ("ic-snapshot.html", "ic-snapshot.md", "underwriting-packet.html", "underwriting-packet.md", "technical-appendix.html", "technical-appendix.md", "model-appendix.json", "packet-receipt.json"):
             (case_root / name).write_text(f"{case}:{name}")
         room = case_root / "data-room"
         (room / "data").mkdir(parents=True)
@@ -111,7 +111,7 @@ def test_pages_stage_v2_workbench_and_bound_candidate_artifacts(tmp_path: Path) 
     assert (destination / "index.html").read_text() == "<h1>V2 portfolio workbench</h1>"
     assert (destination / "assets/app.js").is_file()
     for case in ("atlasgrid", "helios"):
-        for name in ("ic-memo.html", "ic-memo.md", "model-appendix.json", "packet-receipt.json"):
+        for name in ("ic-snapshot.html", "ic-snapshot.md", "underwriting-packet.html", "underwriting-packet.md", "technical-appendix.html", "technical-appendix.md", "model-appendix.json", "packet-receipt.json"):
             assert (destination / "portfolio" / case / name).is_file()
         assert (destination / "source-pack" / case / "manifest.json").is_file()
         assert (destination / "source-pack" / case / "data" / "source.csv").is_file()

@@ -245,6 +245,28 @@ export function assertWorkbenchCase(candidate: unknown): asserts candidate is Ca
     if (condition.state === "CLEARS_QUANTITATIVELY" && (linked.length === 0 || linked.some((item) => item?.status !== "CLEARS"))) throw new Error("decision_condition_false_clear");
     if (condition.state === "MISSES_HURDLE" && (linked.length === 0 || linked.every((item) => item?.status === "CLEARS"))) throw new Error("decision_condition_false_miss");
   }
+  if (conditions.some((item) => item.designation === "BINDING" && item.state === "MISSES_HURDLE") && candidate.decision.decision !== "HOLD") throw new Error("binding_hurdle_miss_requires_hold");
+  if (!record(candidate.decision.issue_summary) || !array(candidate.decision.issue_summary.issues) || !record(candidate.decision.issue_summary.buckets) || !record(candidate.decision.issue_summary.counts)) throw new Error("decision_issue_summary_invalid");
+  const issues = candidate.decision.issue_summary.issues as Array<Record<string, unknown>>;
+  const issueIds = issues.map((item) => String(item.issue_id));
+  if (new Set(issueIds).size !== issueIds.length) throw new Error("decision_issue_duplicate");
+  const expectedBuckets: Record<string, string[]> = {
+    failed_quantitative_hurdles: issues.filter((item) => item.kind === "QUANTITATIVE_HURDLE" && item.state === "FAILED").map((item) => String(item.issue_id)),
+    advancement_blockers: issues.filter((item) => item.blocks_advancement === true).map((item) => String(item.issue_id)),
+    pre_ic_requirements: issues.filter((item) => item.stage === "PRE_IC").map((item) => String(item.issue_id)),
+    pre_signing_requirements: issues.filter((item) => item.stage === "PRE_SIGNING").map((item) => String(item.issue_id)),
+    pre_debt_commitment_requirements: issues.filter((item) => item.stage === "PRE_DEBT_COMMITMENT").map((item) => String(item.issue_id)),
+    nonblocking_diligence: issues.filter((item) => item.blocks_advancement !== true).map((item) => String(item.issue_id)),
+  };
+  for (const [key, ids] of Object.entries(expectedBuckets)) {
+    const actual = candidate.decision.issue_summary.buckets[key];
+    if (!array(actual) || actual.join("|") !== ids.join("|") || candidate.decision.issue_summary.counts[key] !== ids.length) throw new Error("decision_issue_count_mismatch");
+  }
+  for (const issue of issues) {
+    if (!array(issue.evidence_metric_ids) || issue.evidence_metric_ids.length === 0 || issue.evidence_metric_ids.some((id) => !metrics.has(String(id)))) throw new Error("decision_issue_metric_orphan");
+    if (!array(issue.analysis_ids) || issue.analysis_ids.length === 0 || issue.analysis_ids.some((id) => !(candidate.analyses as Array<Record<string, unknown>>).some((analysis) => analysis.analysis_id === id))) throw new Error("decision_issue_analysis_orphan");
+    if (!["PRESENT", "PARTIAL", "ABSENT"].includes(String(issue.evidence_state)) || !["sensitivity", "debt-covenant", "cash", "financing-events"].includes(String(issue.consequence_target))) throw new Error("decision_issue_navigation_invalid");
+  }
   if (!array(candidate.evidenceMappings) || !array(candidate.analyses)) throw new Error("evidence_mapping_missing");
   const mappings = candidate.evidenceMappings as Array<Record<string, unknown>>;
   const analysisIds = new Set((candidate.analyses as Array<Record<string, unknown>>).map((item) => String(item.analysis_id)));
@@ -256,10 +278,23 @@ export function assertWorkbenchCase(candidate: unknown): asserts candidate is Ca
       const scenario = candidate.vcEngine[key];
       if (!record(scenario) || scenario.pool_exit_treatment !== "FULLY_GRANTED_COMMON") throw new Error("vc_primary_pool_exit_treatment_invalid");
     }
-    const sensitivityCells = candidate.vcEngine.sensitivities.cells as Array<Record<string, unknown>>;
-    if (sensitivityCells.some((item) => item.axis === "exit_value" && item.pool_exit_treatment !== "FULLY_GRANTED_COMMON")) throw new Error("vc_exit_value_pool_exit_treatment_invalid");
-    const poolTreatments = new Set(sensitivityCells.filter((item) => item.axis === "pool_exit_treatment").map((item) => item.pool_exit_treatment));
-    if (poolTreatments.size !== 2 || !poolTreatments.has("FULLY_GRANTED_COMMON") || !poolTreatments.has("UNISSUED_CANCELLED")) throw new Error("vc_pool_exit_treatment_sensitivity_invalid");
+    const sensitivity = candidate.vcEngine.sensitivities;
+    const sensitivityCells = sensitivity.cells as Array<Record<string, unknown>>;
+    const expectedAxes = ["annual_revenue_growth", "exit_revenue_multiple", "ordinary_cohort_nrr", "later_round_price", "milestone_state"];
+    if (!record(sensitivity.baseline_cell_ids)) throw new Error("vc_sensitivity_baseline_map_missing");
+    const baselineCellIds = sensitivity.baseline_cell_ids as Record<string, unknown>;
+    if (sensitivity.schema_version !== "underwriting.vc-sensitivity-book/v3" || !array(sensitivity.axis_order) || sensitivity.axis_order.join("|") !== expectedAxes.join("|")) throw new Error("vc_sensitivity_v3_axes_invalid");
+    if (sensitivityCells.some((item) => ["annual_revenue_growth", "exit_revenue_multiple", "ordinary_cohort_nrr"].includes(String(item.axis)) && item.pool_exit_treatment !== "FULLY_GRANTED_COMMON")) throw new Error("vc_operating_sensitivity_pool_exit_treatment_invalid");
+    for (const axis of expectedAxes) {
+      const cells = sensitivityCells.filter((item) => item.axis === axis);
+      const baselines = cells.filter((item) => item.is_baseline === true);
+      if (cells.length < 2 || baselines.length !== 1 || baselineCellIds[axis] !== baselines[0].cell_id) throw new Error("vc_sensitivity_baseline_invalid");
+    }
+    if (sensitivity.default_cell_id !== baselineCellIds[String(sensitivity.default_axis)]) throw new Error("vc_sensitivity_default_invalid");
+    if (sensitivityCells.some((item) => item.binding_loss_hurdle_status !== "MISSES" || item.analytical_posture !== "HOLD")) throw new Error("vc_sensitivity_posture_invalid");
+    for (const item of sensitivityCells) {
+      if (!record(item.operating_exit_bridge) || !array(item.ending_cash_path_cents) || item.ending_cash_path_cents.length === 0 || item.operating_exit_bridge.cash_at_exit_cents !== item.ending_cash_path_cents[item.ending_cash_path_cents.length - 1]) throw new Error("vc_sensitivity_exit_cash_mismatch");
+    }
   }
   const locators = new Set(sourceLocators.map((item) => item.locator_id));
   if (sourceLocators.some((item) => item.schema_version !== "underwriting.source-locator/v3" || !item.repository_path.startsWith(`portfolio/${candidate.caseId}/data-room/data/`) || !item.published_path.startsWith(`source-pack/${candidate.caseId}/data/`) || item.published_path.startsWith("/") || !/^[0-9a-f]{64}$/.test(item.selection_sha256) || !/^[0-9a-f]{64}$/.test(item.excerpt_sha256))) throw new Error("source_locator_v3_invalid");
