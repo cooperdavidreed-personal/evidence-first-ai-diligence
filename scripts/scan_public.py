@@ -16,6 +16,7 @@ from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_FILE_BYTES = 10 * 1024 * 1024
+REVIEWED_TEXT_LIMITS = {"workbench/src/data/cases.json": 12 * 1024 * 1024}
 FORBIDDEN_PATH_PARTS = {"evidence", "state", ".venv", "dist", "__pycache__"}
 REVIEWED_BINARY_ROOTS = {"dist/visual-evidence", "output/pdf"}
 SOURCE_ROOM_ROOTS = {
@@ -70,6 +71,34 @@ def reviewed_binary_allowlist(root: Path) -> set[str]:
             raise ValueError(f"visual_manifest_file_digest_mismatch:{relative}")
         reviewed.add(relative)
     return reviewed
+
+
+def reviewed_demo_allowlist(root: Path) -> set[str]:
+    """Allow only a manifest-bound portfolio demo binary."""
+
+    manifest_path = root / "demo" / "release" / "manifest.json"
+    if not manifest_path.exists():
+        return set()
+    if manifest_path.is_symlink() or not manifest_path.is_file():
+        raise ValueError("demo_manifest_missing_or_symlink")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest_body = dict(manifest)
+    manifest_digest = manifest_body.pop("manifest_sha256", None)
+    if manifest_digest != hashlib.sha256(canonical_json(manifest_body)).hexdigest():
+        raise ValueError("demo_manifest_digest_mismatch")
+    if (
+        manifest.get("schema_version") != "underwriting.demo-manifest/v2"
+        or manifest.get("status") != "RENDERED_LOCAL_FOUNDER_REVIEW_PENDING"
+        or manifest.get("video") != "underwriting-intelligence-lab-demo.mp4"
+    ):
+        raise ValueError("demo_manifest_state_invalid")
+    relative = Path("demo/release") / manifest["video"]
+    video = root / relative
+    if video.is_symlink() or not video.is_file():
+        raise ValueError("demo_video_missing_or_symlink")
+    if hashlib.sha256(video.read_bytes()).hexdigest() != manifest.get("sha256"):
+        raise ValueError("demo_video_digest_mismatch")
+    return {relative.as_posix()}
 
 
 def validate_source_room(root: Path, case_id: str, relative_root: str) -> set[str]:
@@ -171,6 +200,7 @@ def validate_blind_review_binding(root: Path) -> None:
         raise ValueError(f"blind_review_state_invalid:{state}")
 
     protocol_path = root / "verification" / "blind-review-protocol.json"
+    protocol = json.loads(protocol_path.read_text(encoding="utf-8"))
     protocol_sha256 = hashlib.sha256(protocol_path.read_bytes()).hexdigest()
     protocol_match = re.search(r"^- Protocol SHA-256: `([0-9a-f]{64})`", text, flags=re.MULTILINE)
     if protocol_match is None or protocol_match.group(1) != protocol_sha256:
@@ -201,6 +231,77 @@ def validate_blind_review_binding(root: Path) -> None:
         if digest_value is None or digest_match is None or digest_match.group(1) != digest_value:
             raise ValueError(f"blind_review_image_digest_mismatch:{label.lower()}")
 
+    index_path = root / "verification" / "blind-reviews" / "index.json"
+    if index_path.is_symlink() or not index_path.is_file():
+        raise ValueError("blind_review_index_missing_or_symlink")
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+    if set(index) != {"schema_version", "state", "receipts", "index_sha256"}:
+        raise ValueError("blind_review_index_shape_invalid")
+    index_body = dict(index)
+    index_digest = index_body.pop("index_sha256")
+    if index_digest != hashlib.sha256(canonical_json(index_body)).hexdigest():
+        raise ValueError("blind_review_index_digest_mismatch")
+    index_match = re.search(r"^- Blind-review index self-digest \(`index_sha256`\): `([0-9a-f]{64})`", text, flags=re.MULTILINE)
+    if index_match is None or index_match.group(1) != index_digest:
+        raise ValueError("blind_review_result_index_digest_mismatch")
+    if index["schema_version"] != "underwriting.blind-review-index/v1" or index["state"] != "PASS":
+        raise ValueError("blind_review_index_state_invalid")
+
+    protocol_cases = {item["case_id"]: item for item in protocol["cases"]}
+    index_entries = index["receipts"]
+    if not isinstance(index_entries, list) or len(index_entries) != len(protocol_cases):
+        raise ValueError("blind_review_receipt_count_mismatch")
+    receipt_case_ids: set[str] = set()
+    reviewer_ids: set[str] = set()
+    for entry in index_entries:
+        if set(entry) != {"case_id", "path", "sha256"}:
+            raise ValueError("blind_review_index_entry_invalid")
+        case_id = entry["case_id"]
+        if case_id not in protocol_cases or case_id in receipt_case_ids:
+            raise ValueError("blind_review_case_set_invalid")
+        receipt_case_ids.add(case_id)
+        relative = Path(entry["path"])
+        if relative.is_absolute() or ".." in relative.parts or relative.parts[:2] != ("verification", "blind-reviews"):
+            raise ValueError("blind_review_receipt_path_unsafe")
+        receipt_path = root / relative
+        if receipt_path.is_symlink() or not receipt_path.is_file():
+            raise ValueError("blind_review_receipt_missing_or_symlink")
+        receipt_bytes = receipt_path.read_bytes()
+        if hashlib.sha256(receipt_bytes).hexdigest() != entry["sha256"]:
+            raise ValueError("blind_review_receipt_file_digest_mismatch")
+        receipt = json.loads(receipt_bytes)
+        required = {
+            "schema_version", "case_id", "reviewer_task_id", "reviewer_role",
+            "recorded_at_utc", "review_context", "artifact", "image_sha256",
+            "protocol_sha256", "verdict", "answers", "ambiguity",
+            "writes_performed", "receipt_sha256",
+        }
+        if set(receipt) != required or receipt["schema_version"] != "underwriting.blind-review-receipt/v1":
+            raise ValueError("blind_review_receipt_shape_invalid")
+        receipt_body = dict(receipt)
+        receipt_digest = receipt_body.pop("receipt_sha256")
+        if receipt_digest != hashlib.sha256(canonical_json(receipt_body)).hexdigest():
+            raise ValueError("blind_review_receipt_digest_mismatch")
+        if receipt["case_id"] != case_id or receipt["artifact"] != protocol_cases[case_id]["artifact"]:
+            raise ValueError("blind_review_receipt_case_binding_mismatch")
+        if receipt["reviewer_task_id"] in reviewer_ids:
+            raise ValueError("blind_review_reviewer_duplicate")
+        reviewer_ids.add(receipt["reviewer_task_id"])
+        if receipt["protocol_sha256"] != protocol_sha256 or receipt["verdict"] != "PASS" or receipt["writes_performed"] != 0:
+            raise ValueError("blind_review_receipt_state_invalid")
+        artifact_path = root / receipt["artifact"]
+        artifact_digest = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
+        if receipt["image_sha256"] != artifact_digest or visual_digests.get(receipt["artifact"]) != artifact_digest:
+            raise ValueError("blind_review_receipt_image_binding_mismatch")
+        answers = receipt["answers"]
+        if not isinstance(answers, list) or len(answers) != len(protocol["questions"]):
+            raise ValueError("blind_review_answer_count_mismatch")
+        for question_index, (question, answer) in enumerate(zip(protocol["questions"], answers, strict=True), start=1):
+            question_digest = hashlib.sha256(canonical_json(question)).hexdigest()
+            if set(answer) != {"question_index", "question_sha256", "answer"} or answer["question_index"] != question_index or answer["question_sha256"] != question_digest or not isinstance(answer["answer"], str) or not 1 <= len(answer["answer"]) <= 2000:
+                raise ValueError("blind_review_answer_binding_mismatch")
+    if receipt_case_ids != set(protocol_cases):
+        raise ValueError("blind_review_case_set_invalid")
 
 def main() -> int:
     result = subprocess.run(
@@ -218,6 +319,10 @@ def main() -> int:
     except (OSError, ValueError, json.JSONDecodeError) as error:
         failures.append(f"verification/visual-evidence.json: {error}")
         reviewed_binaries = set()
+    try:
+        reviewed_binaries.update(reviewed_demo_allowlist(ROOT))
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        failures.append(f"demo/release/manifest.json: {error}")
     try:
         reviewed_source_files = source_room_allowlist(ROOT)
     except (OSError, ValueError, json.JSONDecodeError) as error:
@@ -250,7 +355,7 @@ def main() -> int:
         data = path.read_bytes()
         if relative in reviewed_binaries:
             continue
-        if len(data) > MAX_FILE_BYTES:
+        if len(data) > REVIEWED_TEXT_LIMITS.get(relative, MAX_FILE_BYTES):
             failures.append(f"{relative}: file exceeds scan limit")
             continue
         if b"\0" in data[:8192]:

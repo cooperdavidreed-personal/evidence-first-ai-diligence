@@ -63,7 +63,7 @@ certification unless separately and directly evidenced.
   `POSITION DISCLOSURE PENDING` and do not publish the case.
 - Semantic model assessment and human adjudication status shown separately.
 
-Current truthful status: the rebuild foundation and evaluation protocol are
-being prepared in an isolated branch. No public release, model-performance
-result, hosted product, Cooper investment conclusion or independent
-reproduction is claimed.
+Current truthful status: a local synthetic portfolio candidate is under
+exact-head verification. Hosted or public release, model-performance
+benchmarking, CoreWeave adjudication, Cooper investment conclusion, and outside
+reproduction remain `NOT RUN`.

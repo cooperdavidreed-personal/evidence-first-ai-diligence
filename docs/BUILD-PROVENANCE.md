@@ -11,16 +11,17 @@ No API-key or paid fallback route is authorized. No provider output is case evid
 | Order | Provider role | Result | Treatment |
 |---|---|---:|---|
 | V2 model-integrity architecture review | Claude | `PRODUCED` | Advisory specifications were retained before implementation and accepted only through deterministic repair gates |
-| V2 frozen-benchmark and final integrated reviews | Claude | `HELD_PROVIDER` | A later native signed-in CLI order returned a 429 usage hold; no paid or API-key fallback was used |
+| Historical V2 frozen-benchmark and final integrated reviews | Claude | `HELD_PROVIDER` | A native signed-in CLI order returned a 429 usage hold; no paid or API-key fallback was used |
 | V2 benchmark and countercase orders | Grok | `PRODUCED` | Advisory findings entered the frozen contracts only through deterministic implementation gates |
 | AtlasGrid PE implementation and verdict reviews | Grok | `ACCEPT_PE_GATE` | Final advisory score 92 with no critical or high finding; exact output digest is retained in local mission evidence |
 | Helios finance, data, and rendered-product audits | Codex subagents | `QUALITY_SHORT` then repaired | Milestone derivation, independent waterfall oracle, distribution-state risk, econometric labeling, headline formulas, and value mapping became executable repair gates |
-| V2 implementation and deterministic acceptance | Codex | `DETERMINISTIC_LOCAL_PASS` | Codex remained the only filesystem writer; 161 Python tests, 18 current React tests, the supported Playwright matrix, package/security/toolkit/public-scan gates, and retained visual/PDF/accessibility evidence pass locally |
-| Independent final V2 acceptance | Claude | `HELD_PROVIDER` | Required before the mission can claim provider-independent founder-review acceptance |
+| V2 implementation and deterministic acceptance | Codex | `DETERMINISTIC_LOCAL_PASS` | Codex remained the only filesystem writer; 168 Python tests, 30 current React tests, 12 active Playwright flows with 2 intentional memo-print skips, package/security/toolkit/public-scan gates, and retained visual/PDF/accessibility evidence pass locally |
+| Historical independent final V2 acceptance | Claude | `HELD_PROVIDER` | This does not determine the current investor-experience candidate |
 | Investor-experience architecture and comprehension review | Claude | `ACCEPT_ARCHITECTURE` | Read-only review required posture-versus-authority, explicit terms and hurdle consequences, three distinct Helios runway bases, progressive lineage, and mobile information preservation before implementation |
 | Investor-product countercase | Grok | `FAILED_RETRYABLE — PARTIAL ADVISORY ONLY` | Partial findings were retained as unverified advice; no Grok output was admitted as case evidence or acceptance |
 | Productization implementation and blind first-viewport checks | Codex plus fresh read-only subagents | `LOCAL PASS` | AtlasGrid was completed and blind-read before Helios; both first views passed the frozen comprehension questions without filesystem writes by reviewers |
-| Final visual-baseline and exact-image comprehension review | Three fresh read-only Codex subagents | `ACCEPT_BASELINE; BLIND PASS 2/2` | All 26 stable retained PNGs were inspected; both exact desktop Snapshot digests independently passed all five frozen comprehension questions with zero reviewer writes |
+| Exact-image comprehension review | Two fresh read-only Codex subagents | `BLIND PASS 2/2` | Both exact desktop Snapshot digests independently passed all five frozen comprehension questions with zero reviewer writes; separate full-baseline visual review remains local mission evidence |
+| Investor-experience exact-final-commit acceptance | Claude | `NOT RUN` | Commissioned only after the immutable source-bound demo and clean candidate commit exist |
 
 Durable provider stdout, state events, and episode receipts live in the excluded local mission directory, not the proposed public package.
 

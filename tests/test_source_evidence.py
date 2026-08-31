@@ -42,7 +42,8 @@ def test_every_analysis_input_has_resolvable_granular_source_evidence(
         assert locator["repository_path"].startswith(
             f"portfolio/{case_id}/data-room/data/"
         )
-        assert locator["published_path"].startswith(f"/source-pack/{case_id}/data/")
+        assert locator["published_path"].startswith(f"source-pack/{case_id}/data/")
+        assert not locator["published_path"].startswith("/")
         if locator["locator_kind"] == "CSV_CELLS":
             assert locator["selector"]["selected_row_count"] > 0
             assert locator["selector"]["selected_cell_count"] > 0

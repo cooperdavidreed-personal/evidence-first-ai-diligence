@@ -8,3 +8,4 @@ python -m ruff check .
 python -m bandit -q -r src scripts -x tests -ll
 uv export --format requirements-txt --all-extras --no-hashes --no-emit-project \
   | python -m pip_audit -r /dev/stdin
+pnpm --dir workbench audit --prod --audit-level high

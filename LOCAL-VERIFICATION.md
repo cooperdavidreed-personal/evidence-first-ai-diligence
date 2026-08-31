@@ -1,8 +1,8 @@
 # Local verification receipt
 
-Status: `DETERMINISTIC LOCAL PASS — CLAUDE FINAL REVIEW HELD`
+Status: `DETERMINISTIC LOCAL CANDIDATE — EXACT-SHA REVIEW PENDING`
 
-Exact base: `7b1d0238fd7f71901fd807c01b619395c4efee73`
+Exact base: `28893ad630ce7dea50f890448263d8096d75132f`
 
 Candidate head: the commit containing this receipt. Its exact SHA is recorded
 in the external mission acceptance receipt after the clean exact-head run so
@@ -21,16 +21,21 @@ on Ubuntu/macOS remains `NOT_RUN` until a separately authorized push.
   regression checks, deterministic tagged five-page PDFs for both cases,
   typed diligence and value-creation contracts, chart contracts, keyboard DAG
   traversal, and a frozen 16-mutant falsification ledger.
-- Python: `161/161` locally on the primary Python 3.12 environment. The same
-  `161/161` suite passes locally under Python 3.11, 3.12, and 3.13. This is a
+- Python: `168/168` locally on the primary Python 3.12 environment. The same
+  `168/168` suite passes locally under Python 3.11, 3.12, and 3.13. This is a
   local interpreter matrix, not hosted CI.
-- React: `15/15`. Playwright: `6 passed / 2 intentionally skipped` because the
-  memo print contract runs once per case rather than redundantly per viewport.
+- React: `30/30`. Playwright: `12 active passed / 2 intentionally skipped`
+  because the memo print contract runs once per case rather than redundantly
+  per viewport.
 - Visual evidence: 26 retained PNGs reproduce within the frozen read-only
   thresholds; both PDF byte comparisons and all four retained accessibility
   evidence files match. Automated serious/critical Axe findings are zero on
   the tested routes and viewports; comprehensive WCAG compliance is not
   claimed.
+- The production build emits one validated dynamic payload per case. Direct
+  AtlasGrid and Helios loads remain below the frozen 1,100 KB initial gzip
+  budget, and a browser network test proves that the alternate case is not
+  requested before a case switch.
 - Both PDFs pass the retained contract: 5 pages each, tagged structure,
   deterministic metadata, no encryption, and no horizontal clipping in the
   browser print proof.
@@ -39,12 +44,14 @@ on Ubuntu/macOS remains `NOT_RUN` until a separately authorized push.
   (`24/24` AtlasGrid and `20/20` Helios), binds each complete source artifact
   plus exact granular review rows, cells, pointers, or text spans, and stages
   only manifest-bound files for public review.
-- Package, public scan, security, mutation, toolkit-integration, estimator
-  recovery, and clean-tree gates pass in the exact-head candidate verifier.
-  The wheel contains 24 underwriting schemas plus the four preserved kernel
-  schemas.
-- The prior static slide demo remains `QUALITY_SHORT` and is not the v2
-  portfolio surface.
+- Package, public scan, security, mutation, toolkit-integration, and estimator
+  recovery gates pass on the current repair bytes. Exact-head clean-tree
+  candidate verification is `NOT RUN` until the source and demo artifact commits
+  are immutable. The wheel contains 24 underwriting schemas plus the four
+  preserved kernel schemas.
+- The prior static slide demo was retired as `QUALITY_SHORT`; its source-bound
+  replacement is specified as a 150-second recording of the real workbench.
+  Final rendered-media verification and founder review remain pending.
 
 ## Provider and integrity state
 
@@ -53,11 +60,12 @@ on Ubuntu/macOS remains `NOT_RUN` until a separately authorized push.
 - Grok benchmark countercase and AtlasGrid PE review: `PRODUCED`; the retained
   PE review scored 92 with no critical or high finding. Later exact-head Codex
   audits found additional model-integrity defects and supersede that score.
-- Fresh exact-head finance and rendered-product audits are recorded externally
-  after the deterministic candidate run; they do not substitute for Claude.
-- Claude frozen-benchmark/final integrated acceptance: `HELD_PROVIDER` after a
-  native signed-in 429 usage hold. No API-key, paid, or identity-changing
-  fallback is authorized.
+- Fresh exact-head finance and rendered-product audits are commissioned only
+  after the source-bound demo and candidate commit are immutable; they do not
+  substitute for Claude.
+- Claude frozen-benchmark review was previously `HELD_PROVIDER` after a native
+  signed-in 429 usage hold. Exact-candidate final integrated acceptance is
+  `PENDING`; no API-key, paid, or identity-changing fallback is authorized.
 - Mission capsule history: `MISSION_INTEGRITY_SHORT`. Episode 00 recorded a
   different capsule digest from the current file. The current capsule is
   frozen; future provider events must be append-only receipts.

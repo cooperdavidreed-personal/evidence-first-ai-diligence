@@ -2,13 +2,18 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Underwriting PE sensitivity cell v2",
   "type": "object", "additionalProperties": false,
-  "required": ["schema_version", "cell_id", "axis", "assumption_value", "assumption_label", "engine_inputs_sha256", "result_receipt_sha256", "gross_moic", "gross_xirr", "ending_debt_cents", "minimum_covenant_headroom", "first_covenant_breach_month", "receipt_sha256"],
+  "required": ["schema_version", "cell_id", "axis", "assumption_value", "assumption_label", "engine_inputs_sha256", "result_receipt_sha256", "gross_moic", "gross_xirr", "ending_debt_cents", "ending_term_cents", "ending_revolver_cents", "minimum_covenant_headroom", "covenant_headrooms", "sponsor_cash_flows", "first_covenant_breach_month", "receipt_sha256"],
   "properties": {
     "schema_version": {"const": "underwriting.pe-sensitivity-cell/v2"},
     "cell_id": {"type": "string", "minLength": 1}, "axis": {"type": "string", "minLength": 1}, "assumption_value": {"type": "string", "minLength": 1}, "assumption_label": {"type": "string", "minLength": 1},
     "engine_inputs_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "result_receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "gross_moic": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$"}, "gross_xirr": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$"},
-    "ending_debt_cents": {"type": "integer", "minimum": 0}, "minimum_covenant_headroom": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$"},
+    "ending_debt_cents": {"type": "integer", "minimum": 0},
+    "ending_term_cents": {"type": "integer", "minimum": 0},
+    "ending_revolver_cents": {"type": "integer", "minimum": 0},
+    "minimum_covenant_headroom": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$"},
+    "covenant_headrooms": {"type": "array", "minItems": 60, "maxItems": 60, "items": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$"}},
+    "sponsor_cash_flows": {"type": "array", "minItems": 2, "items": {"type": "object", "additionalProperties": false, "required": ["date", "amount_cents"], "properties": {"date": {"type": "string", "format": "date"}, "amount_cents": {"type": "integer"}}}},
     "first_covenant_breach_month": {"type": ["integer", "null"], "minimum": 1},
     "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
   }

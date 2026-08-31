@@ -88,6 +88,12 @@ def _multiple(decimal_value: str) -> str:
     return f"{Decimal(decimal_value).quantize(Decimal('0.01'))}x"
 
 
+def _quantum_for(value: int | str | Decimal) -> str:
+    decimal_value = Decimal(str(value))
+    exponent = decimal_value.as_tuple().exponent
+    return "1" if exponent >= 0 else f"0.{('0' * (-exponent - 1))}1"
+
+
 def build_case_metric_contract(
     case: dict[str, Any], *, source_root: Path
 ) -> dict[str, Any]:
@@ -115,10 +121,30 @@ def build_case_metric_contract(
     formulas: list[dict[str, Any]] = []
     render_ids: list[str] = []
 
-    def add(**kwargs: Any) -> None:
+    def add(*, render: bool = True, **kwargs: Any) -> None:
         item = _metric(**kwargs)
         metrics.append(item)
-        render_ids.append(item["metric_id"])
+        if render:
+            render_ids.append(item["metric_id"])
+
+    def bind_existing_formula(
+        metric_id: str,
+        formula_id: str,
+        operation: str,
+        operand_ids: list[str],
+        output_unit: str,
+        display_value: str | None = None,
+    ) -> None:
+        metric = next((item for item in metrics if item["metric_id"] == metric_id), None)
+        if metric is None or metric["formula_id"] is not None:
+            raise UnderwritingError(f"formula_bind_target_invalid:{metric_id}")
+        metric["formula_id"] = formula_id
+        metric["operand_ids"] = operand_ids
+        if display_value is not None:
+            metric["display_value"] = display_value
+        metric.pop("metric_sha256")
+        metric["metric_sha256"] = digest(metric)
+        formulas.append(_formula(formula_id, operation, operand_ids, metric_id, output_unit))
 
     for summary in case["summaryMetrics"]:
         lineage_ids = summary["lineage"]
@@ -173,6 +199,10 @@ def build_case_metric_contract(
         "helios-hx-03-post_close_runway_floor": "Post-close runway",
         "helios-hx-09-probability_below_1x": "Modeled loss probability",
     }
+    decision_metric_displays = {
+        item["metric_id"]: item["observed"]
+        for item in case["decision"].get("metric_pairs", [])
+    }
     for receipt in case["analyses"]:
         analysis_id = receipt["analysis_id"]
         for output in receipt["outputs"]:
@@ -197,10 +227,11 @@ def build_case_metric_contract(
                 metric_id=metric_id,
                 label=decision_metric_labels.get(metric_id, output_name.replace("_", " ").title()),
                 value=value,
-                display_value=(
+                display_value=decision_metric_displays.get(
+                    metric_id,
                     value
                     if value in {"ABSTAIN", "NONE"}
-                    else f"{value} {output['unit']}"
+                    else f"{value} {output['unit']}",
                 ),
                 unit=output["unit"],
                 quantum=quantum,
@@ -218,7 +249,7 @@ def build_case_metric_contract(
 
     engine = case.get("peEngine")
     if engine is not None:
-        for scenario_key in ("ask", "selected", "downside"):
+        for scenario_key in ("ask", "selected", "downside", "maximum_bid_base", "maximum_bid_downside"):
             result = engine[scenario_key]
             scenario_id = result["scenario_id"]
             receipt = result["receipt_sha256"]
@@ -227,14 +258,11 @@ def build_case_metric_contract(
             transaction = result["engine_inputs"]["transaction"]
             debt = result["debt_schedule"]
             period = f"{result['engine_inputs']['close_date']} through month 60"
-            sponsor_cash_flow_ids = (
-                [
-                    f"{base}-sponsor-cash-flow-{index:02d}"
-                    for index, _ in enumerate(result["sponsor_cash_flows"], start=1)
-                ]
-                if scenario_key == "selected"
-                else []
-            )
+            sponsor_cash_flow_ids = [
+                f"{base}-sponsor-cash-flow-{index:02d}"
+                for index, _ in enumerate(result["sponsor_cash_flows"], start=1)
+            ]
+            scenario_formula_stem = f"pe-formula-{scenario_key}"
             common = {
                 "period": period,
                 "classification": "SCENARIO",
@@ -267,73 +295,96 @@ def build_case_metric_contract(
             add_cents(f"{base}-total-sources", "Total sources", sources["total_sources_cents"])
             add_cents(f"{base}-undrawn-revolver", "Undrawn revolver", sources["undrawn_revolver_commitment_cents"])
             add_cents(f"{base}-sources-reconcile", "Reconciliation", sources["total_sources_cents"] - sources["total_uses_cents"], "$0 residual")
-            add_cents(f"{base}-exit-debt", "Exit debt", debt["ending_debt_cents"])
-            add_cents(f"{base}-min-liquidity", "Minimum liquidity", debt["minimum_liquidity_cents"])
+            debt_formula_id = f"{scenario_formula_stem}-exit-debt"
+            liquidity_formula_id = f"{scenario_formula_stem}-min-liquidity"
+            headroom_formula_id = f"{scenario_formula_stem}-min-headroom"
+            exit_ev_formula_id = f"{scenario_formula_stem}-exit-enterprise-value"
+            exit_cash_formula_id = f"{scenario_formula_stem}-exit-cash"
+            exit_net_formula_id = f"{scenario_formula_stem}-exit-net"
+            exit_equity_formula_id = f"{scenario_formula_stem}-exit-equity"
+            month_cash_ids = [f"{base}-month-{month:02d}-ending_cash_cents" for month in range(1, 61)]
+            month_headroom_ids = [f"{base}-month-{month:02d}-covenant_headroom" for month in range(1, 61)]
+            add_cents(f"{base}-exit-debt", "Exit debt", debt["ending_debt_cents"], formula_id=debt_formula_id, operand_ids=[f"{base}-month-60-ending_term_cents", f"{base}-month-60-ending_revolver_cents"])
+            add_cents(f"{base}-min-liquidity", "Minimum liquidity", debt["minimum_liquidity_cents"], formula_id=liquidity_formula_id, operand_ids=month_cash_ids)
             min_headroom = min(Decimal(item["covenant_headroom"]) for item in debt["months"])
-            add(metric_id=f"{base}-min-headroom", label="Minimum headroom", value=min_headroom, display_value=_multiple(str(min_headroom)), unit="turns", quantum="0.01", **common)
-            add_cents(f"{base}-exit-ev", "Exit enterprise value", result["exit_enterprise_value_cents"])
+            add(metric_id=f"{base}-min-headroom", label="Minimum headroom", value=min_headroom, display_value=_multiple(str(min_headroom)), unit="turns", quantum=_quantum_for(min_headroom), formula_id=headroom_formula_id, operand_ids=month_headroom_ids, **common)
+            exit_ebitda = int(result["exit_ltm_ebitda_cents"])
+            add(render=False, metric_id=f"{base}-exit-ebitda", label="LTM exit EBITDA", value=exit_ebitda, display_value=_money(exit_ebitda), unit="cents", quantum="1", **common)
+            add(render=False, metric_id=f"{base}-exit-multiple", label="Exit multiple", value=transaction["exit_multiple"], display_value=_multiple(transaction["exit_multiple"]), unit="multiple", quantum=_quantum_for(transaction["exit_multiple"]), **common)
+            add_cents(f"{base}-exit-ev", "Exit enterprise value", result["exit_enterprise_value_cents"], formula_id=exit_ev_formula_id, operand_ids=[f"{base}-exit-ebitda", f"{base}-exit-multiple"])
             final_cash = debt["months"][-1]["ending_cash_cents"]
-            add_cents(f"{base}-exit-cash", "Exit cash", final_cash)
-            add_cents(f"{base}-exit-equity", "Exit equity", result["exit_equity_value_cents"])
+            add_cents(f"{base}-exit-cash", "Exit cash", final_cash, formula_id=exit_cash_formula_id, operand_ids=[f"{base}-month-60-ending_cash_cents", f"{base}-sources-reconcile"])
+            add_cents(f"{base}-exit-net", "Exit enterprise value less debt", result["exit_enterprise_value_cents"] - debt["ending_debt_cents"], formula_id=exit_net_formula_id, operand_ids=[f"{base}-exit-ev", f"{base}-exit-debt"])
+            add_cents(f"{base}-exit-equity", "Exit equity", result["exit_equity_value_cents"], formula_id=exit_equity_formula_id, operand_ids=[f"{base}-exit-net", f"{base}-exit-cash"])
             add(
                 metric_id=f"{base}-gross-irr", label="Gross IRR", value=result["gross_xirr"],
-                display_value=_percent(result["gross_xirr"]), unit="decimal_rate", quantum="0.00000000000001" if scenario_key == "selected" else "0.0001",
-                formula_id="pe-formula-selected-gross-irr" if scenario_key == "selected" else None,
+                display_value=_percent(result["gross_xirr"]), unit="decimal_rate", quantum=_quantum_for(result["gross_xirr"]),
+                formula_id=f"{scenario_formula_stem}-gross-irr",
                 operand_ids=sponsor_cash_flow_ids,
                 **common,
             )
             add(
                 metric_id=f"{base}-gross-moic", label="Gross MOIC", value=result["gross_moic"],
-                display_value=_multiple(result["gross_moic"]), unit="multiple", quantum="0.0001",
-                formula_id="pe-formula-selected-gross-moic" if scenario_key == "selected" else None,
-                operand_ids=[f"{base}-sponsor-proceeds", f"{base}-sponsor-invested"] if scenario_key == "selected" else [],
+                display_value=_multiple(result["gross_moic"]), unit="multiple", quantum=_quantum_for(result["gross_moic"]),
+                formula_id=f"{scenario_formula_stem}-gross-moic",
+                operand_ids=[f"{base}-sponsor-proceeds", f"{base}-sponsor-invested"],
                 **common,
             )
             add_cents(f"{base}-earnout", "Earnout paid", result["earnout_cents"])
 
+            for index, flow in enumerate(result["sponsor_cash_flows"], start=1):
+                metric_id = f"{base}-sponsor-cash-flow-{index:02d}"
+                add(
+                    render=False,
+                    metric_id=metric_id,
+                    label=f"Sponsor dated cash flow {index}",
+                    value=flow["amount_cents"],
+                    display_value=_money(flow["amount_cents"]),
+                    unit="cents",
+                    quantum="1",
+                    period=flow["date"],
+                    classification="SCENARIO",
+                    locator_ids=list(locators_by_analysis["AG-10"]),
+                    receipt_sha256=receipt,
+                    assumption_ids=[f"{scenario_id}.engine_inputs"],
+                    downstream_ids=["ag-return", "decision"],
+                )
+            sponsor_invested = -sum(
+                int(flow["amount_cents"])
+                for flow in result["sponsor_cash_flows"]
+                if int(flow["amount_cents"]) < 0
+            )
+            sponsor_proceeds = sum(
+                int(flow["amount_cents"])
+                for flow in result["sponsor_cash_flows"]
+                if int(flow["amount_cents"]) > 0
+            )
+            add_cents(
+                f"{base}-sponsor-invested", "Sponsor invested capital", sponsor_invested,
+                formula_id=f"{scenario_formula_stem}-sponsor-invested", operand_ids=sponsor_cash_flow_ids,
+            )
+            add_cents(
+                f"{base}-sponsor-proceeds", "Sponsor proceeds", sponsor_proceeds,
+                formula_id=f"{scenario_formula_stem}-sponsor-proceeds", operand_ids=sponsor_cash_flow_ids,
+            )
+            formulas.extend(
+                [
+                    _formula(f"{scenario_formula_stem}-sponsor-invested", "ABS_SUM_NEGATIVE", sponsor_cash_flow_ids, f"{base}-sponsor-invested", "cents"),
+                    _formula(f"{scenario_formula_stem}-sponsor-proceeds", "SUM_POSITIVE", sponsor_cash_flow_ids, f"{base}-sponsor-proceeds", "cents"),
+                    _formula(f"{scenario_formula_stem}-gross-moic", "DIVIDE", [f"{base}-sponsor-proceeds", f"{base}-sponsor-invested"], f"{base}-gross-moic", "multiple"),
+                    _formula(f"{scenario_formula_stem}-gross-irr", "DATED_XIRR", sponsor_cash_flow_ids, f"{base}-gross-irr", "decimal_rate"),
+                    _formula(debt_formula_id, "ADD", [f"{base}-month-60-ending_term_cents", f"{base}-month-60-ending_revolver_cents"], f"{base}-exit-debt", "cents"),
+                    _formula(liquidity_formula_id, "MIN", month_cash_ids, f"{base}-min-liquidity", "cents"),
+                    _formula(headroom_formula_id, "MIN", month_headroom_ids, f"{base}-min-headroom", "turns"),
+                    _formula(exit_ev_formula_id, "MULTIPLY", [f"{base}-exit-ebitda", f"{base}-exit-multiple"], f"{base}-exit-ev", "cents"),
+                    _formula(exit_cash_formula_id, "ADD", [f"{base}-month-60-ending_cash_cents", f"{base}-sources-reconcile"], f"{base}-exit-cash", "cents"),
+                    _formula(exit_net_formula_id, "SUBTRACT", [f"{base}-exit-ev", f"{base}-exit-debt"], f"{base}-exit-net", "cents"),
+                    _formula(exit_equity_formula_id, "ADD", [f"{base}-exit-net", f"{base}-exit-cash"], f"{base}-exit-equity", "cents"),
+                ]
+            )
             if scenario_key == "selected":
-                for index, flow in enumerate(result["sponsor_cash_flows"], start=1):
-                    metric_id = f"{base}-sponsor-cash-flow-{index:02d}"
-                    add(
-                        metric_id=metric_id,
-                        label=f"Sponsor dated cash flow {index}",
-                        value=flow["amount_cents"],
-                        display_value=_money(flow["amount_cents"]),
-                        unit="cents",
-                        quantum="1",
-                        period=flow["date"],
-                        classification="SCENARIO",
-                        locator_ids=list(locators_by_analysis["AG-10"]),
-                        receipt_sha256=receipt,
-                        assumption_ids=[f"{scenario_id}.engine_inputs"],
-                        downstream_ids=["ag-return", "decision"],
-                    )
-                sponsor_invested = -sum(
-                    int(flow["amount_cents"])
-                    for flow in result["sponsor_cash_flows"]
-                    if int(flow["amount_cents"]) < 0
-                )
-                sponsor_proceeds = sum(
-                    int(flow["amount_cents"])
-                    for flow in result["sponsor_cash_flows"]
-                    if int(flow["amount_cents"]) > 0
-                )
-                add_cents(
-                    f"{base}-sponsor-invested", "Sponsor invested capital", sponsor_invested,
-                    formula_id="pe-formula-selected-sponsor-invested", operand_ids=sponsor_cash_flow_ids,
-                )
-                add_cents(
-                    f"{base}-sponsor-proceeds", "Sponsor proceeds", sponsor_proceeds,
-                    formula_id="pe-formula-selected-sponsor-proceeds", operand_ids=sponsor_cash_flow_ids,
-                )
-                formulas.extend(
-                    [
-                        _formula("pe-formula-selected-sponsor-invested", "ABS_SUM_NEGATIVE", sponsor_cash_flow_ids, f"{base}-sponsor-invested", "cents"),
-                        _formula("pe-formula-selected-sponsor-proceeds", "SUM_POSITIVE", sponsor_cash_flow_ids, f"{base}-sponsor-proceeds", "cents"),
-                        _formula("pe-formula-selected-gross-moic", "DIVIDE", [f"{base}-sponsor-proceeds", f"{base}-sponsor-invested"], f"{base}-gross-moic", "multiple"),
-                        _formula("pe-formula-selected-gross-irr", "DATED_XIRR", sponsor_cash_flow_ids, f"{base}-gross-irr", "decimal_rate"),
-                        _formula("pe-formula-headline-dated-xirr", "DATED_XIRR", sponsor_cash_flow_ids, "ag-return", "decimal_rate"),
-                    ]
+                formulas.append(
+                    _formula("pe-formula-headline-dated-xirr", "DATED_XIRR", sponsor_cash_flow_ids, "ag-return", "decimal_rate")
                 )
 
             for month in debt["months"]:
@@ -371,8 +422,32 @@ def build_case_metric_contract(
             "receipt_sha256": distribution["receipt_sha256"],
             "assumption_ids": ["pe-correlation-structure"], "downstream_ids": ["decision"],
         }
+        draw_count_id = f"{case['caseId']}-distribution-draw-count"
+        add(render=False, metric_id=draw_count_id, label="Retained scenario paths", value=distribution["draws"], display_value=f"{distribution['draws']:,} paths", unit="count", quantum="1", **distribution_common)
+        pe_path_moic_ids: list[str] = []
+        for path_index, path in enumerate(distribution["path_records"]):
+            path_id = f"{case['caseId']}-distribution-path-{path_index:04d}-moic"
+            add(render=False, metric_id=path_id, label=f"Retained path {path_index + 1} gross MOIC", value=path["gross_moic"], display_value=_multiple(path["gross_moic"]), unit="multiple", quantum=_quantum_for(path["gross_moic"]), **distribution_common)
+            pe_path_moic_ids.append(path_id)
         for index, value in enumerate(distribution["moic_quantiles"]):
-            add(metric_id=f"{case['caseId']}-distribution-{index}", label=f"{['p10', 'p50', 'p90'][index]} conditional MOIC", value=value, display_value=_multiple(value), unit="multiple", quantum="0.01", **distribution_common)
+            percentile = ["p10", "p50", "p90"][index]
+            formula_id = f"pe-formula-distribution-{percentile}-moic"
+            output_id = f"{case['caseId']}-distribution-{index}"
+            probability = (Decimal("0.10"), Decimal("0.50"), Decimal("0.90"))[index]
+            rank = int((Decimal(distribution["draws"] - 1) * probability).quantize(Decimal("1")))
+            rank_id = f"{case['caseId']}-distribution-{percentile}-rank-index"
+            add(render=False, metric_id=rank_id, label=f"{percentile} zero-based rank", value=rank, display_value=f"Rank {rank + 1} of {distribution['draws']}", unit="rank_index", quantum="1", **distribution_common)
+            operands = [draw_count_id, rank_id, *pe_path_moic_ids]
+            add(metric_id=output_id, label=f"{percentile} conditional MOIC", value=value, display_value=_multiple(value), unit="multiple", quantum=_quantum_for(value), formula_id=formula_id, operand_ids=operands, **distribution_common)
+            formulas.append(_formula(formula_id, f"QUANTILE_{percentile.upper()}", operands, output_id, "multiple"))
+        bind_existing_formula(
+            f"{case['caseId']}-ag-11-probability_below_1x",
+            "pe-formula-distribution-probability-below-one",
+            "PROBABILITY_BELOW_ONE_PERCENT",
+            pe_path_moic_ids,
+            "percent",
+            f"{(Decimal(distribution['probability_below_one']) * 100).quantize(Decimal('0.01'))}%",
+        )
 
         for cell in engine["sensitivities"]["one_way"] + engine["sensitivities"]["entry_exit_matrix"]:
             common = {
@@ -382,11 +457,44 @@ def build_case_metric_contract(
                 "assumption_ids": [cell["cell_id"]], "downstream_ids": ["decision"],
             }
             prefix = f"{case['caseId']}-{cell['cell_id']}"
-            add(metric_id=f"{prefix}-irr", label="Gross IRR", value=cell["gross_xirr"], display_value=_percent(cell["gross_xirr"]), unit="decimal_rate", quantum="0.0001", **common)
-            add(metric_id=f"{prefix}-moic", label="Gross MOIC", value=cell["gross_moic"], display_value=_multiple(cell["gross_moic"]), unit="multiple", quantum="0.0001", **common)
-            add(metric_id=f"{prefix}-debt", label="Exit debt", value=cell["ending_debt_cents"], display_value=_money(cell["ending_debt_cents"]), unit="cents", quantum="1", **common)
-            add(metric_id=f"{prefix}-headroom", label="Minimum headroom", value=cell["minimum_covenant_headroom"], display_value=_multiple(cell["minimum_covenant_headroom"]), unit="turns", quantum="0.01", **common)
-            add(metric_id=f"{prefix}-matrix", label=cell["assumption_label"], value=cell["gross_xirr"], display_value=f"{_percent(cell['gross_xirr'])} / {_multiple(cell['gross_moic'])}", unit="return_pair", quantum="0.0001", **common)
+            cash_flow_ids: list[str] = []
+            for flow_index, flow in enumerate(cell["sponsor_cash_flows"], start=1):
+                flow_id = f"{prefix}-cash-flow-{flow_index:02d}"
+                add(render=False, metric_id=flow_id, label=f"Sponsor dated cash flow {flow_index}", value=flow["amount_cents"], display_value=_money(flow["amount_cents"]), unit="cents", quantum="1", period=flow["date"], classification="SCENARIO", locator_ids=common["locator_ids"], receipt_sha256=common["receipt_sha256"], assumption_ids=common["assumption_ids"], downstream_ids=["decision"])
+                cash_flow_ids.append(flow_id)
+            invested_id = f"{prefix}-sponsor-invested"
+            proceeds_id = f"{prefix}-sponsor-proceeds"
+            invested = -sum(int(flow["amount_cents"]) for flow in cell["sponsor_cash_flows"] if int(flow["amount_cents"]) < 0)
+            proceeds = sum(int(flow["amount_cents"]) for flow in cell["sponsor_cash_flows"] if int(flow["amount_cents"]) > 0)
+            invested_formula = f"pe-formula-{cell['cell_id']}-invested"
+            proceeds_formula = f"pe-formula-{cell['cell_id']}-proceeds"
+            irr_formula = f"pe-formula-{cell['cell_id']}-irr"
+            moic_formula = f"pe-formula-{cell['cell_id']}-moic"
+            add(render=False, metric_id=invested_id, label="Sponsor invested capital", value=invested, display_value=_money(invested), unit="cents", quantum="1", formula_id=invested_formula, operand_ids=cash_flow_ids, **common)
+            add(render=False, metric_id=proceeds_id, label="Sponsor proceeds", value=proceeds, display_value=_money(proceeds), unit="cents", quantum="1", formula_id=proceeds_formula, operand_ids=cash_flow_ids, **common)
+            add(metric_id=f"{prefix}-irr", label="Gross IRR", value=cell["gross_xirr"], display_value=_percent(cell["gross_xirr"]), unit="decimal_rate", quantum=_quantum_for(cell["gross_xirr"]), formula_id=irr_formula, operand_ids=cash_flow_ids, **common)
+            add(metric_id=f"{prefix}-moic", label="Gross MOIC", value=cell["gross_moic"], display_value=_multiple(cell["gross_moic"]), unit="multiple", quantum=_quantum_for(cell["gross_moic"]), formula_id=moic_formula, operand_ids=[proceeds_id, invested_id], **common)
+            term_id = f"{prefix}-ending-term"
+            revolver_id = f"{prefix}-ending-revolver"
+            add(render=False, metric_id=term_id, label="Ending term debt", value=cell["ending_term_cents"], display_value=_money(cell["ending_term_cents"]), unit="cents", quantum="1", **common)
+            add(render=False, metric_id=revolver_id, label="Ending revolver", value=cell["ending_revolver_cents"], display_value=_money(cell["ending_revolver_cents"]), unit="cents", quantum="1", **common)
+            debt_formula = f"pe-formula-{cell['cell_id']}-debt"
+            add(metric_id=f"{prefix}-debt", label="Exit debt", value=cell["ending_debt_cents"], display_value=_money(cell["ending_debt_cents"]), unit="cents", quantum="1", formula_id=debt_formula, operand_ids=[term_id, revolver_id], **common)
+            headroom_ids: list[str] = []
+            for month, headroom in enumerate(cell["covenant_headrooms"], start=1):
+                headroom_id = f"{prefix}-headroom-{month:02d}"
+                add(render=False, metric_id=headroom_id, label=f"Month {month} covenant headroom", value=headroom, display_value=_multiple(headroom), unit="turns", quantum=_quantum_for(headroom), **common)
+                headroom_ids.append(headroom_id)
+            headroom_formula = f"pe-formula-{cell['cell_id']}-headroom"
+            add(metric_id=f"{prefix}-headroom", label="Minimum headroom", value=cell["minimum_covenant_headroom"], display_value=_multiple(cell["minimum_covenant_headroom"]), unit="turns", quantum=_quantum_for(cell["minimum_covenant_headroom"]), formula_id=headroom_formula, operand_ids=headroom_ids, **common)
+            formulas.extend([
+                _formula(invested_formula, "ABS_SUM_NEGATIVE", cash_flow_ids, invested_id, "cents"),
+                _formula(proceeds_formula, "SUM_POSITIVE", cash_flow_ids, proceeds_id, "cents"),
+                _formula(irr_formula, "DATED_XIRR", cash_flow_ids, f"{prefix}-irr", "decimal_rate"),
+                _formula(moic_formula, "DIVIDE", [proceeds_id, invested_id], f"{prefix}-moic", "multiple"),
+                _formula(debt_formula, "ADD", [term_id, revolver_id], f"{prefix}-debt", "cents"),
+                _formula(headroom_formula, "MIN", headroom_ids, f"{prefix}-headroom", "turns"),
+            ])
 
         bridge = case["valueCreationBridge"]
         bridge_common = {
@@ -397,12 +505,50 @@ def build_case_metric_contract(
             "receipt_sha256": bridge["receipt_sha256"], "assumption_ids": ["value-creation-book"],
             "downstream_ids": ["decision"],
         }
-        add(metric_id="atlasgrid-value-combined", label="Combined value-creation impact", value=bridge["combined_exit_equity_delta_cents"], display_value=_money(bridge["combined_exit_equity_delta_cents"]), unit="cents", quantum="1", **bridge_common)
-        add(metric_id="atlasgrid-value-interaction", label="Value-creation interaction residual", value=bridge["interaction_residual_cents"], display_value=_money(bridge["interaction_residual_cents"]), unit="cents", quantum="1", **bridge_common)
+        pe_base_values: dict[str, int | str | Decimal] = {
+            "exit_ebitda_delta_cents": bridge["base_exit_ebitda_cents"],
+            "exit_debt_delta_cents": bridge["base_exit_debt_cents"],
+            "exit_equity_delta_cents": bridge["base_exit_equity_cents"],
+            "gross_xirr_delta": bridge["base_gross_xirr"],
+            "gross_moic_delta": bridge["base_gross_moic"],
+        }
+        for field, value in pe_base_values.items():
+            unit = "decimal_rate" if field == "gross_xirr_delta" else "multiple" if field == "gross_moic_delta" else "cents"
+            add(render=False, metric_id=f"atlasgrid-value-base-{field}", label=f"Base {field}", value=value, display_value=_percent(str(value)) if unit == "decimal_rate" else _multiple(str(value)) if unit == "multiple" else _money(int(value)), unit=unit, quantum=_quantum_for(value), **bridge_common)
         for lever in bridge["standalone"]:
-            for field in ("exit_ebitda_delta_cents", "exit_debt_delta_cents", "exit_equity_delta_cents", "implementation_cost_cents"):
-                add(metric_id=f"atlasgrid-value-{lever['lever_id']}-{field}", label=f"{lever['label']} {field}", value=lever[field], display_value=_money(lever[field]), unit="cents", quantum="1", **bridge_common)
-            add(metric_id=f"atlasgrid-value-{lever['lever_id']}-gross_xirr_delta", label=f"{lever['label']} gross IRR impact", value=lever["gross_xirr_delta"], display_value=_percent(lever["gross_xirr_delta"]), unit="decimal_rate", quantum="0.0001", **bridge_common)
+            result_fields = {
+                "exit_ebitda_delta_cents": lever["result_exit_ebitda_cents"],
+                "exit_debt_delta_cents": lever["result_exit_debt_cents"],
+                "exit_equity_delta_cents": lever["result_exit_equity_cents"],
+                "gross_xirr_delta": lever["result_gross_xirr"],
+                "gross_moic_delta": lever["result_gross_moic"],
+            }
+            for field in ("exit_ebitda_delta_cents", "exit_debt_delta_cents", "exit_equity_delta_cents", "gross_xirr_delta", "gross_moic_delta"):
+                unit = "decimal_rate" if field == "gross_xirr_delta" else "multiple" if field == "gross_moic_delta" else "cents"
+                result_value = result_fields[field]
+                result_id = f"atlasgrid-value-{lever['lever_id']}-{field}-result"
+                output_id = f"atlasgrid-value-{lever['lever_id']}-{field}"
+                formula_id = f"pe-formula-value-{lever['lever_id']}-{field}"
+                add(render=False, metric_id=result_id, label=f"{lever['label']} result {field}", value=result_value, display_value=_percent(str(result_value)) if unit == "decimal_rate" else _multiple(str(result_value)) if unit == "multiple" else _money(int(result_value)), unit=unit, quantum=_quantum_for(result_value), **bridge_common)
+                add(metric_id=output_id, label=f"{lever['label']} {field}", value=lever[field], display_value=_percent(lever[field]) if unit == "decimal_rate" else _multiple(lever[field]) if unit == "multiple" else _money(lever[field]), unit=unit, quantum=_quantum_for(lever[field]), formula_id=formula_id, operand_ids=[result_id, f"atlasgrid-value-base-{field}"], **bridge_common)
+                formulas.append(_formula(formula_id, "SUBTRACT", [result_id, f"atlasgrid-value-base-{field}"], output_id, unit))
+            add(metric_id=f"atlasgrid-value-{lever['lever_id']}-implementation_cost_cents", label=f"{lever['label']} implementation cost", value=lever["implementation_cost_cents"], display_value=_money(lever["implementation_cost_cents"]), unit="cents", quantum="1", **bridge_common)
+        standalone_equity_ids = [f"atlasgrid-value-{lever['lever_id']}-exit_equity_delta_cents" for lever in bridge["standalone"]]
+        sum_id = "atlasgrid-value-standalone-sum"
+        sum_formula = "pe-formula-value-standalone-sum"
+        combined_formula = "pe-formula-value-combined"
+        interaction_formula = "pe-formula-value-interaction"
+        combined_result_id = "atlasgrid-value-combined-exit-equity-result"
+        combined_result_value = int(bridge["combined_exit_equity_cents"])
+        add(render=False, metric_id=combined_result_id, label="Combined exit equity result", value=combined_result_value, display_value=_money(combined_result_value), unit="cents", quantum="1", **bridge_common)
+        add(render=False, metric_id=sum_id, label="Standalone exit-equity impact", value=bridge["sum_standalone_exit_equity_delta_cents"], display_value=_money(bridge["sum_standalone_exit_equity_delta_cents"]), unit="cents", quantum="1", formula_id=sum_formula, operand_ids=standalone_equity_ids, **bridge_common)
+        add(metric_id="atlasgrid-value-combined", label="Combined value-creation impact", value=bridge["combined_exit_equity_delta_cents"], display_value=_money(bridge["combined_exit_equity_delta_cents"]), unit="cents", quantum="1", formula_id=combined_formula, operand_ids=[combined_result_id, "atlasgrid-value-base-exit_equity_delta_cents"], **bridge_common)
+        add(metric_id="atlasgrid-value-interaction", label="Value-creation interaction residual", value=bridge["interaction_residual_cents"], display_value=_money(bridge["interaction_residual_cents"]), unit="cents", quantum="1", formula_id=interaction_formula, operand_ids=["atlasgrid-value-combined", sum_id], **bridge_common)
+        formulas.extend([
+            _formula(sum_formula, "SUM", standalone_equity_ids, sum_id, "cents"),
+            _formula(combined_formula, "SUBTRACT", [combined_result_id, "atlasgrid-value-base-exit_equity_delta_cents"], "atlasgrid-value-combined", "cents"),
+            _formula(interaction_formula, "SUBTRACT", ["atlasgrid-value-combined", sum_id], "atlasgrid-value-interaction", "cents"),
+        ])
 
     vc_engine = case.get("vcEngine")
     if vc_engine is not None:
@@ -506,7 +652,10 @@ def build_case_metric_contract(
                 formula_id=exit_ev_formula,
                 operand_ids=[f"{prefix}-bridge-terminal-revenue", f"{prefix}-bridge-exit-multiple"],
             )
-            add_vc_cents(f"{prefix}-bridge-exit-cash", "Modeled exit cash", int(exit_bridge["cash_at_exit_cents"]))
+            exit_cash_formula = f"vc-formula-{scenario_id.lower()}-bridge-exit-cash"
+            exit_cash_zero_id = f"{prefix}-bridge-exit-cash-zero"
+            add(render=False, metric_id=exit_cash_zero_id, label="Exit cash identity zero", value=0, display_value="$0", unit="cents", quantum="1", **common)
+            add_vc_cents(f"{prefix}-bridge-exit-cash", "Modeled exit cash", int(exit_bridge["cash_at_exit_cents"]), formula_id=exit_cash_formula, operand_ids=[f"{prefix}-month-60-ending_cash_cents", exit_cash_zero_id])
             exit_equity_formula = f"vc-formula-{scenario_id.lower()}-bridge-exit-equity"
             add_vc_cents(
                 f"{prefix}-bridge-exit-equity", "Exit equity value", int(exit_bridge["exit_equity_value_cents"]),
@@ -529,6 +678,13 @@ def build_case_metric_contract(
                         f"{prefix}-bridge-exit-equity",
                         "cents",
                     ),
+                    _formula(
+                        exit_cash_formula,
+                        "ADD",
+                        [f"{prefix}-month-60-ending_cash_cents", exit_cash_zero_id],
+                        f"{prefix}-bridge-exit-cash",
+                        "cents",
+                    ),
                 ]
             )
 
@@ -547,7 +703,27 @@ def build_case_metric_contract(
                 operand_ids=funded_target_operand_ids,
             )
             add_vc_cents(f"{prefix}-target-proceeds", "Series C exit proceeds", result["target_proceeds_cents"])
-            add_vc_cents(f"{prefix}-minimum-cash", "Minimum modeled cash", result["minimum_cash_cents"])
+            monthly_ending_cash_ids = [
+                f"{prefix}-month-{row['month']:02d}-ending_cash_cents"
+                for row in result["cash_by_month"]
+            ]
+            minimum_cash_formula = f"vc-formula-{scenario_id.lower()}-minimum-cash"
+            add_vc_cents(
+                f"{prefix}-minimum-cash",
+                "Minimum modeled cash",
+                result["minimum_cash_cents"],
+                formula_id=minimum_cash_formula,
+                operand_ids=monthly_ending_cash_ids,
+            )
+            formulas.append(
+                _formula(
+                    minimum_cash_formula,
+                    "MIN",
+                    monthly_ending_cash_ids,
+                    f"{prefix}-minimum-cash",
+                    "cents",
+                )
+            )
             waterfall_operand_ids = [f"{prefix}-waterfall-common"] + [
                 f"{prefix}-waterfall-{class_id.lower()}-proceeds"
                 for class_id in result["waterfall"]["class_proceeds_cents"]
@@ -789,6 +965,29 @@ def build_case_metric_contract(
                     f"{class_id} proceeds",
                     proceeds,
                 )
+            target_proceeds_zero_id = f"{prefix}-target-proceeds-zero"
+            target_proceeds_formula = f"vc-formula-{scenario_id.lower()}-target-proceeds"
+            add_vc_cents(target_proceeds_zero_id, "Target proceeds reconciliation constant", 0, render=False)
+            target_proceeds_metric = next(
+                item for item in metrics if item["metric_id"] == f"{prefix}-target-proceeds"
+            )
+            target_proceeds_metric["formula_id"] = target_proceeds_formula
+            target_proceeds_metric["operand_ids"] = [
+                f"{prefix}-waterfall-series_c-proceeds",
+                target_proceeds_zero_id,
+            ]
+            target_proceeds_metric["metric_sha256"] = digest(
+                {key: value for key, value in target_proceeds_metric.items() if key != "metric_sha256"}
+            )
+            formulas.append(
+                _formula(
+                    target_proceeds_formula,
+                    "ADD",
+                    [f"{prefix}-waterfall-series_c-proceeds", target_proceeds_zero_id],
+                    f"{prefix}-target-proceeds",
+                    "cents",
+                )
+            )
             formulas.append(
                 _formula(
                     waterfall_formula,
@@ -808,26 +1007,66 @@ def build_case_metric_contract(
             "assumption_ids": ["vc-distribution-priors"],
             "downstream_ids": ["decision"],
         }
+        vc_draw_count_id = "helios-distribution-draw-count"
+        add(render=False, metric_id=vc_draw_count_id, label="Retained scenario paths", value=distribution["draws"], display_value=f"{distribution['draws']:,} paths", unit="count", quantum="1", **distribution_common)
+        vc_path_moic_ids: list[str] = []
+        vc_path_xirr_ids: list[str] = []
+        for path_index, path in enumerate(distribution["path_records"]):
+            moic_id = f"helios-distribution-path-{path_index:04d}-moic"
+            xirr_id = f"helios-distribution-path-{path_index:04d}-xirr"
+            add(render=False, metric_id=moic_id, label=f"Retained path {path_index + 1} gross MOIC", value=path["gross_moic"], display_value=_multiple(path["gross_moic"]), unit="multiple", quantum=_quantum_for(path["gross_moic"]), **distribution_common)
+            add(render=False, metric_id=xirr_id, label=f"Retained path {path_index + 1} gross XIRR", value=path["gross_xirr"], display_value=_percent(path["gross_xirr"]), unit="decimal_rate", quantum=_quantum_for(path["gross_xirr"]), **distribution_common)
+            vc_path_moic_ids.append(moic_id)
+            vc_path_xirr_ids.append(xirr_id)
+        rank_ids: dict[str, str] = {}
+        for index, percentile in enumerate(("p10", "p50", "p90")):
+            probability = (Decimal("0.10"), Decimal("0.50"), Decimal("0.90"))[index]
+            rank = int((Decimal(distribution["draws"] - 1) * probability).quantize(Decimal("1")))
+            rank_id = f"helios-distribution-{percentile}-rank-index"
+            add(render=False, metric_id=rank_id, label=f"{percentile} zero-based rank", value=rank, display_value=f"Rank {rank + 1} of {distribution['draws']}", unit="rank_index", quantum="1", **distribution_common)
+            rank_ids[percentile] = rank_id
         for index, value in enumerate(distribution["moic_quantiles"]):
+            percentile = ["p10", "p50", "p90"][index]
+            formula_id = f"vc-formula-distribution-{percentile}-moic"
+            output_id = f"helios-distribution-moic-{index}"
+            operands = [vc_draw_count_id, rank_ids[percentile], *vc_path_moic_ids]
             add(
-                metric_id=f"helios-distribution-moic-{index}",
-                label=f"{['p10', 'p50', 'p90'][index]} conditional MOIC",
+                metric_id=output_id,
+                label=f"{percentile} conditional MOIC",
                 value=value,
                 display_value=_multiple(value),
                 unit="multiple",
-                quantum="0.01",
+                quantum=_quantum_for(value),
+                formula_id=formula_id,
+                operand_ids=operands,
                 **distribution_common,
             )
+            formulas.append(_formula(formula_id, f"QUANTILE_{percentile.upper()}", operands, output_id, "multiple"))
         for index, value in enumerate(distribution["xirr_quantiles"]):
+            percentile = ["p10", "p50", "p90"][index]
+            formula_id = f"vc-formula-distribution-{percentile}-xirr"
+            output_id = f"helios-distribution-xirr-{index}"
+            operands = [vc_draw_count_id, rank_ids[percentile], *vc_path_xirr_ids]
             add(
-                metric_id=f"helios-distribution-xirr-{index}",
-                label=f"{['p10', 'p50', 'p90'][index]} conditional XIRR",
+                metric_id=output_id,
+                label=f"{percentile} conditional XIRR",
                 value=value,
                 display_value=_percent(value),
                 unit="decimal_rate",
-                quantum="0.0001",
+                quantum=_quantum_for(value),
+                formula_id=formula_id,
+                operand_ids=operands,
                 **distribution_common,
             )
+            formulas.append(_formula(formula_id, f"QUANTILE_{percentile.upper()}", operands, output_id, "decimal_rate"))
+        bind_existing_formula(
+            "helios-hx-09-probability_below_1x",
+            "vc-formula-distribution-probability-below-one",
+            "PROBABILITY_BELOW_ONE_PERCENT",
+            vc_path_moic_ids,
+            "percent",
+            f"{(Decimal(distribution['probability_below_one']) * 100).quantize(Decimal('0.01'))}%",
+        )
         for cell in vc_engine["sensitivities"]["cells"]:
             common = {
                 "period": "projection origin through selected exit",
@@ -838,10 +1077,40 @@ def build_case_metric_contract(
                 "downstream_ids": ["decision"],
             }
             prefix = f"helios-{cell['cell_id']}"
-            add(metric_id=f"{prefix}-gross-moic", label="Gross MOIC", value=cell["gross_moic"], display_value=_multiple(cell["gross_moic"]), unit="multiple", quantum="0.0001", **common)
-            add(metric_id=f"{prefix}-gross-xirr", label="Gross XIRR", value=cell["gross_xirr"], display_value=_percent(cell["gross_xirr"]), unit="decimal_rate", quantum="0.0001", **common)
-            add(metric_id=f"{prefix}-ownership", label="Series C ownership", value=cell["target_ownership"], display_value=_percent(cell["target_ownership"]), unit="decimal_rate", quantum="0.00000001", **common)
-            add(metric_id=f"{prefix}-minimum-cash", label="Minimum cash", value=cell["minimum_cash_cents"], display_value=_money(cell["minimum_cash_cents"]), unit="cents", quantum="1", **common)
+            cash_flow_ids: list[str] = []
+            for flow_index, flow in enumerate(cell["target_cash_flows"], start=1):
+                flow_id = f"{prefix}-cash-flow-{flow_index:02d}"
+                add(render=False, metric_id=flow_id, label=f"Series C dated cash flow {flow_index}", value=flow["amount_cents"], display_value=_money(flow["amount_cents"]), unit="cents", quantum="1", period=flow["date"], classification="SCENARIO", locator_ids=common["locator_ids"], receipt_sha256=common["receipt_sha256"], assumption_ids=common["assumption_ids"], downstream_ids=["decision"])
+                cash_flow_ids.append(flow_id)
+            invested_id = f"{prefix}-invested"
+            proceeds_id = f"{prefix}-proceeds"
+            invested = -sum(int(flow["amount_cents"]) for flow in cell["target_cash_flows"] if int(flow["amount_cents"]) < 0)
+            proceeds = sum(int(flow["amount_cents"]) for flow in cell["target_cash_flows"] if int(flow["amount_cents"]) > 0)
+            target_shares_id = f"{prefix}-target-shares"
+            fully_diluted_id = f"{prefix}-fully-diluted-shares"
+            ending_cash_ids: list[str] = []
+            for month, ending_cash in enumerate(cell["ending_cash_path_cents"], start=1):
+                cash_id = f"{prefix}-ending-cash-{month:02d}"
+                add(render=False, metric_id=cash_id, label=f"Month {month} ending cash", value=ending_cash, display_value=_money(ending_cash), unit="cents", quantum="1", **common)
+                ending_cash_ids.append(cash_id)
+            for metric_id, label, value, unit in (
+                (invested_id, "Series C invested capital", invested, "cents"),
+                (proceeds_id, "Series C proceeds", proceeds, "cents"),
+                (target_shares_id, "Series C shares", cell["target_shares"], "shares"),
+                (fully_diluted_id, "Fully diluted shares", cell["fully_diluted_shares"], "shares"),
+            ):
+                add(render=False, metric_id=metric_id, label=label, value=value, display_value=_money(value) if unit == "cents" else f"{value:,}", unit=unit, quantum="1", **common)
+            formula_stem = f"vc-formula-{cell['cell_id']}"
+            add(metric_id=f"{prefix}-gross-moic", label="Gross MOIC", value=cell["gross_moic"], display_value=_multiple(cell["gross_moic"]), unit="multiple", quantum=_quantum_for(cell["gross_moic"]), formula_id=f"{formula_stem}-moic", operand_ids=[proceeds_id, invested_id], **common)
+            add(metric_id=f"{prefix}-gross-xirr", label="Gross XIRR", value=cell["gross_xirr"], display_value=_percent(cell["gross_xirr"]), unit="decimal_rate", quantum=_quantum_for(cell["gross_xirr"]), formula_id=f"{formula_stem}-xirr", operand_ids=cash_flow_ids, **common)
+            add(metric_id=f"{prefix}-ownership", label="Series C ownership", value=cell["target_ownership"], display_value=_percent(cell["target_ownership"]), unit="decimal_rate", quantum=_quantum_for(cell["target_ownership"]), formula_id=f"{formula_stem}-ownership", operand_ids=[target_shares_id, fully_diluted_id], **common)
+            add(metric_id=f"{prefix}-minimum-cash", label="Minimum cash", value=cell["minimum_cash_cents"], display_value=_money(cell["minimum_cash_cents"]), unit="cents", quantum="1", formula_id=f"{formula_stem}-minimum-cash", operand_ids=ending_cash_ids, **common)
+            formulas.extend([
+                _formula(f"{formula_stem}-moic", "DIVIDE", [proceeds_id, invested_id], f"{prefix}-gross-moic", "multiple"),
+                _formula(f"{formula_stem}-xirr", "DATED_XIRR", cash_flow_ids, f"{prefix}-gross-xirr", "decimal_rate"),
+                _formula(f"{formula_stem}-ownership", "DIVIDE", [target_shares_id, fully_diluted_id], f"{prefix}-ownership", "decimal_rate"),
+                _formula(f"{formula_stem}-minimum-cash", "MIN", ending_cash_ids, f"{prefix}-minimum-cash", "cents"),
+            ])
         bridge = case["vcValueCreationBridge"]
         bridge_common = {
             "period": "projection origin through month 60",
@@ -853,24 +1122,70 @@ def build_case_metric_contract(
             "assumption_ids": ["vc-value-creation-book"],
             "downstream_ids": ["decision"],
         }
+        vc_value_fields = {
+            "minimum_cash_delta_cents": (bridge["base_minimum_cash_cents"], "cents"),
+            "target_proceeds_delta_cents": (bridge["base_target_proceeds_cents"], "cents"),
+            "gross-xirr-delta": (bridge["base_gross_xirr"], "decimal_rate"),
+            "gross-moic-delta": (bridge["base_gross_moic"], "multiple"),
+        }
+        for field, (value, unit) in vc_value_fields.items():
+            add(render=False, metric_id=f"helios-value-base-{field}", label=f"Base {field}", value=value, display_value=_money(value) if unit == "cents" else _percent(value) if unit == "decimal_rate" else _multiple(value), unit=unit, quantum=_quantum_for(value), **bridge_common)
         for lever in bridge["standalone"]:
-            for field in (
-                "implementation_cost_cents",
-                "minimum_cash_delta_cents",
-                "target_proceeds_delta_cents",
-            ):
-                add(metric_id=f"helios-value-{lever['lever_id']}-{field}", label=f"{lever['lever_id']} {field}", value=lever[field], display_value=_money(lever[field]), unit="cents", quantum="1", **bridge_common)
-            add(metric_id=f"helios-value-{lever['lever_id']}-gross-xirr-delta", label=f"{lever['lever_id']} gross XIRR impact", value=lever["gross_xirr_delta"], display_value=_percent(lever["gross_xirr_delta"]), unit="decimal_rate", quantum="0.0001", **bridge_common)
-            add(metric_id=f"helios-value-{lever['lever_id']}-gross-moic-delta", label=f"{lever['lever_id']} gross MOIC impact", value=lever["gross_moic_delta"], display_value=_multiple(lever["gross_moic_delta"]), unit="multiple", quantum="0.0001", **bridge_common)
-        for field in (
-            "combined_minimum_cash_delta_cents",
-            "combined_target_proceeds_delta_cents",
-            "sum_standalone_target_proceeds_delta_cents",
-            "interaction_residual_cents",
-        ):
-            add(metric_id=f"helios-value-{field}", label=field.replace("_", " "), value=bridge[field], display_value=_money(bridge[field]), unit="cents", quantum="1", **bridge_common)
-        add(metric_id="helios-value-combined-gross-xirr-delta", label="Combined gross XIRR impact", value=bridge["combined_gross_xirr_delta"], display_value=_percent(bridge["combined_gross_xirr_delta"]), unit="decimal_rate", quantum="0.0001", **bridge_common)
-        add(metric_id="helios-value-combined-gross-moic-delta", label="Combined gross MOIC impact", value=bridge["combined_gross_moic_delta"], display_value=_multiple(bridge["combined_gross_moic_delta"]), unit="multiple", quantum="0.0001", **bridge_common)
+            lever_values = {
+                "minimum_cash_delta_cents": lever["minimum_cash_delta_cents"],
+                "target_proceeds_delta_cents": lever["target_proceeds_delta_cents"],
+                "gross-xirr-delta": lever["gross_xirr_delta"],
+                "gross-moic-delta": lever["gross_moic_delta"],
+            }
+            result_values = {
+                "minimum_cash_delta_cents": lever["result_minimum_cash_cents"],
+                "target_proceeds_delta_cents": lever["result_target_proceeds_cents"],
+                "gross-xirr-delta": lever["result_gross_xirr"],
+                "gross-moic-delta": lever["result_gross_moic"],
+            }
+            for field, delta_value in lever_values.items():
+                base_value, unit = vc_value_fields[field]
+                result_value = result_values[field]
+                result_id = f"helios-value-{lever['lever_id']}-{field}-result"
+                output_id = f"helios-value-{lever['lever_id']}-{field}"
+                formula_id = f"vc-formula-value-{lever['lever_id']}-{field}"
+                add(render=False, metric_id=result_id, label=f"{lever['lever_id']} result {field}", value=result_value, display_value=_money(int(result_value)) if unit == "cents" else _percent(str(result_value)) if unit == "decimal_rate" else _multiple(str(result_value)), unit=unit, quantum=_quantum_for(result_value), **bridge_common)
+                add(metric_id=output_id, label=f"{lever['lever_id']} {field.replace('_', ' ')}", value=delta_value, display_value=_money(delta_value) if unit == "cents" else _percent(delta_value) if unit == "decimal_rate" else _multiple(delta_value), unit=unit, quantum=_quantum_for(delta_value), formula_id=formula_id, operand_ids=[result_id, f"helios-value-base-{field}"], **bridge_common)
+                formulas.append(_formula(formula_id, "SUBTRACT", [result_id, f"helios-value-base-{field}"], output_id, unit))
+            add(metric_id=f"helios-value-{lever['lever_id']}-implementation_cost_cents", label=f"{lever['lever_id']} implementation cost", value=lever["implementation_cost_cents"], display_value=_money(lever["implementation_cost_cents"]), unit="cents", quantum="1", **bridge_common)
+
+        combined_values = {
+            "minimum_cash_delta_cents": bridge["combined_minimum_cash_delta_cents"],
+            "target_proceeds_delta_cents": bridge["combined_target_proceeds_delta_cents"],
+            "gross-xirr-delta": bridge["combined_gross_xirr_delta"],
+            "gross-moic-delta": bridge["combined_gross_moic_delta"],
+        }
+        combined_result_values = {
+            "minimum_cash_delta_cents": bridge["combined_result_minimum_cash_cents"],
+            "target_proceeds_delta_cents": bridge["combined_result_target_proceeds_cents"],
+            "gross-xirr-delta": bridge["combined_result_gross_xirr"],
+            "gross-moic-delta": bridge["combined_result_gross_moic"],
+        }
+        for field, delta_value in combined_values.items():
+            base_value, unit = vc_value_fields[field]
+            result_value = combined_result_values[field]
+            result_id = f"helios-value-combined-{field}-result"
+            output_id = f"helios-value-combined_{field}" if field.endswith("_cents") else f"helios-value-combined-{field}"
+            formula_id = f"vc-formula-value-combined-{field}"
+            add(render=False, metric_id=result_id, label=f"Combined result {field}", value=result_value, display_value=_money(int(result_value)) if unit == "cents" else _percent(str(result_value)) if unit == "decimal_rate" else _multiple(str(result_value)), unit=unit, quantum=_quantum_for(result_value), **bridge_common)
+            add(metric_id=output_id, label=f"Combined {field.replace('_', ' ')}", value=delta_value, display_value=_money(delta_value) if unit == "cents" else _percent(delta_value) if unit == "decimal_rate" else _multiple(delta_value), unit=unit, quantum=_quantum_for(delta_value), formula_id=formula_id, operand_ids=[result_id, f"helios-value-base-{field}"], **bridge_common)
+            formulas.append(_formula(formula_id, "SUBTRACT", [result_id, f"helios-value-base-{field}"], output_id, unit))
+
+        standalone_proceeds_ids = [f"helios-value-{lever['lever_id']}-target_proceeds_delta_cents" for lever in bridge["standalone"]]
+        sum_id = "helios-value-sum_standalone_target_proceeds_delta_cents"
+        sum_formula = "vc-formula-value-standalone-proceeds-sum"
+        interaction_formula = "vc-formula-value-interaction"
+        add(render=False, metric_id=sum_id, label="Standalone target proceeds sum", value=bridge["sum_standalone_target_proceeds_delta_cents"], display_value=_money(bridge["sum_standalone_target_proceeds_delta_cents"]), unit="cents", quantum="1", formula_id=sum_formula, operand_ids=standalone_proceeds_ids, **bridge_common)
+        add(metric_id="helios-value-interaction_residual_cents", label="Interaction residual", value=bridge["interaction_residual_cents"], display_value=_money(bridge["interaction_residual_cents"]), unit="cents", quantum="1", formula_id=interaction_formula, operand_ids=["helios-value-combined_target_proceeds_delta_cents", sum_id], **bridge_common)
+        formulas.extend([
+            _formula(sum_formula, "SUM", standalone_proceeds_ids, sum_id, "cents"),
+            _formula(interaction_formula, "SUBTRACT", ["helios-value-combined_target_proceeds_delta_cents", sum_id], "helios-value-interaction_residual_cents", "cents"),
+        ])
 
     metric_ids = [item["metric_id"] for item in metrics]
     if len(metric_ids) != len(set(metric_ids)):
@@ -878,6 +1193,29 @@ def build_case_metric_contract(
     formula_ids = [item["formula_id"] for item in formulas]
     if len(formula_ids) != len(set(formula_ids)):
         raise UnderwritingError("formula_registry_duplicate")
+    rendered_metrics = [item for item in metrics if item["metric_id"] in render_ids]
+    derived_id_patterns = (
+        re.compile(r"(?:gross-(?:irr|xirr|moic)|-(?:irr|moic|debt|headroom|minimum-cash|ownership))$"),
+        re.compile(r"-exit-(?:ev|equity|debt|cash|net)$"),
+        re.compile(r"-distribution-(?:moic-|xirr-|[0-9]+$)"),
+        re.compile(r"-value-.*(?:delta|combined|interaction)"),
+    )
+    semantic_investment_ids = [
+        item["metric_id"]
+        for item in rendered_metrics
+        if item["metric_id"] in {"ag-return", "hx-ownership", "atlasgrid-ag-11-probability_below_1x", "helios-hx-09-probability_below_1x"}
+        or any(pattern.search(item["metric_id"]) for pattern in derived_id_patterns)
+    ]
+    missing_calculations = [
+        item["metric_id"]
+        for item in rendered_metrics
+        if item["metric_id"] in semantic_investment_ids
+        and (item["formula_id"] is None or not item["operand_ids"])
+    ]
+    if missing_calculations:
+        raise UnderwritingError(
+            f"semantic_investment_metric_calculation_open:{','.join(missing_calculations)}"
+        )
     return {
         "sourceLocators": source_locators,
         "formulaRegistry": formulas,
@@ -885,6 +1223,7 @@ def build_case_metric_contract(
         "renderManifest": {
             "schema_version": "underwriting.render-manifest/v2",
             "metric_ids": render_ids,
+            "investment_metric_ids": semantic_investment_ids,
             # Browser arithmetic samples are exact binary identities. Dated
             # XIRR formulas remain fully bound and are independently recomputed
             # by the Decimal Python validator rather than approximated in JS.

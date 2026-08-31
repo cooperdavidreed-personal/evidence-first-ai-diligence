@@ -33,6 +33,7 @@ cd workbench
 pnpm install --frozen-lockfile
 pnpm test
 pnpm build
+pnpm verify:chunks
 pnpm test:e2e
 cd ..
 uv run python scripts/verify_visual_regression.py

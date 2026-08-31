@@ -63,7 +63,7 @@ jobs:
           name: underwriting-visual-evidence
           path: dist/visual-evidence/*.png
 
-  legacy-quality-short-demo-contract:
+  source-bound-demo-contract:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -73,15 +73,21 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
       - run: python -m pip install uv==0.11.21
+      - run: npm install --global pnpm@11.19.0
       - run: uv sync --locked --extra dev --extra demo
+      - run: pnpm --dir workbench install --frozen-lockfile
+      - run: pnpm --dir workbench exec playwright install --with-deps chromium
       - run: uv run python scripts/render_demo.py --out dist/demo
       - run: uv run python scripts/verify_demo.py --root dist/demo
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: legacy-quality-short-slide-demo-not-v2
+          name: source-bound-underwriting-workbench-demo
           path: |
-            dist/demo/evidence-first-ai-diligence-demo.mp4
+            dist/demo/underwriting-intelligence-lab-demo.mp4
             dist/demo/captions.srt
             dist/demo/captions.vtt
             dist/demo/manifest.json

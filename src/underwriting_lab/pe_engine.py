@@ -108,6 +108,9 @@ class PECaseResult:
                 {"date": item.date.isoformat(), "amount_cents": item.amount_cents}
                 for item in self.sponsor_cash_flows
             ],
+            "exit_ltm_ebitda_cents": sum(
+                item.ebitda_cents for item in self.operating_months[-12:]
+            ),
             "exit_enterprise_value_cents": self.exit_enterprise_value_cents,
             "exit_equity_value_cents": self.exit_equity_value_cents,
             "sponsor_exit_proceeds_cents": self.sponsor_exit_proceeds_cents,
@@ -173,7 +176,11 @@ class PESensitivityCell:
     gross_moic: Decimal
     gross_xirr: Decimal
     ending_debt_cents: int
+    ending_term_cents: int
+    ending_revolver_cents: int
     minimum_covenant_headroom: Decimal
+    covenant_headrooms: tuple[Decimal, ...]
+    sponsor_cash_flows: tuple[dict[str, object], ...]
     first_covenant_breach_month: int | None
 
     def receipt(self) -> dict[str, object]:
@@ -188,7 +195,11 @@ class PESensitivityCell:
             "gross_moic": format(self.gross_moic, "f"),
             "gross_xirr": format(self.gross_xirr, "f"),
             "ending_debt_cents": self.ending_debt_cents,
+            "ending_term_cents": self.ending_term_cents,
+            "ending_revolver_cents": self.ending_revolver_cents,
             "minimum_covenant_headroom": format(self.minimum_covenant_headroom, "f"),
+            "covenant_headrooms": [format(item, "f") for item in self.covenant_headrooms],
+            "sponsor_cash_flows": list(self.sponsor_cash_flows),
             "first_covenant_breach_month": self.first_covenant_breach_month,
         }
         body["receipt_sha256"] = digest(body)
@@ -243,6 +254,11 @@ class PEValueLeverResult:
     exit_equity_delta_cents: int
     gross_xirr_delta: Decimal
     gross_moic_delta: Decimal
+    result_exit_ebitda_cents: int
+    result_exit_debt_cents: int
+    result_exit_equity_cents: int
+    result_gross_xirr: Decimal
+    result_gross_moic: Decimal
     implementation_cost_cents: int
     credit_classification: str
     source_analysis_ids: tuple[str, ...]
@@ -253,8 +269,18 @@ class PEValueLeverResult:
 @dataclass(frozen=True)
 class PEValueCreationBridge:
     base_receipt_sha256: str
+    base_exit_ebitda_cents: int
+    base_exit_debt_cents: int
+    base_exit_equity_cents: int
+    base_gross_xirr: Decimal
+    base_gross_moic: Decimal
     standalone: tuple[PEValueLeverResult, ...]
     combined_receipt_sha256: str
+    combined_exit_ebitda_cents: int
+    combined_exit_debt_cents: int
+    combined_exit_equity_cents: int
+    combined_gross_xirr: Decimal
+    combined_gross_moic: Decimal
     combined_exit_equity_delta_cents: int
     sum_standalone_exit_equity_delta_cents: int
     interaction_residual_cents: int
@@ -265,15 +291,27 @@ class PEValueCreationBridge:
         body: dict[str, object] = {
             "schema_version": "underwriting.pe-value-creation-bridge/v2",
             "base_receipt_sha256": self.base_receipt_sha256,
+            "base_exit_ebitda_cents": self.base_exit_ebitda_cents,
+            "base_exit_debt_cents": self.base_exit_debt_cents,
+            "base_exit_equity_cents": self.base_exit_equity_cents,
+            "base_gross_xirr": format(self.base_gross_xirr, "f"),
+            "base_gross_moic": format(self.base_gross_moic, "f"),
             "standalone": [
                 {
                     **asdict(item),
                     "gross_xirr_delta": format(item.gross_xirr_delta, "f"),
                     "gross_moic_delta": format(item.gross_moic_delta, "f"),
+                    "result_gross_xirr": format(item.result_gross_xirr, "f"),
+                    "result_gross_moic": format(item.result_gross_moic, "f"),
                 }
                 for item in self.standalone
             ],
             "combined_receipt_sha256": self.combined_receipt_sha256,
+            "combined_exit_ebitda_cents": self.combined_exit_ebitda_cents,
+            "combined_exit_debt_cents": self.combined_exit_debt_cents,
+            "combined_exit_equity_cents": self.combined_exit_equity_cents,
+            "combined_gross_xirr": format(self.combined_gross_xirr, "f"),
+            "combined_gross_moic": format(self.combined_gross_moic, "f"),
             "combined_exit_equity_delta_cents": self.combined_exit_equity_delta_cents,
             "sum_standalone_exit_equity_delta_cents": self.sum_standalone_exit_equity_delta_cents,
             "interaction_residual_cents": self.interaction_residual_cents,
@@ -833,8 +871,17 @@ def _sensitivity_cell(
         gross_moic=result.gross_moic,
         gross_xirr=result.gross_xirr,
         ending_debt_cents=result.debt_schedule.ending_debt_cents,
+        ending_term_cents=result.debt_schedule.months[-1].ending_term_cents,
+        ending_revolver_cents=result.debt_schedule.months[-1].ending_revolver_cents,
         minimum_covenant_headroom=min(
             item.covenant_headroom for item in result.debt_schedule.months
+        ),
+        covenant_headrooms=tuple(
+            item.covenant_headroom for item in result.debt_schedule.months
+        ),
+        sponsor_cash_flows=tuple(
+            {"date": item.date.isoformat(), "amount_cents": item.amount_cents}
+            for item in result.sponsor_cash_flows
         ),
         first_covenant_breach_month=result.debt_schedule.first_covenant_breach_month,
     )
@@ -983,6 +1030,13 @@ def build_value_creation_bridge(
                 exit_equity_delta_cents=result.exit_equity_value_cents - base.exit_equity_value_cents,
                 gross_xirr_delta=result.gross_xirr - base.gross_xirr,
                 gross_moic_delta=result.gross_moic - base.gross_moic,
+                result_exit_ebitda_cents=sum(
+                    item.ebitda_cents for item in result.operating_months[-12:]
+                ),
+                result_exit_debt_cents=result.debt_schedule.ending_debt_cents,
+                result_exit_equity_cents=result.exit_equity_value_cents,
+                result_gross_xirr=result.gross_xirr,
+                result_gross_moic=result.gross_moic,
                 implementation_cost_cents=sum(
                     amount for _, amount in lever.implementation_costs_by_month
                 ),
@@ -1002,8 +1056,20 @@ def build_value_creation_bridge(
     standalone_sum = sum(item.exit_equity_delta_cents for item in standalone)
     return PEValueCreationBridge(
         base_receipt_sha256=str(base_receipt["receipt_sha256"]),
+        base_exit_ebitda_cents=base_exit_ebitda,
+        base_exit_debt_cents=base.debt_schedule.ending_debt_cents,
+        base_exit_equity_cents=base.exit_equity_value_cents,
+        base_gross_xirr=base.gross_xirr,
+        base_gross_moic=base.gross_moic,
         standalone=tuple(standalone),
         combined_receipt_sha256=str(combined_receipt["receipt_sha256"]),
+        combined_exit_ebitda_cents=sum(
+            item.ebitda_cents for item in combined.operating_months[-12:]
+        ),
+        combined_exit_debt_cents=combined.debt_schedule.ending_debt_cents,
+        combined_exit_equity_cents=combined.exit_equity_value_cents,
+        combined_gross_xirr=combined.gross_xirr,
+        combined_gross_moic=combined.gross_moic,
         combined_exit_equity_delta_cents=combined_delta,
         sum_standalone_exit_equity_delta_cents=standalone_sum,
         interaction_residual_cents=combined_delta - standalone_sum,

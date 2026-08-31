@@ -9,7 +9,7 @@ const columnFor = (kind: ThesisNode["kind"]) => {
   return 2;
 };
 
-function spotlight(graph: ThesisGraph, selected: string | null) {
+function primaryPath(graph: ThesisGraph, selected: string | null) {
   if (!selected) return {nodes: new Set(graph.nodes.map((item) => item.node_id)), edges: graph.edges};
   const nodes = new Set([selected]);
   const edges: ThesisGraph["edges"] = [];
@@ -30,6 +30,26 @@ function spotlight(graph: ThesisGraph, selected: string | null) {
   return {nodes, edges};
 }
 
+function dependencyClosure(graph: ThesisGraph, selected: string | null) {
+  if (!selected) return {nodes: new Set(graph.nodes.map((item) => item.node_id)), edges: graph.edges};
+  const nodes = new Set([selected]);
+  const edges: ThesisGraph["edges"] = [];
+  const queue = [selected];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const edge of graph.edges) {
+      if (edge.from !== current && edge.to !== current) continue;
+      if (!edges.includes(edge)) edges.push(edge);
+      const next = edge.from === current ? edge.to : edge.from;
+      if (!nodes.has(next)) {
+        nodes.add(next);
+        queue.push(next);
+      }
+    }
+  }
+  return {nodes, edges};
+}
+
 export function ThesisGraphView({graph}: {graph: ThesisGraph}) {
   const [selected, setSelected] = useState<string | null>(null);
   const [focused, setFocused] = useState(graph.nodes[0]?.node_id ?? "");
@@ -43,11 +63,13 @@ export function ThesisGraphView({graph}: {graph: ThesisGraph}) {
     });
   }, [graph]);
   const byId = new Map(positioned.map((item) => [item.node_id, item]));
-  const activePath = spotlight(graph, selected);
-  const active = activePath.nodes;
+  const readingPath = primaryPath(graph, selected);
+  const closure = dependencyClosure(graph, selected);
+  const active = closure.nodes;
   const height = Math.max(320, ...positioned.map((item) => item.y + 64));
   const selectedNode = selected ? byId.get(selected) : undefined;
-  const selectedEdges = selected ? activePath.edges : [];
+  const selectedEdges = selected ? readingPath.edges : [];
+  const closureEdges = selected ? closure.edges : graph.edges;
   const focusNode = (nodeId: string) => {
     setFocused(nodeId);
     requestAnimationFrame(() => {
@@ -122,6 +144,6 @@ export function ThesisGraphView({graph}: {graph: ThesisGraph}) {
       </svg>
     </div>
     <ol className="dag-mobile-list" aria-label="Thesis dependency list">{positioned.filter((node) => active.has(node.node_id)).map((node) => <li key={node.node_id}><button aria-pressed={selected === node.node_id} onClick={() => choose(node.node_id)}><span>{node.kind}</span><strong>{node.label}</strong><small>{node.status}</small></button></li>)}</ol>
-    <div className="dag-detail" aria-live="polite">{selectedNode ? <><div><p className="kicker">Selected dependency</p><strong>{selectedNode.label}</strong><small>{selectedNode.kind} · {selectedNode.status} · Left/right follows a dependency · Up/down traverses every node</small></div><ul>{selectedEdges.map((edge) => <li key={`${edge.from}-${edge.to}`}><code>{edge.from}</code> {edge.relationship.replaceAll("_", " ")} <code>{edge.to}</code></li>)}</ul><button onClick={() => setSelected(null)}>Clear path</button></> : <p>Select any node to isolate its connected evidence-to-action path. Left/right follows dependencies; up/down, Home, and End provide a complete roving-keyboard traversal. All {graph.nodes.length} nodes and {graph.edges.length} typed edges are rendered.</p>}</div>
+    <div className="dag-detail" aria-live="polite" data-connected-edge-count={closureEdges.length}>{selectedNode ? <><div><p className="kicker">Selected dependency</p><strong>{selectedNode.label}</strong><small>{selectedNode.kind} · {selectedNode.status} · The canvas shows one primary reading path for legibility; the complete connected register below retains every branch.</small></div><p className="dependency-disclosure">Primary reading path shown above · {closure.nodes.size} connected nodes · {closureEdges.length} connected relationships retained below</p><ul aria-label="Complete connected dependency register">{closureEdges.map((edge) => <li key={`${edge.from}-${edge.to}-${edge.relationship}`}><strong>{byId.get(edge.from)?.label ?? edge.from}</strong> <span>{edge.relationship.replaceAll("_", " ")}</span> <strong>{byId.get(edge.to)?.label ?? edge.to}</strong></li>)}</ul><button onClick={() => setSelected(null)}>Clear path</button></> : <p>Select any node to inspect one legible primary path and the complete connected dependency register. Left/right follows a primary dependency; up/down, Home, and End traverse every node. All {graph.nodes.length} nodes and {graph.edges.length} typed edges remain available.</p>}</div>
   </div>;
 }

@@ -7,7 +7,7 @@ This portfolio candidate combines a deterministic Python analytics layer with a 
 - **AtlasGrid Systems:** a 60-month vertical-SaaS buyout that exposes retention survivorship, parent-level concentration, underburdened gross margin, challenged EBITDA add-backs, and leverage fragility. Illustrative IC decision: `REPRICE`.
 - **Helios Compute Control:** an AI-infrastructure growth investment that separates design-partner performance from ordinary cohorts, recomputes pipeline, models tiered market adoption, and runs exact event-by-event dilution, milestone, runway, preference-waterfall, and dated-return mechanics. Illustrative IC disposition: `CONDITIONAL INVEST`, pending human approval and executable milestones.
 
-> **Status: LOCAL PORTFOLIO CANDIDATE — FOUNDER REVIEW PENDING**
+> **Status: LOCAL CANDIDATE IN VERIFICATION — NOT YET ACCEPTED FOR FOUNDER REVIEW**
 >
 > Both companies and all underlying records are fictional. Every screen states `SYNTHETIC — NOT INVESTMENT ADVICE`. The workbench does not fetch private data, make autonomous investment decisions, or establish real-world investment accuracy. Hosted CI and public release are `NOT RUN`.
 
@@ -62,14 +62,15 @@ The existing `ic-evidence-lab` CLI and evidence-kernel behavior remain intact.
 
 ## Render the product walkthrough
 
-The former static-card reel was retired as `QUALITY SHORT`. The replacement is a
-150-second silent, captioned recording of the real local workbench through
-ordinary controls:
+The former static-card reel was retired as `QUALITY SHORT`. The replacement
+renderer and storyboard target a 150-second silent, captioned recording of the
+real local workbench through ordinary controls. The source-bound release media
+is `NOT RUN` until the candidate source commit is clean and immutable:
 
 ```bash
 uv sync --frozen --extra demo
-uv run python scripts/render_demo.py
-uv run python scripts/verify_demo.py
+uv run python scripts/render_demo.py --out demo/release
+uv run python scripts/verify_demo.py --root demo/release
 ```
 
 The film covers decision posture versus authority, hurdle tests, number-to-source
@@ -101,4 +102,4 @@ The accepted foundation still supports content-addressed evidence packets, exact
 
 ## Authorship and license
 
-Cooper David Reed is the founder and lead implementer. Multi-model advisory work is disclosed in the technical provenance record, while Codex remained the sole filesystem writer. The project is licensed under [Apache-2.0](LICENSE).
+Cooper David Reed is the project lead and product/analytical owner. Multi-model advisory work is disclosed in the technical provenance record, while Codex remained the sole filesystem writer. The project is licensed under [Apache-2.0](LICENSE).

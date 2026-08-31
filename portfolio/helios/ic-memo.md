@@ -7,11 +7,11 @@
 **Authority:** `DECISION_RECORD_INCOMPLETE` / `PENDING_FOUNDER_SIGNATURE` / no delegated investment authority.
 
 **Knowledge cutoff:** `2026-08-29T00:00:00Z`
-**Packet receipt:** `4d698272e2dd0b340c6197156fe0f507f268cd5b62a35dcb434fce0b78876feb`
+**Packet receipt:** `87a0a3af0095ef713ef95cc993a3dde1192aaab3ef6625ba79f82364598696e1`
 
 ## Recommendation and executable terms
 
-Invest only if the 30% XIRR, 3.0x MOIC, and 10% loss hurdles clear and milestone funding stays tied to retention, pipeline, and margin evidence.
+Invest only if the 30% XIRR, 3.0x MOIC, and 10% modeled probability-below-1.0x hurdles clear and milestone funding stays tied to retention, pipeline, and margin evidence.
 
 | Term | Exact selected-case position |
 |---|---|
@@ -164,5 +164,5 @@ This packet is generated from a fictional deterministic room. Synthetic causal e
 
 - MILESTONE result: `f9ff468695bb5ee3fea76121b21a4bbb590792a3987b30a5e374dd77b9d9aeb8`
 - DOWNSIDE result: `c52a91b04b7c6ad14e1f92e125df355f32658d6128daaf364f4171b6a02e64fe`
-- Sensitivity book: `de3b3f187e9322e5dcaff775f2e05ab119bfb413d65c3439035ba7c7f1915bbf`
-- Value-creation bridge: `8996c0dd3d67eeec9d120e9a34d9188d12e95406385082ce7edd0bdbc461fc9e`
+- Sensitivity book: `3ccfb1565147b30afea31c6edc706162395092ecaad1767e4a5986ac6b36ddf3`
+- Value-creation bridge: `ae3d76c086a6fdc4174a9528e18aa6bf9f14c03514f0114c3b6190707ba9709e`

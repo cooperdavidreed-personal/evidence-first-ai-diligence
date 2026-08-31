@@ -7,7 +7,11 @@ from pathlib import Path
 import pytest
 
 from ic_evidence_lab.canonical import canonical_json
-from scripts.scan_public import reviewed_binary_allowlist, validate_blind_review_binding
+from scripts.scan_public import (
+    reviewed_binary_allowlist,
+    reviewed_demo_allowlist,
+    validate_blind_review_binding,
+)
 
 
 ROOT = Path(__file__).parents[1]
@@ -64,8 +68,33 @@ def test_reviewed_binary_allowlist_fails_closed_on_digest_mismatch(
         reviewed_binary_allowlist(tmp_path)
 
 
-def test_superseded_blind_review_is_explicitly_not_current() -> None:
+def test_current_blind_review_is_bound_to_retained_snapshots() -> None:
     validate_blind_review_binding(ROOT)
+
+
+def test_reviewed_demo_binary_requires_exact_manifest_digest(tmp_path: Path) -> None:
+    release = tmp_path / "demo" / "release"
+    release.mkdir(parents=True)
+    video = release / "underwriting-intelligence-lab-demo.mp4"
+    video.write_bytes(b"reviewed-demo")
+    manifest = {
+        "schema_version": "underwriting.demo-manifest/v2",
+        "status": "RENDERED_LOCAL_FOUNDER_REVIEW_PENDING",
+        "video": video.name,
+        "sha256": hashlib.sha256(video.read_bytes()).hexdigest(),
+    }
+    manifest["manifest_sha256"] = hashlib.sha256(canonical_json(manifest)).hexdigest()
+    (release / "manifest.json").write_bytes(canonical_json(manifest) + b"\n")
+    assert reviewed_demo_allowlist(tmp_path) == {
+        "demo/release/underwriting-intelligence-lab-demo.mp4"
+    }
+    manifest["sha256"] = "0" * 64
+    manifest_body = dict(manifest)
+    manifest_body.pop("manifest_sha256")
+    manifest["manifest_sha256"] = hashlib.sha256(canonical_json(manifest_body)).hexdigest()
+    (release / "manifest.json").write_bytes(canonical_json(manifest) + b"\n")
+    with pytest.raises(ValueError, match="demo_video_digest_mismatch"):
+        reviewed_demo_allowlist(tmp_path)
 
 
 def test_current_blind_review_fails_when_snapshot_digest_is_stale(tmp_path: Path) -> None:

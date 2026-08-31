@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "verify:chunks": "node scripts/verify-case-chunks.mjs",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "check": "pnpm test && pnpm build && pnpm test:e2e"
+    "check": "pnpm test && pnpm build && pnpm verify:chunks && pnpm test:e2e"
   },
   "dependencies": {
     "react": "^19.1.1",

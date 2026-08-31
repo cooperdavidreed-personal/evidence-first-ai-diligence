@@ -212,3 +212,117 @@ def test_helios_formula_operands_cannot_diverge_from_engine_ledgers(
         _rebind_case(case)
         with pytest.raises(UnderwritingError, match=expected_error):
             validate_workbench_case(case)
+
+
+@pytest.mark.parametrize("fixture_name", ["atlasgrid_v2", "helios_v2"])
+def test_every_declared_investment_metric_has_recomputable_operands(
+    fixture_name: str,
+    request: pytest.FixtureRequest,
+) -> None:
+    case = request.getfixturevalue(fixture_name)
+    metrics = {item["metric_id"]: item for item in case["metricRegistry"]}
+    formulas = {item["formula_id"]: item for item in case["formulaRegistry"]}
+    rendered = set(case["renderManifest"]["metric_ids"])
+    investment = case["renderManifest"]["investment_metric_ids"]
+    assert investment
+    for metric_id in investment:
+        metric = metrics[metric_id]
+        assert metric_id in rendered
+        assert metric["formula_id"] in formulas
+        assert metric["operand_ids"]
+        assert metric["operand_ids"] == formulas[metric["formula_id"]]["operand_ids"]
+
+
+def test_all_primary_pe_return_scenarios_bind_to_engine_cash_flows(
+    atlasgrid_v2: dict,
+) -> None:
+    metrics = {item["metric_id"]: item for item in atlasgrid_v2["metricRegistry"]}
+    formulas = {item["formula_id"]: item for item in atlasgrid_v2["formulaRegistry"]}
+    for scenario_key in ("ask", "selected", "downside"):
+        scenario = atlasgrid_v2["peEngine"][scenario_key]
+        prefix = f"atlasgrid-{scenario['scenario_id']}"
+        expected_flows = [
+            f"{prefix}-sponsor-cash-flow-{index:02d}"
+            for index in range(1, len(scenario["sponsor_cash_flows"]) + 1)
+        ]
+        irr = metrics[f"{prefix}-gross-irr"]
+        moic = metrics[f"{prefix}-gross-moic"]
+        assert irr["operand_ids"] == expected_flows
+        assert formulas[irr["formula_id"]]["operation"] == "DATED_XIRR"
+        assert formulas[moic["formula_id"]]["operation"] == "DIVIDE"
+        assert len(moic["operand_ids"]) == 2
+
+
+def test_sensitivity_and_value_creation_outputs_are_formula_closed(
+    atlasgrid_v2: dict,
+    helios_v2: dict,
+) -> None:
+    checks = (
+        (
+            atlasgrid_v2,
+            (
+                "atlasgrid-entry_enterprise_value_cents:21000000000-irr",
+                "atlasgrid-entry_enterprise_value_cents:21000000000-moic",
+                "atlasgrid-entry_enterprise_value_cents:21000000000-debt",
+                "atlasgrid-entry_enterprise_value_cents:21000000000-headroom",
+                "atlasgrid-value-renewal-exit_equity_delta_cents",
+                "atlasgrid-value-combined",
+                "atlasgrid-value-interaction",
+            ),
+        ),
+        (
+            helios_v2,
+            (
+                "helios-vc-exit_value-2-gross-xirr",
+                "helios-vc-exit_value-2-gross-moic",
+                "helios-vc-exit_value-2-ownership",
+                "helios-vc-exit_value-2-minimum-cash",
+                "helios-value-optimizer-unit-economics-target_proceeds_delta_cents",
+                "helios-value-combined_target_proceeds_delta_cents",
+                "helios-value-interaction_residual_cents",
+            ),
+        ),
+    )
+    for case, metric_ids in checks:
+        metrics = {item["metric_id"]: item for item in case["metricRegistry"]}
+        formulas = {item["formula_id"]: item for item in case["formulaRegistry"]}
+        for metric_id in metric_ids:
+            metric = metrics[metric_id]
+            assert metric["formula_id"] in formulas
+            assert metric["operand_ids"] == formulas[metric["formula_id"]]["operand_ids"]
+
+
+def test_quantile_rank_tamper_fails_closed(helios_v2: dict) -> None:
+    case = deepcopy(helios_v2)
+    formula = next(
+        item
+        for item in case["formulaRegistry"]
+        if item["operation"] == "QUANTILE_P50"
+    )
+    rank_metric_id = formula["operand_ids"][1]
+    rank_metric = next(
+        item for item in case["metricRegistry"] if item["metric_id"] == rank_metric_id
+    )
+    rank_metric["value"] = str(int(rank_metric["value"]) + 1)
+    rank_metric.pop("metric_sha256")
+    rank_metric["metric_sha256"] = digest(rank_metric)
+    _rebind_case(case)
+    with pytest.raises(UnderwritingError, match="formula_quantile_rank_mismatch"):
+        validate_workbench_case(case)
+
+
+def test_declared_investment_metric_cannot_drop_its_formula(helios_v2: dict) -> None:
+    case = deepcopy(helios_v2)
+    metric_id = case["renderManifest"]["investment_metric_ids"][0]
+    metric = next(item for item in case["metricRegistry"] if item["metric_id"] == metric_id)
+    formula_id = metric["formula_id"]
+    metric["formula_id"] = None
+    metric["operand_ids"] = []
+    metric.pop("metric_sha256")
+    metric["metric_sha256"] = digest(metric)
+    case["formulaRegistry"] = [
+        item for item in case["formulaRegistry"] if item["formula_id"] != formula_id
+    ]
+    _rebind_case(case)
+    with pytest.raises(UnderwritingError, match="investment_metric_calculation_open"):
+        validate_workbench_case(case)

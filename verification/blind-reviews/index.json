@@ -1,0 +1,17 @@
+{
+  "index_sha256": "e44bfc302d9bab8ecc65a218d8f4047dfb6edb8a0ba35c9da40c03df21d42f91",
+  "receipts": [
+    {
+      "case_id": "atlasgrid-systems",
+      "path": "verification/blind-reviews/atlasgrid-systems.json",
+      "sha256": "bf00a00c65c3ca44864d0eda31157dfa51d8ea9f04dc0f4f578e81fa1e0c30aa"
+    },
+    {
+      "case_id": "helios-compute-control",
+      "path": "verification/blind-reviews/helios-compute-control.json",
+      "sha256": "c8be68724353524e32008792455fbc9ba47abe32f5ad79b838245e1d42f41c30"
+    }
+  ],
+  "schema_version": "underwriting.blind-review-index/v1",
+  "state": "PASS"
+}

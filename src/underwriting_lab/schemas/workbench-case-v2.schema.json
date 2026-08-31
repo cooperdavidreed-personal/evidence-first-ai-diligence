@@ -161,10 +161,11 @@
     "metricRegistry": {"type": "array", "minItems": 1},
     "renderManifest": {
       "type": "object", "additionalProperties": false,
-      "required": ["schema_version", "metric_ids", "formula_sample_metric_ids"],
+      "required": ["schema_version", "metric_ids", "investment_metric_ids", "formula_sample_metric_ids"],
       "properties": {
         "schema_version": {"const": "underwriting.render-manifest/v2"},
         "metric_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "investment_metric_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
         "formula_sample_metric_ids": {"type": "array", "maxItems": 10, "uniqueItems": true, "items": {"type": "string"}}
       }
     },

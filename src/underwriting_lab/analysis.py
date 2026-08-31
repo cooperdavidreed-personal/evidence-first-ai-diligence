@@ -1057,6 +1057,8 @@ def _atlasgrid(
             "ask": ask_case.receipt(),
             "selected": selected_case.receipt(),
             "downside": downside_case.receipt(),
+            "maximum_bid_base": maximum_bid_base_case.receipt(),
+            "maximum_bid_downside": maximum_bid_downside_case.receipt(),
             "distribution": pe_distribution.receipt(),
             "sensitivities": pe_sensitivities.receipt(),
             "maximum_bid_cents": maximum_bid,
@@ -1333,6 +1335,17 @@ def _helios(
             "target_ownership": format(result.target_ownership, "f"),
             "minimum_cash_cents": result.minimum_cash_cents,
             "target_proceeds_cents": result.target_proceeds_cents,
+            "target_cash_flows": list(result.target_cash_flows),
+            "target_shares": next(
+                item.shares
+                for item in result.holders
+                if item.holder_id == "series-c-investor"
+            ),
+            "fully_diluted_shares": sum(item.shares for item in result.holders)
+            + result.unissued_pool_shares,
+            "ending_cash_path_cents": [
+                item["ending_cash_cents"] for item in result.cash_by_month
+            ],
         }
         body["receipt_sha256"] = digest(body)
         vc_sensitivity_cells.append(body)
@@ -1432,6 +1445,10 @@ def _helios(
             - selected_vc.target_proceeds_cents,
             "gross_xirr_delta": format(result.gross_xirr - selected_vc.gross_xirr, "f"),
             "gross_moic_delta": format(result.gross_moic - selected_vc.gross_moic, "f"),
+            "result_minimum_cash_cents": result.minimum_cash_cents,
+            "result_target_proceeds_cents": result.target_proceeds_cents,
+            "result_gross_xirr": format(result.gross_xirr, "f"),
+            "result_gross_moic": format(result.gross_moic, "f"),
             "credit_classification": credit_classification,
             "source_analysis_ids": source_analysis_ids,
             "economic_mapping": mapping,
@@ -1545,8 +1562,16 @@ def _helios(
     vc_value_creation_bridge: dict[str, Any] = {
         "schema_version": "underwriting.vc-value-creation-bridge/v2",
         "base_receipt_sha256": selected_vc.receipt()["receipt_sha256"],
+        "base_minimum_cash_cents": selected_vc.minimum_cash_cents,
+        "base_target_proceeds_cents": selected_vc.target_proceeds_cents,
+        "base_gross_xirr": format(selected_vc.gross_xirr, "f"),
+        "base_gross_moic": format(selected_vc.gross_moic, "f"),
         "standalone": standalone_bodies,
         "combined_result_receipt_sha256": combined_result.receipt()["receipt_sha256"],
+        "combined_result_minimum_cash_cents": combined_result.minimum_cash_cents,
+        "combined_result_target_proceeds_cents": combined_result.target_proceeds_cents,
+        "combined_result_gross_xirr": format(combined_result.gross_xirr, "f"),
+        "combined_result_gross_moic": format(combined_result.gross_moic, "f"),
         "combined_minimum_cash_delta_cents": combined_result.minimum_cash_cents
         - selected_vc.minimum_cash_cents,
         "combined_target_proceeds_delta_cents": combined_proceeds_delta,
@@ -1699,7 +1724,7 @@ def _helios(
         "status": "DECISION_RECORD_INCOMPLETE",
         "signature_status": "PENDING_FOUNDER_SIGNATURE",
         "as_of": CUTOFF,
-        "rationale": "Invest only if the 30% XIRR, 3.0x MOIC, and 10% loss hurdles clear and milestone funding stays tied to retention, pipeline, and margin evidence.",
+        "rationale": "Invest only if the 30% XIRR, 3.0x MOIC, and 10% modeled probability-below-1.0x hurdles clear and milestone funding stays tied to retention, pipeline, and margin evidence.",
         "conditions": ["Ordinary-cohort NRR at or above 105%", "Gross margin at or above 70%", "Milestone case gross XIRR at or above 30% and gross MOIC at or above 3.0x", "Modeled probability below 1.0x at or below 10%", "Pipeline stage-history audit complete", "Optimizer RCT effect replicated", "At least 18 modeled months post-close runway"],
         "open_conditions": 7,
         "terms": ["Illustrative $25M first close + $15M conditional tranche", "$160M pre-money; 12% post-financing unissued pool", "1x non-participating Series C; pre-money holders bear pool refresh"],

@@ -117,7 +117,9 @@ def compile_source_evidence(
                 "repository_path": (
                     f"portfolio/{case_id}/data-room/{artifact['path']}"
                 ),
-                "published_path": f"/source-pack/{case_id}/{artifact['path']}",
+                # Deployment-base relative so GitHub Pages project sites retain
+                # their repository subpath instead of jumping to origin root.
+                "published_path": f"source-pack/{case_id}/{artifact['path']}",
                 "artifact_sha256": artifact["sha256"],
                 "locator_kind": kind,
                 "selector": selector,

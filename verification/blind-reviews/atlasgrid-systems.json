@@ -1,0 +1,42 @@
+{
+  "answers": [
+    {
+      "answer": "REPRICE is the analytical posture and is explicitly not approved. Workflow is HOLD; human authority is PENDING HUMAN with no investment approval; the record is PENDING FOUNDER SIGNATURE with three required conditions; and the advancement gate is NOT CLEARED.",
+      "question_index": 1,
+      "question_sha256": "5bae0ae1e12cb59c6c95bbd3991a312f2b5f96044976291c0bd3ead1091c21e8"
+    },
+    {
+      "answer": "The selected structure is $210M upfront enterprise value, $120M funded term debt, and an $88M earnout threshold with a $20M cap. The seller ask is $240M. No ownership percentage is shown.",
+      "question_index": 2,
+      "question_sha256": "9d4cef09b7d06f8c20d46b34bbe3a8de1ac05532a627e14751dd419a0ce752a3"
+    },
+    {
+      "answer": "Definition quality drives earnings and concentration: normalized LTM EBITDA is $25.93M versus $34.94M seller-adjusted. The $240M ask yields 17.6% gross XIRR and misses the 22% hurdle; the selected $210M structure yields 23.3%.",
+      "question_index": 3,
+      "question_sha256": "7cbb47fac990ae8c1df8c84662d0ca6ac234cf121f8f4908a1a42795d88e3269"
+    },
+    {
+      "answer": "Churn plus multiple compression breaks the return case. The downside uses a 5.00x exit and produces 6.2% gross IRR and 1.35x gross MOIC; separate seeded paths show 5.40% probability below 1.0x.",
+      "question_index": 4,
+      "question_sha256": "191e7593938c465239cf9710415391fa00a05e4bac18a5cf20b0ca687a2a796f"
+    },
+    {
+      "answer": "Resolve the lender definition of covenant EBITDA. Do not advance debt terms until covenant headroom is recomputed under the executed definition. If unresolved, the gate remains uncleared and the case may not advance to debt commitment or approval.",
+      "question_index": 5,
+      "question_sha256": "dc85e73af5af43b3d9e5576781fd179a09cc9bac9092051a6d003a82a6fb677a"
+    }
+  ],
+  "ambiguity": "Low. REPRICE could be misread alone as approval, but the same viewport states NOT APPROVED, HOLD, PENDING HUMAN, NO INVESTMENT APPROVAL, PENDING FOUNDER SIGNATURE, and NOT CLEARED. Three conditions remain open while one exact blocking gate is fully visible.",
+  "artifact": "dist/visual-evidence/desktop-atlasgrid-systems-ic-snapshot.png",
+  "case_id": "atlasgrid-systems",
+  "image_sha256": "bad01d4238d9540032665dbba1d984558b368b5bc038627c24e0aca2baba9823",
+  "protocol_sha256": "b3023b6a6abf9067bd841e63ae3c4910c49e7f6a743df9a21e013beb821c7c2e",
+  "receipt_sha256": "8a5442dc6a63562a6d3eb999ce56c19b872255d88a4b31b4aa61926795c3c356",
+  "recorded_at_utc": "2026-08-31T01:29:22Z",
+  "review_context": "A reviewer who did not author the implementation receives only the retained 1440 by 900 desktop IC Snapshot image and these questions. The reviewer has 60 seconds per image and may not inspect another artifact.",
+  "reviewer_role": "Independent blind-comprehension reviewer, PE case only",
+  "reviewer_task_id": "/root/blind_pe_comprehension",
+  "schema_version": "underwriting.blind-review-receipt/v1",
+  "verdict": "PASS",
+  "writes_performed": 0
+}

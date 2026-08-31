@@ -48,15 +48,19 @@ evidence.
 
 ## Information architecture
 
-The stable route vocabulary is:
+The stable route vocabulary uses a versioned hash prefix so every route reloads
+correctly from a static GitHub Pages project subpath without server rewrites:
 
 ```text
-/:case/snapshot
-/:case/evidence
-/:case/econometrics
-/:case/underwriting
-/:case/value-creation
+#/v2/:case/snapshot
+#/v2/:case/evidence
+#/v2/:case/econometrics
+#/v2/:case/underwriting
+#/v2/:case/value-creation
 ```
+
+This is a hosting realization of the originally planned case/view vocabulary;
+it does not change view semantics, case identity, or deep-link state.
 
 Query state may add a focused metric, finding, source, scenario, sensitivity,
 or thesis path. Back/forward navigation must restore the same case, view, and

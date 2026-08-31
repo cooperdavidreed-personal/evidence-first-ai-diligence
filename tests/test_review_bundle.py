@@ -59,8 +59,23 @@ def _fixture_repository(tmp_path: Path) -> Path:
         "private.pem",
         "run.stderr",
         ".DS_Store",
+        ".aws/credentials",
+        ".ssh/id_rsa",
+        "secrets.txt",
     ):
         _write(root, relative, "must-not-ship\n")
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+    subprocess.run(["git", "config", "user.email", "review@example.invalid"], cwd=root, check=True)
+    subprocess.run(["git", "config", "user.name", "Review Fixture"], cwd=root, check=True)
+    subprocess.run(
+        [
+            "git", "add", "README.md", "pyproject.toml", "LICENSE", "NOTICE",
+            "tests", "src", "scripts", ".github", ".env.example",
+        ],
+        cwd=root,
+        check=True,
+    )
+    subprocess.run(["git", "commit", "-qm", "fixture"], cwd=root, check=True)
     return root
 
 
@@ -99,6 +114,9 @@ def test_bundle_preserves_repo_root_and_excludes_private_generated_files(
         assert f"{root.name}/src/ic_evidence_lab/schemas/case.schema.json" in files
         assert f"{root.name}/project/README.md" not in files
         assert f"{root.name}/.env.example" in files
+        assert f"{root.name}/.aws/credentials" not in files
+        assert f"{root.name}/.ssh/id_rsa" not in files
+        assert f"{root.name}/secrets.txt" not in files
         assert all("must-not-ship" not in archive.read(name).decode() for name in files)
 
         assert all(info.date_time == ARCHIVE_TIMESTAMP for info in archive.infolist())

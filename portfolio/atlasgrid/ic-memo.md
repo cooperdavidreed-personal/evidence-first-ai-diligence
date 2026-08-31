@@ -5,7 +5,7 @@
 **Provisional posture:** `REPRICE`  
 **Workflow state:** `DECISION_RECORD_INCOMPLETE` / `PENDING_FOUNDER_SIGNATURE`  
 **Knowledge cutoff:** `2026-08-29T00:00:00Z`
-**Packet receipt:** `64047c984d75dd8dabc902d9747ade95c0d2ba449dbdd82ea33a3f366d37f801`
+**Packet receipt:** `e6e8e4ca90f4673d7e7f1a22d7ea76f9eba9df3d63a86c5fafe649bb75ff447f`
 
 ## Recommendation
 
@@ -152,9 +152,9 @@ This packet is generated from a fictional, deterministic data room. Synthetic ca
 
 ## Receipt appendix
 
-- Case analysis: `af2d1089db11fa26fc51ac14705e8037a433e05a9a625a0e7494f90ca0a21821`
-- ASK result: `0c8166368d5bd4f1e4dbd5b88a48f3d3f22d20726fa0c929c8d4427e05d769a8`
-- SELECTED result: `87e0a3ece3a76aca6d5e1d7e89021f5915e17234c6db75d60f34e26654dd2e7e`
-- DOWNSIDE result: `8b949ad91fdf4f88e31eaabdc30336be8b3b27852a751cc61d3c3cab82277c40`
-- Sensitivity book: `4895ffd22d9e046cb3e5bd051fb35e434d39d7377f8400e82f6d5c30c79dd246`
-- Value-creation bridge: `20b86f120e1e2593574d81c82816aa6ae7faf612453bd365b5b50105504a930f`
+- Case analysis: `c4afa396eadaf191dde43fb88c6dbee23baadbc5ab9bd2c8cae829b9e1663c8b`
+- ASK result: `eec74d74673f9fd6dab705cc5b49015287738efedc77532dc829285756354653`
+- SELECTED result: `d747f18826ce3c27bc04271ea5193a1c56c3e36c8e7460ab9a045daea46cdeea`
+- DOWNSIDE result: `cadcdffd6280a15e45459ff2253cfc57634cc108fc05ee3a90dd4013d4a33832`
+- Sensitivity book: `cdc8443044fd97707d9d2ba6c92fa5a3aabc92005767867df71371f6175fb11d`
+- Value-creation bridge: `d9ae1665d82e65933afc4abbe7added3fc668a93f2edb8584d8c169646b960b2`

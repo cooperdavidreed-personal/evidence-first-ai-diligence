@@ -1,10 +1,14 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App";
+import App, {parseRoute} from "./App";
+import {loadCase} from "./case-data";
 import "./styles.css";
+
+const initialRoute = parseRoute();
+const initialCase = await loadCase(initialRoute.caseId);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <App initialCase={initialCase} initialRoute={initialRoute} />
   </StrictMode>,
 );

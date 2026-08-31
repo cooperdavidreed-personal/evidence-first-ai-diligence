@@ -10,8 +10,8 @@ mission-control artifacts are omitted.
 from __future__ import annotations
 
 import argparse
-import os
 import stat
+import subprocess
 import tempfile
 import zipfile
 from collections.abc import Sequence
@@ -91,23 +91,34 @@ def _excluded_file(path: Path) -> bool:
 
 
 def _source_files(root: Path, out: Path) -> list[Path]:
+    """Return only Git-tracked files from the clean candidate worktree.
+
+    A blacklist cannot safely enumerate credential names. The review artifact
+    therefore admits only the exact tracked candidate and ignores every local,
+    ignored, or untracked file regardless of name.
+    """
+
+    for args, reason in ((["diff", "--quiet"], "tracked"), (["diff", "--cached", "--quiet"], "staged")):
+        result = subprocess.run(["git", *args], cwd=root, check=False)
+        if result.returncode != 0:
+            raise ValueError(f"review bundle requires a clean {reason} candidate")
+    result = subprocess.run(
+        ["git", "ls-files", "--cached", "-z"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
     files: list[Path] = []
-    for current, directory_names, file_names in os.walk(root, followlinks=False):
-        current_path = Path(current)
-        directory_names[:] = sorted(
-            name
-            for name in directory_names
-            if name not in EXCLUDED_DIRECTORIES
-            and not name.endswith(".egg-info")
-            and not (current_path / name).is_symlink()
-        )
-        for file_name in sorted(file_names):
-            path = current_path / file_name
-            if path.is_symlink() or _excluded_file(path):
-                continue
-            if path.resolve() == out:
-                continue
-            files.append(path)
+    for raw in result.stdout.split(b"\0"):
+        if not raw:
+            continue
+        relative = Path(raw.decode("utf-8", errors="strict"))
+        path = root / relative
+        if path.is_symlink() or not path.is_file() or _excluded_file(path):
+            continue
+        if EXCLUDED_DIRECTORIES.intersection(relative.parts) or path.resolve() == out:
+            continue
+        files.append(path)
     return sorted(files, key=lambda path: path.relative_to(root).as_posix())
 
 

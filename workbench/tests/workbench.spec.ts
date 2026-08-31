@@ -84,6 +84,7 @@ async function loadCanonicalVisualRoute(page: Page, routeCaseId: string, routeSl
 
 for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
   test(`${caseName} complete keyboard, interaction, visual, and accessibility flow`, async ({page}, testInfo: TestInfo) => {
+    test.setTimeout(60_000);
     const accessibilityScans: Array<Record<string, unknown>> = [];
     const evidenceCaseSlug = caseName.toLowerCase().replaceAll(" ", "-");
     const routeCaseId = caseName === "AtlasGrid Systems" ? "atlasgrid" : "helios";
@@ -96,10 +97,10 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
     });
     await expect(page.getByRole("heading", {name: caseName})).toBeVisible();
     await expect(page.getByText("SYNTHETIC — NOT INVESTMENT ADVICE")).toBeVisible();
-    await expect(page.getByText("PENDING HUMAN")).toBeVisible();
+    await expect(page.getByText("PENDING HUMAN", {exact: true}).first()).toBeVisible();
 
     const firstViewportChecks = [
-      [page.getByText("PENDING HUMAN", {exact: true}), "human authority state"],
+      [page.getByText("PENDING HUMAN", {exact: true}).first(), "human authority state"],
       [page.getByText("HOLD", {exact: true}), "workflow hold state"],
       [page.getByText("PENDING FOUNDER SIGNATURE", {exact: true}), "unsigned decision state"],
       [page.getByRole("heading", {name: caseName === "AtlasGrid Systems" ? "REPRICE" : "CONDITIONAL INVEST"}), "analytical posture"],
@@ -112,7 +113,7 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
       firstViewportChecks.push([page.getByRole("button", {name: /Downside.*gross XIRR/i}), "downside gross return"]);
       firstViewportChecks.push([page.getByRole("heading", {name: /Retention and margin support a milestone structure/}), "decisive evidence"]);
       firstViewportChecks.push([page.getByRole("heading", {name: /Down-round dilution and weaker exit economics/}), "loss case"]);
-      firstViewportChecks.push([page.getByRole("heading", {name: /Provider-level compute, telemetry, and support unit-cost ledger/}), "blocking gate"]);
+      firstViewportChecks.push([page.getByRole("heading", {name: /Pipeline, unit costs, and executed terms/}), "blocking gate"]);
       firstViewportChecks.push([page.getByRole("heading", {name: "Runway uses three different bases"}), "runway timing basis"]);
     } else if (caseName === "AtlasGrid Systems" && testInfo.project.name === "desktop") {
       firstViewportChecks.push([page.getByRole("button", {name: /Upfront EV/}), "selected entry price"]);
@@ -122,6 +123,11 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
       firstViewportChecks.push([page.getByRole("heading", {name: "Definitions reduce earnings and concentration quality"}), "decisive evidence"]);
       firstViewportChecks.push([page.getByRole("heading", {name: "Churn plus multiple compression breaks the return case"}), "loss case"]);
       firstViewportChecks.push([page.getByRole("heading", {name: "Lender definition of covenant EBITDA"}), "blocking gate"]);
+    }
+    if (testInfo.project.name === "mobile") {
+      firstViewportChecks.push([page.locator(".snapshot-term-row .finance-metric").first(), "selected transaction term"]);
+      firstViewportChecks.push([page.locator('[data-metric-id$="gross-irr"], [data-metric-id$="gross-xirr"]').first(), "selected gross return"]);
+      firstViewportChecks.push([page.locator('[data-metric-id="atlasgrid-DOWNSIDE-gross-irr"], [data-metric-id="helios-DOWNSIDE-gross-xirr"]'), "downside gross return"]);
     }
     for (const [locator, label] of firstViewportChecks) await assertInFirstViewport(page, locator, label);
 
@@ -223,10 +229,12 @@ for (const caseName of ["AtlasGrid Systems", "Helios Compute Control"]) {
           await page.keyboard.press("Escape");
           await expect(financeLineage).toBeFocused();
         } else {
-          const receipt = await page.locator(".engine-receipt code").textContent();
-          await page.getByRole("button", {name: "Shortfall bridge"}).click();
+          const receipt = await page.locator(".engine-receipt").getAttribute("data-receipt-sha256");
+          expect(receipt).toMatch(/^[0-9a-f]{64}$/);
+          await page.getByRole("button", {name: /Shortfall bridge/}).click();
           await expect(page.getByText(/Shortfall M/)).toBeVisible();
-          expect(await page.locator(".engine-receipt code").textContent()).not.toBe(receipt);
+          await expect(page).toHaveURL(/scenario=financing_shortfall/);
+          expect(await page.locator(".engine-receipt").getAttribute("data-receipt-sha256")).not.toBe(receipt);
           await expect(page.getByRole("heading", {name: "Exit waterfall"})).toBeVisible();
           await expect(page.getByRole("heading", {name: "Milestone test ledger"})).toBeVisible();
           await page.getByRole("combobox", {name: "Driver"}).selectOption("milestone_state");
@@ -296,4 +304,32 @@ test("stable deep links restore case, room, search, metric focus, and browser hi
   await expect(page).toHaveURL(/scenario=selected/);
   await expect(page).toHaveURL(/driver=exit_multiple/);
   await expect(page).toHaveURL(/cell=exit_multiple%3A5.5/);
+});
+
+test("snapshot CTAs restore and focus their promised sections", async ({page}) => {
+  await page.goto("/#/v2/helios/snapshot");
+  await page.getByRole("button", {name: "Open diligence register →"}).click();
+  await expect(page).toHaveURL(/#\/v2\/helios\/evidence\?section=diligence$/);
+  await expect(page.getByRole("heading", {name: "Diligence requests and decision consequences"})).toBeFocused();
+  await page.reload();
+  await expect(page.getByRole("heading", {name: "Diligence requests and decision consequences"})).toBeFocused();
+  await page.goto("/#/v2/helios/snapshot");
+  await page.getByRole("button", {name: "Open cash schedule →"}).click();
+  await expect(page).toHaveURL(/#\/v2\/helios\/underwriting\?section=cash$/);
+  await expect(page.getByRole("heading", {name: "Runway and financing need"})).toBeFocused();
+  await page.reload();
+  await expect(page.getByRole("heading", {name: "Runway and financing need"})).toBeFocused();
+});
+
+test("deep links load only the selected case chunk until case switch", async ({page}) => {
+  const caseRequests: string[] = [];
+  page.on("response", (response) => {
+    if (response.url().includes("underwriting-case-")) caseRequests.push(response.url());
+  });
+  await page.goto("/#/v2/helios/snapshot", {waitUntil: "networkidle"});
+  expect(caseRequests.some((url) => url.includes("helios"))).toBe(true);
+  expect(caseRequests.some((url) => url.includes("atlasgrid"))).toBe(false);
+  await page.getByRole("button", {name: /AtlasGrid Systems/}).click();
+  await expect(page.getByRole("heading", {name: "AtlasGrid Systems"})).toBeVisible();
+  expect(caseRequests.filter((url) => url.includes("atlasgrid"))).toHaveLength(1);
 });

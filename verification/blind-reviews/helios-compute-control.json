@@ -1,0 +1,42 @@
+{
+  "answers": [
+    {
+      "answer": "CONDITIONAL INVEST is the analytical posture and is explicitly not approved. Workflow is HOLD; human authority is PENDING HUMAN with no investment approval; and the record is PENDING FOUNDER SIGNATURE with seven required conditions.",
+      "question_index": 1,
+      "question_sha256": "5bae0ae1e12cb59c6c95bbd3991a312f2b5f96044976291c0bd3ead1091c21e8"
+    },
+    {
+      "answer": "The proposed structure is a $25M initial Series C close and a $15M conditional tranche only after milestone tests and human approval, targeting 20.0% fully diluted ownership. No valuation or per-share price is shown.",
+      "question_index": 2,
+      "question_sha256": "9d4cef09b7d06f8c20d46b34bbe3a8de1ac05532a627e14751dd419a0ce752a3"
+    },
+    {
+      "answer": "Retention and margin support milestone-gated funding, not immediate full funding. Ordinary-cohort NRR is 117.07%, blended gross margin is 70.61%, and 48 inflated opportunities flag pipeline quality. The funded case yields 60.3% gross XIRR and 9.19x gross MOIC.",
+      "question_index": 3,
+      "question_sha256": "7cbb47fac990ae8c1df8c84662d0ca6ac234cf121f8f4908a1a42795d88e3269"
+    },
+    {
+      "answer": "Down-round dilution and weaker exit economics reduce returns to 9.6% gross XIRR and 1.58x gross MOIC, below the 30% and 3.0x hurdles. Separate seeded paths show 0.10% probability below 1.0x.",
+      "question_index": 4,
+      "question_sha256": "191e7593938c465239cf9710415391fa00a05e4bac18a5cf20b0ca687a2a796f"
+    },
+    {
+      "answer": "Withhold the $15M tranche until pipeline history and provider unit costs reconcile, and do not fund the $25M first close until ownership and every waterfall scenario reconcile to executed terms. If unresolved, HOLD remains and the no-contingent-financing path exhausts cash in month 36.",
+      "question_index": 5,
+      "question_sha256": "dc85e73af5af43b3d9e5576781fd179a09cc9bac9092051a6d003a82a6fb677a"
+    }
+  ],
+  "ambiguity": "Low. CONDITIONAL INVEST could be mistaken for approval alone, but the viewport repeatedly states NOT APPROVED, HOLD, PENDING HUMAN, and PENDING FOUNDER SIGNATURE. Capital, ownership, tranche structure, and returns are shown; valuation and per-share price are not.",
+  "artifact": "dist/visual-evidence/desktop-helios-compute-control-ic-snapshot.png",
+  "case_id": "helios-compute-control",
+  "image_sha256": "54a83283295e7b36a8ef6394643cc3ff7440351b6ff7d60f577bc646b0219f43",
+  "protocol_sha256": "b3023b6a6abf9067bd841e63ae3c4910c49e7f6a743df9a21e013beb821c7c2e",
+  "receipt_sha256": "574f4492f5448b1c6a373efa67641e2cd6684a6177c82d860068644a4d8ef55c",
+  "recorded_at_utc": "2026-08-31T01:29:22Z",
+  "review_context": "A reviewer who did not author the implementation receives only the retained 1440 by 900 desktop IC Snapshot image and these questions. The reviewer has 60 seconds per image and may not inspect another artifact.",
+  "reviewer_role": "Blind VC case comprehension reviewer, non-author",
+  "reviewer_task_id": "/root/blind_vc_comprehension",
+  "schema_version": "underwriting.blind-review-receipt/v1",
+  "verdict": "PASS",
+  "writes_performed": 0
+}

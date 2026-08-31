@@ -8,8 +8,8 @@ All wording remains draft-only until the repository, workbench, and named verifi
 | Bound displayed metrics to source and method lineage | fail-closed compiler, nested digests, clickable lineage, tamper tests | `VERIFIED_LOCAL` |
 | Applied econometric identification discipline | declared estimands, uncertainty, diagnostics, causal classes, abstentions, smoke recovery, and two fixed 500-seed coverage ledgers | `VERIFIED_LOCAL_SYNTHETIC` |
 | Modeled buyout and venture economics | exact accounting/debt/capitalization bridges, event-derived milestone funding, dated cash flows, independent waterfall oracle, and seeded full-engine scenarios | `VERIFIED_LOCAL_SYNTHETIC` |
-| Produced an investor-oriented portfolio interface | responsive screenshots, automated interaction/a11y checks, accepted visual baseline, and exact-image blind comprehension reviews | `VERIFIED_LOCAL_INDEPENDENT_REVIEW` |
-| Used governed multi-model collaboration | provider receipts, one-writer enforcement, independent review | `PARTIAL — GROK PRODUCED; CLAUDE HELD_PROVIDER` |
+| Produced an investor-oriented portfolio interface | responsive screenshots, automated interaction/a11y checks, accepted visual baseline, and exact-image blind comprehension reviews | `VERIFIED_LOCAL_BLIND_SUBAGENT_REVIEW` |
+| Used governed multi-model collaboration | provider receipts, one-writer enforcement, independent review | `PARTIAL — CLAUDE AND GROK ADVISORY PRODUCED; CURRENT EXACT-HEAD CLAUDE ACCEPTANCE NOT RUN` |
 | Preserved the evidence kernel | full suite and 24-case deterministic regression | `VERIFIED_LOCAL` |
 | Publicly available | anonymous repository and artifact checks | `NOT PUBLISHED` |
 | Improves investment outcomes | independent longitudinal evidence on real decisions | `DO NOT CLAIM` |

@@ -29,13 +29,12 @@ Runtime analytics receive the case manifest path. The manifest may reference onl
 
 ## Contracts
 
-The companion layer adds five versioned schemas:
-
-- `underwriting.dataroom-manifest/v1`
-- `underwriting.analysis-receipt/v1`
-- `underwriting.decision-record/v1`
-- `underwriting.scenario-book/v1`
-- `underwriting.thesis-graph/v1`
+The companion layer ships 24 underwriting schemas in addition to the four
+preserved evidence-kernel schemas. They cover the shared manifest, analysis,
+decision, scenario, thesis, lineage, metric/formula, review-bundle, and
+workbench contracts plus the case-specific PE and VC engine records. The
+package-content gate verifies that exact inventory; new schemas cannot enter a
+release as undeclared files.
 
 Every analysis is classified as `DESCRIPTIVE`, `PREDICTIVE_ASSOCIATION`, `CAUSAL_SYNTHETIC_ONLY`, `SCENARIO`, `ACCOUNTING_IDENTITY`, or `NOT_IDENTIFIED`. Predictive outputs require uncertainty. Synthetic causal outputs require a declared assignment mechanism. Nonidentified questions retain an `ABSTAIN` state.
 

@@ -6,7 +6,7 @@
   "required": ["formula_id", "operation", "operand_ids", "output_metric_id", "output_unit", "formula_sha256"],
   "properties": {
     "formula_id": {"type": "string", "minLength": 1},
-    "operation": {"enum": ["ADD", "SUBTRACT", "MULTIPLY", "DIVIDE", "MIN", "MAX", "SUM", "SUM_POSITIVE", "ABS_SUM_NEGATIVE", "DATED_XIRR"]},
+    "operation": {"enum": ["ADD", "SUBTRACT", "MULTIPLY", "DIVIDE", "MIN", "MAX", "SUM", "SUM_POSITIVE", "ABS_SUM_NEGATIVE", "DATED_XIRR", "QUANTILE_P10", "QUANTILE_P50", "QUANTILE_P90", "PROBABILITY_BELOW_ONE_PERCENT"]},
     "operand_ids": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
     "output_metric_id": {"type": "string", "minLength": 1},
     "output_unit": {"type": "string", "minLength": 1},

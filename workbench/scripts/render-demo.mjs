@@ -112,7 +112,7 @@ try {
   await cue("10 · TERMS AND TIME", "$25M closes first; $15M is conditional. Current runway, funded runway, and the no-tranche exhaustion path are not conflated.");
   await until(132);
   await page.getByRole("button", {name: /Underwriting Room/}).click();
-  await page.getByRole("button", {name: "Shortfall bridge"}).click();
+  await page.getByRole("button", {name: /Shortfall bridge/}).click();
   await cue("11 · EVENT-BASED VENTURE MODEL", "Withheld financing reruns capitalization, runway, preferences, dated cash flows, ownership, and returns—rather than changing a display label.");
   await until(137);
   await page.getByRole("combobox", {name: "Driver"}).selectOption("milestone_state");

@@ -97,7 +97,7 @@ def _validate_pe_payload(case: dict[str, Any]) -> None:
         return
     if not isinstance(engine.get("maximum_bid_cents"), int):
         raise UnderwritingError("pe_maximum_bid_integer_cents_required")
-    for scenario_id in ("ask", "selected", "downside"):
+    for scenario_id in ("ask", "selected", "downside", "maximum_bid_base", "maximum_bid_downside"):
         result = engine.get(scenario_id)
         if not isinstance(result, dict):
             raise UnderwritingError(f"pe_scenario_missing:{scenario_id}")
@@ -169,6 +169,25 @@ def _validate_pe_payload(case: dict[str, Any]) -> None:
     _validate_hashed_v2_document(
         bridge, "pe-value-creation-bridge-v2.schema.json"
     )
+    pe_bridge_fields = (
+        ("exit_ebitda_cents", "exit_ebitda_delta_cents"),
+        ("exit_debt_cents", "exit_debt_delta_cents"),
+        ("exit_equity_cents", "exit_equity_delta_cents"),
+        ("gross_xirr", "gross_xirr_delta"),
+        ("gross_moic", "gross_moic_delta"),
+    )
+    for lever in bridge["standalone"]:
+        for absolute_field, delta_field in pe_bridge_fields:
+            result = Decimal(str(lever[f"result_{absolute_field}"]))
+            base = Decimal(str(bridge[f"base_{absolute_field}"]))
+            if result - base != Decimal(str(lever[delta_field])):
+                raise UnderwritingError(f"pe_value_creation_absolute_delta_mismatch:{lever['lever_id']}:{delta_field}")
+    if Decimal(bridge["combined_exit_equity_cents"]) - Decimal(bridge["base_exit_equity_cents"]) != Decimal(bridge["combined_exit_equity_delta_cents"]):
+        raise UnderwritingError("pe_value_creation_combined_equity_mismatch")
+    if Decimal(bridge["combined_gross_xirr"]) - Decimal(bridge["base_gross_xirr"]) != Decimal(bridge["combined_gross_xirr_delta"]):
+        raise UnderwritingError("pe_value_creation_combined_xirr_mismatch")
+    if Decimal(bridge["combined_gross_moic"]) - Decimal(bridge["base_gross_moic"]) != Decimal(bridge["combined_gross_moic_delta"]):
+        raise UnderwritingError("pe_value_creation_combined_moic_mismatch")
 
 
 def _validate_vc_payload(case: dict[str, Any]) -> None:
@@ -429,11 +448,27 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         expected = body.pop("receipt_sha256")
         if expected != digest(body):
             raise UnderwritingError("vc_value_creation_lever_digest_mismatch")
+        for result_field, base_field, delta_field in (
+            ("result_minimum_cash_cents", "base_minimum_cash_cents", "minimum_cash_delta_cents"),
+            ("result_target_proceeds_cents", "base_target_proceeds_cents", "target_proceeds_delta_cents"),
+            ("result_gross_xirr", "base_gross_xirr", "gross_xirr_delta"),
+            ("result_gross_moic", "base_gross_moic", "gross_moic_delta"),
+        ):
+            if Decimal(str(lever[result_field])) - Decimal(str(bridge[base_field])) != Decimal(str(lever[delta_field])):
+                raise UnderwritingError(f"vc_value_creation_absolute_delta_mismatch:{lever['lever_id']}:{delta_field}")
     if bridge["combined_target_proceeds_delta_cents"] != (
         bridge["sum_standalone_target_proceeds_delta_cents"]
         + bridge["interaction_residual_cents"]
     ):
         raise UnderwritingError("vc_value_creation_interaction_mismatch")
+    for result_field, base_field, delta_field in (
+        ("combined_result_minimum_cash_cents", "base_minimum_cash_cents", "combined_minimum_cash_delta_cents"),
+        ("combined_result_target_proceeds_cents", "base_target_proceeds_cents", "combined_target_proceeds_delta_cents"),
+        ("combined_result_gross_xirr", "base_gross_xirr", "combined_gross_xirr_delta"),
+        ("combined_result_gross_moic", "base_gross_moic", "combined_gross_moic_delta"),
+    ):
+        if Decimal(str(bridge[result_field])) - Decimal(str(bridge[base_field])) != Decimal(str(bridge[delta_field])):
+            raise UnderwritingError(f"vc_value_creation_combined_absolute_delta_mismatch:{delta_field}")
 
 
 def _validate_metric_contract(case: dict[str, Any]) -> None:
@@ -457,7 +492,7 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             f"portfolio/{case['caseId']}/data-room/{locator['artifact_path']}"
         )
         expected_published_path = (
-            f"/source-pack/{case['caseId']}/{locator['artifact_path']}"
+            f"source-pack/{case['caseId']}/{locator['artifact_path']}"
         )
         if (
             locator["repository_path"] != expected_repository_path
@@ -654,9 +689,45 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
         output = metrics[formula["output_metric_id"]]
         if output["formula_id"] != formula_id or output["operand_ids"] != formula["operand_ids"]:
             raise UnderwritingError("formula_output_binding_mismatch")
+        if output["unit"] != formula["output_unit"]:
+            raise UnderwritingError("formula_output_unit_mismatch")
+        operation = formula["operation"]
+        operand_units = [metrics[item]["unit"] for item in formula["operand_ids"]]
+        same_unit_operations = {
+            "ADD", "SUBTRACT", "MIN", "MAX", "SUM", "SUM_POSITIVE", "ABS_SUM_NEGATIVE"
+        }
+        if operation in same_unit_operations:
+            units_valid = bool(operand_units) and all(
+                unit == output["unit"] for unit in operand_units
+            )
+        elif operation == "MULTIPLY":
+            units_valid = output["unit"] == "cents" and operand_units == ["cents", "multiple"]
+        elif operation == "DIVIDE":
+            units_valid = (
+                output["unit"] == "multiple" and operand_units == ["cents", "cents"]
+            ) or (
+                output["unit"] == "decimal_rate" and operand_units == ["shares", "shares"]
+            )
+        elif operation == "DATED_XIRR":
+            units_valid = output["unit"] == "decimal_rate" and all(
+                unit == "cents" for unit in operand_units
+            )
+        elif operation.startswith("QUANTILE_P"):
+            units_valid = (
+                len(operand_units) >= 3
+                and operand_units[:2] == ["count", "rank_index"]
+                and all(unit == output["unit"] for unit in operand_units[2:])
+            )
+        elif operation == "PROBABILITY_BELOW_ONE_PERCENT":
+            units_valid = output["unit"] == "percent" and all(
+                unit == "multiple" for unit in operand_units
+            )
+        else:
+            units_valid = False
+        if not units_valid:
+            raise UnderwritingError(f"formula_dimensional_mismatch:{formula_id}")
         values = [Decimal(metrics[item]["value"]) for item in formula["operand_ids"]]
         left, right = values[:2]
-        operation = formula["operation"]
         if operation == "ADD":
             expected = left + right
         elif operation == "SUBTRACT":
@@ -668,7 +739,7 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
                 raise UnderwritingError("formula_division_by_zero")
             expected = left / right
         elif operation == "MIN":
-            expected = min(left, right)
+            expected = min(values)
         elif operation == "SUM":
             expected = sum(values)
         elif operation == "SUM_POSITIVE":
@@ -689,17 +760,98 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
                     for item in formula["operand_ids"]
                 )
             )
+        elif operation.startswith("QUANTILE_P"):
+            probability = {
+                "QUANTILE_P10": Decimal("0.10"),
+                "QUANTILE_P50": Decimal("0.50"),
+                "QUANTILE_P90": Decimal("0.90"),
+            }[operation]
+            draw_count, observed_index, *path_values = values
+            if draw_count != len(path_values) or draw_count < 1:
+                raise UnderwritingError(f"formula_quantile_path_count_mismatch:{formula_id}")
+            index = int(
+                ((draw_count - Decimal(1)) * probability).quantize(
+                    Decimal("1"), rounding=ROUND_HALF_EVEN
+                )
+            )
+            if observed_index != index:
+                raise UnderwritingError(f"formula_quantile_rank_mismatch:{formula_id}")
+            expected = sorted(path_values)[index]
+        elif operation == "PROBABILITY_BELOW_ONE_PERCENT":
+            if not values:
+                raise UnderwritingError(f"formula_probability_operands_empty:{formula_id}")
+            expected = Decimal(sum(value < 1 for value in values)) / Decimal(len(values)) * Decimal(100)
         else:
-            expected = max(left, right)
+            expected = max(values)
         expected = expected.quantize(
             Decimal(output["quantum"]), rounding=ROUND_HALF_EVEN
         )
         if Decimal(output["value"]) != expected:
             raise UnderwritingError(f"formula_value_mismatch:{formula_id}")
 
+        display = output["display_value"].replace("−", "-")
+        raw_value = Decimal(output["value"])
+        unit = output["unit"]
+        observed_display: Decimal | None = None
+        tolerance = Decimal(0)
+        if unit == "cents":
+            money_match = re.fullmatch(r"(-)?\$([0-9]+(?:\.[0-9]+)?)M", display)
+            if display == "$0":
+                observed_display = Decimal(0)
+                tolerance = Decimal("0.5")
+            elif money_match:
+                decimals = len((money_match.group(2).split(".") + [""])[1])
+                observed_display = Decimal(money_match.group(2)) * Decimal(100_000_000)
+                if money_match.group(1):
+                    observed_display = -observed_display
+                tolerance = Decimal(100_000_000) / (Decimal(2) * (Decimal(10) ** decimals))
+            else:
+                raise UnderwritingError(f"metric_display_invalid:{output['metric_id']}")
+        elif unit in {"decimal_rate", "percent"}:
+            percent_match = re.fullmatch(r"(-?[0-9]+(?:\.[0-9]+)?)%", display)
+            if percent_match is None:
+                raise UnderwritingError(f"metric_display_invalid:{output['metric_id']}")
+            decimals = len((percent_match.group(1).split(".") + [""])[1])
+            divisor = Decimal(100) if unit == "decimal_rate" else Decimal(1)
+            observed_display = Decimal(percent_match.group(1)) / divisor
+            tolerance = Decimal(1) / (Decimal(2) * (Decimal(10) ** decimals) * divisor)
+        elif unit in {"multiple", "turns"}:
+            multiple_match = re.fullmatch(r"(-?[0-9]+(?:\.[0-9]+)?)x", display)
+            if multiple_match is None:
+                raise UnderwritingError(f"metric_display_invalid:{output['metric_id']}")
+            decimals = len((multiple_match.group(1).split(".") + [""])[1])
+            observed_display = Decimal(multiple_match.group(1))
+            tolerance = Decimal(1) / (Decimal(2) * (Decimal(10) ** decimals))
+        if observed_display is not None and abs(observed_display - raw_value) > tolerance:
+            raise UnderwritingError(f"metric_display_value_mismatch:{output['metric_id']}")
+
+    for summary in case["summaryMetrics"]:
+        metric = metrics.get(summary["metric_id"])
+        if metric is None or metric["display_value"] != summary["value"]:
+            raise UnderwritingError(f"summary_metric_display_mismatch:{summary['metric_id']}")
+    distribution_prefix = (
+        f"{case['caseId']}-distribution-"
+        if case.get("peEngine") is not None
+        else "helios-distribution-moic-"
+    )
+    for index, visible_value in enumerate(case["returnsDistribution"]["moic"]):
+        metric = metrics.get(f"{distribution_prefix}{index}")
+        if metric is None or Decimal(metric["display_value"].removesuffix("x")) != Decimal(str(visible_value)):
+            raise UnderwritingError("returns_distribution_metric_mismatch")
+
     render_ids = case["renderManifest"]["metric_ids"]
     if not set(render_ids).issubset(metrics):
         raise UnderwritingError("render_manifest_metric_orphan")
+    investment_ids = case["renderManifest"]["investment_metric_ids"]
+    if not set(investment_ids).issubset(render_ids):
+        raise UnderwritingError("investment_metric_not_rendered")
+    if any(
+        metrics[item]["formula_id"] is None
+        or not metrics[item]["operand_ids"]
+        or metrics[item]["formula_id"] not in formulas
+        for item in investment_ids
+    ):
+        raise UnderwritingError("investment_metric_calculation_open")
     sample_ids = case["renderManifest"]["formula_sample_metric_ids"]
     if not set(sample_ids).issubset(metrics):
         raise UnderwritingError("formula_sample_metric_orphan")

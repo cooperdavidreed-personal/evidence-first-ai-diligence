@@ -60,7 +60,7 @@ export interface SourceLocator {
 
 export interface FormulaEntry {
   formula_id: string;
-  operation: "ADD" | "SUBTRACT" | "MULTIPLY" | "DIVIDE" | "MIN" | "MAX" | "SUM" | "SUM_POSITIVE" | "ABS_SUM_NEGATIVE" | "DATED_XIRR";
+  operation: "ADD" | "SUBTRACT" | "MULTIPLY" | "DIVIDE" | "MIN" | "MAX" | "SUM" | "SUM_POSITIVE" | "ABS_SUM_NEGATIVE" | "DATED_XIRR" | "QUANTILE_P10" | "QUANTILE_P50" | "QUANTILE_P90" | "PROBABILITY_BELOW_ONE_PERCENT";
   operand_ids: string[];
   output_metric_id: string;
   output_unit: string;
@@ -206,6 +206,7 @@ export interface PECaseResult {
     receipt_sha256: string;
   };
   sponsor_cash_flows: Array<{date: string; amount_cents: number}>;
+  exit_ltm_ebitda_cents: number;
   exit_enterprise_value_cents: number;
   exit_equity_value_cents: number;
   earnout_cents: number;
@@ -224,7 +225,11 @@ export interface PESensitivityCell {
   gross_moic: string;
   gross_xirr: string;
   ending_debt_cents: number;
+  ending_term_cents: number;
+  ending_revolver_cents: number;
   minimum_covenant_headroom: string;
+  covenant_headrooms: string[];
+  sponsor_cash_flows: Array<{date: string; amount_cents: number}>;
   first_covenant_breach_month: number | null;
   receipt_sha256: string;
 }
@@ -233,6 +238,8 @@ export interface PEEngine {
   ask: PECaseResult;
   selected: PECaseResult;
   downside: PECaseResult;
+  maximum_bid_base: PECaseResult;
+  maximum_bid_downside: PECaseResult;
   maximum_bid_cents: number;
   distribution: {
     seed: number;
@@ -262,6 +269,11 @@ export interface PEEngine {
 
 export interface PEValueCreationBridge {
   base_receipt_sha256: string;
+  base_exit_ebitda_cents: number;
+  base_exit_debt_cents: number;
+  base_exit_equity_cents: number;
+  base_gross_xirr: string;
+  base_gross_moic: string;
   standalone: Array<{
     lever_id: string;
     label: string;
@@ -270,12 +282,23 @@ export interface PEValueCreationBridge {
     exit_equity_delta_cents: number;
     gross_xirr_delta: string;
     gross_moic_delta: string;
+    result_exit_ebitda_cents: number;
+    result_exit_debt_cents: number;
+    result_exit_equity_cents: number;
+    result_gross_xirr: string;
+    result_gross_moic: string;
     implementation_cost_cents: number;
     credit_classification: string;
     source_analysis_ids: string[];
     assumption_ids: string[];
     result_receipt_sha256: string;
   }>;
+  combined_receipt_sha256: string;
+  combined_exit_ebitda_cents: number;
+  combined_exit_debt_cents: number;
+  combined_exit_equity_cents: number;
+  combined_gross_xirr: string;
+  combined_gross_moic: string;
   combined_exit_equity_delta_cents: number;
   sum_standalone_exit_equity_delta_cents: number;
   interaction_residual_cents: number;
@@ -359,6 +382,10 @@ export interface VCSensitivityCell {
   target_ownership: string;
   minimum_cash_cents: number;
   target_proceeds_cents: number;
+  target_cash_flows: Array<{date: string; amount_cents: number}>;
+  target_shares: number;
+  fully_diluted_shares: number;
+  ending_cash_path_cents: number[];
   receipt_sha256: string;
 }
 
@@ -407,6 +434,10 @@ export interface VCEngine {
 
 export interface VCValueCreationBridge {
   base_receipt_sha256: string;
+  base_minimum_cash_cents: number;
+  base_target_proceeds_cents: number;
+  base_gross_xirr: string;
+  base_gross_moic: string;
   standalone: Array<{
     lever_id: string;
     monthly_cash_delta_cents: number;
@@ -416,12 +447,21 @@ export interface VCValueCreationBridge {
     target_proceeds_delta_cents: number;
     gross_xirr_delta: string;
     gross_moic_delta: string;
+    result_minimum_cash_cents: number;
+    result_target_proceeds_cents: number;
+    result_gross_xirr: string;
+    result_gross_moic: string;
     credit_classification: string;
     source_analysis_ids: string[];
     economic_mapping: Record<string, string | number>;
     result_receipt_sha256: string;
     receipt_sha256: string;
   }>;
+  combined_result_receipt_sha256: string;
+  combined_result_minimum_cash_cents: number;
+  combined_result_target_proceeds_cents: number;
+  combined_result_gross_xirr: string;
+  combined_result_gross_moic: string;
   combined_minimum_cash_delta_cents: number;
   combined_target_proceeds_delta_cents: number;
   sum_standalone_target_proceeds_delta_cents: number;
@@ -537,6 +577,7 @@ export interface CaseData {
   renderManifest: {
     schema_version: "underwriting.render-manifest/v2";
     metric_ids: string[];
+    investment_metric_ids: string[];
     formula_sample_metric_ids: string[];
   };
   temporalScan: {

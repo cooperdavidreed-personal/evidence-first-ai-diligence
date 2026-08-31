@@ -15,6 +15,10 @@ for (const memo of [
     const memoPath = resolve(import.meta.dirname, `../../portfolio/${memo.slug}/ic-memo.html`);
     await page.goto(pathToFileURL(memoPath).href);
     await expect(page.getByRole("heading", {name: memo.title}).first()).toBeVisible();
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      await new Promise<void>((resolveFrame) => requestAnimationFrame(() => requestAnimationFrame(() => resolveFrame())));
+    });
     const dimensions = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,
       clientWidth: document.documentElement.clientWidth,
