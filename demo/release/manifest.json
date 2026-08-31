@@ -1,0 +1,155 @@
+{
+  "audio": "NONE",
+  "caption_sha256": {
+    "captions.srt": "70957986fd4d3ff904130740e7e59f6941669dcc4567ef09d19515cd7a7df22b",
+    "captions.vtt": "ffccbf4db756f894d7decefa128a3cffcabd4ec432552099fa7348fc177c5113"
+  },
+  "captions": [
+    "captions.srt",
+    "captions.vtt"
+  ],
+  "capture": "REAL_LOCAL_WORKBENCH_INTERACTIONS",
+  "duration_seconds": 150,
+  "fps": 30,
+  "limitations": "Synthetic cases; recorded browser walkthrough; no production or investment-performance claim.",
+  "manifest_sha256": "9480123a216dedbf0043b5817acf533ca6736d3feaabc0038cee0ceefb81afb2",
+  "resolution": "1440x900",
+  "schema_version": "underwriting.demo-manifest/v2",
+  "sha256": "288806309f583288c50e40a47f773c05184310b2edc17020a8a6186ff8bbdfaa",
+  "source_closure": [
+    {
+      "path": "demo/captions.srt",
+      "sha256": "70957986fd4d3ff904130740e7e59f6941669dcc4567ef09d19515cd7a7df22b"
+    },
+    {
+      "path": "demo/captions.vtt",
+      "sha256": "ffccbf4db756f894d7decefa128a3cffcabd4ec432552099fa7348fc177c5113"
+    },
+    {
+      "path": "demo/storyboard.json",
+      "sha256": "3379f6b67b8d8e1193349805f8e339a89551a3e8607e8d0de61f505d840816e2"
+    },
+    {
+      "path": "demo/transcript.md",
+      "sha256": "9f96f7910e8a0331fbf1edd2c95434a8513cdc1ce3087d1cb463e70c84f5f21b"
+    },
+    {
+      "path": "scripts/render_demo.py",
+      "sha256": "9ef4dfb8def21328b47f06ef60b7b96229d5313b32af29949c3d28e728d1382d"
+    },
+    {
+      "path": "scripts/verify_demo.py",
+      "sha256": "4c45d92064c820c806114acbe5f063ac4cb339a7579ddd91616149fc0d92de14"
+    },
+    {
+      "path": "workbench/case-data-plugin.ts",
+      "sha256": "1babb7f877ae3fcd3270032764ab8de2940a019bbc321cc8ab01a770753b6d02"
+    },
+    {
+      "path": "workbench/index.html",
+      "sha256": "0709c2e97090084dcf54b865165521077340bc062bd75b2ebc42438926ededfb"
+    },
+    {
+      "path": "workbench/package.json",
+      "sha256": "0110cd6f940416f3f5f1f58ac5306d638c8a40d2e3cf2f23975f58face259c21"
+    },
+    {
+      "path": "workbench/pnpm-lock.yaml",
+      "sha256": "301d919086da754c9d68b7de873cdce960e2d39801a2ed45589d84bac8dbd378"
+    },
+    {
+      "path": "workbench/scripts/render-demo.mjs",
+      "sha256": "a24eadcced4827683fb1c4b614245f2bb04684d3c53f0282c742a969e846fab6"
+    },
+    {
+      "path": "workbench/src/App.test.tsx",
+      "sha256": "db827b16d3cbe4ffa76b688e5de6550b48c33c9f8683c39a08d0ff1c1b209e72"
+    },
+    {
+      "path": "workbench/src/App.tsx",
+      "sha256": "3994f13ad95e192a3864c49aab0f5a8894327c32cbe5765f490651f3527bb1a4"
+    },
+    {
+      "path": "workbench/src/case-data.ts",
+      "sha256": "5e148967636d31a59651cd3ef7383d2350ed86891cc1fca40e2837e4314d995a"
+    },
+    {
+      "path": "workbench/src/chart-registry.tsx",
+      "sha256": "fa6a2b3fd96353c8942ec32c02b21f8940ad73a5129d9c6610ff4cae66fd6576"
+    },
+    {
+      "path": "workbench/src/data-contract.test.ts",
+      "sha256": "733ac25596a38bfe6bf19eb58d0e5b3fa6f464a54c3a8a3c49e74e12fef5d27c"
+    },
+    {
+      "path": "workbench/src/data-contract.ts",
+      "sha256": "988491d42557950d6f355b001fffe289c8853d049ed1160afb2fa9a41dc79cde"
+    },
+    {
+      "path": "workbench/src/data/cases.json",
+      "sha256": "3e6172c31d54fcbc76e2b5021210dfee4d446340b553cf611c0702722cb439df"
+    },
+    {
+      "path": "workbench/src/main.tsx",
+      "sha256": "4494aa600c38d3d09250d2f09cb795ed9141354e7215109eed017c683b1846c9"
+    },
+    {
+      "path": "workbench/src/pe.tsx",
+      "sha256": "8f37b73af09e2aa77c9a1a8d21051796ea0fc0e4a97e3f0eb70ac182278b5a84"
+    },
+    {
+      "path": "workbench/src/styles.css",
+      "sha256": "82a90c06b7de67e86ad6b239851e67846319dc8758d3826d2e8d358060232871"
+    },
+    {
+      "path": "workbench/src/test-setup.ts",
+      "sha256": "9408a30df297f52f573665036d4dd2b8f0b324c7b5ed37e2bd83fa6587065ae5"
+    },
+    {
+      "path": "workbench/src/thesis-graph.tsx",
+      "sha256": "6c94c125b53513e43ba2a70250556cb2dbf5ffdf2f1af93f03661b6ece730468"
+    },
+    {
+      "path": "workbench/src/types.ts",
+      "sha256": "7b3587c69650c7f5b106d3ed494994f5277a99b3a8bf9b54398d8148a2140141"
+    },
+    {
+      "path": "workbench/src/value-plan.tsx",
+      "sha256": "c4c4eb3d9c685486006902e8c45c5a7e075ac6e5f9fe6997f8854e394c9f4485"
+    },
+    {
+      "path": "workbench/src/vc.tsx",
+      "sha256": "b5d07f7753b703ed098d4ef7729d8fafc5c01f412a204f4054b335aa46f2e398"
+    },
+    {
+      "path": "workbench/src/virtual-cases.d.ts",
+      "sha256": "159feaf4d9a9bd7a32257f4614a9d769395241176f85d7595aa48f0782a944a0"
+    },
+    {
+      "path": "workbench/tsconfig.app.json",
+      "sha256": "b6c0c9cd28b18c660933eba6a379be41a72b5d7559c41642a5618e2812e63dd1"
+    },
+    {
+      "path": "workbench/tsconfig.json",
+      "sha256": "c9282416074477d08cc7640977168c2e8265cac3c3a4e984ba3d340f85684d56"
+    },
+    {
+      "path": "workbench/tsconfig.node.json",
+      "sha256": "39f8b650b2e23c9f66406ca7cddbcf70232475a10f0f31abe22a57119f0deaaf"
+    },
+    {
+      "path": "workbench/vite.config.ts",
+      "sha256": "0bc43e6ec8c670fb8877fa6c43ba96e2b5b8c27e69e5393b66d6577826fdf7d0"
+    }
+  ],
+  "source_closure_sha256": "b6fe788bcd8a251e6932e71fb62e261a01f8be75aa257737b71bf13539ff0d76",
+  "source_commit": "f4a957cf8c7eea32029a97cb6b2d35f0b0f9f95b",
+  "source_tree_oid": "4fb5e2ce51226290bfc72997cf03c71e1e38b81e",
+  "status": "RENDERED_LOCAL_FOUNDER_REVIEW_PENDING",
+  "toolchain": {
+    "ffmpeg": "ffmpeg version 8.1.2 Copyright (c) 2000-2026 the FFmpeg developers",
+    "node": "v26.3.0",
+    "pnpm": "11.19.0"
+  },
+  "video": "underwriting-intelligence-lab-demo.mp4"
+}
