@@ -62,10 +62,11 @@ The existing `ic-evidence-lab` CLI and evidence-kernel behavior remain intact.
 
 ## Render the product walkthrough
 
-The former static-card reel was retired as `QUALITY SHORT`. The replacement
-renderer and storyboard target a 150-second silent, captioned recording of the
-real local workbench through ordinary controls. The source-bound release media
-is `NOT RUN` until the candidate source commit is clean and immutable:
+The former static-card reel was retired as `QUALITY SHORT`. Its replacement is
+a 150-second silent, captioned recording of the real local workbench through
+ordinary controls. The retained manifest binds the media to clean source commit
+`f4a957cf8c7eea32029a97cb6b2d35f0b0f9f95b`, the exact source closure, captions,
+toolchain, and video digest. Founder viewing and public release remain pending:
 
 ```bash
 uv sync --frozen --extra demo

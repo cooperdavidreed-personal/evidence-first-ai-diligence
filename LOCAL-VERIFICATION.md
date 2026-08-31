@@ -49,9 +49,11 @@ on Ubuntu/macOS remains `NOT_RUN` until a separately authorized push.
   candidate verification is `NOT RUN` until the source and demo artifact commits
   are immutable. The wheel contains 24 underwriting schemas plus the four
   preserved kernel schemas.
-- The prior static slide demo was retired as `QUALITY_SHORT`; its source-bound
-  replacement is specified as a 150-second recording of the real workbench.
-  Final rendered-media verification and founder review remain pending.
+- The prior static slide demo was retired as `QUALITY_SHORT`. Its source-bound
+  replacement passes mechanical media/provenance verification at 150.0 seconds,
+  1440 by 900, H.264, 30 fps, with no audio and exact SRT/WebVTT captions. It is
+  bound to clean source commit `f4a957cf8c7eea32029a97cb6b2d35f0b0f9f95b`;
+  founder viewing remains pending.
 
 ## Provider and integrity state
 
