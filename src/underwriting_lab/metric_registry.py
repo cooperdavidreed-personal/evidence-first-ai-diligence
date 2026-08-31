@@ -95,7 +95,10 @@ def _quantum_for(value: int | str | Decimal) -> str:
 
 
 def build_case_metric_contract(
-    case: dict[str, Any], *, source_root: Path
+    case: dict[str, Any],
+    *,
+    source_root: Path | None = None,
+    compiled_source_locators: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Compile stable source, metric, formula, and render inventories.
 
@@ -103,7 +106,24 @@ def build_case_metric_contract(
     browser never has to infer an underwriting value from presentation text.
     """
 
-    source_locators, locators_by_analysis = compile_source_evidence(case, source_root)
+    if compiled_source_locators is None:
+        if source_root is None:
+            raise UnderwritingError("metric_contract_source_evidence_missing")
+        source_locators, locators_by_analysis = compile_source_evidence(
+            case, source_root
+        )
+    else:
+        if source_root is not None:
+            raise UnderwritingError("metric_contract_source_evidence_ambiguous")
+        source_locators = compiled_source_locators
+        locators_by_analysis = {
+            receipt["analysis_id"]: [
+                locator["locator_id"]
+                for locator in source_locators
+                if locator["analysis_id"] == receipt["analysis_id"]
+            ]
+            for receipt in case["analyses"]
+        }
     lineage_by_id = {item["node_id"]: item for item in case["lineage"]}
 
     def locators_for_lineage(lineage_ids: list[str]) -> list[str]:
@@ -185,7 +205,11 @@ def build_case_metric_contract(
             period=case["decision"].get("as_of", "NOT_APPLICABLE"),
             classification=summary["classification"],
             locator_ids=locators_for_lineage(lineage_ids),
-            receipt_sha256=case["analysis_sha256"] if "analysis_sha256" in case else case["manifest_sha256"],
+            # The case-level digest is added only after this contract is built,
+            # so summary metrics are governed by the immutable room manifest.
+            # Keeping that rule explicit also makes offline contract rebuilding
+            # independent of generation order.
+            receipt_sha256=case["manifest_sha256"],
             downstream_ids=["decision"],
             **special,
         )

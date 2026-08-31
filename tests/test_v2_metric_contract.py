@@ -6,7 +6,13 @@ from decimal import Decimal
 import pytest
 
 from underwriting_lab.analysis import analyze_room
-from underwriting_lab.contracts import UnderwritingError, digest, read_json, validate_workbench_case
+from underwriting_lab.contracts import (
+    UnderwritingError,
+    _validate_metric_semantic_binding,
+    digest,
+    read_json,
+    validate_workbench_case,
+)
 from underwriting_lab.generator import generate_room
 
 
@@ -326,3 +332,47 @@ def test_declared_investment_metric_cannot_drop_its_formula(helios_v2: dict) -> 
     _rebind_case(case)
     with pytest.raises(UnderwritingError, match="investment_metric_calculation_open"):
         validate_workbench_case(case)
+
+
+@pytest.mark.parametrize(
+    ("fixture_name", "metric_id"),
+    (
+        ("atlasgrid_v2", "atlasgrid-ASK-month-01-cash_interest_cents"),
+        (
+            "atlasgrid_v2",
+            "atlasgrid-entry_enterprise_value_cents:21000000000-headroom-01",
+        ),
+        ("atlasgrid_v2", "atlasgrid-distribution-path-0000-moic"),
+        (
+            "atlasgrid_v2",
+            "atlasgrid-value-renewal-exit_equity_delta_cents-result",
+        ),
+        ("helios_v2", "helios-DOWNSIDE-preference-series_c-invested"),
+        ("helios_v2", "helios-vc-exit_value-2-ending-cash-01"),
+        ("helios_v2", "helios-distribution-path-0000-xirr"),
+        (
+            "helios_v2",
+            "helios-value-ordinary-expansion-target_proceeds_delta_cents-result",
+        ),
+    ),
+)
+def test_engine_linked_registry_leaf_rejects_coherent_digest_rebinding(
+    fixture_name: str,
+    metric_id: str,
+    request: pytest.FixtureRequest,
+) -> None:
+    """Cover scenarios, sensitivities, distributions, and bridges for both cases."""
+
+    case = deepcopy(request.getfixturevalue(fixture_name))
+    metric = next(
+        item for item in case["metricRegistry"] if item["metric_id"] == metric_id
+    )
+    metric["value"] = format(Decimal(metric["value"]) + Decimal(1), "f")
+    metric.pop("metric_sha256")
+    metric["metric_sha256"] = digest(metric)
+    _rebind_case(case)
+    with pytest.raises(
+        UnderwritingError,
+        match="metric_contract_semantic_binding_mismatch:metricRegistry",
+    ):
+        _validate_metric_semantic_binding(case)

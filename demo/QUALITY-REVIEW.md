@@ -27,6 +27,7 @@ WebVTT captions. It remains a candidate until Cooper reviews the rendered film.
    acceptance and Cooper approves the film.
 
 Mechanical verification passed for 150.0 seconds, 1440 by 900, H.264, 30 fps,
-no audio, exact captions, and manifest-bound source/media digests. Six sampled
-frames covering decision, lineage, econometrics, PE downside, VC terms, and
-value creation were visually legible. This is not Cooper's viewing approval.
+no audio, exact captions, and manifest-bound source/media digests.
+Representative frames covering decision, lineage, econometrics, PE downside,
+VC terms, and value creation were inspected during local review but are not
+retained as separate release evidence. This is not Cooper's viewing approval.

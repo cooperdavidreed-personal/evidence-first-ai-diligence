@@ -471,6 +471,22 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
             raise UnderwritingError(f"vc_value_creation_combined_absolute_delta_mismatch:{delta_field}")
 
 
+def _validate_metric_semantic_binding(case: dict[str, Any]) -> None:
+    """Bind the complete generated calculation contract to engine objects."""
+
+    from .metric_registry import build_case_metric_contract
+
+    rebuilt_contract = build_case_metric_contract(
+        case,
+        compiled_source_locators=case["sourceLocators"],
+    )
+    for contract_name in ("metricRegistry", "formulaRegistry", "renderManifest"):
+        if case[contract_name] != rebuilt_contract[contract_name]:
+            raise UnderwritingError(
+                f"metric_contract_semantic_binding_mismatch:{contract_name}"
+            )
+
+
 def _validate_metric_contract(case: dict[str, Any]) -> None:
     artifacts = {item["artifact_id"]: item for item in case["artifacts"]}
     analyses = {item["analysis_id"] for item in case["analyses"]}
@@ -825,6 +841,15 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
         if observed_display is not None and abs(observed_display - raw_value) > tolerance:
             raise UnderwritingError(f"metric_display_value_mismatch:{output['metric_id']}")
 
+    # Formula self-consistency alone is insufficient: a coherent attacker can
+    # alter an engine-linked registry leaf, recompute every downstream formula,
+    # and rebind all JSON digests while leaving the authoritative engine result
+    # unchanged. Rebuild the complete public calculation contract from the
+    # already-validated engine, analysis, summary, lineage, and locator objects
+    # and require exact equality. This binds every scenario, sensitivity cell,
+    # retained distribution path, and value-creation bridge value—not only the
+    # selected headline outputs—to its governing engine object. It intentionally
+    # follows the narrower checks above so they retain their precise diagnostics.
     for summary in case["summaryMetrics"]:
         metric = metrics.get(summary["metric_id"])
         if metric is None or metric["display_value"] != summary["value"]:
@@ -867,6 +892,8 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
                 raise UnderwritingError("vc_milestone_metric_orphan")
             if test["evidence_locator"] not in lineage_ids:
                 raise UnderwritingError("vc_milestone_locator_orphan")
+
+    _validate_metric_semantic_binding(case)
 
 
 def _validate_editorial_contract(case: dict[str, Any]) -> None:

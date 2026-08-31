@@ -95,9 +95,10 @@ try {
   await cue("07 · RECOMPUTED SCENARIOS", "At the $240M seller ask, returns miss the declared hurdle. Scenario controls select retained, receipt-bound model results.");
   await until(84);
   await page.getByRole("button", {name: "Selected"}).click();
+  await cue("07 · RECOMPUTED SCENARIOS", "At the selected $210M structure, 23.3% gross IRR clears the quantitative hurdle while investment authority remains on hold.");
   await until(89);
   await page.getByRole("button", {name: "Downside"}).click();
-  await cue("07 · RECOMPUTED SCENARIOS", "The selected structure clears, while the downside exposes churn and multiple-compression risk rather than hiding it in a memo footnote.");
+  await cue("07 · RECOMPUTED SCENARIOS", "The downside falls to 6.2% gross IRR and 1.35x gross MOIC, exposing churn and multiple-compression risk rather than hiding it in a memo footnote.");
   await until(96);
   await page.getByRole("combobox", {name: "Driver"}).selectOption("exit_multiple");
   await page.getByRole("button", {name: "5.5x"}).click();
