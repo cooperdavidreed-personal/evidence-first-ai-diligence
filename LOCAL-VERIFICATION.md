@@ -59,15 +59,16 @@ on Ubuntu/macOS remains `NOT_RUN` until a separately authorized push.
 
 - Python: `177/177` pass locally on Python 3.11, 3.12, and 3.13 in isolated
   environments. This is a local interpreter matrix, not hosted CI.
-- React: `20/20` unit/data-contract tests pass.
+- React: `22/22` unit/data-contract tests pass.
 - Playwright: `12 active passed / 2 intentionally skipped`; memo print proof runs
   once per case rather than redundantly per viewport.
 - Visual evidence: 30 manifest-bound PNGs cover the landing page, six primary
   views for both cases at 1440x900 and 390x844, contextual source drawers, and
   both print memos. Two normalized US Letter PDFs are separately bound.
 - Four retained accessibility records show zero critical/serious Axe findings on
-  the tested routes; root-overflow assertions pass. This is not comprehensive
-  WCAG compliance.
+  the tested routes; root-overflow and 8px mobile visible-text-floor assertions
+  pass. This is not comprehensive WCAG compliance or a general readability
+  claim.
 - A live in-app browser check confirmed the recommendation/terms/return block is
   visible before scrolling at desktop and mobile widths, case switching reaches
   the correct Helios posture, and the 390px route has no root overflow.

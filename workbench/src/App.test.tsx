@@ -112,6 +112,11 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
     expect(paired).toHaveAttribute("data-metric-id", "atlasgrid-ag-07-renewal_itt");
   });
 
+  it("states the exact maximum-bid downside floor and cent boundary", () => {
+    render(<App />);
+    expect(screen.getByText(/Solved maximum upfront bid: \$215.4M; one additional cent must fail at least one constraint/)).toBeInTheDocument();
+  });
+
   it("provides an accessible one-page IC memo path", async () => {
     const user = userEvent.setup();
     render(<App />);

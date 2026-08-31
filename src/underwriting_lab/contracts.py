@@ -224,6 +224,8 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         if not isinstance(result, dict) or result.get("scenario_id") != scenario_id:
             raise UnderwritingError(f"vc_scenario_missing:{scenario_id}")
         _validate_hashed_v2_document(result, "vc-case-result-v2.schema.json")
+        if result.get("pool_exit_treatment") != "FULLY_GRANTED_COMMON":
+            raise UnderwritingError("vc_primary_pool_exit_treatment_invalid")
         waterfall = result["waterfall"]
         _validate_hashed_v2_document(waterfall, "vc-waterfall-v2.schema.json")
         if sum(waterfall["class_proceeds_cents"].values()) + waterfall[

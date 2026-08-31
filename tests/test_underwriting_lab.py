@@ -328,6 +328,15 @@ def test_helios_scenarios_are_event_based_and_receipt_distinct(
     assert len({item["receipt_sha256"] for item in results}) == 4
     assert all(item["gross_xirr"] != "n/a" for item in results)
     assert all(len(item["cash_by_month"]) == 60 for item in results)
+    assert all(item["pool_exit_treatment"] == "FULLY_GRANTED_COMMON" for item in results)
+    tampered = json.loads(json.dumps(case))
+    tampered_result = tampered["vcEngine"]["milestone"]
+    tampered_result["pool_exit_treatment"] = "UNISSUED_CANCELLED"
+    tampered_body = dict(tampered_result)
+    tampered_body.pop("receipt_sha256")
+    tampered_result["receipt_sha256"] = digest(tampered_body)
+    with pytest.raises(UnderwritingError, match="vc_primary_pool_exit_treatment_invalid"):
+        validate_workbench_case(tampered)
     assert len(case["renderManifest"]["formula_sample_metric_ids"]) == 10
     milestone_event = next(
         item

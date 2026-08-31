@@ -38,6 +38,14 @@ describe("workbench v2 data contract", () => {
     expect(compareDecimalStrings("-0.0001", "0")).toBe(-1);
   });
 
+  it("rejects a non-conservative primary VC pool treatment", () => {
+    const candidate: unknown = structuredClone(rawData);
+    assertWorkbenchData(candidate);
+    const helios = candidate.cases.find((item) => item.caseId === "helios")!;
+    helios.vcEngine!.milestone.pool_exit_treatment = "UNISSUED_CANCELLED";
+    expect(() => assertWorkbenchData(candidate)).toThrow(/vc_primary_pool_exit_treatment_invalid/);
+  });
+
   it("recomputes dated XIRR from every retained dated cash flow", () => {
     const candidate: unknown = structuredClone(rawData);
     assertWorkbenchData(candidate);

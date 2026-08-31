@@ -19,8 +19,8 @@ Status: `LOCAL AUTOMATED CLOSURE COMPLETE — OBSERVED PRACTITIONER TESTING NOT 
 | FIN-07 | High | AtlasGrid assigns a falsely precise 66.2 million dollars to human judgment | Declared 50–150% judgment range, two-significant-digit display, and reconciliation tests | `CLOSED_LOCAL_SYNTHETIC` |
 | INV-01 | High | Company, market, customer, competition, team, and GTM context is thin relative to mechanics | Versioned `dealContext` contract and complete sections for both cases | `CLOSED_LOCAL` |
 | DOC-01 | High | Acceptance language conflicts across public and verification documents | One literal candidate boundary across README, verification, release notes, claims, and receipt | `CLOSED_LOCAL` |
-| VIS-01 | Medium | Maximum-bid copy contains a missing separator | Corrected separator, text assertion, and retained screenshot evidence | `CLOSED_LOCAL_AUTOMATED` |
-| VIS-02 | Medium | Mobile metadata can fall below a credible reading size | Typography floor and 390 by 844 evidence with no root overflow | `CLOSED_LOCAL_AUTOMATED` |
+| VIS-01 | Medium | Maximum-bid copy contains a missing separator | Corrected separator, literal maximum-bid/one-cent-boundary assertion, and retained screenshot evidence | `CLOSED_LOCAL_AUTOMATED` |
+| VIS-02 | Medium | Mobile metadata can fall below a credible reading size | 8px CSS floor for mobile metadata, computed visible-text floor assertion, and 390 by 844 evidence with no root overflow | `CLOSED_LOCAL_AUTOMATED` |
 | DOC-02 | Medium | Frozen shorthand omitted the $240M seller ask from the AtlasGrid question | Engine-authored question now states the $240M ask, $210M counter, and walk alternative; the frozen contract remains byte-immutable and this ledger records the clarification | `CLOSED_LOCAL` |
 
 Publication, hosted CI, anonymous access, practitioner testing, narrated media,

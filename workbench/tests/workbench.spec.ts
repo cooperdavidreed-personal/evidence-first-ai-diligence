@@ -26,11 +26,27 @@ async function accessibilitySnapshot(page: Page) {
   expect(critical).toEqual([]);
   const width = await page.evaluate(() => ({client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth}));
   expect(width.scroll).toBeLessThanOrEqual(width.client);
+  const minimumVisibleTextPx = await page.evaluate(() => {
+    const sizes: number[] = [];
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (!node.textContent?.trim() || !(node.parentElement instanceof HTMLElement)) continue;
+      const parent = node.parentElement;
+      const style = getComputedStyle(parent);
+      const rect = parent.getBoundingClientRect();
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0 || rect.width === 0 || rect.height === 0) continue;
+      sizes.push(Number.parseFloat(style.fontSize));
+    }
+    return Math.min(...sizes);
+  });
+  if (width.client <= 390) expect(minimumVisibleTextPx).toBeGreaterThanOrEqual(8);
   return {
     critical_or_serious_count: critical.length,
     violations: scan.violations.map((item) => ({id: item.id, impact: item.impact, nodes: item.nodes.length})),
     root_client_width: width.client,
     root_scroll_width: width.scroll,
+    minimum_visible_text_px: minimumVisibleTextPx,
   };
 }
 
@@ -100,7 +116,7 @@ for (const candidate of [
     scans.push({view: "Methodology", ...await accessibilitySnapshot(page)});
 
     writeAccessibilityEvidence(`${testInfo.project.name}-${caseSlug}-redesign.json`, {
-      boundary: "Automated Axe scan found no critical or serious issue and tested root overflow is zero; this is not comprehensive WCAG conformance.",
+      boundary: "Automated Axe scan found no critical or serious issue; tested root overflow is zero and mobile visible text is at least 8px. This is not comprehensive WCAG conformance or observed readability proof.",
       case: candidate.name,
       project: testInfo.project.name,
       scans,

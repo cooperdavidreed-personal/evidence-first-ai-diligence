@@ -1,5 +1,5 @@
 {
-  "boundary": "Automated Axe scan found no critical or serious issue and tested root overflow is zero; this is not comprehensive WCAG conformance.",
+  "boundary": "Automated Axe scan found no critical or serious issue; tested root overflow is zero and mobile visible text is at least 8px. This is not comprehensive WCAG conformance or observed readability proof.",
   "case": "AtlasGrid Systems",
   "project": "desktop",
   "scans": [
@@ -8,49 +8,56 @@
       "critical_or_serious_count": 0,
       "violations": [],
       "root_client_width": 1440,
-      "root_scroll_width": 1440
+      "root_scroll_width": 1440,
+      "minimum_visible_text_px": 8
     },
     {
       "view": "Thesis",
       "critical_or_serious_count": 0,
       "violations": [],
       "root_client_width": 1440,
-      "root_scroll_width": 1440
+      "root_scroll_width": 1440,
+      "minimum_visible_text_px": 8
     },
     {
       "view": "Financials & Returns",
       "critical_or_serious_count": 0,
       "violations": [],
       "root_client_width": 1440,
-      "root_scroll_width": 1440
+      "root_scroll_width": 1440,
+      "minimum_visible_text_px": 8
     },
     {
       "view": "Risks & Diligence",
       "critical_or_serious_count": 0,
       "violations": [],
       "root_client_width": 1440,
-      "root_scroll_width": 1440
+      "root_scroll_width": 1440,
+      "minimum_visible_text_px": 8
     },
     {
       "view": "Value Creation",
       "critical_or_serious_count": 0,
       "violations": [],
       "root_client_width": 1440,
-      "root_scroll_width": 1440
+      "root_scroll_width": 1440,
+      "minimum_visible_text_px": 8
     },
     {
       "view": "Memo",
       "critical_or_serious_count": 0,
       "violations": [],
       "root_client_width": 1440,
-      "root_scroll_width": 1440
+      "root_scroll_width": 1440,
+      "minimum_visible_text_px": 8
     },
     {
       "view": "Methodology",
       "critical_or_serious_count": 0,
       "violations": [],
       "root_client_width": 1440,
-      "root_scroll_width": 1440
+      "root_scroll_width": 1440,
+      "minimum_visible_text_px": 8
     }
   ],
   "viewport": {

@@ -24,6 +24,16 @@ export function compareDecimalStrings(left: string, right: string): -1 | 0 | 1 {
   return normalizedLeft < normalizedRight ? -1 : normalizedLeft > normalizedRight ? 1 : 0;
 }
 
+function moveDecimalLeft(value: string, places: number): string {
+  const match = value.match(/^(-?)([0-9]+)(?:\.([0-9]+))?$/);
+  if (!match || places < 0) throw new Error("decimal_shift_operand_invalid");
+  const digits = `${match[2]}${match[3] ?? ""}`;
+  const scale = (match[3]?.length ?? 0) + places;
+  const padded = digits.padStart(scale + 1, "0");
+  const split = padded.length - scale;
+  return `${match[1]}${padded.slice(0, split)}${scale ? `.${padded.slice(split)}` : ""}`;
+}
+
 const xnpv = (rate: number, dated: Array<{date: number; value: number}>): number => {
   if (rate <= -1) throw new Error("formula_xirr_rate_out_of_domain");
   const origin = Math.min(...dated.map((item) => item.date));
@@ -216,8 +226,8 @@ export function assertWorkbenchCase(candidate: unknown): asserts candidate is Ca
     const thresholdMatch = pair.threshold.match(/^(>=|<=|>|<|==)(-?[0-9]+(?:\.[0-9]+)?)(%|x| months)$/);
     const suffix = metric.unit === "decimal_rate" || metric.unit === "percent" ? "%" : metric.unit === "multiple" ? "x" : metric.unit === "modeled_months_funded_minimum" ? " months" : null;
     if (!thresholdMatch || thresholdMatch[1] !== pair.operator || suffix !== thresholdMatch[3]) throw new Error("decision_metric_threshold_display_mismatch");
-    const visibleThreshold = Number(thresholdMatch[2]) / (metric.unit === "decimal_rate" ? 100 : 1);
-    if (!Number.isFinite(visibleThreshold) || compareDecimalStrings(String(visibleThreshold), threshold) !== 0) throw new Error("decision_metric_threshold_value_mismatch");
+    const visibleThreshold = metric.unit === "decimal_rate" ? moveDecimalLeft(thresholdMatch[2], 2) : thresholdMatch[2];
+    if (compareDecimalStrings(visibleThreshold, threshold) !== 0) throw new Error("decision_metric_threshold_value_mismatch");
     const comparison = compareDecimalStrings(observed, threshold);
     const clears = pair.operator === ">=" ? comparison >= 0 : pair.operator === "<=" ? comparison <= 0 : pair.operator === ">" ? comparison > 0 : pair.operator === "<" ? comparison < 0 : pair.operator === "==" ? comparison === 0 : null;
     if (clears === null || pair.status !== (clears ? "CLEARS" : "MISSES")) throw new Error("decision_metric_status_invalid");
@@ -240,6 +250,17 @@ export function assertWorkbenchCase(candidate: unknown): asserts candidate is Ca
   const analysisIds = new Set((candidate.analyses as Array<Record<string, unknown>>).map((item) => String(item.analysis_id)));
   if (mappings.length !== analysisIds.size || new Set(mappings.map((item) => String(item.source_analysis_id))).size !== analysisIds.size || mappings.some((item) => !analysisIds.has(String(item.source_analysis_id)) || !["BASE_CASE", "VALUE_CREATION_BRIDGE", "SCENARIO_ONLY", "ZERO"].includes(String(item.credit_tier)))) throw new Error("evidence_mapping_coverage_invalid");
   if (candidate.caseId === "atlasgrid" && mappings.find((item) => item.source_analysis_id === "AG-08")?.credit_tier !== "VALUE_CREATION_BRIDGE") throw new Error("ag08_base_case_credit_forbidden");
+  if (candidate.caseId === "helios") {
+    if (!record(candidate.vcEngine) || !record(candidate.vcEngine.sensitivities) || !array(candidate.vcEngine.sensitivities.cells)) throw new Error("vc_engine_contract_invalid");
+    for (const key of ["base", "milestone", "downside", "financing_shortfall"]) {
+      const scenario = candidate.vcEngine[key];
+      if (!record(scenario) || scenario.pool_exit_treatment !== "FULLY_GRANTED_COMMON") throw new Error("vc_primary_pool_exit_treatment_invalid");
+    }
+    const sensitivityCells = candidate.vcEngine.sensitivities.cells as Array<Record<string, unknown>>;
+    if (sensitivityCells.some((item) => item.axis === "exit_value" && item.pool_exit_treatment !== "FULLY_GRANTED_COMMON")) throw new Error("vc_exit_value_pool_exit_treatment_invalid");
+    const poolTreatments = new Set(sensitivityCells.filter((item) => item.axis === "pool_exit_treatment").map((item) => item.pool_exit_treatment));
+    if (poolTreatments.size !== 2 || !poolTreatments.has("FULLY_GRANTED_COMMON") || !poolTreatments.has("UNISSUED_CANCELLED")) throw new Error("vc_pool_exit_treatment_sensitivity_invalid");
+  }
   const locators = new Set(sourceLocators.map((item) => item.locator_id));
   if (sourceLocators.some((item) => item.schema_version !== "underwriting.source-locator/v3" || !item.repository_path.startsWith(`portfolio/${candidate.caseId}/data-room/data/`) || !item.published_path.startsWith(`source-pack/${candidate.caseId}/data/`) || item.published_path.startsWith("/") || !/^[0-9a-f]{64}$/.test(item.selection_sha256) || !/^[0-9a-f]{64}$/.test(item.excerpt_sha256))) throw new Error("source_locator_v3_invalid");
   for (const metric of metricRegistry) {
