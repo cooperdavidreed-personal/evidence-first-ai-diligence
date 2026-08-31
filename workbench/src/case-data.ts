@@ -3,13 +3,13 @@ import {assertWorkbenchCase} from "./data-contract";
 import type {CaseData} from "./types";
 
 export type CaseId = "atlasgrid" | "helios";
-export type CaseCatalogItem = Pick<CaseData, "caseId" | "company" | "caseType"> & {caseId: CaseId};
+export type CaseCatalogItem = Pick<CaseData, "caseId" | "company" | "caseType"> & {caseId: CaseId; investmentQuestion: string};
 
 function assertCatalog(value: unknown): asserts value is CaseCatalogItem[] {
   if (!Array.isArray(value) || value.length !== 2) throw new Error("case_catalog_invalid");
   const ids = value.map((item) => item && typeof item === "object" ? (item as {caseId?: unknown}).caseId : null).sort();
   if (ids.join(",") !== "atlasgrid,helios") throw new Error("case_catalog_set_invalid");
-  if (value.some((item) => !item || typeof item !== "object" || typeof (item as {company?: unknown}).company !== "string" || typeof (item as {caseType?: unknown}).caseType !== "string")) throw new Error("case_catalog_item_invalid");
+  if (value.some((item) => !item || typeof item !== "object" || typeof (item as {company?: unknown}).company !== "string" || typeof (item as {caseType?: unknown}).caseType !== "string" || typeof (item as {investmentQuestion?: unknown}).investmentQuestion !== "string")) throw new Error("case_catalog_item_invalid");
 }
 
 assertCatalog(rawCatalog);

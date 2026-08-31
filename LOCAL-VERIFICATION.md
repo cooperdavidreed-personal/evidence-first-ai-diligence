@@ -30,6 +30,9 @@ on Ubuntu/macOS remains `NOT_RUN` until a separately authorized push.
   identified retention effect.
 - AtlasGrid stress priors, dependence assumptions, probability bands, maximum-
   bid downside constraints, and human-judgment ranges are explicit and tested.
+  The declared loss-probability band fails closed at the packet/workbench
+  validation boundary. A planted recovery room outside the band is still
+  analyzable for diagnostics but is explicitly rejected as a publishable case.
 - Helios uses a canonical `CONDITIONAL_INVEST` posture, explicit milestone and
   return gates, a 20% synthetic catastrophe prior, exit-value sensitivities, and
   fully granted versus cancelled option-pool treatment. The exact waterfall
@@ -45,7 +48,9 @@ on Ubuntu/macOS remains `NOT_RUN` until a separately authorized push.
 - The first Overview viewport exposes the IC question, analytical recommendation,
   selected terms, modeled return, open-condition count, and “not approved” state.
 - Canonical AtlasGrid entry-price and Helios exit-value controls rerun retained
-  engine cells; they are not display-only calculators.
+  engine cells; they are not display-only calculators. Their displayed hurdle,
+  strategy consequence, recommendation impact, and receipt all come from the
+  retained analytical record.
 - Contextual source inspection presents business meaning before hashes. Legacy
   routes migrate deterministically to their new canonical URLs.
 

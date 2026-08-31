@@ -285,6 +285,7 @@ def _illustrative_value_range(cents: int) -> str:
 
 def _deal_context(
     *,
+    investment_question: str,
     one_liner: str,
     product: str,
     customer: str,
@@ -296,6 +297,7 @@ def _deal_context(
 ) -> dict[str, Any]:
     body: dict[str, Any] = {
         "schema_version": "underwriting.deal-context/v1",
+        "investment_question": investment_question,
         "company_one_liner": one_liner,
         "product": product,
         "customer": customer,
@@ -1182,6 +1184,7 @@ def _atlasgrid(
         "workflowDisposition": _workflow_disposition(receipts, decision),
         "disclosure": manifest["disclosure"],
         "dealContext": _deal_context(
+            investment_question="Do we meet the $240M ask, counter at $210M, or walk?",
             one_liner="Vertical SaaS for regulated electric-utility grid planning, outage coordination, and field-work compliance.",
             product="Annual enterprise subscriptions combine system planning, work orchestration, regulatory reporting, and implementation services.",
             customer="Regional utilities and municipal power operators; parent-level concentration and cancellation rights matter more than subsidiary logos.",
@@ -2006,6 +2009,7 @@ def _helios(
         "workflowDisposition": _workflow_disposition(receipts, decision),
         "disclosure": manifest["disclosure"],
         "dealContext": _deal_context(
+            investment_question="Do we fund $25M now and reserve $15M for verified milestones?",
             one_liner="Cloud cost-control software that helps enterprises govern and optimize volatile GPU infrastructure spend.",
             product="Usage telemetry, policy controls, workload optimization, and finance reporting for teams operating across compute providers.",
             customer="AI-native and enterprise infrastructure teams; ordinary cohorts are separated from hand-picked design partners.",

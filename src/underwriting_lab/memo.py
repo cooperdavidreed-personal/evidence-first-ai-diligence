@@ -160,6 +160,11 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
     selected = scenarios["milestone"]
     downside = scenarios["downside"]
     shortfall = scenarios["financing_shortfall"]
+    loss_hurdle = next(
+        item
+        for item in decision["metric_pairs"]
+        if item["metric_id"] == "helios-hx-09-probability_below_1x"
+    )
     close_event = next(
         item for item in selected["financing_events"] if item["event_id"] == "series-c-close"
     )
@@ -196,6 +201,7 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
         "## Recommendation and executable terms",
         "",
         decision["rationale"],
+        f"**Binding loss hurdle:** {loss_hurdle['observed']} versus {loss_hurdle['threshold']}; status `{loss_hurdle['status']}`. The conditional posture is not funding approval while this test and the diligence gates remain open.",
         "",
         "| Term | Exact selected-case position |",
         "|---|---|",

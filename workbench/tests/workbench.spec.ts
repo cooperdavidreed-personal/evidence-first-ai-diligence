@@ -37,16 +37,18 @@ async function accessibilitySnapshot(page: Page) {
 test("landing explains the product and opens a sample deal", async ({page}, testInfo: TestInfo) => {
   await page.goto("/", {waitUntil: "networkidle"});
   await expect(page.getByRole("heading", {name: /Turn a crowded data room/})).toBeVisible();
+  await expect(page.getByText("Do we meet the $240M ask, counter at $210M, or walk?")).toBeVisible();
+  await expect(page.getByText(/\$220M ask/)).toHaveCount(0);
   await expect(page.getByRole("button", {name: /Review a sample deal/})).toBeVisible();
   await settleAtTop(page);
   await captureVisualEvidence(page, `${testInfo.project.name}-investor-workspace-landing.png`);
   await page.getByRole("button", {name: /Review a sample deal/}).click();
   await expect(page).toHaveURL(/#\/v2\/atlasgrid\/overview$/);
-  await expect(page.getByRole("heading", {name: "Do we bid $210M, reprice, or walk?"})).toBeVisible();
+  await expect(page.getByRole("heading", {name: "Do we meet the $240M ask, counter at $210M, or walk?"})).toBeVisible();
 });
 
 for (const candidate of [
-  {id: "atlasgrid", name: "AtlasGrid Systems", question: "Do we bid $210M, reprice, or walk?"},
+  {id: "atlasgrid", name: "AtlasGrid Systems", question: "Do we meet the $240M ask, counter at $210M, or walk?"},
   {id: "helios", name: "Helios Compute Control", question: "Do we fund $25M now and reserve $15M for verified milestones?"},
 ]) {
   test(`${candidate.name} investor journey, source inspection, and responsive evidence`, async ({page}, testInfo: TestInfo) => {
@@ -63,6 +65,7 @@ for (const candidate of [
     await captureVisualEvidence(page, `${testInfo.project.name}-${caseSlug}-overview.png`);
 
     const assumption = candidate.id === "atlasgrid" ? "$220M" : "$400M";
+    await expect(page.getByText(/Recommendation impact:/)).toBeVisible();
     await page.getByRole("button", {name: assumption}).click();
     await expect(page.getByText(/Return hurdle fails/)).toBeVisible();
     await expect(page).toHaveURL(candidate.id === "atlasgrid" ? /driver=entry_enterprise_value_cents/ : /driver=exit_value/);

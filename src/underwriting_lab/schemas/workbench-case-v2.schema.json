@@ -16,9 +16,10 @@
     "dealContext": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema_version", "company_one_liner", "product", "customer", "market", "competition", "go_to_market", "team", "process", "evidence_boundary", "context_sha256"],
+      "required": ["schema_version", "investment_question", "company_one_liner", "product", "customer", "market", "competition", "go_to_market", "team", "process", "evidence_boundary", "context_sha256"],
       "properties": {
         "schema_version": {"const": "underwriting.deal-context/v1"},
+        "investment_question": {"type": "string", "minLength": 20},
         "company_one_liner": {"type": "string", "minLength": 20},
         "product": {"type": "string", "minLength": 20},
         "customer": {"type": "string", "minLength": 20},

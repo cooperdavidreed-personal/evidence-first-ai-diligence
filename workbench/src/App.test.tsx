@@ -21,6 +21,8 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
     const user = userEvent.setup();
     render(<App />);
     expect(screen.getByRole("heading", {name: /Turn a crowded data room/})).toBeInTheDocument();
+    expect(screen.getByText("Do we meet the $240M ask, counter at $210M, or walk?")).toBeInTheDocument();
+    expect(screen.queryByText(/\$220M ask/)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", {name: /Review a sample deal/}));
     expect(screen.getByRole("heading", {name: "AtlasGrid Systems"})).toBeInTheDocument();
     expect(window.location.hash).toBe("#/v2/atlasgrid/overview");
@@ -28,7 +30,7 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
 
   it("puts the investment question, company context, and six primary sections first", () => {
     render(<App />);
-    expect(screen.getByRole("heading", {name: "Do we bid $210M, reprice, or walk?"})).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "Do we meet the $240M ask, counter at $210M, or walk?"})).toBeInTheDocument();
     expect(screen.getByText(/regulated electric-utility grid planning/)).toBeInTheDocument();
     expect(screen.getByText("SYNTHETIC — NOT INVESTMENT ADVICE")).toBeInTheDocument();
     for (const name of ["Overview", "Thesis", "Financials & Returns", "Risks & Diligence", "Value Creation", "Memo"]) {
@@ -50,6 +52,9 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
     const user = userEvent.setup();
     render(<App />);
     expect(screen.getAllByText("23.26%").length).toBeGreaterThan(0);
+    expect(screen.getByText(/>=22% IRR/)).toBeInTheDocument();
+    expect(screen.getByText(/Sponsor equity at close/)).toBeInTheDocument();
+    expect(screen.getByText(/Recommendation impact:/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", {name: "$220M"}));
     expect(screen.getByText("20.97%")).toBeInTheDocument();
     expect(screen.getByText(/Return hurdle fails/)).toBeInTheDocument();

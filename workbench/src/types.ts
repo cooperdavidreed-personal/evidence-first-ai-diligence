@@ -527,6 +527,7 @@ export interface CaseData {
   workflowDisposition: "HOLD";
   dealContext: {
     schema_version: "underwriting.deal-context/v1";
+    investment_question: string;
     company_one_liner: string;
     product: string;
     customer: string;

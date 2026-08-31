@@ -525,7 +525,7 @@ function ValueCreation({caseData, openMetric}: {caseData: CaseData; openMetric: 
 }
 
 function investmentQuestion(caseData: CaseData) {
-  return caseData.peEngine ? "Do we bid $210M, reprice, or walk?" : "Do we fund $25M now and reserve $15M for verified milestones?";
+  return caseData.dealContext.investment_question;
 }
 
 function Landing({onOpen}: {onOpen: (caseId: CaseId) => void}) {
@@ -540,8 +540,7 @@ function Landing({onOpen}: {onOpen: (caseId: CaseId) => void}) {
     <section className="landing-cases" aria-labelledby="sample-cases-title">
       <div className="section-heading"><p className="kicker">Choose a workflow</p><h2 id="sample-cases-title">Start with the investment question</h2></div>
       <div className="case-card-grid">
-        <button onClick={() => onOpen("atlasgrid")}><span>Private equity · vertical SaaS</span><strong>AtlasGrid Systems</strong><p>Should the sponsor meet the seller at $220M, reprice the deal, or walk?</p><em>Open buyout underwriting →</em></button>
-        <button onClick={() => onOpen("helios")}><span>Growth equity · AI infrastructure</span><strong>Helios Compute Control</strong><p>Should the investor fund a $25M close and condition a $15M tranche on evidence?</p><em>Open growth underwriting →</em></button>
+        {caseCatalog.map((item) => <button key={item.caseId} onClick={() => onOpen(item.caseId)}><span>{item.caseType === "PE / Growth Equity" ? "Private equity · vertical SaaS" : "Growth equity · AI infrastructure"}</span><strong>{item.company}</strong><p>{item.investmentQuestion}</p><em>Open {item.caseId === "atlasgrid" ? "buyout" : "growth"} underwriting →</em></button>)}
       </div>
     </section>
     <section className="workflow-preview" aria-label="Underwriting workflow"><span>01 Evidence</span><b>→</b><span>02 Economics</span><b>→</b><span>03 Downside</span><b>→</b><span>04 Decision</span><b>→</b><span>05 Ownership plan</span></section>
@@ -565,6 +564,16 @@ function DealContext({caseData}: {caseData: CaseData}) {
 
 type CanonicalCell = {cell_id: string; assumption_label: string; gross_xirr: string; gross_moic: string};
 
+type DecisionMetricPair = NonNullable<CaseData["decision"]["metric_pairs"]>[number];
+const thresholdClears = (observed: number, pair: DecisionMetricPair) => {
+  const threshold = Number(pair.threshold_value);
+  if (pair.operator === ">=") return observed >= threshold;
+  if (pair.operator === "<=") return observed <= threshold;
+  if (pair.operator === ">") return observed > threshold;
+  if (pair.operator === "<") return observed < threshold;
+  return observed === threshold;
+};
+
 function AssumptionLab({caseData, routeState, onRouteState}: {caseData: CaseData; routeState: RouteControls; onRouteState: (state: RouteControls) => void}) {
   const axis = caseData.peEngine ? "entry_enterprise_value_cents" : "exit_value";
   const cells: CanonicalCell[] = caseData.peEngine
@@ -572,17 +581,29 @@ function AssumptionLab({caseData, routeState, onRouteState}: {caseData: CaseData
     : caseData.vcEngine!.sensitivities.cells.filter((item) => item.axis === axis);
   const selected = cells.find((item) => item.cell_id === routeState.cell) ?? cells[Math.floor(cells.length / 2)];
   if (!selected) return null;
-  const clears = Number(selected.gross_xirr) >= (caseData.peEngine ? .22 : .30) && Number(selected.gross_moic) >= (caseData.peEngine ? 2 : 3);
+  const irrMetricId = caseData.peEngine ? "atlasgrid-SELECTED-gross-irr" : "helios-MILESTONE-gross-xirr";
+  const moicMetricId = caseData.peEngine ? "atlasgrid-SELECTED-gross-moic" : "helios-MILESTONE-gross-moic";
+  const irrPair = caseData.decision.metric_pairs?.find((item) => item.metric_id === irrMetricId);
+  const moicPair = caseData.decision.metric_pairs?.find((item) => item.metric_id === moicMetricId);
+  if (!irrPair || !moicPair) throw new Error("canonical_assumption_hurdle_missing");
+  const clears = thresholdClears(Number(selected.gross_xirr), irrPair) && thresholdClears(Number(selected.gross_moic), moicPair);
   const label = caseData.peEngine ? "Entry enterprise value" : "Exit equity value";
+  const peCell = caseData.peEngine ? selected as CanonicalCell & {sponsor_cash_flows: Array<{amount_cents: number}>; minimum_covenant_headroom: string; receipt_sha256: string} : null;
+  const vcCell = caseData.vcEngine ? selected as CanonicalCell & {target_ownership: string; minimum_cash_cents: number; receipt_sha256: string} : null;
+  const strategyConsequence = peCell
+    ? `Sponsor equity at close ${asMoney(Math.abs(peCell.sponsor_cash_flows[0].amount_cents))} · minimum covenant headroom ${Number(peCell.minimum_covenant_headroom).toFixed(2)}x.`
+    : `Series C ownership ${asPercent(vcCell!.target_ownership)} · minimum modeled cash ${asMoney(vcCell!.minimum_cash_cents)}.`;
+  const receipt = peCell?.receipt_sha256 ?? vcCell!.receipt_sha256;
   return <section className="assumption-lab" aria-labelledby="assumption-title">
     <div><p className="kicker">Test the decisive assumption</p><h2 id="assumption-title">{label}</h2><p>Each choice reruns the canonical engine cell. This is not a display-only calculator.</p></div>
     <div className="assumption-options" role="group" aria-label={label}>{cells.map((cell) => <button key={cell.cell_id} aria-pressed={cell.cell_id === selected.cell_id} onClick={() => onRouteState({driver: axis, cell: cell.cell_id})}>{cell.assumption_label}</button>)}</div>
     <dl className="assumption-result">
       <div><dt>Gross IRR</dt><dd>{asPercent(selected.gross_xirr)}</dd></div>
       <div><dt>Gross MOIC</dt><dd>{asMultiple(selected.gross_moic)}</dd></div>
-      <div><dt>Return test</dt><dd data-status={clears ? "CLEARS" : "MISSES"}>{clears ? "Clears" : "Misses"}</dd></div>
+      <div><dt>Return test</dt><dd data-status={clears ? "CLEARS" : "MISSES"}>{clears ? "Clears" : "Misses"}<small>{irrPair.threshold} IRR · {moicPair.threshold} MOIC</small></dd></div>
     </dl>
     <p className="assumption-consequence"><strong>{clears ? "Return hurdle clears." : "Return hurdle fails."}</strong> {caseData.peEngine ? (clears ? "Price alone does not resolve the three open diligence gates." : "Do not advance at this price.") : (clears ? "Loss probability and two diligence gates still prevent advancement." : "The return case does not support investment at this exit outcome.")}</p>
+    <p className="assumption-detail">{strategyConsequence} <strong>Recommendation impact:</strong> {clears ? `${caseData.decision.decision.replaceAll("_", " ")} remains analytical only; workflow stays ${caseData.workflowDisposition}.` : "Do not advance on these economics."} <code>{receipt.slice(0, 12)}…</code></p>
   </section>;
 }
 

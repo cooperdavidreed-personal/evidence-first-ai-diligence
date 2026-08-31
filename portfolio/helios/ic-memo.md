@@ -7,11 +7,12 @@
 **Authority:** `DECISION_RECORD_INCOMPLETE` / `PENDING_FOUNDER_SIGNATURE` / no delegated investment authority.
 
 **Knowledge cutoff:** `2026-08-29T00:00:00Z`
-**Packet receipt:** `7aad1a1baca3a07631bcd38e01a232b36d10dd8547c01b07559b827217dcc823`
+**Packet receipt:** `dc0bd679f21d67c728adf801eb0fc59ddcb15e317ddf9323be96b1983a958764`
 
 ## Recommendation and executable terms
 
 Invest only if the 30% XIRR, 3.0x MOIC, and 10% modeled probability-below-1.0x hurdles clear and milestone funding stays tied to retention, pipeline, and margin evidence.
+**Binding loss hurdle:** 20.00% (MC SE 1.26 pp) versus <=10%; status `MISSES`. The conditional posture is not funding approval while this test and the diligence gates remain open.
 
 | Term | Exact selected-case position |
 |---|---|

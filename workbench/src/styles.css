@@ -104,9 +104,12 @@ main { min-height: 650px; padding: 34px 32px 64px; }
 .assumption-options button[aria-pressed="true"] { background: var(--cobalt); color: white; }
 .assumption-result { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin: 0; }
 .assumption-result dd { margin: 4px 0 0; font: 500 21px Georgia, ui-serif, serif; font-variant-numeric: tabular-nums; }
+.assumption-result dd small { display: block; margin-top: 3px; color: var(--muted); font: 700 7px var(--mono); }
 .assumption-result dd[data-status="MISSES"] { color: var(--rust); }
 .assumption-result dd[data-status="CLEARS"] { color: var(--green); }
 .assumption-consequence { grid-column: 2 / -1; margin: 0; padding-top: 12px; border-top: 1px solid var(--hairline); font-size: 11px; }
+.assumption-detail { grid-column: 2 / -1; margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.assumption-detail code { margin-left: 5px; color: var(--cobalt); font-size: 8px; }
 .risk-header, .utility-intro { max-width: 900px; padding-bottom: 24px; border-bottom: 1px solid var(--ink); }
 .risk-header h2, .utility-intro h2 { margin: 0; font: 500 clamp(32px, 4vw, 52px)/1.05 Georgia, ui-serif, serif; letter-spacing: -.035em; }
 .risk-header > p:last-child, .utility-intro > p:last-child { color: var(--muted); line-height: 1.55; }
@@ -603,6 +606,7 @@ footer { display: flex; justify-content: space-between; gap: 20px; padding: 18px
   .condition-ledger > div { border-right: 0; border-bottom: 1px solid var(--hairline); }
   .investment-question, .deal-context, .assumption-lab, .overview-decision { grid-template-columns: 1fr; }
   .assumption-consequence { grid-column: 1; }
+  .assumption-detail { grid-column: 1; min-width: 0; overflow-wrap: anywhere; }
   .deal-room-results article { grid-template-columns: 1fr 1.4fr; }
   .deal-room-results article > p { grid-column: 1 / 3; }
 }

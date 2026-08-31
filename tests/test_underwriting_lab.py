@@ -385,6 +385,14 @@ def test_atlasgrid_recovery_seed_keeps_combined_bid_boundary_feasible(tmp_path: 
     )
     assert diagnostic["status"] == "PASS"
     assert case["peEngine"]["maximum_bid_cents"] >= 15_000_000_000
+    # Recovery rooms remain useful for estimator and bid-boundary diagnostics,
+    # but they cannot silently become publishable packets when a precommitted
+    # scenario-prior band misses. The packet/workbench validator is the
+    # fail-closed boundary.
+    with pytest.raises(
+        UnderwritingError, match="pe_distribution_probability_outside_prior_band"
+    ):
+        validate_workbench_case(case)
 
 
 def test_committed_recovery_ledger_is_bound_and_passes() -> None:

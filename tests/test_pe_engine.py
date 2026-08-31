@@ -319,6 +319,7 @@ def test_distribution_recomputes_complete_paths_with_declared_correlation() -> N
     assert len(set(first.path_receipt_sha256s)) == 100
     assert len(first.path_records) == 100
     assert first.correlation_structure_sha256 == digest(first.correlation_structure)
+    assert Decimal(first.correlation_structure["loss_probability_band_low"]) <= first.probability_below_one <= Decimal(first.correlation_structure["loss_probability_band_high"])
     for record, result_sha256 in zip(first.path_records, first.path_receipt_sha256s, strict=True):
         record_body = dict(record)
         record_sha256 = record_body.pop("receipt_sha256")

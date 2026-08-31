@@ -142,6 +142,8 @@ def test_helios_ic_packet_reconciles_engine_terms_and_receipts(tmp_path: Path) -
     ):
         assert section in markdown
     assert "Selected milestone returns" in markdown
+    assert "**Binding loss hurdle:** 20.00%" in markdown
+    assert "status `MISSES`" in markdown
     assert "fully granted common at exit" in markdown
     assert "Unissued pool shares receive zero proceeds" not in markdown
     assert "Monte Carlo SE" in markdown
