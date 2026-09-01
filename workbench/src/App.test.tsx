@@ -10,7 +10,7 @@ function App() {
   assertWorkbenchData(candidate);
   const initialRoute = parseRoute();
   const initialCase = candidate.cases.find((item) => item.caseId === initialRoute.caseId)!;
-  return <WorkbenchApp initialCase={initialCase} initialRoute={initialRoute} />;
+  return <WorkbenchApp initialCase={initialCase} initialRoute={initialRoute} loadCaseFn={async (caseId) => candidate.cases.find((item) => item.caseId === caseId)!} />;
 }
 
 describe("Underwriting Desk investor workspace", () => {
@@ -121,6 +121,19 @@ describe("Underwriting Desk investor workspace", () => {
     expect(screen.getAllByText("HOLD", {exact: true})).toHaveLength(1);
     expect(screen.getByText("Not requested")).toBeInTheDocument();
     expect(window.location.hash).toBe("#/v3/helios/overview");
+  });
+
+  it("fails closed when a retained deal payload cannot be opened", async () => {
+    const candidate: unknown = rawData;
+    assertWorkbenchData(candidate);
+    const atlasgrid = candidate.cases.find((item) => item.caseId === "atlasgrid")!;
+    const user = userEvent.setup();
+    render(<WorkbenchApp initialCase={atlasgrid} initialRoute={{caseId: "atlasgrid", view: "overview"}} loadCaseFn={async () => {throw new Error("payload unavailable");}} />);
+    await user.selectOptions(screen.getByRole("combobox", {name: "Deal"}), "helios");
+    expect(await screen.findByRole("heading", {name: "Deal unavailable"})).toBeInTheDocument();
+    expect(screen.getByText(/No data, assumption, or investment decision was changed/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: "Return to Deals"}));
+    expect(screen.getByRole("heading", {name: "Deals"})).toBeInTheDocument();
   });
 
   it("renders a committee-readable memo with source ownership", () => {

@@ -220,20 +220,24 @@ function DealShell({caseData, view, onNavigate, onChooseDeal, onDeals}: {caseDat
   );
 }
 
-export default function App({initialCase, initialRoute}: {initialCase: CaseData; initialRoute: RouteState}) {
+export default function App({initialCase, initialRoute, loadCaseFn = loadCase}: {initialCase: CaseData; initialRoute: RouteState; loadCaseFn?: (caseId: CaseId) => Promise<CaseData>}) {
   const [caseData, setCaseData] = useState(initialCase);
   const [view, setView] = useState<RouteView>(initialRoute.view);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [intakeOpen, setIntakeOpen] = useState(false);
   const [localDeal, setLocalDeal] = useState<IntakeResult | null>(null);
   const [activeLocal, setActiveLocal] = useState(false);
   function navigate(next: DealView) { window.history.pushState(null, "", routePath(caseData.caseId, next)); setView(next); window.scrollTo(0, 0); }
   async function chooseDeal(caseId: CaseId) {
     setLoading(true);
-    try { const next = await loadCase(caseId); setCaseData(next); setActiveLocal(false); const destination = view === "deals" ? "overview" : view; window.history.pushState(null, "", routePath(caseId, destination)); setView(destination); }
+    setLoadError(false);
+    try { const next = await loadCaseFn(caseId); setCaseData(next); setActiveLocal(false); const destination = view === "deals" ? "overview" : view; window.history.pushState(null, "", routePath(caseId, destination)); setView(destination); }
+    catch { setLoadError(true); }
     finally { setLoading(false); }
   }
   if (loading) return <div className="loading-state" role="status">Opening deal…</div>;
+  if (loadError) return <main className="loading-state load-error" role="alert"><div><p className="eyebrow">Deal workspace</p><h1>Deal unavailable</h1><p>The selected deal could not be opened. No data, assumption, or investment decision was changed.</p><button className="secondary-button" type="button" onClick={() => {setLoadError(false); setView("deals"); window.history.pushState(null, "", "#/");}}>Return to Deals</button></div></main>;
   if (intakeOpen) return <DealIntake onCancel={() => setIntakeOpen(false)} onComplete={(result) => {setLocalDeal(result); setIntakeOpen(false); setActiveLocal(true); setView("overview"); window.history.pushState(null, "", "#/v3/local/overview");}} />;
   if (view === "deals") return <DealList onOpen={chooseDeal} onNew={() => setIntakeOpen(true)} localDeal={localDeal} onOpenLocal={() => {setActiveLocal(true); setView("overview"); window.history.pushState(null, "", "#/v3/local/overview");}} />;
   if (activeLocal && localDeal) return <LocalDealShell result={localDeal} view={view} onNavigate={(next) => {setView(next); window.history.pushState(null, "", `#/v3/local/${next}`); window.scrollTo(0, 0);}} onDeals={() => {setActiveLocal(false); setView("deals"); window.history.pushState(null, "", "#/");}} />;
