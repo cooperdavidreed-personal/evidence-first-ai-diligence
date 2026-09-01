@@ -1,0 +1,19 @@
+{
+  "boundary": "Connection-wizard route evidence only; no live provider, remote MCP, credential, or comprehensive WCAG claim.",
+  "project": "mobile",
+  "scans": [
+    {
+      "view": "Hosted connector boundary",
+      "critical_or_serious_count": 0,
+      "violations": [],
+      "root_client_width": 390,
+      "root_scroll_width": 390,
+      "minimum_visible_text_px": 12
+    }
+  ],
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "workbench_data_sha256": "d3093e468b6aee69871dca8cb79e9dd869cbf8441555ac3d7166bf5863b6c95b"
+}

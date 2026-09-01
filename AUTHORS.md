@@ -1,11 +1,7 @@
 # Authorship
 
-Evidence-First AI Diligence was conceived and led by Cooper Reed, founder of
-Daily AI Agents. Cooper defined the product thesis, investment-diligence model,
-evidence and security boundaries, acceptance criteria, and release decisions.
-AI coding assistants contributed research, implementation, testing, and
-adversarial review under Cooper's direction.
+Underwriting Desk was conceived and led by Cooper David Reed. Cooper defined the product thesis, private-markets workflow, analytical and econometric boundaries, human-approval model, acceptance criteria, and release direction.
 
-This wording is a publication draft pending Cooper's final confirmation. The
-project does not claim independent investment performance, investment advice,
-or human-free diligence.
+Codex performed implementation and repository work. Claude, Grok, and ChatGPT supplied bounded architecture, finance, product, adversarial, and hiring-manager review. Model agreement is not treated as validation; deterministic tests, exact artifacts, and human release review remain authoritative.
+
+The public project uses fictional companies and synthetic records. It does not claim investment performance, investment advice, confidential-data readiness, firm adoption, or human-free diligence.

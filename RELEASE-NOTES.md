@@ -1,41 +1,16 @@
-# Underwriting Intelligence Lab V2 portfolio candidate
+# Underwriting Desk unified release candidate
 
-> `USABILITY CANDIDATE IN LOCAL VERIFICATION — OBSERVED PRACTITIONER TESTING NOT RUN`:
-> publication, hosted CI, anonymous access, and observed usability remain
-> `NOT RUN` until separately authorized.
+Status: `FINAL ACCEPTANCE AND PUBLIC REBIND IN PROGRESS`
 
-The candidate release surface is the investor-first static React underwriting workspace,
-the AtlasGrid and Helios synthetic case packets, the hash-bound visual-evidence
-manifest and screenshots, the retained IC-memo PDFs, and a source-bound
-150-second recording of the real workbench. The earlier static-card film remains
-`QUALITY_SHORT`; it was replaced rather than included in the release surface.
+This release unifies the prior Underwriting Intelligence Lab and Underwriting Desk work into one product: one repository, five-destination decision workspace, two retained synthetic cases, one supported public intake, partner-facing PDFs, a bounded hosted model proposal flow, a proposal-only local MCP surface, and a single canonical public URL.
 
-## Inspect in under five minutes
+## Release highlights
 
-1. Start from the no-instruction landing page and switch between AtlasGrid and Helios.
-2. Inspect all six primary investment views and the supporting source, methodology, and audit layer.
-3. Change the canonical deal assumption and confirm that returns and hurdle interpretation rerun together.
-4. Trace a decision-critical number through its contextual source panel.
-5. Open the one-page memo and identify the gated next action.
-6. Open each case packet under `portfolio/`.
-7. Verify `verification/visual-evidence.json` against its PNG and PDF bytes.
-8. Watch and verify `demo/release/underwriting-intelligence-lab-demo.mp4`.
-9. Build the Pages candidate, then inspect its generated
-   `candidate-artifacts.json`, which binds every staged artifact. This file is
-   a build output and is not claimed as a committed repository file.
+- Northstar intake no longer self-authorizes through package thresholds. Its reproducible 83.6% ordinary-cohort NRR is a visible blocker and the complete package remains `SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED`.
+- Missing or modified required files fail closed with `NO CALL — PACKAGE INCOMPLETE` and no return conclusion.
+- Canonical cases are separated from editable what-if scenarios, analyst assumptions, and fund policy.
+- Users can add observations, manage diligence issues, review assumptions, inspect exact evidence, process cited model proposals through named human disposition, edit the memo, and export or restore portable state.
+- AtlasGrid and Helios retain deterministic PE and growth-financing mechanics, econometric interpretation, interactive sensitivities, one-page IC snapshots, underwriting packets, and separate technical appendices.
+- The interface uses a compact institutional shell, persistent decision rail, split document preview, plain-language analytical interpretation, and responsive desktop/mobile layouts.
 
-## Verified locally
-
-- The exact local counts and boundaries are recorded in `LOCAL-VERIFICATION.md`.
-- Candidate verification installs the toolkit extra and treats `NOT_RUN` from
-  Evidence Gate or Release Gate as a hard failure.
-- Clean wheel installation asserts the exact packaged kernel and underwriting
-  schema asset sets, including every V2 schema.
-- Pages and release-bundle automation stage the V2 workbench, both case
-  packets, both manifest-bound synthetic source rooms, the visual manifest,
-  four accessibility evidence records, bound screenshots, and retained PDFs.
-
-Hosted CI and anonymous public access must be checked after publication. The
-explanation-free practitioner protocol is retained in
-`docs/OBSERVED-USABILITY-PROTOCOL.md` and remains `NOT_RUN`. This project does
-not make investment decisions or provide investment advice.
+The exact commit, test results, hosted endpoint result, demo identity, public deployment, independent reviews, and remaining limitations will be recorded in the unified release receipt. Observed practitioner testing remains `NOT RUN`.

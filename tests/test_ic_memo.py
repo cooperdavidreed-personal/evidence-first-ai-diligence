@@ -69,7 +69,7 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
         assert receipt["artifacts"][name] == sha256_file(path)
 
     markdown = artifacts["packet_markdown"].read_text(encoding="utf-8")
-    assert "`REPRICE`" in markdown
+    assert "**Provisional posture:** **REPRICE**" in markdown
     assert "23.3%" in markdown
     assert "$215.4M" in markdown
     assert (

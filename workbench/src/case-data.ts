@@ -1,5 +1,5 @@
 import rawCatalog from "virtual:underwriting-case-index";
-import {assertWorkbenchCase} from "./data-contract";
+import {assertRuntimeCase} from "./runtime-case";
 import type {CaseData} from "./types";
 
 export type CaseId = "atlasgrid" | "helios";
@@ -30,7 +30,7 @@ export function loadCase(caseId: CaseId): Promise<CaseData> {
   if (existing) return existing;
   const pending = loaders[caseId]().then((module) => {
     const candidate = module.default;
-    assertWorkbenchCase(candidate);
+    assertRuntimeCase(candidate);
     if (candidate.caseId !== caseId) throw new Error(`case_payload_mismatch:${caseId}`);
     return candidate;
   }).catch((error) => {

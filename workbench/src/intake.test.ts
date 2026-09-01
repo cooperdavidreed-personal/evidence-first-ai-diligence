@@ -1,6 +1,7 @@
 import {File as NodeFile} from "node:buffer";
 import {describe, expect, it, vi} from "vitest";
 import {PACKAGE_VERSION, processDealPackage, sha256} from "./intake";
+import {GROWTH_SCREEN_POLICY} from "./policy";
 
 const deal = JSON.stringify({
   package_version: PACKAGE_VERSION, company: "Northstar Metrics", cutoff: "2026-06-30", cash_cents: 450000000,
@@ -52,14 +53,25 @@ describe("Growth SaaS Quick Package", () => {
   it("hashes, maps, and computes the supported package deterministically", async () => {
     const result = await processDealPackage(await packageFiles());
     expect(result.packageState).toBe("READY");
-    expect(result.posture).toBe("READY FOR IC REVIEW");
+    expect(result.posture).toBe("SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED");
     expect(result.analysis?.ltmRevenueCents).toBe(1_590_000_000);
-    expect(result.analysis?.grossMargin).toBeCloseTo(0.7, 8);
-    expect(result.analysis?.ordinaryNrr).toBeCloseTo(585 / 700, 8);
-    expect(result.analysis?.postMoneyOwnership).toBeCloseTo(1 / 3, 8);
-    expect(result.analysis?.grossMoic).toBeGreaterThan(3.2);
-    expect(result.analysis?.exitEquityCents).toBe(Math.round(result.analysis!.terminalRevenueCents * 5));
-    expect(result.analysis?.tests.every((test) => test.status === "CLEARS")).toBe(true);
+    expect(result.analysis?.grossMargin.toFixed(12)).toBe("0.700000000000");
+    expect(result.analysis?.ordinaryNrr.toFixed(12)).toBe("0.835714285714");
+    expect(result.analysis?.postMoneyOwnership.toFixed(12)).toBe("0.333333333333");
+    expect(result.analysis?.recentNetBurnCents).toBe(23_500_000);
+    expect(result.analysis?.runwayMonths?.toFixed(12)).toBe("19.148936170213");
+    expect(result.analysis?.cohortElapsedMonths).toBe(11);
+    expect(result.analysis?.terminalRevenueCents).toBe(4_852_294_922);
+    expect(result.analysis?.exitEquityCents).toBe(24_261_474_610);
+    expect(result.analysis?.grossMoic.toFixed(12)).toBe("3.234863281200");
+    expect(result.analysis?.annualizedGrossReturn.toFixed(12)).toBe("0.264652439362");
+    expect(Object.fromEntries(result.analysis!.metrics.map((metric) => [metric.id, metric.display]))).toMatchObject({"ltm-revenue": "$15.9M", "gross-margin": "70.0%", "ordinary-nrr": "83.6%", runway: "19.1 mo", ownership: "33.3%", "gross-moic": "3.23x", "annualized-return": "26.5%"});
+    expect(result.analysis?.tests.find((test) => test.gateId === "retention-nrr")).toMatchObject({observed: "83.6%", required: "95.0%", state: "CONCERN", blocksAdvancement: true, source: "DESK_DEFAULT_UNREVIEWED"});
+    expect(result.analysis?.tests.find((test) => test.gateId === "cohort-completeness")).toMatchObject({state: "BLOCKED", blocksAdvancement: true});
+    expect(result.analysis?.tests.find((test) => test.gateId === "burn-runway-quality")).toMatchObject({state: "UNREVIEWED", blocksAdvancement: true});
+    expect(result.analysis?.policyProfile.profileId).toBe(GROWTH_SCREEN_POLICY.profileId);
+    expect(result.analysis?.policyProfile.source).toBe("DESK_DEFAULT_UNREVIEWED");
+    expect(result.rationale).toMatch(/^7 policy or diligence gates remain unresolved/);
     expect(result.processedLocally).toBe(true);
   });
 
@@ -72,14 +84,32 @@ describe("Growth SaaS Quick Package", () => {
     expect(result.files.find((file) => file.name === "customer_arr.csv")?.state).toBe("MISSING");
   });
 
-  it("keeps a complete package on hold when a declared threshold misses", async () => {
+  it("does not let package-authored thresholds grade or authorize the deal", async () => {
     const holdDeal = deal.replace('"minimum_gross_moic":"2.5"', '"minimum_gross_moic":"4.0"');
     const result = await processDealPackage(await packageFiles({deal: holdDeal}));
     expect(result.packageState).toBe("READY");
-    expect(result.posture).toBe("HOLD");
+    expect(result.posture).toBe("SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED");
     expect(result.analysis).not.toBeNull();
-    expect(result.analysis?.tests.find((test) => test.label === "Gross multiple")?.status).toBe("MISSES");
-    expect(result.rationale).toMatch(/remain.*hold/i);
+    expect(result.deal?.packageRequestedThresholds.minimumGrossMoic).toBe(4);
+    expect(result.analysis?.tests.find((test) => test.gateId === "returns-moic")?.required).toBe("3.00x");
+    expect(result.analysis?.tests.find((test) => test.gateId === "retention-nrr")?.state).toBe("CONCERN");
+    expect(result.rationale).toMatch(/cannot authorize advancement/i);
+  });
+
+  it("produces identical policy results for permissive and impossible package-requested thresholds", async () => {
+    const permissive = deal.replace('"minimum_gross_moic":"2.5","minimum_annualized_return":"0.20","minimum_runway_months":"12"', '"minimum_gross_moic":"0","minimum_annualized_return":"-0.99","minimum_runway_months":"0"');
+    const impossible = deal.replace('"minimum_gross_moic":"2.5","minimum_annualized_return":"0.20","minimum_runway_months":"12"', '"minimum_gross_moic":"100","minimum_annualized_return":"10","minimum_runway_months":"120"');
+    const low = await processDealPackage(await packageFiles({deal: permissive}));
+    const high = await processDealPackage(await packageFiles({deal: impossible}));
+    expect(low.deal?.packageRequestedThresholds.minimumGrossMoic).toBe(0);
+    expect(high.deal?.packageRequestedThresholds.minimumGrossMoic).toBe(100);
+    expect(low.analysis?.tests).toEqual(high.analysis?.tests);
+    expect(low.posture).toBe(high.posture);
+    expect(low.rationale).toBe(high.rationale);
+  });
+
+  it("rejects a caller-created policy profile that is not in the Desk registry", async () => {
+    await expect(processDealPackage(await packageFiles(), {...GROWTH_SCREEN_POLICY, profileId: "ad-hoc-easy-policy"})).rejects.toThrow(/not admitted by the Desk registry/);
   });
 
   it("stops on a manifest digest mismatch", async () => {

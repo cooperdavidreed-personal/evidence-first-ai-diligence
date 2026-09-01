@@ -1,9 +1,10 @@
 import {compareDecimalStrings} from "./data-contract";
+import {GROWTH_SCREEN_POLICY, assertRegisteredPolicyProfile, policyThreshold, type GateState, type PolicyProfile} from "./policy";
 
 export const PACKAGE_VERSION = "growth-saas-quick-package/v1";
 export const REQUIRED_FILES = ["manifest.json", "deal.json", "monthly_financials.csv", "customer_arr.csv"] as const;
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
-const MAX_PACKAGE_BYTES = 12 * 1024 * 1024;
+const MAX_FILE_BYTES = 750 * 1024;
+const MAX_PACKAGE_BYTES = 1024 * 1024;
 
 export type IntakeFileState = "RECOGNIZED" | "MISSING" | "INVALID" | "UNSUPPORTED" | "EXCLUDED" | "READY";
 export interface ColumnMapping { from: string; to: string }
@@ -27,10 +28,13 @@ export interface DealInput {
   years: number;
   annualRevenueGrowth: number;
   exitRevenueMultiple: number;
-  minimumGrossMoic: number;
-  minimumAnnualizedReturn: number;
-  minimumRunwayMonths: number;
   analystOwner: string;
+  packageRequestedThresholds: {
+    minimumGrossMoic: number;
+    minimumAnnualizedReturn: number;
+    minimumRunwayMonths: number;
+    classification: "PACKAGE_REPRESENTATION_NOT_FIRM_POLICY";
+  };
 }
 
 export interface QuickMetric {
@@ -42,11 +46,31 @@ export interface QuickMetric {
   limitation: string;
   sourceFiles: string[];
 }
-export interface QuickDecisionTest { label: string; observed: string; required: string; status: "CLEARS" | "MISSES" }
+export interface QuickSourcePreview {
+  sourceFile: string;
+  classification: "MANAGEMENT_REPRESENTATION" | "SOURCE_FACT" | "ANALYST_ASSUMPTION";
+  title: string;
+  period: string;
+  excerpt: Array<{label: string; value: string}>;
+}
+export interface QuickDecisionTest {
+  gateId: string;
+  label: string;
+  observed: string;
+  required: string;
+  state: GateState;
+  blocksAdvancement: boolean;
+  owner: string;
+  source: string;
+  policyStatus: string;
+  lastReviewed: string | null;
+  explanation: string;
+}
 export interface QuickAnalysis {
   ltmRevenueCents: number;
   grossMargin: number;
   ordinaryNrr: number;
+  cohortElapsedMonths: number;
   recentNetBurnCents: number;
   runwayMonths: number | null;
   postMoneyOwnership: number;
@@ -56,15 +80,18 @@ export interface QuickAnalysis {
   annualizedGrossReturn: number;
   metrics: QuickMetric[];
   tests: QuickDecisionTest[];
+  policyProfile: PolicyProfile;
+  sourcePreviews: QuickSourcePreview[];
 }
 export interface IntakeResult {
   packageState: "READY" | "INCOMPLETE";
-  posture: "READY FOR IC REVIEW" | "HOLD" | "NO CALL — PACKAGE INCOMPLETE";
+  posture: "SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED" | "HOLD" | "NO CALL — PACKAGE INCOMPLETE";
   rationale: string;
   files: IntakeFileStatus[];
   errors: string[];
   deal: DealInput | null;
   analysis: QuickAnalysis | null;
+  sourcePayloads?: Array<{name: typeof REQUIRED_FILES[number]; text: string}>;
   processedLocally: true;
 }
 
@@ -102,6 +129,10 @@ function addCents(values: number[], field: string) {
     if (!Number.isSafeInteger(next)) throw new Error(`${field} exceeds safe integer-cent range`);
     return next;
   }, 0);
+}
+function averageSignedCents(values: number[], field: string) {
+  if (!values.length) throw new Error(`${field} requires at least one period`);
+  return Math.round(addCents(values, field) / values.length);
 }
 function money(cents: number) { return new Intl.NumberFormat("en-US", {style: "currency", currency: "USD", maximumFractionDigits: 1, notation: "compact"}).format(cents / 100); }
 function percent(value: number) { return `${(value * 100).toFixed(1)}%`; }
@@ -173,6 +204,11 @@ function periodCell(value: string) {
   return value;
 }
 
+function monthOrdinal(value: string) {
+  const [year, month] = value.split("-").map(Number);
+  return year * 12 + month - 1;
+}
+
 function parseMonthly(raw: string, cutoff: string) {
   const parsed = parseCsv(raw);
   const {indexes, mappings} = headerMap(parsed.headers, {
@@ -191,6 +227,8 @@ function parseMonthly(raw: string, cutoff: string) {
   }
   rows.sort((left, right) => left.period.localeCompare(right.period));
   if (rows.length < 12) throw new Error("Monthly financials require at least 12 eligible periods");
+  const latestTwelve = rows.slice(-12);
+  for (let index = 1; index < latestTwelve.length; index += 1) if (monthOrdinal(latestTwelve[index].period) - monthOrdinal(latestTwelve[index - 1].period) !== 1) throw new Error("Monthly financials require twelve contiguous eligible LTM periods");
   return {rows, mappings, excluded};
 }
 
@@ -226,50 +264,101 @@ function parseDeal(raw: string): DealInput {
     preMoneyCents: safeInteger(candidate.proposed_financing.pre_money_cents, "proposed_financing.pre_money_cents"), years,
     annualRevenueGrowth: decimal(candidate.return_assumptions.annual_revenue_growth, "return_assumptions.annual_revenue_growth", -0.99, 5),
     exitRevenueMultiple: decimal(candidate.return_assumptions.exit_revenue_multiple, "return_assumptions.exit_revenue_multiple", 0.01, 100),
-    minimumGrossMoic: decimal(candidate.thresholds.minimum_gross_moic, "thresholds.minimum_gross_moic", 0, 100),
-    minimumAnnualizedReturn: decimal(candidate.thresholds.minimum_annualized_return, "thresholds.minimum_annualized_return", -0.99, 10),
-    minimumRunwayMonths: decimal(candidate.thresholds.minimum_runway_months, "thresholds.minimum_runway_months", 0, 120),
     analystOwner: text(candidate.analyst_owner, "analyst_owner"),
+    packageRequestedThresholds: {
+      minimumGrossMoic: decimal(candidate.thresholds.minimum_gross_moic, "thresholds.minimum_gross_moic", 0, 100),
+      minimumAnnualizedReturn: decimal(candidate.thresholds.minimum_annualized_return, "thresholds.minimum_annualized_return", -0.99, 10),
+      minimumRunwayMonths: decimal(candidate.thresholds.minimum_runway_months, "thresholds.minimum_runway_months", 0, 120),
+      classification: "PACKAGE_REPRESENTATION_NOT_FIRM_POLICY",
+    },
   };
 }
 
-function analyze(deal: DealInput, monthly: MonthlyRow[], customers: CustomerRow[]): QuickAnalysis {
+function analyze(deal: DealInput, monthly: MonthlyRow[], customers: CustomerRow[], policyProfile: PolicyProfile): QuickAnalysis {
   const ltm = monthly.slice(-12); const recent = monthly.slice(-3);
   const ltmRevenueCents = addCents(ltm.map((row) => row.revenueCents), "LTM revenue");
   if (ltmRevenueCents <= 0) throw new Error("LTM revenue must be greater than zero");
   const ltmCostCents = addCents(ltm.map((row) => row.costOfRevenueCents), "LTM cost of revenue");
   if (ltmCostCents > ltmRevenueCents * 10) throw new Error("Cost of revenue is outside the supported range");
   const grossMargin = (ltmRevenueCents - ltmCostCents) / ltmRevenueCents;
-  const recentNetBurnCents = Math.round(addCents(recent.map((row) => Math.max(0, row.costOfRevenueCents + row.operatingExpenseCents - row.revenueCents)), "recent net burn") / recent.length);
-  const runwayMonths = recentNetBurnCents === 0 ? null : deal.cashCents / recentNetBurnCents;
+  const recentNetBurnCents = averageSignedCents(recent.map((row) => row.costOfRevenueCents + row.operatingExpenseCents - row.revenueCents), "recent net burn");
+  const runwayMonths = recentNetBurnCents <= 0 ? null : deal.cashCents / recentNetBurnCents;
   const periods = [...new Set(customers.map((row) => row.period))].sort(); const basePeriod = periods[0], latestPeriod = periods.at(-1)!;
+  const cohortElapsedMonths = monthOrdinal(latestPeriod) - monthOrdinal(basePeriod);
   const base = new Map(customers.filter((row) => row.period === basePeriod && row.arrCents > 0).map((row) => [row.customerId, row.arrCents]));
   const latest = new Map(customers.filter((row) => row.period === latestPeriod).map((row) => [row.customerId, row.arrCents]));
   const baseArr = addCents([...base.values()], "cohort base ARR"); if (baseArr === 0) throw new Error("Ordinary cohort base ARR must be greater than zero");
   const endingArr = addCents([...base.keys()].map((id) => latest.get(id) ?? 0), "cohort ending ARR"); const ordinaryNrr = endingArr / baseArr;
-  const postMoney = deal.preMoneyCents + deal.investmentCents; if (!Number.isSafeInteger(postMoney) || deal.investmentCents === 0 || postMoney <= 0) throw new Error("Proposed financing must have positive, safe integer-cent values");
-  const postMoneyOwnership = deal.investmentCents / postMoney;
-  const terminalRevenueCents = Math.round(ltmRevenueCents * ((1 + deal.annualRevenueGrowth) ** deal.years));
-  const exitEquityCents = Math.round(terminalRevenueCents * deal.exitRevenueMultiple);
-  if (!Number.isSafeInteger(terminalRevenueCents) || !Number.isSafeInteger(exitEquityCents)) throw new Error("Exit scenario exceeds safe integer-cent range");
-  const grossProceedsCents = Math.round(exitEquityCents * postMoneyOwnership); const grossMoic = grossProceedsCents / deal.investmentCents;
-  const annualizedGrossReturn = grossMoic <= 0 ? -1 : grossMoic ** (1 / deal.years) - 1;
-  const runwayClears = runwayMonths === null || clearsDecimalThreshold(runwayMonths, deal.minimumRunwayMonths);
+  const canonicalScenario = calculateQuickScenario({ltmRevenueCents}, deal, {annualRevenueGrowth: deal.annualRevenueGrowth, exitRevenueMultiple: deal.exitRevenueMultiple});
+  const {postMoneyOwnership, terminalRevenueCents, exitEquityCents, grossMoic, annualizedGrossReturn} = canonicalScenario;
+  const moicPolicy = policyThreshold(policyProfile, "gross_moic");
+  const returnPolicy = policyThreshold(policyProfile, "annualized_return");
+  const runwayPolicy = policyThreshold(policyProfile, "runway_months");
+  const nrrPolicy = policyThreshold(policyProfile, "ordinary_nrr");
+  const marginPolicy = policyThreshold(policyProfile, "gross_margin");
+  const thresholdGate = (gateId: string, threshold: typeof moicPolicy, observed: number, observedDisplay: string, explanation: string): QuickDecisionTest => {
+    const comparison = clearsDecimalThreshold(observed, threshold.value);
+    const clears = threshold.operator === ">=" ? comparison : !comparison || compareDecimalStrings(observed.toFixed(12), threshold.value.toFixed(12)) === 0;
+    return {gateId, label: threshold.label, observed: observedDisplay, required: threshold.displayValue, state: clears ? "CLEARS" : "CONCERN", blocksAdvancement: !clears, owner: threshold.owner, source: threshold.source, policyStatus: threshold.status, lastReviewed: threshold.lastReviewed, explanation};
+  };
+  const runwayObserved = runwayMonths ?? Number.POSITIVE_INFINITY;
   const tests: QuickDecisionTest[] = [
-    {label: "Gross multiple", observed: `${grossMoic.toFixed(2)}x`, required: `At least ${deal.minimumGrossMoic.toFixed(2)}x`, status: clearsDecimalThreshold(grossMoic, deal.minimumGrossMoic) ? "CLEARS" : "MISSES"},
-    {label: "Annualized gross return", observed: percent(annualizedGrossReturn), required: `At least ${percent(deal.minimumAnnualizedReturn)}`, status: clearsDecimalThreshold(annualizedGrossReturn, deal.minimumAnnualizedReturn) ? "CLEARS" : "MISSES"},
-    {label: "Cash runway", observed: runwayMonths === null ? "Cash generative" : `${runwayMonths.toFixed(1)} months`, required: `At least ${deal.minimumRunwayMonths.toFixed(1)} months`, status: runwayClears ? "CLEARS" : "MISSES"},
+    thresholdGate("returns-moic", moicPolicy, grossMoic, `${grossMoic.toFixed(2)}x`, "The deterministic scenario clears the illustrative Desk-owned multiple screen, but the scenario assumptions remain unapproved."),
+    thresholdGate("returns-annualized", returnPolicy, annualizedGrossReturn, percent(annualizedGrossReturn), "The deterministic scenario clears the illustrative Desk-owned return screen, but the scenario assumptions remain unapproved."),
+    thresholdGate("retention-nrr", nrrPolicy, ordinaryNrr, percent(ordinaryNrr), "Ordinary-cohort retention is below the Desk-owned screen and requires a documented policy-owner override or further diligence."),
+    thresholdGate("margin-numeric", marginPolicy, grossMargin, percent(grossMargin), "Reported gross margin meets the numeric screen; cost classification and customer-success burden remain unverified."),
+    thresholdGate("runway-numeric", runwayPolicy, runwayObserved, runwayMonths === null ? "Cash generative" : `${runwayMonths.toFixed(1)} months`, "Recent runway meets the numeric screen; committed costs and financing timing remain unverified."),
+    {gateId: "burn-runway-quality", label: "Burn and runway quality", observed: "Three-month signed net burn", required: "Committed-cost and financing review", state: "UNREVIEWED", blocksAdvancement: true, owner: policyProfile.owner, source: policyProfile.source, policyStatus: policyProfile.status, lastReviewed: policyProfile.lastReviewed, explanation: "The numeric runway screen does not establish committed costs, working-capital needs, financing timing, or burn durability."},
+    {gateId: "gross-margin-quality", label: "Gross-margin quality", observed: "Cost classification not tested", required: "Verified delivery-cost completeness", state: "UNREVIEWED", blocksAdvancement: true, owner: policyProfile.owner, source: policyProfile.source, policyStatus: policyProfile.status, lastReviewed: policyProfile.lastReviewed, explanation: "The Quick Package cannot establish whether credits, support, implementation, or customer-success costs are fully burdened."},
+    {gateId: "customer-concentration", label: "Customer concentration", observed: "Parent mapping not supplied", required: "Parent-level concentration review", state: "BLOCKED", blocksAdvancement: true, owner: policyProfile.owner, source: policyProfile.source, policyStatus: policyProfile.status, lastReviewed: policyProfile.lastReviewed, explanation: "Customer-level rows cannot establish parent concentration without an entity hierarchy."},
+    {gateId: "cohort-completeness", label: "Cohort completeness", observed: `${base.size} opening customers · ${cohortElapsedMonths}-month interval`, required: "12-month interval, representative cohorts and segmentation", state: cohortElapsedMonths === 12 && base.size >= 25 ? "UNREVIEWED" : "BLOCKED", blocksAdvancement: true, owner: policyProfile.owner, source: policyProfile.source, policyStatus: policyProfile.status, lastReviewed: policyProfile.lastReviewed, explanation: cohortElapsedMonths === 12 ? "The period aligns to a year, but cohort size and segmentation still require review." : `The retained ratio spans ${cohortElapsedMonths} months, so it is directional screening evidence rather than a complete annual NRR study.`},
+    {gateId: "financing-ownership", label: "Financing and ownership", observed: `${percent(postMoneyOwnership)} simple post-money ownership`, required: "Reviewed cap table, pool and preferences", state: "UNREVIEWED", blocksAdvancement: true, owner: policyProfile.owner, source: policyProfile.source, policyStatus: policyProfile.status, lastReviewed: policyProfile.lastReviewed, explanation: "The Quick Package excludes option-pool refresh, preferences, dilution and later rounds."},
+    {gateId: "data-sufficiency", label: "Screening data sufficiency", observed: `${monthly.length} months · ${customers.length} customer-period rows`, required: "Quick Package v1 minimums", state: "CLEARS", blocksAdvancement: false, owner: policyProfile.owner, source: policyProfile.source, policyStatus: policyProfile.status, lastReviewed: policyProfile.lastReviewed, explanation: "The package is sufficient only for the declared screening calculations."},
+    {gateId: "assumption-provenance", label: "Assumption provenance", observed: "Package-supplied growth, exit and financing inputs", required: "Named analyst review and disposition", state: "UNREVIEWED", blocksAdvancement: true, owner: policyProfile.owner, source: policyProfile.source, policyStatus: policyProfile.status, lastReviewed: policyProfile.lastReviewed, explanation: "Uploaded assumptions are admitted as representations, never as approved underwriting assumptions."},
   ];
+  const requiredGateIds: Record<PolicyProfile["requiredGates"][number], string> = {
+    retention_nrr: "retention-nrr",
+    gross_margin_quality: "gross-margin-quality",
+    burn_runway_quality: "burn-runway-quality",
+    customer_concentration: "customer-concentration",
+    cohort_completeness: "cohort-completeness",
+    financing_ownership: "financing-ownership",
+    data_sufficiency: "data-sufficiency",
+    assumption_provenance: "assumption-provenance",
+  };
+  const emitted = new Set(tests.map((test) => test.gateId));
+  for (const required of policyProfile.requiredGates) if (!emitted.has(requiredGateIds[required])) throw new Error(`Required policy gate ${required} was not evaluated`);
   const metrics: QuickMetric[] = [
     {id: "ltm-revenue", label: "LTM revenue", value: ltmRevenueCents, display: money(ltmRevenueCents), meaning: "Revenue recognized across the latest twelve eligible monthly rows.", limitation: "Quick Package accounting only; no QoE adjustment or invoice-level reconciliation.", sourceFiles: ["monthly_financials.csv"]},
     {id: "gross-margin", label: "Gross margin", value: grossMargin, display: percent(grossMargin), meaning: "Revenue remaining after declared cost of revenue.", limitation: "Uses the uploaded classification and does not test whether delivery costs are complete.", sourceFiles: ["monthly_financials.csv"]},
     {id: "ordinary-nrr", label: "Ordinary-cohort NRR", value: ordinaryNrr, display: percent(ordinaryNrr), meaning: `ARR retained from customers present in ${basePeriod}, measured at ${latestPeriod}.`, limitation: "Simple fixed cohort; no segmentation, contract review, or parent-account reconciliation.", sourceFiles: ["customer_arr.csv"]},
-    {id: "runway", label: "Recent runway", value: runwayMonths, display: runwayMonths === null ? "Cash generative" : `${runwayMonths.toFixed(1)} mo`, meaning: "Cash divided by average positive net burn over the latest three months.", limitation: "No financing events, working-capital schedule, or committed costs beyond the uploaded rows.", sourceFiles: ["deal.json", "monthly_financials.csv"]},
+    {id: "runway", label: "Recent runway", value: runwayMonths, display: runwayMonths === null ? "Cash generative" : `${runwayMonths.toFixed(1)} mo`, meaning: "Cash divided by average signed net burn over the latest three months.", limitation: "No financing events, working-capital schedule, or committed costs beyond the uploaded rows.", sourceFiles: ["deal.json", "monthly_financials.csv"]},
     {id: "ownership", label: "Post-money ownership", value: postMoneyOwnership, display: percent(postMoneyOwnership), meaning: "New investment divided by declared pre-money value plus new investment.", limitation: "No option-pool refresh, preferences, dilution, or later financing rounds.", sourceFiles: ["deal.json"]},
     {id: "gross-moic", label: "Gross multiple", value: grossMoic, display: `${grossMoic.toFixed(2)}x`, meaning: "Illustrative exit equity proceeds divided by the proposed investment.", limitation: "Scenario assumes debt- and cash-neutral exit equity; no preference waterfall, fees, taxes, or dilution.", sourceFiles: ["deal.json", "monthly_financials.csv"]},
     {id: "annualized-return", label: "Annualized gross return", value: annualizedGrossReturn, display: percent(annualizedGrossReturn), meaning: `Annualized return across the declared ${deal.years}-year scenario.`, limitation: "Scenario only; not a forecast or investment recommendation.", sourceFiles: ["deal.json", "monthly_financials.csv"]},
   ];
-  return {ltmRevenueCents, grossMargin, ordinaryNrr, recentNetBurnCents, runwayMonths, postMoneyOwnership, terminalRevenueCents, exitEquityCents, grossMoic, annualizedGrossReturn, metrics, tests};
+  const sourcePreviews: QuickSourcePreview[] = [
+    {sourceFile: "deal.json", classification: "MANAGEMENT_REPRESENTATION", title: "Proposed financing and scenario", period: deal.cutoff, excerpt: [{label: "New investment", value: money(deal.investmentCents)}, {label: "Pre-money value", value: money(deal.preMoneyCents)}, {label: "Annual growth assumption", value: percent(deal.annualRevenueGrowth)}, {label: "Exit revenue multiple", value: `${deal.exitRevenueMultiple.toFixed(1)}x`}, {label: "Package-requested hurdle", value: `${deal.packageRequestedThresholds.minimumGrossMoic.toFixed(1)}x — not fund policy`}]},
+    {sourceFile: "monthly_financials.csv", classification: "SOURCE_FACT", title: "Latest twelve monthly rows", period: `${ltm[0].period} to ${ltm.at(-1)!.period}`, excerpt: [{label: "Rows", value: String(ltm.length)}, {label: "Revenue total", value: money(ltmRevenueCents)}, {label: "Cost of revenue", value: money(ltmCostCents)}, {label: "Latest month revenue", value: money(ltm.at(-1)!.revenueCents)}, {label: "Recent signed net burn", value: money(recentNetBurnCents)}]},
+    {sourceFile: "customer_arr.csv", classification: "SOURCE_FACT", title: "Opening-customer retention cohort", period: `${basePeriod} to ${latestPeriod}`, excerpt: [{label: "Opening customers", value: String(base.size)}, {label: "Opening ARR", value: money(baseArr)}, {label: "Ending ARR for opening IDs", value: money(endingArr)}, {label: "Elapsed interval", value: `${cohortElapsedMonths} months`}, {label: "Ordinary-cohort NRR", value: percent(ordinaryNrr)}]},
+    {sourceFile: "deal.json", classification: "ANALYST_ASSUMPTION", title: "Return assumptions awaiting review", period: `Five-year working case`, excerpt: [{label: "Revenue growth", value: percent(deal.annualRevenueGrowth)}, {label: "Exit multiple", value: `${deal.exitRevenueMultiple.toFixed(1)}x`}, {label: "Status", value: "Unreviewed"}]},
+  ];
+  return {ltmRevenueCents, grossMargin, ordinaryNrr, cohortElapsedMonths, recentNetBurnCents, runwayMonths, postMoneyOwnership, terminalRevenueCents, exitEquityCents, grossMoic, annualizedGrossReturn, metrics, tests, policyProfile, sourcePreviews};
+}
+
+export function calculateQuickScenario(analysis: Pick<QuickAnalysis, "ltmRevenueCents">, deal: Pick<DealInput, "years" | "preMoneyCents" | "investmentCents">, inputs: {annualRevenueGrowth: number; exitRevenueMultiple: number}) {
+  if (!Number.isFinite(inputs.annualRevenueGrowth) || inputs.annualRevenueGrowth < -0.99 || inputs.annualRevenueGrowth > 5) throw new Error("Working growth assumption is outside the supported range");
+  if (!Number.isFinite(inputs.exitRevenueMultiple) || inputs.exitRevenueMultiple < 0.01 || inputs.exitRevenueMultiple > 100) throw new Error("Working exit multiple is outside the supported range");
+  const postMoney = deal.preMoneyCents + deal.investmentCents;
+  if (!Number.isSafeInteger(postMoney) || deal.investmentCents <= 0 || postMoney <= 0) throw new Error("Working financing inputs are invalid");
+  const postMoneyOwnership = deal.investmentCents / postMoney;
+  const terminalRevenueCents = Math.round(analysis.ltmRevenueCents * ((1 + inputs.annualRevenueGrowth) ** deal.years));
+  const exitEquityCents = Math.round(terminalRevenueCents * inputs.exitRevenueMultiple);
+  const grossProceedsCents = Math.round(exitEquityCents * postMoneyOwnership);
+  if (![terminalRevenueCents, exitEquityCents, grossProceedsCents].every(Number.isSafeInteger)) throw new Error("Working scenario exceeds the safe integer-cent range");
+  const grossMoic = grossProceedsCents / deal.investmentCents;
+  const annualizedGrossReturn = grossMoic <= 0 ? -1 : grossMoic ** (1 / deal.years) - 1;
+  return {annualRevenueGrowth: inputs.annualRevenueGrowth, exitRevenueMultiple: inputs.exitRevenueMultiple, postMoneyOwnership, terminalRevenueCents, exitEquityCents, grossProceedsCents, grossMoic, annualizedGrossReturn};
 }
 
 function incomplete(files: IntakeFileStatus[], errors: string[], deal: DealInput | null = null): IntakeResult {
@@ -282,7 +371,8 @@ function analysisErrorTarget(detail: string) {
   return "deal.json";
 }
 
-export async function processDealPackage(input: File[]): Promise<IntakeResult> {
+export async function processDealPackage(input: File[], policyProfile: PolicyProfile = GROWTH_SCREEN_POLICY): Promise<IntakeResult> {
+  assertRegisteredPolicyProfile(policyProfile);
   const statuses: IntakeFileStatus[] = []; const errors: string[] = [];
   const byName = new Map<string, File>(); let totalBytes = 0;
   for (const file of input) {
@@ -290,8 +380,8 @@ export async function processDealPackage(input: File[]): Promise<IntakeResult> {
     if (byName.has(name)) { statuses.push({name, role: "duplicate", state: "INVALID", detail: "Duplicate filename; package stopped", bytes: file.size}); errors.push(`Duplicate filename ${name}`); }
     else byName.set(name, file);
   }
-  if (totalBytes > MAX_PACKAGE_BYTES) errors.push("Package exceeds the 12 MB public-slice limit");
-  for (const [name, file] of byName) if (file.size > MAX_FILE_BYTES) { statuses.push({name, role: "file", state: "INVALID", detail: "File exceeds the 5 MB public-slice limit", bytes: file.size}); errors.push(`${name} is oversize`); }
+  if (totalBytes > MAX_PACKAGE_BYTES) errors.push("Package exceeds the 1 MB browser-local limit");
+  for (const [name, file] of byName) if (file.size > MAX_FILE_BYTES) { statuses.push({name, role: "file", state: "INVALID", detail: "File exceeds the 750 KB browser-local limit", bytes: file.size}); errors.push(`${name} is oversize`); }
   const manifestFile = byName.get("manifest.json");
   if (!manifestFile) {
     statuses.push({name: "manifest.json", role: "manifest", state: "MISSING", detail: "Required package declaration is missing"}); errors.push("manifest.json is required");
@@ -301,7 +391,8 @@ export async function processDealPackage(input: File[]): Promise<IntakeResult> {
   let manifest: Manifest;
   try {
     manifest = parseManifest(await manifestFile.text());
-    statuses.push({name: "manifest.json", role: "manifest", state: "RECOGNIZED", detail: "Supported package declaration", bytes: manifestFile.size});
+    const manifestDigest = await sha256(await manifestFile.arrayBuffer());
+    statuses.push({name: "manifest.json", role: "manifest", state: "RECOGNIZED", detail: "Supported package declaration", bytes: manifestFile.size, sha256: manifestDigest});
   } catch (error) {
     const detail = error instanceof Error ? error.message : "Manifest is invalid";
     statuses.push({name: "manifest.json", role: "manifest", state: "INVALID", detail, bytes: manifestFile.size}); errors.push(detail);
@@ -338,10 +429,11 @@ export async function processDealPackage(input: File[]): Promise<IntakeResult> {
       const status = statuses.find((item) => item.name === name)!; status.rows = parsed.rows.length; status.mappings = parsed.mappings;
       status.detail = `${parsed.rows.length} eligible rows${parsed.excluded ? `; ${parsed.excluded} post-cutoff rows excluded` : ""}${parsed.mappings.length ? "; explicit alias mapping required" : ""}`;
     }
-    const analysis = analyze(deal, monthly.rows, customers.rows);
-    const failed = analysis.tests.filter((test) => test.status === "MISSES");
+    const analysis = analyze(deal, monthly.rows, customers.rows, policyProfile);
+    const blockers = analysis.tests.filter((test) => test.blocksAdvancement);
     for (const status of statuses) if (status.state === "RECOGNIZED") status.state = "READY";
-    return {packageState: "READY", posture: failed.length === 0 ? "READY FOR IC REVIEW" : "HOLD", rationale: failed.length === 0 ? "The complete package clears all declared return and runway tests. This is an analytical posture, not an investment recommendation or approval." : `${failed.map((test) => test.label).join(", ")} miss the declared threshold. The complete package remains on hold.`, files: statuses, errors: [], deal, analysis, processedLocally: true};
+    const sourcePayloads = await Promise.all(REQUIRED_FILES.map(async (name) => ({name, text: await byName.get(name)!.text()})));
+    return {packageState: "READY", posture: "SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED", rationale: `${blockers.length} policy or diligence gates remain unresolved. The package is complete enough for screening, but uploaded thresholds and assumptions cannot authorize advancement.`, files: statuses, errors: [], deal, analysis, sourcePayloads, processedLocally: true};
   } catch (error) {
     const detail = error instanceof Error ? error.message : "Package analysis failed"; errors.push(detail);
     const target = analysisErrorTarget(detail);

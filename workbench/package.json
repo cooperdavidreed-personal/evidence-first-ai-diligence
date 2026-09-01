@@ -13,6 +13,8 @@
     "check": "pnpm test && pnpm test:mcp && pnpm build && pnpm verify:chunks && pnpm test:e2e"
   },
   "dependencies": {
+    "@noble/hashes": "2.0.1",
+    "ai": "^7.0.86",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },

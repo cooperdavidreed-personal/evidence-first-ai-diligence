@@ -1,8 +1,8 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using this metadata."
-title: "Evidence-First AI Diligence"
+title: "Underwriting Desk"
 type: software
 authors:
   - family-names: "Reed"
     given-names: "Cooper"
-abstract: "A local reference workflow for auditable, human-reviewed investment diligence."
+abstract: "An evidence-linked synthetic PE and VC underwriting decision workspace with deterministic finance and human-governed model proposals."

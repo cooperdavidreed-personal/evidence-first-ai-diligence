@@ -1,24 +1,26 @@
 # Career claim proof matrix
 
-All wording remains draft-only until the repository, workbench, and named verification artifacts are anonymously accessible. A local pass is not a public proof.
+Public wording remains draft-only until the unified release is committed, anonymously accessible, and bound to a passing release receipt. Observed practitioner testing is not complete.
 
 | Candidate claim | Required proof | Current state |
 |---|---|---|
-| Built a shared PE/VC underwriting workbench | committed AtlasGrid and Helios cases, six shared investor views, reproducible local build | `VERIFIED_LOCAL` |
-| Bound displayed metrics to source and method lineage | fail-closed compiler, nested digests, clickable lineage, tamper tests | `VERIFIED_LOCAL` |
-| Applied econometric identification discipline | declared estimands, uncertainty, diagnostics, causal classes, abstentions, smoke recovery, and two fixed 500-seed coverage ledgers | `VERIFIED_LOCAL_SYNTHETIC` |
-| Modeled buyout and venture economics | exact accounting/debt/capitalization bridges, event-derived milestone funding, dated cash flows, independent waterfall oracle, and seeded full-engine scenarios | `VERIFIED_LOCAL_SYNTHETIC` |
-| Produced an investor-oriented portfolio interface | investor-first landing and six-view workflow, responsive screenshots, and automated interaction/a11y checks; exact-head independent review requires its external receipt | `VERIFIED_LOCAL_AUTOMATED — OBSERVED PRACTITIONER TESTING NOT RUN` |
-| Used governed multi-model collaboration | provider receipts, one-writer enforcement, independent review | `PARTIAL LOCAL PROCESS — EXACT-HEAD OUTCOME REQUIRES EXTERNAL MISSION RECEIPT` |
-| Preserved the evidence kernel | full suite and 24-case deterministic regression | `VERIFIED_LOCAL` |
-| Publicly available | anonymous repository and artifact checks | `NOT PUBLISHED` |
-| Improves investment outcomes | independent longitudinal evidence on real decisions | `DO NOT CLAIM` |
-| Enterprise-proven or production-adopted | dated external deployment and usage evidence | `DO NOT CLAIM` |
+| Built a unified PE/VC underwriting decision workspace | public application, five shared destinations, two retained cases, supported intake, exact release commit | `VERIFIED_LOCAL — PUBLIC REBIND IN PROGRESS` |
+| Separated company evidence, deal terms, analyst assumptions, fund policy, calculations, model proposals, and human decisions | policy and assumption registries, immutable canonical cases, proposal gates, fail-closed tests | `VERIFIED_LOCAL` |
+| Bound important metrics to source and method lineage | exact excerpts, formula operands, content digests, tamper and replay tests | `VERIFIED_LOCAL_SYNTHETIC` |
+| Applied econometric identification discipline | estimands, uncertainty, diagnostics, causal classes, abstentions, and seeded recovery ledgers | `VERIFIED_LOCAL_SYNTHETIC` |
+| Modeled buyout and venture economics | deterministic debt, covenant, capitalization, dilution, preference, dated-cash-flow, and sensitivity mechanics | `VERIFIED_LOCAL_SYNTHETIC` |
+| Implemented governed frontier-model collaboration | confirmed evidence subset, structured cited output, `PROPOSED` state, named human acceptance or rejection, restricted MCP surface | `VERIFIED_LOCAL`; hosted inference must be proven in the unified release receipt |
+| Produced investor-facing decision materials | application, one-page snapshots, underwriting packets, separate appendices, current demonstration | PDFs `VERIFIED_LOCAL`; final demonstration `IN PROGRESS` |
+| Demonstrated practitioner usability | preserved observed sessions with senior VC, PE/growth, CFO/CEO, and recruiter | `NOT RUN` |
+| Improved investment outcomes | independent longitudinal real-decision evidence | `DO NOT CLAIM` |
+| Enterprise-ready or confidential-data-ready | production security, identity, tenancy, legal, privacy, operational, and adoption evidence | `DO NOT CLAIM` |
 
-Potential résumé wording after public verification and founder approval:
+Potential résumé wording after unified public verification and Cooper’s review:
 
-> Built an evidence-bound PE/VC underwriting workbench spanning synthetic SaaS buyout and AI-infrastructure growth cases; linked accounting, econometric, scenario, and value-creation outputs to content-addressed data and reproducible analysis receipts.
+> Built an evidence-linked PE/VC underwriting workbench spanning synthetic SaaS buyout and growth cases; separated source facts, assumptions, fund policy, deterministic finance, model proposals, and named human decisions while preserving calculation and source lineage.
 
-Do not publish test denominators, performance language, “enterprise-grade,”
-“practitioner validated,” or “investment accuracy” claims without a current
-public receipt that supports the exact words.
+Potential interview expansion:
+
+> I designed the product and analytical architecture around a simple boundary: the Desk owns canonical deal state, while frontier models are replaceable advisory workers. The public synthetic workflow demonstrates scenario mechanics, source traceability, econometric discipline, diligence ownership, proposal review, and IC-memo export without claiming autonomous investment authority or real-deal validation.
+
+Do not publish “practitioner validated,” “enterprise-grade,” “production adopted,” “investment accurate,” “improved returns,” or model-superiority language without evidence supporting those exact words.

@@ -60,12 +60,9 @@ function isRecord(value: unknown): value is Record<string, unknown> { return Boo
 
 export async function probeAdapter(endpointValue: string, fetcher: typeof fetch = fetch) {
   const endpoint = validateAdapterEndpoint(endpointValue);
-  const response = await fetcher(endpoint, {
-    method: "POST",
-    credentials: "omit",
-    headers: {"content-type": "application/json"},
-    body: JSON.stringify({job: "underwriting_connection_probe", output_contract: "underwriting-connection/v1"}),
-  });
+  const controller = new AbortController();
+  const timer = globalThis.setTimeout(() => controller.abort(), 15_000);
+  const response = await fetcher(endpoint, {method: "POST", credentials: "omit", signal: controller.signal, headers: {"content-type": "application/json"}, body: JSON.stringify({job: "underwriting_connection_probe", output_contract: "underwriting-connection/v1"})}).finally(() => globalThis.clearTimeout(timer));
   if (!response.ok) throw new Error(`Adapter did not accept the connection check (${response.status})`);
   const body: unknown = await response.json();
   if (!isRecord(body) || body.status !== "READY" || !Array.isArray(body.contracts) || !body.contracts.includes("underwriting-evidence-challenge/v1")) {
@@ -77,7 +74,9 @@ export async function probeAdapter(endpointValue: string, fetcher: typeof fetch 
 export function createAdapterTransport(endpointValue: string, fetcher: typeof fetch = fetch): ModelTransport {
   const endpoint = validateAdapterEndpoint(endpointValue);
   return async (request) => {
-    const response = await fetcher(endpoint, {method: "POST", credentials: "omit", headers: {"content-type": "application/json"}, body: JSON.stringify(request)});
+    const controller = new AbortController();
+    const timer = globalThis.setTimeout(() => controller.abort(), 20_000);
+    const response = await fetcher(endpoint, {method: "POST", credentials: "omit", signal: controller.signal, headers: {"content-type": "application/json"}, body: JSON.stringify(request)}).finally(() => globalThis.clearTimeout(timer));
     if (!response.ok) throw new Error(`Model review unavailable (${response.status})`);
     return response.json() as Promise<unknown>;
   };

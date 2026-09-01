@@ -2,13 +2,13 @@
 
 > SYNTHETIC - NOT INVESTMENT ADVICE
 
-**Provisional posture:** `REPRICE`  
+**Provisional posture:** **REPRICE**
 
 ## Recommendation
 
 The asking price does not compensate for definition quality, concentration, fully burdened margins, or leverage fragility. A restructured entry with the same debt quantum clears the declared return hurdles.
 
-The asking price fails the frozen return hurdle. The selected upfront structure clears the base hurdle while preserving the declared downside floor; open diligence conditions and founder adjudication still prevent approval.
+The asking price fails the frozen return hurdle. The selected upfront structure clears the base hurdle while preserving the declared downside floor; open diligence conditions and human IC review still prevent approval.
 
 | Case | Upfront EV | Gross IRR | Gross MOIC | Exit debt | Minimum liquidity | Covenant breach |
 |---|---:|---:|---:|---:|---:|---|

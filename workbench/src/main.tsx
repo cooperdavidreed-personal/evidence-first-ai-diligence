@@ -5,7 +5,7 @@ import {loadCase} from "./case-data";
 import "./styles.css";
 
 const initialRoute = parseRoute();
-const initialCase = await loadCase(initialRoute.caseId);
+const initialCase = await loadCase(initialRoute.caseId === "local" ? "atlasgrid" : initialRoute.caseId);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

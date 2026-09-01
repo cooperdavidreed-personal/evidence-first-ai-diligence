@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import {closeSync, constants, fchmodSync, openSync, readFileSync, writeFileSync} from "node:fs";
-import {randomUUID} from "node:crypto";
+import {createHash, randomUUID} from "node:crypto";
 import {fileURLToPath} from "node:url";
 import {dirname, resolve} from "node:path";
 import {createInterface} from "node:readline";
@@ -41,7 +41,9 @@ function validateRefs(deal, refs) {
 export function createToolHandlers({proposalLedgerPath} = {}) {
   const data = loadData(); const proposals = [];
   function proposed(kind, deal, payload, refs) {
-    const proposal = {proposal_id: randomUUID(), status: "PROPOSED", approval_state: "PROPOSED", kind, deal_id: deal.caseId, manifest_sha256: deal.manifest_sha256, analysis_sha256: deal.analysis_sha256, evidence_refs: validateRefs(deal, refs), ...payload};
+    const evidence_refs = validateRefs(deal, refs);
+    const request_digest_sha256 = createHash("sha256").update(JSON.stringify({kind, deal_id: deal.caseId, evidence_refs, ...payload})).digest("hex");
+    const proposal = {proposal_id: randomUUID(), status: "PROPOSED", approval_state: "PROPOSED", kind, deal_id: deal.caseId, manifest_sha256: deal.manifest_sha256, analysis_sha256: deal.analysis_sha256, request_digest_sha256, evidence_refs, ...payload};
     if (proposalLedgerPath) {
       const descriptor = openSync(proposalLedgerPath, constants.O_WRONLY | constants.O_CREAT | constants.O_APPEND | constants.O_NOFOLLOW, 0o600);
       try { fchmodSync(descriptor, 0o600); writeFileSync(descriptor, `${JSON.stringify(proposal)}\n`, {encoding: "utf8"}); }

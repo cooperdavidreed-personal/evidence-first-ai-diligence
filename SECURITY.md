@@ -1,12 +1,18 @@
 # Security policy
 
-This local draft accepts only frozen, sanitized, public or synthetic source
-files. Never place credentials, customer data, private company documents,
-material non-public information, or proprietary Daily AI Agents code in a case.
+The public Underwriting Desk accepts only the included fictional or synthetic records and the narrowly declared Growth SaaS Quick Package v1. Do not upload credentials, customer records, private-company documents, material non-public information, proprietary employer data, or confidential deal materials.
 
-The runner rejects traversal, symlinks, non-regular files, digest drift,
-post-cutoff sources, oversized sources, and common prompt-injection phrases.
-Detection is bounded and cannot establish that arbitrary source content is safe.
+## Current controls
 
-Do not report vulnerabilities through a public issue before a public security
-contact is approved.
+- Source rooms reject traversal, symlinks, non-regular files, digest drift, post-cutoff records, oversized files, and bounded prompt-injection patterns.
+- Browser intake validates exact roles, sizes, digests, fields, cutoff behavior, and arithmetic before admitting a deal.
+- Portable deal import replays the bounded source payloads and rejects case identity, manifest, calculation, or workspace-integrity drift.
+- Firm policy is separate from uploaded company/deal files. Model proposals cannot mutate calculations, assumptions, policy, issues, recommendations, or approvals.
+- The hosted model adapter accepts same-origin, size-limited, digest-bound synthetic evidence challenges and returns structured cited proposals only. No provider key is stored in the browser.
+- The local MCP surface exposes read and proposal tools only; optional ledger writes are explicit, local, digest-bound, and operator-controlled.
+
+These controls do not establish enterprise security, identity, multitenancy, encryption, data-loss prevention, regulatory compliance, confidential-data readiness, or immunity to prompt injection. Browser-local state may be readable by anyone with access to that browser profile.
+
+## Reporting
+
+Do not post a suspected vulnerability with sensitive details in a public issue. Use the repository's private vulnerability-reporting channel if enabled; otherwise contact the repository owner privately through the verified GitHub profile before disclosure.

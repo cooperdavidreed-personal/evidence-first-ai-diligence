@@ -1,0 +1,19 @@
+{
+  "boundary": "Mocked same-origin transport verifies the browser approval contract only; it is not proof of live provider availability.",
+  "project": "mobile",
+  "scans": [
+    {
+      "view": "Human-accepted model proposal",
+      "critical_or_serious_count": 0,
+      "violations": [],
+      "root_client_width": 390,
+      "root_scroll_width": 390,
+      "minimum_visible_text_px": 11
+    }
+  ],
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "workbench_data_sha256": "d3093e468b6aee69871dca8cb79e9dd869cbf8441555ac3d7166bf5863b6c95b"
+}

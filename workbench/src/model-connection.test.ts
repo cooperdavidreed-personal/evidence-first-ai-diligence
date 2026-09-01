@@ -31,7 +31,7 @@ describe("model connection contract", () => {
   it("sends only the controlled review request to the configured adapter", async () => {
     const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({challenges: [], gaps: [], memo_drafts: []}), {status: 200}));
     const transport = createAdapterTransport("https://models.example.com/review", fetcher);
-    const request = {job: "challenge_selected_evidence" as const, evidence: [{id: "metric-1", title: "Runway", displayValue: "17 months", summary: "Cash divided by burn."}], output_contract: "underwriting-evidence-challenge/v1"};
+    const request = {job: "challenge_selected_evidence" as const, evidence: [{id: "metric-1", title: "Runway", displayValue: "17 months", summary: "Cash divided by burn."}], output_contract: "underwriting-evidence-challenge/v1" as const, request_digest_sha256: "0".repeat(64)};
     await transport(request);
     const call = fetcher.mock.calls[0];
     expect(call[0]).toBe("https://models.example.com/review");

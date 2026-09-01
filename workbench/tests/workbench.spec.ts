@@ -60,6 +60,12 @@ async function visibleDealNavigation(page: Page) {
   return page.locator('nav[aria-label="Deal navigation"]:visible');
 }
 
+async function chooseDiligenceSection(page: Page, id: "issues" | "assumptions" | "policy" | "test" | "model", label: string) {
+  const mobile = page.locator(".mobile-workspace-selector select");
+  if (await mobile.isVisible()) await mobile.selectOption(id);
+  else await page.getByRole("button", {name: label}).click();
+}
+
 test("Deals is a calm product root with no critical accessibility or overflow finding", async ({page}, testInfo: TestInfo) => {
   await page.goto("/", {waitUntil: "networkidle"});
   await expect(page.getByRole("heading", {name: "Deals"})).toBeVisible();
@@ -91,7 +97,157 @@ test("model connection center separates governed MCP from in-desk inference", as
   writeAccessibilityEvidence(`${testInfo.project.name}-model-connection.json`, {boundary: "Connection-wizard route evidence only; no live provider, remote MCP, credential, or comprehensive WCAG claim.", project: testInfo.project.name, scans: [{view: "Hosted connector boundary", ...scan}], viewport: page.viewportSize()});
 });
 
-test("local MCP proposal reaches named human review and the IC memo without persistence", async ({page}, testInfo: TestInfo) => {
+test("bounded hosted model proposal requires evidence confirmation and named human acceptance", async ({page}, testInfo: TestInfo) => {
+  await page.route("**/api/challenge", async (route) => {
+    const request = route.request().postDataJSON() as {request_digest_sha256: string; evidence: Array<{id: string}>};
+    await route.fulfill({status: 200, contentType: "application/json", body: JSON.stringify({
+      request_digest_sha256: request.request_digest_sha256,
+      model_family: "acceptance-test-adapter",
+      limitations: "Synthetic acceptance fixture; no external inference was run.",
+      challenges: [{claim: "Expansion may depend on a narrow customer segment", evidence_refs: [request.evidence[0].id], severity: "HIGH", management_question: "Which expansion cohorts replicate outside the selected segment?"}],
+      gaps: [], memo_drafts: [],
+    })});
+  });
+  await page.goto("/#/v3/helios/diligence", {waitUntil: "networkidle"});
+  await chooseDiligenceSection(page, "model", "Model review");
+  await page.getByRole("checkbox").first().check();
+  await page.getByRole("button", {name: "Challenge evidence"}).click();
+  await expect(page.getByText("Confirm selected evidence transfer")).toBeVisible();
+  await page.getByRole("button", {name: "Send selected evidence"}).click();
+  await expect(page.getByRole("heading", {name: "Expansion may depend on a narrow customer segment"})).toBeVisible();
+  await expect(page.getByText("proposed", {exact: true})).toBeVisible();
+  await page.getByRole("textbox", {name: "Human reviewer"}).fill("Avery Chen");
+  await page.getByRole("button", {name: "Accept proposal"}).click();
+  await expect(page.getByText(/accepted by Avery Chen/)).toBeVisible();
+  await expect(page.getByText(/Response [0-9a-f]{12}/)).toBeVisible();
+  await expect(page.getByText("HOLD", {exact: true}).first()).toBeVisible();
+  await (await visibleDealNavigation(page)).getByRole("button", {name: "IC Memo"}).click();
+  await page.getByRole("textbox", {name: "Editor"}).fill("Avery Chen");
+  await page.getByRole("button", {name: "Add with provenance"}).click();
+  await expect(page.getByRole("heading", {name: /Accepted counterthesis/})).toBeVisible();
+  await settleAtTop(page);
+  const scan = await accessibilitySnapshot(page);
+  await captureVisualEvidence(page, `${testInfo.project.name}-hosted-model-human-acceptance.png`, true);
+  writeAccessibilityEvidence(`${testInfo.project.name}-hosted-model-human-acceptance.json`, {boundary: "Mocked same-origin transport verifies the browser approval contract only; it is not proof of live provider availability.", project: testInfo.project.name, scans: [{view: "Human-accepted model proposal", ...scan}], viewport: page.viewportSize()});
+});
+
+test("scenario, observation, issue, assumption, and memo changes persist as human work", async ({page}) => {
+  await page.goto("/#/v3/atlasgrid/financials", {waitUntil: "networkidle"});
+  await page.getByRole("button", {name: "Seller ask"}).click();
+  await expect(page.getByText("Unapproved what-if").first()).toBeVisible();
+  await (await visibleDealNavigation(page)).getByRole("button", {name: "Overview"}).click();
+  await page.getByRole("textbox", {name: "Author"}).fill("Avery Chen");
+  await page.getByRole("textbox", {name: "New observation"}).fill("Management references demand validation against signed renewals.");
+  await page.getByRole("button", {name: "Add observation"}).click();
+  await expect(page.getByText("Management references demand validation against signed renewals.")).toBeVisible();
+  await (await visibleDealNavigation(page)).getByRole("button", {name: "Diligence"}).click();
+  await page.getByRole("button", {name: "New issue"}).click();
+  await page.getByRole("textbox", {name: "Issue", exact: true}).fill("Reconcile renewal references");
+  await page.getByLabel("Owner").first().fill("Commercial diligence");
+  await page.getByLabel("Decision impact").fill("Could remove pricing credit and reduce debt capacity.");
+  await page.getByRole("button", {name: "Create issue"}).click();
+  await expect(page.getByText("Reconcile renewal references")).toBeVisible();
+  await chooseDiligenceSection(page, "assumptions", "Assumptions");
+  await page.getByRole("textbox", {name: "Reviewer"}).fill("Avery Chen");
+  await page.getByRole("textbox", {name: "Review rationale"}).fill("Entry value remains subject to commercial diligence findings.");
+  await page.getByRole("button", {name: "Reject"}).first().click();
+  await expect(page.getByText("rejected", {exact: true}).first()).toBeVisible();
+  await (await visibleDealNavigation(page)).getByRole("button", {name: "IC Memo"}).click();
+  await expect(page.getByRole("region", {name: "Scenario represented in this memo"})).toContainText("Unapproved what-if");
+  await expect(page.getByRole("region", {name: "Scenario represented in this memo"})).toContainText("Seller ask");
+  await page.getByRole("textbox", {name: "Editor"}).fill("Avery Chen");
+  const recommendation = page.getByRole("textbox", {name: "Recommendation and rationale memo section"});
+  await recommendation.fill("REPRICE pending signed-renewal validation and a revised fixed-value cap.");
+  await expect(page.getByText("Analyst revision · calculated baseline preserved")).toBeVisible();
+  await page.reload({waitUntil: "networkidle"});
+  await expect(page.getByRole("textbox", {name: "Recommendation and rationale memo section"})).toHaveValue("REPRICE pending signed-renewal validation and a revised fixed-value cap.");
+  await expect(page.getByText("Original source text")).toBeVisible();
+});
+
+test("Helios policy sensitivity is an unapproved what-if and follows the memo", async ({page}) => {
+  await page.goto("/#/v3/helios/financials", {waitUntil: "networkidle"});
+  const policy = page.getByLabel("Maximum probability below 1.0x");
+  const canonical = await policy.inputValue();
+  const alternate = await policy.locator("option").evaluateAll((options, selected) => options.map((option) => (option as HTMLOptionElement).value).find((value) => value !== selected), canonical);
+  expect(alternate).toBeTruthy();
+  await policy.selectOption(String(alternate));
+  await expect(page.getByRole("complementary", {name: "Decision status"})).toContainText("Unapproved what-if");
+  await (await visibleDealNavigation(page)).getByRole("button", {name: "IC Memo"}).click();
+  const summary = page.getByRole("region", {name: "Scenario represented in this memo"});
+  await expect(summary).toContainText("Unapproved what-if");
+  await expect(summary).toContainText("modeled below 1.0x");
+  await expect(summary).toContainText("ceiling");
+});
+
+test("print export uses complete memo text instead of a clipped textarea", async ({page}) => {
+  await page.goto("/#/v3/atlasgrid/memo", {waitUntil: "networkidle"});
+  await page.getByRole("textbox", {name: "Editor"}).fill("Avery Chen");
+  const sentinel = `PRINT-END-${"complete-memo-".repeat(240)}`;
+  await page.getByRole("textbox", {name: "Recommendation and rationale memo section"}).fill(sentinel);
+  await page.emulateMedia({media: "print"});
+  await expect(page.getByRole("textbox", {name: "Recommendation and rationale memo section"})).toBeHidden();
+  await expect(page.locator(".memo-print-body").filter({hasText: "PRINT-END-"})).toBeVisible();
+  await expect(page.locator(".memo-print-body").filter({hasText: "PRINT-END-"})).toContainText(sentinel.slice(-80));
+});
+
+test("portable state rejects a fabricated accepted-proposal citation", async ({page}) => {
+  await page.goto("/#/v3/atlasgrid/memo", {waitUntil: "networkidle"});
+  const raw = await page.evaluate(() => JSON.parse(localStorage.getItem("underwriting-desk.workspace.v2.atlasgrid")!));
+  const requestEvidence = [{id: "fabricated-metric", title: "Fabricated", displayValue: "1.0x", summary: "Fabricated evidence."}];
+  const requestDigestSha256 = await page.evaluate(async (evidence) => { const payload = JSON.stringify({job: "challenge_selected_evidence", evidence, output_contract: "underwriting-evidence-challenge/v1"}); const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload)); return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join(""); }, requestEvidence);
+  raw.proposals.push({proposalId: "proposal-tampered", kind: "MEMO_DRAFT", state: "ACCEPTED", title: "Draft conclusion", body: "Fabricated evidence claim.", evidenceRefs: ["fabricated-metric"], requestEvidence, requestDigestSha256, humanActor: "Avery Chen", reviewedAt: "2026-09-01T12:00:00.000Z"});
+  raw.memoSections.push({sectionId: "proposal-tampered", title: "Draft conclusion", body: "Fabricated evidence claim.", provenance: "HUMAN_ACCEPTED_MODEL_PROPOSAL", sourceProposalId: "proposal-tampered", updatedBy: "Avery Chen", updatedAt: "2026-09-01T12:00:00.000Z"});
+  await page.locator('.workspace-transfer input[type="file"]').setInputFiles({name: "tampered-workspace.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(raw))});
+  await expect(page.getByRole("status")).toContainText("non-canonical evidence reference");
+  await expect(page.getByText("Fabricated evidence claim.")).toHaveCount(0);
+});
+
+test("lineage closes back to its exact opener and defers calculation detail", async ({page}) => {
+  await page.goto("/#/v3/atlasgrid/financials", {waitUntil: "networkidle"});
+  const opener = page.getByRole("button", {name: /Annualized gross return/}).first();
+  await opener.click();
+  const drawer = page.getByRole("dialog");
+  await expect(drawer).toBeVisible();
+  await expect(drawer.locator(".formula-block")).toHaveCount(0);
+  await drawer.getByText(/Calculation and methodology/i).click();
+  await expect(drawer.locator(".formula-block")).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await expect(drawer).toBeHidden();
+  await expect(opener).toBeFocused();
+});
+
+test("mobile controls expose every diligence tab, heatmap edge, and source-cell label", async ({page}, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile", "Mobile discoverability assertion");
+  await page.goto("/#/v3/helios/diligence", {waitUntil: "networkidle"});
+  const mobileNavGeometry = await page.locator('.mobile-nav:visible').evaluate((nav) => {
+    const boundary = nav.getBoundingClientRect();
+    return [...nav.querySelectorAll("button")].map((button) => {
+      const rect = button.getBoundingClientRect();
+      return {label: button.textContent?.trim(), left: rect.left, right: rect.right, boundaryLeft: boundary.left, boundaryRight: boundary.right};
+    });
+  });
+  expect(mobileNavGeometry.map((item) => item.label)).toEqual([...views]);
+  for (const item of mobileNavGeometry) {
+    expect(item.left).toBeGreaterThanOrEqual(item.boundaryLeft - .5);
+    expect(item.right).toBeLessThanOrEqual(item.boundaryRight + .5);
+  }
+  await page.locator(".mobile-workspace-selector select").selectOption("model");
+  await expect(page.getByRole("heading", {name: "Challenge selected evidence"})).toBeVisible();
+  await expect(page.getByText(/Hosted Claude synthetic reviewer/)).toBeVisible();
+  await page.getByRole("combobox", {name: "Deal"}).selectOption("atlasgrid");
+  await expect(page.getByRole("heading", {name: "AtlasGrid Systems"})).toBeVisible();
+  await (await visibleDealNavigation(page)).getByRole("button", {name: "Financials"}).click();
+  await expect(page.getByRole("columnheader", {name: "7.5x"})).toBeVisible();
+  await expect(page.getByRole("table", {name: "Entry value × exit multiple"}).getByRole("cell")).toHaveCount(9);
+  await (await visibleDealNavigation(page)).getByRole("button", {name: "Documents"}).click();
+  await page.getByRole("searchbox", {name: "Search filenames and retained evidence"}).fill("customer");
+  await page.locator(".source-list button").first().click();
+  const labeledCells = page.locator('.source-row-table [data-label]');
+  expect(await labeledCells.count()).toBeGreaterThan(2);
+  await expect(labeledCells.first()).toBeVisible();
+});
+
+test("local MCP proposal reaches named human review, memo acceptance, and local persistence", async ({page}, testInfo: TestInfo) => {
   const temporary = mkdtempSync(resolve(tmpdir(), "underwriting-mcp-flow-")); const ledger = resolve(temporary, "proposals.jsonl");
   try {
     const server = resolve(import.meta.dirname, "../mcp-server/server.mjs");
@@ -99,21 +255,25 @@ test("local MCP proposal reaches named human review and the IC memo without pers
     const run = spawnSync(process.execPath, [server, "--proposal-ledger", ledger], {encoding: "utf8", input: `${JSON.stringify(request)}\n`});
     expect(run.status).toBe(0); expect(run.stdout).toContain('"status":"PROPOSED"');
     await page.goto("/#/v3/atlasgrid/diligence", {waitUntil: "networkidle"});
+    await chooseDiligenceSection(page, "model", "Model review");
+    await page.getByText("Advanced local model handoff").click();
     await page.getByLabel(/Choose JSONL ledger/).setInputFiles(ledger);
     await expect(page.getByText(/1 proposal ready for human review/)).toBeVisible();
     await page.getByRole("textbox", {name: "Human reviewer"}).fill("Avery Chen");
     await page.getByRole("button", {name: "Accept proposal"}).click();
     await (await visibleDealNavigation(page)).getByRole("button", {name: "IC Memo"}).click();
-    await expect(page.getByText("Model proposed · accepted by Avery Chen")).toBeVisible();
-    await expect(page.getByText(/Reconcile the downside covenant bridge/)).toBeVisible();
-    await expect(page.getByText("Evidence: Gross IRR")).toBeVisible();
-    await expect(page.getByText(/atlasgrid-SELECTED-gross-irr/)).toHaveCount(0);
-    await expect(page.getByRole("heading", {name: "Model proposal disposition"})).toBeVisible();
+    await expect(page.getByRole("heading", {name: "Accepted proposals ready for the memo"})).toBeVisible();
+    await page.getByRole("textbox", {name: "Editor"}).fill("Avery Chen");
+    await page.getByRole("button", {name: "Add with provenance"}).click();
+    await expect(page.getByRole("heading", {name: "Downside follow-up"})).toBeVisible();
+    await expect(page.getByText("Accepted model proposal")).toBeVisible();
+    await expect(page.getByRole("textbox", {name: "Downside follow-up memo section"})).toHaveValue(/Reconcile the downside covenant bridge/);
+    await settleAtTop(page);
     const scan = await accessibilitySnapshot(page);
     await captureVisualEvidence(page, `${testInfo.project.name}-mcp-human-review-memo.png`, true);
-    writeAccessibilityEvidence(`${testInfo.project.name}-mcp-human-review.json`, {boundary: "Local synthetic MCP-ledger roundtrip only; no hosted connector, provider inference, persistence, security, or comprehensive WCAG claim.", project: testInfo.project.name, scans: [{view: "Accepted model proposal in IC memo", ...scan}], viewport: page.viewportSize()});
+    writeAccessibilityEvidence(`${testInfo.project.name}-mcp-human-review.json`, {boundary: "Local synthetic MCP-ledger roundtrip and browser-local persistence only; no hosted connector, provider inference, confidential-data security, or comprehensive WCAG claim.", project: testInfo.project.name, scans: [{view: "Accepted model proposal in IC memo", ...scan}], viewport: page.viewportSize()});
     await page.reload({waitUntil: "networkidle"});
-    await expect(page.getByText(/Model proposed · accepted by/)).toHaveCount(0);
+    await expect(page.getByRole("heading", {name: "Downside follow-up"})).toBeVisible();
   } finally { rmSync(temporary, {recursive: true, force: true}); }
 });
 
@@ -139,15 +299,18 @@ for (const candidate of [
     }
     if (candidate.id === "helios") {
       await (await visibleDealNavigation(page)).getByRole("button", {name: "Diligence"}).click();
+      await chooseDiligenceSection(page, "test", "Assumption test");
       await expect(page.getByText(/8.7% less compute per workload/)).toBeVisible();
-      await expect(page.getByText("View method").locator(".." )).not.toHaveAttribute("open");
-      await expect(page.getByText(/no runtime credentials configured/)).toBeVisible();
+      await expect(page.getByText("Method and uncertainty").locator(".." )).not.toHaveAttribute("open");
+      await chooseDiligenceSection(page, "model", "Model review");
+      await expect(page.getByText(/Select the exact evidence subset to send/)).toBeVisible();
+      await expect(page.getByRole("button", {name: "Challenge evidence"})).toBeDisabled();
     }
     writeAccessibilityEvidence(`${testInfo.project.name}-${candidate.id}-product.json`, {boundary: "No critical or serious Axe finding and no root overflow on the five tested default surfaces; not comprehensive WCAG or practitioner evidence.", case: candidate.company, project: testInfo.project.name, scans, viewport: page.viewportSize()});
   });
 }
 
-test("ordinary multi-file intake produces a third in-memory deal and clears on refresh", async ({page}, testInfo: TestInfo) => {
+test("ordinary multi-file intake produces a governed local deal that survives refresh", async ({page}, testInfo: TestInfo) => {
   test.setTimeout(60_000);
   const externalRequests: string[] = [];
   page.on("request", (request) => { const url = new URL(request.url()); if (!['127.0.0.1', 'localhost'].includes(url.hostname)) externalRequests.push(request.url()); });
@@ -156,15 +319,22 @@ test("ordinary multi-file intake produces a third in-memory deal and clears on r
   await expect(page.getByText(/bytes stay in this browser tab/)).toBeVisible();
   await page.getByTestId("deal-package-input").setInputFiles(packagePaths);
   await page.getByRole("button", {name: "Validate and analyze"}).click();
-  await expect(page.getByRole("heading", {name: "READY FOR IC REVIEW"})).toBeVisible();
-  await expect(page.getByText(/analytical posture, not an investment recommendation/)).toBeVisible();
+  await expect(page.getByRole("heading", {name: "SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED"})).toBeVisible();
+  await expect(page.getByText(/cannot authorize advancement/i)).toBeVisible();
   await expect(page.getByText("Hash mismatch")).toHaveCount(0);
   await expect(page.getByRole("button", {name: "Open decision review"})).toBeVisible();
   await captureVisualEvidence(page, `${testInfo.project.name}-northstar-package-ready.png`, true);
   await page.getByRole("button", {name: "Open decision review"}).click();
-  await expect(page.getByRole("heading", {name: "Northstar Metrics"})).toBeVisible();
+  await expect(page.getByRole("heading", {name: "Northstar Metrics", level: 1})).toBeVisible();
   await expect((await visibleDealNavigation(page)).getByRole("button")).toHaveCount(5);
-  await expect(page.getByRole("heading", {name: "READY FOR IC REVIEW", exact: true})).toHaveCount(1);
+  await expect(page.getByRole("heading", {name: "SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED", exact: true})).toHaveCount(1);
+  const decisionRail = page.getByRole("complementary", {name: "Decision status"});
+  await expect(decisionRail).toContainText("Failed screening gates");
+  await expect(decisionRail).toContainText("Open diligence issues");
+  const retentionGate = page.getByRole("row").filter({hasText: "Minimum ordinary-cohort NRR"});
+  await expect(retentionGate).toContainText("83.6%");
+  await expect(retentionGate).toContainText("95.0%");
+  await expect(retentionGate).toContainText("Concern");
   const scans: Array<Record<string, unknown>> = [];
   for (const view of views) {
     await (await visibleDealNavigation(page)).getByRole("button", {name: view}).click();
@@ -175,8 +345,8 @@ test("ordinary multi-file intake produces a third in-memory deal and clears on r
   expect(externalRequests).toEqual([]);
   writeAccessibilityEvidence(`${testInfo.project.name}-northstar-intake.json`, {boundary: "Ordinary browser file selection through all five local-deal views; uploaded bytes were not observed leaving localhost. Automated evidence only.", project: testInfo.project.name, scans, viewport: page.viewportSize()});
   await page.reload({waitUntil: "networkidle"});
-  await expect(page.getByRole("heading", {name: "Deals"})).toBeVisible();
-  await expect(page.getByText("Northstar Metrics")).toHaveCount(0);
+  await expect(page.getByRole("heading", {name: "Northstar Metrics", level: 1})).toBeVisible();
+  await expect(page.getByRole("textbox", {name: "Economics memo section"})).toHaveValue(/ordinary-cohort NRR 83.6%/);
 });
 
 test("missing required input fails closed before return conclusions", async ({page}, testInfo: TestInfo) => {

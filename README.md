@@ -1,58 +1,94 @@
 # Underwriting Desk
 
-**A calm, evidence-linked private-markets application with deterministic finance, a supported browser-local deal intake, and human-owned decisions.**
+Evidence-linked private-markets underwriting where deterministic finance, firm policy, analyst assumptions, model proposals, and human decisions remain separate.
 
-The product combines a governed Python analytical kernel with a static React application. Two retained synthetic cases demonstrate full buyout and growth underwriting; a third deal can be created through ordinary file controls using the supported **Growth SaaS Quick Package v1**.
-
-> **Status: PUBLIC PORTFOLIO CANDIDATE — FOUNDER REVIEW PENDING**
+> **Status: UNIFIED PRACTITIONER-TEST CANDIDATE — FINAL RELEASE VERIFICATION IN PROGRESS**
 >
-> All retained companies and records are fictional. Outputs are illustrative and are not investment advice, approval, real-company diligence, investment-performance evidence, or an arbitrary-data-room claim. Uploaded package bytes remain in memory in the browser tab and refresh clears the deal.
+> Every company, source record, policy, and output in the public demonstration is fictional and synthetic. This project is not investment advice, real-company diligence, investment-performance evidence, confidential-data-ready software, autonomous investment authority, or evidence of firm adoption.
 
-Public demonstration: [underwriting-desk-delta.vercel.app](https://underwriting-desk-delta.vercel.app/)
+Public application: [underwriting-desk-delta.vercel.app](https://underwriting-desk-delta.vercel.app/)
 
-## Product workflow
+## What it demonstrates
 
-The root is **Deals**. Each deal has exactly five primary destinations:
+Underwriting Desk combines a governed Python analytical kernel with a React decision workspace:
 
-1. **Overview** — analytical posture, rationale, decisive driver, downside, blocker, terms, and next action.
-2. **Financials** — scenarios, transaction mechanics, sensitivities, and returns.
-3. **Diligence** — blocking issues, evidence tests, human review, and the controlled model proposal tray.
-4. **Documents** — package state, search, lineage, and reproduction detail behind progressive disclosure.
-5. **IC Memo** — committee-ready summary and governed export artifacts.
+- **AtlasGrid Systems** — a control-buyout case with accounting normalization, debt and covenant mechanics, scenario returns, sensitivities, synthetic causal tests, and a value-creation plan.
+- **Helios Compute Control** — a growth-investment case with cohort economics, staged financing, ownership and dilution, preference waterfalls, runway, sensitivities, and milestone gates.
+- **Northstar Metrics** — an ordinary browser-local intake using the supported Growth SaaS Quick Package v1.
 
-Default decision surfaces lead with business meaning and keep hashes, schema identifiers, raw paths, internal analysis codes, and statistical notation inside technical disclosure.
+Each deal has five destinations: **Overview**, **Financials**, **Diligence**, **Documents**, and **IC Memo**. The persistent decision rail keeps posture, blockers, policy state, and next action visible while the user works.
+
+## Why it is different from underwriting in a general chatbot
+
+The Desk owns canonical deal state. A frontier model is a replaceable advisory worker, not the calculation engine or decision-maker.
+
+The system keeps seven states separate:
+
+1. source facts and management representations;
+2. deal terms;
+3. analyst assumptions;
+4. fund or IC policy;
+5. deterministic calculations;
+6. evidence-referenced model proposals; and
+7. named human decisions.
+
+Working scenarios do not overwrite the canonical case. Uploaded thresholds never become fund policy. Model output begins as `PROPOSED`; it cannot directly change finance, policy, assumptions, issues, recommendation, or approval. A named human must accept, reject, or edit it before accepted language can enter the memo.
+
+## Supported public workflow
+
+The application allows a user to:
+
+- inspect recognized and missing source material;
+- preview exact retained excerpts, rows, periods, fields, and calculation lineage;
+- change bounded scenario inputs and see deterministic return consequences;
+- compare canonical and unapproved what-if cases;
+- add named observations and meeting notes;
+- create, assign, update, resolve, and retain diligence issues;
+- approve or reject material assumptions without rewriting source facts;
+- select an exact evidence subset for a bounded model challenge;
+- process the returned proposal through named human review;
+- edit and export an IC memo; and
+- export or restore portable browser-local deal state.
 
 ## Supported deal intake
 
-Choose the four files in [`workbench/public/sample-package`](workbench/public/sample-package) through **New deal → Choose package files → Validate and analyze**:
+Use **New deal** with the four files in [`workbench/public/sample-package`](workbench/public/sample-package):
 
-- `manifest.json` declares the package version, roles, byte counts, and SHA-256 digests.
-- `deal.json` declares cash, financing, scenario assumptions, thresholds, cutoff, and analyst owner.
-- `monthly_financials.csv` supplies revenue, cost of revenue, and operating expense in integer cents.
-- `customer_arr.csv` supplies fixed-cohort ARR in integer cents.
+- `manifest.json`
+- `deal.json`
+- `monthly_financials.csv`
+- `customer_arr.csv`
 
-The browser hashes and validates the selected bytes locally. Missing, invalid, unsupported, excluded, and recognized inputs are explicit. A complete supported package produces only the declared v1 metrics and either `READY FOR IC REVIEW` or `HOLD`; an incomplete package produces `NO CALL — PACKAGE INCOMPLETE` and no return conclusion. The retained Python engine remains the full-fidelity route for debt, preferences, dilution, econometrics, simulation, and complete lineage.
+The browser verifies declared roles, sizes, SHA-256 digests, cutoff behavior, and supported fields. A complete Northstar package reproduces $15.9M LTM revenue, 70.0% gross margin, 83.6% ordinary-cohort NRR, 33.3% post-money ownership, 3.23x gross MOIC, and 26.5% annualized gross return. The weak retention result and six other diligence or policy gates keep the posture at `SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED`; clearing an illustrative return screen does not make the deal IC-ready. Removing or modifying a required source produces `NO CALL — PACKAGE INCOMPLETE` and suppresses return conclusions.
 
-## Controlled model and MCP boundaries
+Uploaded raw files are not retained as an unrestricted data room. The admitted parsed deal, its bounded replay sources, and the human workspace persist locally and can be exported and re-imported through a validated bundle. This is not encrypted, shared, authenticated, or appropriate for confidential information.
 
-The only in-product model job is **Challenge selected evidence**. A user selects and confirms the exact evidence subset; admitted outputs are evidence-linked thesis challenges, diligence gaps, and draft memo text. Every item starts as `PROPOSED`. Model output cannot change finance, assumptions, thresholds, package state, issues, analytical posture, recommendation, or approval.
+## Model and MCP boundaries
 
-The public build intentionally has no model endpoint or credential. It displays an honest unavailable state while all deterministic workflows remain functional. A separately governed runtime may provide `VITE_MODEL_REVIEW_URL`; credentials belong in that server runtime, never in this repository or browser bundle.
+The hosted model job is limited to **Challenge selected evidence**. The browser sends only the evidence subset the user confirms. The server validates the request digest, constrains output to cited challenges, diligence gaps, and one draft memo section, and returns no direct mutation. Browser-side provider keys are prohibited.
 
-The product includes a three-step model connection center. Claude Code and Codex can use the local stdio MCP server now; Claude.ai, ChatGPT, and Grok require a hosted authenticated MCP service that is explicitly not implemented here. The browser collects no provider keys.
+The local stdio MCP surface is documented in [`workbench/mcp-server/README.md`](workbench/mcp-server/README.md). It exposes seven read tools and three proposal tools. It has no approval, policy, calculation, recommendation, private-file, trading, spending, or network-mutation tool.
 
-The local stdio MCP server is documented at [`workbench/mcp-server/README.md`](workbench/mcp-server/README.md). It exposes seven read tools and three proposal tools. Optional operator-enabled JSONL handoff binds each proposal to the retained deal and digests; the Diligence view revalidates the ledger, forces items to `PROPOSED`, requires named human review, and lets only accepted memo drafts enter the IC memo. The server still has no approval, decision, assumption, metric, threshold, private-file, or network mutation tool.
+## Decision materials
+
+The public release includes three distinct artifacts for each retained case:
+
+- one-page IC snapshot;
+- partner-facing underwriting packet; and
+- separate technical appendix.
+
+They are available in [`output/pdf`](output/pdf). Technical identifiers, formulas, and receipts stay in the appendix rather than the partner-facing decision pages.
 
 ## Run and verify locally
 
-Python 3.11+ and Node 22+ are required. The lockfile-resolved environment is authoritative.
+Python 3.11+ and Node 22+ are required.
 
 ```bash
 uv sync --locked --extra dev --extra quality
 bash scripts/verify-underwriting.sh
 ```
 
-For frontend-only development:
+For frontend development:
 
 ```bash
 cd workbench
@@ -60,30 +96,30 @@ corepack pnpm install --frozen-lockfile
 corepack pnpm dev
 ```
 
-For the local MCP surface:
+For the local MCP server:
 
 ```bash
 cd workbench
 node mcp-server/server.mjs
 ```
 
-The full verifier runs the Python/kernel suite, mutation gates, deterministic case regeneration, source-room binding, estimator coverage, memo and recovery builds, frontend/data/intake/model tests, MCP tests, TypeScript/Vite build, lazy-chunk budgets, desktop/mobile Playwright flows, pixel regression, accessibility evidence, PDF contracts, and visual-manifest identity.
-
-See the [model connection contract](docs/MODEL-CONNECTION-CONTRACT.md), frozen [vertical-slice contract](docs/PRODUCT-VERTICAL-SLICE-CONTRACT.md), [underwriting architecture](docs/UNDERWRITING-ARCHITECTURE.md), [v2 benchmark contract](docs/V2-BENCHMARK-CONTRACT.md), [v2 model-integrity contract](docs/V2-MODEL-INTEGRITY-CONTRACT.md), [v2 econometrics contract](docs/ECONOMETRICS-CONTRACT-V2.md), and [observed usability protocol](docs/OBSERVED-USABILITY-PROTOCOL.md).
+The integrated verifier covers the Python/kernel suite, independent Northstar oracle, mutation gates, deterministic room regeneration, estimator recovery, frontend and model contracts, MCP, TypeScript/Vite, payload budgets, desktop/mobile Playwright journeys, automated accessibility, pixel evidence, PDF contracts, and public-content/security scans.
 
 ## Evidence and limits
 
-- Accounting uses integer cents or declared decimal arithmetic; return and waterfall paths retain their exact governed checks.
-- The same seed reproduces canonical source-room bytes and digests.
-- The retained browser proof covers Deals, five destinations for two retained cases and one local package case, complete and incomplete intake, desktop/mobile overflow, and automated accessibility scans.
-- Automated route evidence is not comprehensive WCAG certification or observed practitioner usability.
-- Synthetic econometric recovery is not a real-company causal claim, investment forecast, or backtest.
-- Browser-local operation is not encrypted persistence, multi-user access, confidential-data readiness, or enterprise security.
-- Runtime inference, observed practitioner testing, and real-data-room support remain `NOT RUN`.
-- The verified static bundle is publicly deployed on Vercel and passed a hosted ordinary-browser smoke test across Deals, AtlasGrid overview and diligence, the model connection wizard, and the Helios IC memo. This direct artifact deployment is not connected to Git and does not establish continuous deployment, runtime inference, persistence, authentication, or production observability.
+- Accounting uses integer cents or declared decimal arithmetic; return, debt, and waterfall mechanics remain deterministic.
+- The same seed reproduces canonical synthetic source-room bytes and digests.
+- Econometric outputs state the estimand, method, uncertainty, assumptions, diagnostics, classification, underwriting meaning, and what the result does not establish.
+- Synthetic estimator recovery is not a real-company causal claim, investment forecast, or backtest.
+- Automated accessibility checks are not comprehensive WCAG certification.
+- Browser-local persistence is not enterprise security or confidential-data readiness.
+- Observed practitioner testing remains `NOT RUN`; use the [unguided testing package](docs/PRACTITIONER-TESTING-PACKAGE.md) and [feedback template](docs/practitioner-feedback-template.csv) without fabricating results.
+- Passing tests do not establish investment accuracy, performance improvement, production adoption, or model superiority.
 
-The exact local verification, provider-review, push, and deployment disposition is recorded in [FINAL-MISSION-RECEIPT.md](FINAL-MISSION-RECEIPT.md).
+The current release receipt will identify the exact public commit, deployment, tests, independent reviews, and remaining limitations. Historical mission receipts remain preserved as prior-state evidence rather than current release claims.
 
 ## Authorship and license
 
-Cooper David Reed is the project lead and product/analytical owner. Claude Code and Grok Build supplied bounded read-only advisory review; Codex remained the sole filesystem writer. No Tailwind Plus or Catalyst bytes were copied into this slice. The repository is licensed under [Apache-2.0](LICENSE).
+Cooper David Reed is the project lead and product/analytical owner. Codex performed implementation and repository work; Claude, Grok, and ChatGPT were assigned bounded advisory and independent-review roles. Model agreement is not acceptance evidence: deterministic tests and human review remain authoritative.
+
+Licensed under [Apache-2.0](LICENSE).

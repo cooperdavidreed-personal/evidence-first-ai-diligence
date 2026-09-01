@@ -19,10 +19,21 @@ Models may contribute only evidence-linked observations, diligence requests, cha
 | Route | Current state | What works | Limitation |
 |---|---|---|---|
 | Claude Code or Codex via local MCP | `AVAILABLE_LOCALLY` | Seven read tools, three proposal tools, optional local JSONL handoff, browser import, named human review, accepted memo output | Retained illustrative cases only; the browser cannot verify client installation |
-| In-product API adapter | `OPERATOR_CONFIGURED_ONLY` | A compatible HTTPS endpoint can advertise the evidence-challenge contract and receive only a user-confirmed evidence subset | No provider endpoint or credentials ship in the public build; real provider inference remains `NOT RUN` unless separately configured |
+| In-product hosted adapter | `IMPLEMENTED — PUBLIC PROOF PENDING` | Same-origin `/api/challenge` receives only a user-confirmed synthetic evidence subset, validates its digest, requests structured cited output, and returns proposals for named human disposition | Exact deployed-provider execution, rate policy, and spend ceiling must be recorded in the unified release receipt before this becomes a public verified claim |
 | Claude.ai, ChatGPT, or Grok via remote MCP | `NOT_IMPLEMENTED` | The connection center explains the required hosted architecture | Requires hosted HTTPS transport, authentication, tenant isolation, and provider/workspace permissions |
 
-The browser never asks for a Claude, OpenAI, or xAI API key. A provider subscription is not treated as an API credential.
+The browser never asks for a Claude, OpenAI, or xAI API key. Provider credentials and budget controls belong in the server runtime. A consumer subscription is not treated as an API credential.
+
+## Hosted proposal path
+
+1. The analyst selects an exact set of retained synthetic evidence.
+2. The Desk displays the complete outbound subset for confirmation and binds it to a SHA-256 request digest.
+3. A same-origin serverless function enforces method, size, origin, evidence-id, duplicate, and digest checks plus a bounded request window.
+4. The provider returns a structured challenge, diligence gap, or draft memo section. Every item must cite an admitted evidence id.
+5. The browser validates the response again and stores it as `PROPOSED`.
+6. A named human accepts, rejects, or edits the item. Only accepted memo language enters the editable IC memo with provenance.
+
+The endpoint has no tool capable of changing calculations, package inputs, policy, assumption dispositions, issues, recommendation, or approval. The public route is synthetic-only and does not imply confidential-data readiness.
 
 ## Local proposal handoff
 
