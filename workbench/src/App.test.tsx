@@ -1,5 +1,6 @@
 import {render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import {File as NodeFile} from "node:buffer";
 import {beforeEach, describe, expect, it, vi} from "vitest";
 import WorkbenchApp, {dealViews, parseRoute} from "./App";
 import rawData from "./data/cases.json";
@@ -12,9 +13,10 @@ function App() {
   const initialCase = candidate.cases.find((item) => item.caseId === initialRoute.caseId)!;
   return <WorkbenchApp initialCase={initialCase} initialRoute={initialRoute} loadCaseFn={async (caseId) => candidate.cases.find((item) => item.caseId === caseId)!} />;
 }
+const TestFile = NodeFile as unknown as typeof File;
 
 describe("Underwriting Desk investor workspace", () => {
-  beforeEach(() => window.history.replaceState(null, "", "/"));
+  beforeEach(() => {window.history.replaceState(null, "", "/"); Object.defineProperty(window, "scrollTo", {configurable: true, value: vi.fn()});});
 
   it("starts with a quiet deal list and supported intake boundary", () => {
     render(<App />);
@@ -23,6 +25,15 @@ describe("Underwriting Desk investor workspace", () => {
     expect(screen.getAllByText("Illustrative data")).toHaveLength(2);
     expect(screen.getByRole("heading", {name: "Growth SaaS Quick Package"})).toBeInTheDocument();
     expect(screen.queryByText(/Evidence → economics → action/)).not.toBeInTheDocument();
+  });
+
+  it("opens a model connection center that explains the Desk-model boundary", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", {name: "Connect model"}));
+    expect(screen.getByRole("dialog", {name: "Use your model without giving it the books"})).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "One deal record. Replaceable models."})).toBeInTheDocument();
+    expect(screen.getByText(/No provider keys are collected/)).toBeInTheDocument();
   });
 
   it("opens an ordinary browser-local package intake", async () => {
@@ -119,7 +130,7 @@ describe("Underwriting Desk investor workspace", () => {
     await user.selectOptions(screen.getByRole("combobox", {name: "Deal"}), "helios");
     await waitFor(() => expect(screen.getByRole("heading", {name: "Helios Compute Control"})).toBeInTheDocument());
     expect(screen.getAllByText("HOLD", {exact: true})).toHaveLength(1);
-    expect(screen.getByText("Not requested")).toBeInTheDocument();
+    expect(screen.getByText("Pending founder signature")).toBeInTheDocument();
     expect(window.location.hash).toBe("#/v3/helios/overview");
   });
 
@@ -144,6 +155,26 @@ describe("Underwriting Desk investor workspace", () => {
     expect(screen.getByRole("heading", {name: "Conditions and path to reconsideration"})).toBeInTheDocument();
     expect(screen.getAllByText("Engine").length).toBeGreaterThan(0);
     expect(screen.getByText(/Requires investment committee approval/)).toBeInTheDocument();
+  });
+
+  it("carries a digest-bound MCP proposal through named human review into the IC memo", async () => {
+    window.history.replaceState(null, "", "/#/v3/atlasgrid/diligence");
+    const user = userEvent.setup(); const before = JSON.stringify(rawData);
+    const candidate: unknown = rawData; assertWorkbenchData(candidate);
+    const atlasgrid = candidate.cases.find((item) => item.caseId === "atlasgrid")!;
+    const ledger = {proposal_id: "memo-proposal-1", status: "PROPOSED", approval_state: "PROPOSED", kind: "MEMO_SECTION", deal_id: "atlasgrid", manifest_sha256: atlasgrid.manifest_sha256, analysis_sha256: atlasgrid.analysis_sha256, section: "Downside follow-up", draft_text: "Reconcile the downside covenant bridge before the next committee review.", evidence_refs: [atlasgrid.metricRegistry[0].metric_id]};
+    render(<App />);
+    await user.upload(screen.getByLabelText(/Choose JSONL ledger/), new TestFile([`${JSON.stringify(ledger)}\n`], "proposals.jsonl", {type: "application/json"}));
+    expect(await screen.findByText(/1 proposal ready for human review/)).toBeInTheDocument();
+    await user.type(screen.getByRole("textbox", {name: "Human reviewer"}), "Avery Chen");
+    await user.click(screen.getByRole("button", {name: "Accept proposal"}));
+    const navigation = document.querySelector<HTMLElement>(".sidebar nav")!;
+    await user.click(within(navigation).getByRole("button", {name: "IC Memo"}));
+    expect(screen.getByText("Model proposed · accepted by Avery Chen")).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "Draft Downside follow-up"})).toBeInTheDocument();
+    expect(screen.getByText(/Reconcile the downside covenant bridge/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "Model proposal disposition"})).toBeInTheDocument();
+    expect(JSON.stringify(rawData)).toBe(before);
   });
 
   it("migrates legacy view names into the five-destination shell", () => {

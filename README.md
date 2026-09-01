@@ -33,11 +33,13 @@ The browser hashes and validates the selected bytes locally. Missing, invalid, u
 
 ## Controlled model and MCP boundaries
 
-The only model job is **Challenge selected evidence**. A user selects and confirms the exact evidence subset; admitted outputs are evidence-linked thesis challenges, diligence gaps, and draft memo text. Every item starts as `PROPOSED`. Model output cannot change finance, assumptions, thresholds, package state, issues, analytical posture, recommendation, or approval.
+The only in-product model job is **Challenge selected evidence**. A user selects and confirms the exact evidence subset; admitted outputs are evidence-linked thesis challenges, diligence gaps, and draft memo text. Every item starts as `PROPOSED`. Model output cannot change finance, assumptions, thresholds, package state, issues, analytical posture, recommendation, or approval.
 
 The public build intentionally has no model endpoint or credential. It displays an honest unavailable state while all deterministic workflows remain functional. A separately governed runtime may provide `VITE_MODEL_REVIEW_URL`; credentials belong in that server runtime, never in this repository or browser bundle.
 
-The local stdio MCP server is documented at [`workbench/mcp-server/README.md`](workbench/mcp-server/README.md). It exposes seven read tools and three in-memory proposal tools. It has no approval, decision, assumption, metric, threshold, persistence, private-file, or network mutation tool.
+The product includes a three-step model connection center. Claude Code and Codex can use the local stdio MCP server now; Claude.ai, ChatGPT, and Grok require a hosted authenticated MCP service that is explicitly not implemented here. The browser collects no provider keys.
+
+The local stdio MCP server is documented at [`workbench/mcp-server/README.md`](workbench/mcp-server/README.md). It exposes seven read tools and three proposal tools. Optional operator-enabled JSONL handoff binds each proposal to the retained deal and digests; the Diligence view revalidates the ledger, forces items to `PROPOSED`, requires named human review, and lets only accepted memo drafts enter the IC memo. The server still has no approval, decision, assumption, metric, threshold, private-file, or network mutation tool.
 
 ## Run and verify locally
 
@@ -65,7 +67,7 @@ node mcp-server/server.mjs
 
 The full verifier runs the Python/kernel suite, mutation gates, deterministic case regeneration, source-room binding, estimator coverage, memo and recovery builds, frontend/data/intake/model tests, MCP tests, TypeScript/Vite build, lazy-chunk budgets, desktop/mobile Playwright flows, pixel regression, accessibility evidence, PDF contracts, and visual-manifest identity.
 
-See the frozen [vertical-slice contract](docs/PRODUCT-VERTICAL-SLICE-CONTRACT.md), [underwriting architecture](docs/UNDERWRITING-ARCHITECTURE.md), [v2 benchmark contract](docs/V2-BENCHMARK-CONTRACT.md), [v2 model-integrity contract](docs/V2-MODEL-INTEGRITY-CONTRACT.md), [v2 econometrics contract](docs/ECONOMETRICS-CONTRACT-V2.md), and [observed usability protocol](docs/OBSERVED-USABILITY-PROTOCOL.md).
+See the [model connection contract](docs/MODEL-CONNECTION-CONTRACT.md), frozen [vertical-slice contract](docs/PRODUCT-VERTICAL-SLICE-CONTRACT.md), [underwriting architecture](docs/UNDERWRITING-ARCHITECTURE.md), [v2 benchmark contract](docs/V2-BENCHMARK-CONTRACT.md), [v2 model-integrity contract](docs/V2-MODEL-INTEGRITY-CONTRACT.md), [v2 econometrics contract](docs/ECONOMETRICS-CONTRACT-V2.md), and [observed usability protocol](docs/OBSERVED-USABILITY-PROTOCOL.md).
 
 ## Evidence and limits
 

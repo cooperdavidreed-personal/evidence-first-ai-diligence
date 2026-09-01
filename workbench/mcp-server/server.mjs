@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import {readFileSync} from "node:fs";
+import {appendFileSync, readFileSync} from "node:fs";
 import {randomUUID} from "node:crypto";
 import {fileURLToPath} from "node:url";
 import {dirname, resolve} from "node:path";
@@ -38,10 +38,11 @@ function validateRefs(deal, refs) {
   return [...refs];
 }
 
-export function createToolHandlers() {
+export function createToolHandlers({proposalLedgerPath} = {}) {
   const data = loadData(); const proposals = [];
   function proposed(kind, deal, payload, refs) {
-    const proposal = {proposal_id: randomUUID(), status: "PROPOSED", approval_state: "PROPOSED", kind, deal_id: deal.caseId, evidence_refs: validateRefs(deal, refs), ...payload};
+    const proposal = {proposal_id: randomUUID(), status: "PROPOSED", approval_state: "PROPOSED", kind, deal_id: deal.caseId, manifest_sha256: deal.manifest_sha256, analysis_sha256: deal.analysis_sha256, evidence_refs: validateRefs(deal, refs), ...payload};
+    if (proposalLedgerPath) appendFileSync(proposalLedgerPath, `${JSON.stringify(proposal)}\n`, {encoding: "utf8", mode: 0o600});
     proposals.push(proposal); return proposal;
   }
   async function callTool(name, args = {}) {
@@ -87,7 +88,9 @@ export async function handleMessage(message, handlers) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const handlers = createToolHandlers(); const lines = createInterface({input: process.stdin, crlfDelay: Infinity});
+  const ledgerFlag = process.argv.indexOf("--proposal-ledger");
+  if (ledgerFlag >= 0 && !process.argv[ledgerFlag + 1]) throw new Error("proposal_ledger_path_required");
+  const handlers = createToolHandlers({proposalLedgerPath: ledgerFlag >= 0 ? resolve(process.argv[ledgerFlag + 1]) : undefined}); const lines = createInterface({input: process.stdin, crlfDelay: Infinity});
   lines.on("line", async (line) => {
     if (!line.trim()) return;
     let response; try { response = await handleMessage(JSON.parse(line), handlers); } catch (caught) { response = error(null, caught instanceof Error ? caught.message : "invalid_request"); }

@@ -13,3 +13,5 @@ decision authority.
 | Unsupported material claim | explicit evidence spans and fail-closed state | literal containment is not entailment |
 | Incorrect financial arithmetic | decimal-string inputs and `Decimal` | formulas can encode the wrong business meaning |
 | Automated investment action | no trading, messaging, or recommendation interface | humans can still misuse the packet |
+| Model proposal becomes canonical fact | MCP has read and proposal tools only; browser import revalidates deal digests and evidence refs and forces `PROPOSED` | a human can still accept weak language |
+| Proposal-ledger tampering | malformed, cross-deal, digest-mismatched, duplicate, and unknown-evidence lines fail closed | local ledger authenticity and multi-user authorship are not established |

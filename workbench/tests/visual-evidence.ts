@@ -34,6 +34,7 @@ export async function captureVisualEvidence(page: Page, fileName: string, fullPa
     && !fileName.includes("-deals")
     && !fileName.includes("-package-")
     && !fileName.includes("-lineage-drawer")
+    && !fileName.includes("-model-connection-")
     && !fileName.includes("-contextual-source-drawer")
     && !fileName.includes("-selected-thesis-path")
     && !fileName.includes("-ic-snapshot")

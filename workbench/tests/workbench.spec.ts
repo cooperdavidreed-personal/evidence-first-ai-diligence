@@ -1,5 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
+import {mkdtempSync, rmSync} from "node:fs";
+import {tmpdir} from "node:os";
 import {resolve} from "node:path";
+import {spawnSync} from "node:child_process";
 import {expect, test, type Page, type TestInfo} from "@playwright/test";
 import {captureVisualEvidence, writeAccessibilityEvidence} from "./visual-evidence";
 
@@ -66,6 +69,50 @@ test("Deals is a calm product root with no critical accessibility or overflow fi
   const scan = await accessibilitySnapshot(page);
   await captureVisualEvidence(page, `${testInfo.project.name}-deals.png`);
   writeAccessibilityEvidence(`${testInfo.project.name}-deals.json`, {boundary: "Automated route evidence only; not comprehensive WCAG or observed usability proof.", project: testInfo.project.name, scans: [{view: "Deals", ...scan}], viewport: page.viewportSize()});
+});
+
+test("model connection center separates governed MCP from in-desk inference", async ({page}, testInfo: TestInfo) => {
+  await page.goto("/", {waitUntil: "networkidle"});
+  await page.getByRole("button", {name: "Connect model"}).click();
+  await expect(page.getByRole("dialog", {name: "Use your model without giving it the books"})).toBeVisible();
+  await expect(page.getByRole("heading", {name: "One deal record. Replaceable models."})).toBeVisible();
+  await expect(page.getByText("Validated source package and lineage")).toBeVisible();
+  await expect(page.getByText("Countertheses and missing diligence")).toBeVisible();
+  let scan = await accessibilitySnapshot(page);
+  await captureVisualEvidence(page, `${testInfo.project.name}-model-connection-approach.png`, true);
+  await page.getByRole("button", {name: "Continue"}).click();
+  await page.getByRole("radio", {name: /ChatGPT/}).click();
+  await page.getByRole("button", {name: "Continue"}).click();
+  await expect(page.getByRole("heading", {name: "A hosted connector is required"})).toBeVisible();
+  await expect(page.getByText(/not a remotely reachable authenticated server/)).toBeVisible();
+  await expect(page.getByText(/No provider keys are collected/)).toBeVisible();
+  scan = await accessibilitySnapshot(page);
+  await captureVisualEvidence(page, `${testInfo.project.name}-model-connection-hosted-boundary.png`, true);
+  writeAccessibilityEvidence(`${testInfo.project.name}-model-connection.json`, {boundary: "Connection-wizard route evidence only; no live provider, remote MCP, credential, or comprehensive WCAG claim.", project: testInfo.project.name, scans: [{view: "Hosted connector boundary", ...scan}], viewport: page.viewportSize()});
+});
+
+test("local MCP proposal reaches named human review and the IC memo without persistence", async ({page}, testInfo: TestInfo) => {
+  const temporary = mkdtempSync(resolve(tmpdir(), "underwriting-mcp-flow-")); const ledger = resolve(temporary, "proposals.jsonl");
+  try {
+    const server = resolve(import.meta.dirname, "../mcp-server/server.mjs");
+    const request = {jsonrpc: "2.0", id: 1, method: "tools/call", params: {name: "propose_memo_section", arguments: {deal_id: "atlasgrid", section: "Downside follow-up", draft_text: "Reconcile the downside covenant bridge before the next committee review.", evidence_refs: ["atlasgrid-SELECTED-gross-irr"]}}};
+    const run = spawnSync(process.execPath, [server, "--proposal-ledger", ledger], {encoding: "utf8", input: `${JSON.stringify(request)}\n`});
+    expect(run.status).toBe(0); expect(run.stdout).toContain('"status":"PROPOSED"');
+    await page.goto("/#/v3/atlasgrid/diligence", {waitUntil: "networkidle"});
+    await page.getByLabel(/Choose JSONL ledger/).setInputFiles(ledger);
+    await expect(page.getByText(/1 proposal ready for human review/)).toBeVisible();
+    await page.getByRole("textbox", {name: "Human reviewer"}).fill("Avery Chen");
+    await page.getByRole("button", {name: "Accept proposal"}).click();
+    await (await visibleDealNavigation(page)).getByRole("button", {name: "IC Memo"}).click();
+    await expect(page.getByText("Model proposed · accepted by Avery Chen")).toBeVisible();
+    await expect(page.getByText(/Reconcile the downside covenant bridge/)).toBeVisible();
+    await expect(page.getByRole("heading", {name: "Model proposal disposition"})).toBeVisible();
+    const scan = await accessibilitySnapshot(page);
+    await captureVisualEvidence(page, `${testInfo.project.name}-mcp-human-review-memo.png`, true);
+    writeAccessibilityEvidence(`${testInfo.project.name}-mcp-human-review.json`, {boundary: "Local synthetic MCP-ledger roundtrip only; no hosted connector, provider inference, persistence, security, or comprehensive WCAG claim.", project: testInfo.project.name, scans: [{view: "Accepted model proposal in IC memo", ...scan}], viewport: page.viewportSize()});
+    await page.reload({waitUntil: "networkidle"});
+    await expect(page.getByText(/Model proposed · accepted by/)).toHaveCount(0);
+  } finally { rmSync(temporary, {recursive: true, force: true}); }
 });
 
 for (const candidate of [

@@ -3,6 +3,10 @@ import {caseCatalog, isCaseId, loadCase, type CaseId} from "./case-data";
 import {DealIntake, LocalDealShell} from "./local-deal";
 import type {IntakeResult} from "./intake";
 import {ModelReviewPanel} from "./model-review-panel";
+import {createAdapterTransport, type ConnectionState} from "./model-connection";
+import {ModelConnectionButton, ModelConnectionDialog} from "./model-connection-dialog";
+import type {ModelProposal, ModelTransport} from "./model-workflow";
+import {ProposalLedgerImport} from "./proposal-ledger-import";
 import type {CaseData} from "./types";
 
 export const dealViews = ["overview", "financials", "diligence", "documents", "memo"] as const;
@@ -82,12 +86,12 @@ class RetainedEvidenceBoundary extends Component<{children: ReactNode; onReset: 
   }
 }
 
-function DealList({onOpen, onNew, localDeal, onOpenLocal}: {onOpen: (caseId: CaseId) => void; onNew: () => void; localDeal: IntakeResult | null; onOpenLocal: () => void}) {
+function DealList({onOpen, onNew, onConnect, connection, localDeal, onOpenLocal}: {onOpen: (caseId: CaseId) => void; onNew: () => void; onConnect: () => void; connection: ConnectionState | null; localDeal: IntakeResult | null; onOpenLocal: () => void}) {
   return (
     <main className="deals-page" id="main-content">
       <div className="page-heading">
         <div><p className="eyebrow">Private markets</p><h1>Deals</h1><p>Review a retained case or create a browser-local deal from the supported package.</p></div>
-        <button className="primary-button" type="button" data-testid="new-deal-button" onClick={onNew}>New deal</button>
+        <div className="page-actions"><ModelConnectionButton connection={connection} onClick={onConnect} /><button className="primary-button" type="button" data-testid="new-deal-button" onClick={onNew}>New deal</button></div>
       </div>
       <section aria-labelledby="active-deals-heading">
         <div className="section-heading"><h2 id="active-deals-heading">Active reviews</h2><span>{caseCatalog.length + (localDeal ? 1 : 0)} deals</span></div>
@@ -130,11 +134,12 @@ function DecisionTests({caseData}: {caseData: CaseData}) {
 function Overview({caseData}: {caseData: CaseData}) {
   const blocker = caseData.decision.issue_summary.issues.find((issue) => issue.blocks_advancement);
   const decisive = caseData.summaryMetrics[0];
+  const signatureLabel = caseData.decision.signature_status === "PENDING_FOUNDER_SIGNATURE" ? "Pending founder signature" : caseData.decision.signature_status === "SIGNED" ? "Signed" : "Not requested";
   return (
     <div className="view-stack">
       <section className="decision-panel" aria-labelledby="decision-heading">
         <div className="decision-copy"><p className="eyebrow">Analytical posture</p><h2 id="decision-heading">{caseData.decision.decision}</h2><p>{caseData.decision.rationale}</p></div>
-        <div className="approval-state"><span>IC approval</span><strong>Not requested</strong><span>{caseData.decision.open_conditions} open conditions</span></div>
+        <div className="approval-state"><span>IC approval</span><strong>{signatureLabel}</strong><span>{caseData.decision.open_conditions} open conditions</span></div>
       </section>
       <section className="first-read-grid" aria-label="First read">
         <article><p className="eyebrow">Decisive evidence</p><h3>{decisive?.value ?? "—"}</h3><p><strong>{decisive?.label}</strong> · {decisive?.detail}</p></article>
@@ -158,7 +163,7 @@ function Financials({caseData}: {caseData: CaseData}) {
   );
 }
 
-function Diligence({caseData}: {caseData: CaseData}) {
+function Diligence({caseData, modelTransport, connection, proposals, onProposalsChange}: {caseData: CaseData; modelTransport?: ModelTransport; connection: ConnectionState | null; proposals: ModelProposal[]; onProposalsChange: (proposals: ModelProposal[]) => void}) {
   const issues = caseData.decision.issue_summary.issues;
   const evidenceResult = caseData.caseId === "helios" ? (() => {
     const analysis = requiredAnalysis(caseData, "HX-06");
@@ -194,7 +199,8 @@ function Diligence({caseData}: {caseData: CaseData}) {
       ) : (
         <section className="panel evidence-result" aria-labelledby="renewal-heading"><div className="section-heading"><div><p className="eyebrow">Evidence test</p><h2 id="renewal-heading">Higher renewal offers {evidenceResult.resultVerb} renewal</h2></div><span>{evidenceResult.evidenceLabel}</span></div><p className="result-lead">Accounts randomly offered the higher renewal price renewed <strong>{evidenceResult.comparison}</strong> than the comparison group.</p><dl className="result-context"><div><dt>Population</dt><dd>{evidenceResult.population}.</dd></div><div><dt>Decision use</dt><dd>{evidenceResult.decisionUse}</dd></div><div><dt>Limitation</dt><dd>A planted effect in synthetic data, not evidence about a real company.</dd></div></dl></section>
       )}
-      <ModelReviewPanel evidence={caseData.summaryMetrics.map((metric) => ({id: metric.metric_id, title: metric.label, displayValue: metric.value, summary: metric.detail}))} />
+      <ProposalLedgerImport caseData={caseData} onImport={(imported) => onProposalsChange([...proposals, ...imported].filter((proposal, index, items) => items.findIndex((candidate) => candidate.proposalId === proposal.proposalId) === index))} />
+      <ModelReviewPanel connection={connection} transport={modelTransport} proposals={proposals} onProposalsChange={onProposalsChange} evidence={caseData.summaryMetrics.map((metric) => ({id: metric.metric_id, title: metric.label, displayValue: metric.value, summary: metric.detail}))} />
     </div>
   );
 }
@@ -207,16 +213,18 @@ function Documents({caseData}: {caseData: CaseData}) {
   );
 }
 
-function Memo({caseData}: {caseData: CaseData}) {
+function Memo({caseData, proposals}: {caseData: CaseData; proposals: ModelProposal[]}) {
   const blocker = caseData.decision.issue_summary.issues.find((issue) => issue.blocks_advancement);
+  const acceptedDrafts = proposals.filter((proposal) => proposal.kind === "MEMO_DRAFT" && proposal.state === "ACCEPTED");
+  const reviewed = proposals.filter((proposal) => proposal.state !== "PROPOSED");
   return (
-    <div className="memo-page"><section className="memo-sheet" aria-labelledby="memo-heading"><header><div><span>Investment committee draft</span><h2 id="memo-heading">{caseData.company}</h2><p>{caseData.dealContext.investment_question}</p></div><span className="quiet-chip">Illustrative data</span></header><article><span className="source-tag">Engine</span><h3>Recommendation and why</h3><p>{caseData.decision.rationale}</p></article><article><span className="source-tag">Engine</span><h3>Economics</h3><p>{caseData.summaryMetrics.slice(0, 3).map((metric) => `${metric.label}: ${metric.value}`).join(" · ")}.</p></article><article><span className="source-tag">Engine</span><h3>Downside</h3><p>{blocker?.consequence ?? "No declared blocking issue."}</p></article><article><span className="source-tag">Analyst</span><h3>Conditions and path to reconsideration</h3><ul>{caseData.decision.path_to_yes.map((item) => <li key={item}>{item}</li>)}</ul></article><footer>Draft only · Requires investment committee approval · Illustrative data, not investment advice</footer></section><div className="memo-actions"><button className="primary-button" type="button" onClick={() => window.print()}>Print IC memo</button><p>Model-proposed language is never inserted without human acceptance.</p></div></div>
+    <div className="memo-page"><section className="memo-sheet" aria-labelledby="memo-heading"><header><div><span>Investment committee draft</span><h2 id="memo-heading">{caseData.company}</h2><p>{caseData.dealContext.investment_question}</p></div><span className="quiet-chip">Illustrative data</span></header><article><span className="source-tag">Engine</span><h3>Recommendation and why</h3><p>{caseData.decision.rationale}</p></article><article><span className="source-tag">Engine</span><h3>Economics</h3><p>{caseData.summaryMetrics.slice(0, 3).map((metric) => `${metric.label}: ${metric.value}`).join(" · ")}.</p></article><article><span className="source-tag">Engine</span><h3>Downside</h3><p>{blocker?.consequence ?? "No declared blocking issue."}</p></article><article><span className="source-tag">Analyst</span><h3>Conditions and path to reconsideration</h3><ul>{caseData.decision.path_to_yes.map((item) => <li key={item}>{item}</li>)}</ul></article>{acceptedDrafts.map((proposal) => <article key={proposal.proposalId}><span className="source-tag">Model proposed · accepted by {proposal.humanActor}</span><h3>{proposal.title}</h3><p>{proposal.body}</p><small>Evidence: {proposal.evidenceRefs.join(", ")}</small></article>)}{reviewed.length ? <article><span className="source-tag">Human review ledger</span><h3>Model proposal disposition</h3><ul>{reviewed.map((proposal) => <li key={proposal.proposalId}>{proposal.title} — {proposal.state.toLowerCase()} by {proposal.humanActor}</li>)}</ul></article> : null}<footer>Draft only · Requires investment committee approval · Illustrative data, not investment advice</footer></section><div className="memo-actions"><button className="primary-button" type="button" onClick={() => window.print()}>Print IC memo</button><p>Model-proposed language is never inserted without human acceptance.</p></div></div>
   );
 }
 
-function DealShell({caseData, view, onNavigate, onChooseDeal, onDeals}: {caseData: CaseData; view: DealView; onNavigate: (view: DealView) => void; onChooseDeal: (caseId: CaseId) => void; onDeals: () => void}) {
+function DealShell({caseData, view, onNavigate, onChooseDeal, onDeals, onConnect, connection, modelTransport, proposals, onProposalsChange}: {caseData: CaseData; view: DealView; onNavigate: (view: DealView) => void; onChooseDeal: (caseId: CaseId) => void; onDeals: () => void; onConnect: () => void; connection: ConnectionState | null; modelTransport?: ModelTransport; proposals: ModelProposal[]; onProposalsChange: (proposals: ModelProposal[]) => void}) {
   return (
-    <div className="product-shell"><aside className="sidebar"><button type="button" className="wordmark" onClick={onDeals} aria-label="Underwriting Desk deals"><span>UD</span><strong>Underwriting Desk</strong></button><nav aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}>{viewLabels[item]}</button>)}</nav><div className="sidebar-foot"><span className="quiet-chip">Illustrative data</span><p>Methods and lineage remain available on request.</p></div></aside><div className="shell-main"><header className="deal-topbar"><button type="button" className="mobile-wordmark" onClick={onDeals}>Underwriting Desk</button><label><span>Deal</span><select aria-label="Deal" value={caseData.caseId} onChange={(event) => onChooseDeal(event.target.value as CaseId)}>{caseCatalog.map((item) => <option value={item.caseId} key={item.caseId}>{item.company}</option>)}</select></label><div className="topbar-meta"><span>{caseData.caseType}</span><span>{caseData.decision.as_of ?? caseData.temporalScan.cutoff.slice(0, 10)}</span></div></header><nav className="mobile-nav" aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}>{viewLabels[item]}</button>)}</nav><main id="main-content" className="deal-main"><header className="deal-heading"><div><p className="eyebrow">{viewLabels[view]}</p><h1>{caseData.company}</h1><p>{caseData.dealContext.company_one_liner}</p></div><p className="ic-question"><span>IC question</span>{caseData.dealContext.investment_question}</p></header><RetainedEvidenceBoundary key={`${caseData.caseId}:${view}`} onReset={onDeals}>{view === "overview" ? <Overview caseData={caseData} /> : null}{view === "financials" ? <Financials caseData={caseData} /> : null}{view === "diligence" ? <Diligence caseData={caseData} /> : null}{view === "documents" ? <Documents caseData={caseData} /> : null}{view === "memo" ? <Memo caseData={caseData} /> : null}</RetainedEvidenceBoundary></main></div></div>
+    <div className="product-shell"><aside className="sidebar"><button type="button" className="wordmark" onClick={onDeals} aria-label="Underwriting Desk deals"><span>UD</span><strong>Underwriting Desk</strong></button><nav aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}>{viewLabels[item]}</button>)}</nav><div className="sidebar-foot"><span className="quiet-chip">Illustrative data</span><p>Methods and lineage remain available on request.</p></div></aside><div className="shell-main"><header className="deal-topbar"><button type="button" className="mobile-wordmark" onClick={onDeals}>Underwriting Desk</button><label><span>Deal</span><select aria-label="Deal" value={caseData.caseId} onChange={(event) => onChooseDeal(event.target.value as CaseId)}>{caseCatalog.map((item) => <option value={item.caseId} key={item.caseId}>{item.company}</option>)}</select></label><div className="topbar-meta"><span>{caseData.caseType}</span><span>{caseData.decision.as_of ?? caseData.temporalScan.cutoff.slice(0, 10)}</span></div><ModelConnectionButton connection={connection} onClick={onConnect} /></header><nav className="mobile-nav" aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}>{viewLabels[item]}</button>)}</nav><main id="main-content" className="deal-main"><header className="deal-heading"><div><p className="eyebrow">{viewLabels[view]}</p><h1>{caseData.company}</h1><p>{caseData.dealContext.company_one_liner}</p></div><p className="ic-question"><span>IC question</span>{caseData.dealContext.investment_question}</p></header><RetainedEvidenceBoundary key={`${caseData.caseId}:${view}`} onReset={onDeals}>{view === "overview" ? <Overview caseData={caseData} /> : null}{view === "financials" ? <Financials caseData={caseData} /> : null}{view === "diligence" ? <Diligence caseData={caseData} modelTransport={modelTransport} connection={connection} proposals={proposals} onProposalsChange={onProposalsChange} /> : null}{view === "documents" ? <Documents caseData={caseData} /> : null}{view === "memo" ? <Memo caseData={caseData} proposals={proposals} /> : null}</RetainedEvidenceBoundary></main></div></div>
   );
 }
 
@@ -228,6 +236,11 @@ export default function App({initialCase, initialRoute, loadCaseFn = loadCase}: 
   const [intakeOpen, setIntakeOpen] = useState(false);
   const [localDeal, setLocalDeal] = useState<IntakeResult | null>(null);
   const [activeLocal, setActiveLocal] = useState(false);
+  const [connection, setConnection] = useState<ConnectionState | null>(null);
+  const [connectionOpen, setConnectionOpen] = useState(false);
+  const [proposalsByDeal, setProposalsByDeal] = useState<Record<string, ModelProposal[]>>({});
+  const modelTransport = useMemo(() => connection?.channel === "API_ADAPTER" ? createAdapterTransport(connection.endpoint) : undefined, [connection]);
+  const connectionDialog = connectionOpen ? <ModelConnectionDialog current={connection} onClose={() => setConnectionOpen(false)} onApply={(next) => {setConnection(next); setConnectionOpen(false);}} /> : null;
   function navigate(next: DealView) { window.history.pushState(null, "", routePath(caseData.caseId, next)); setView(next); window.scrollTo(0, 0); }
   async function chooseDeal(caseId: CaseId) {
     setLoading(true);
@@ -239,7 +252,7 @@ export default function App({initialCase, initialRoute, loadCaseFn = loadCase}: 
   if (loading) return <div className="loading-state" role="status">Opening deal…</div>;
   if (loadError) return <main className="loading-state load-error" role="alert"><div><p className="eyebrow">Deal workspace</p><h1>Deal unavailable</h1><p>The selected deal could not be opened. No data, assumption, or investment decision was changed.</p><button className="secondary-button" type="button" onClick={() => {setLoadError(false); setView("deals"); window.history.pushState(null, "", "#/");}}>Return to Deals</button></div></main>;
   if (intakeOpen) return <DealIntake onCancel={() => setIntakeOpen(false)} onComplete={(result) => {setLocalDeal(result); setIntakeOpen(false); setActiveLocal(true); setView("overview"); window.history.pushState(null, "", "#/v3/local/overview");}} />;
-  if (view === "deals") return <DealList onOpen={chooseDeal} onNew={() => setIntakeOpen(true)} localDeal={localDeal} onOpenLocal={() => {setActiveLocal(true); setView("overview"); window.history.pushState(null, "", "#/v3/local/overview");}} />;
-  if (activeLocal && localDeal) return <LocalDealShell result={localDeal} view={view} onNavigate={(next) => {setView(next); window.history.pushState(null, "", `#/v3/local/${next}`); window.scrollTo(0, 0);}} onDeals={() => {setActiveLocal(false); setView("deals"); window.history.pushState(null, "", "#/");}} />;
-  return <DealShell caseData={caseData} view={view} onNavigate={navigate} onChooseDeal={chooseDeal} onDeals={() => {window.history.pushState(null, "", "#/"); setView("deals");}} />;
+  if (view === "deals") return <><DealList onOpen={chooseDeal} onNew={() => setIntakeOpen(true)} onConnect={() => setConnectionOpen(true)} connection={connection} localDeal={localDeal} onOpenLocal={() => {setActiveLocal(true); setView("overview"); window.history.pushState(null, "", "#/v3/local/overview");}} />{connectionDialog}</>;
+  if (activeLocal && localDeal) return <><LocalDealShell result={localDeal} view={view} onNavigate={(next) => {setView(next); window.history.pushState(null, "", `#/v3/local/${next}`); window.scrollTo(0, 0);}} onDeals={() => {setActiveLocal(false); setView("deals"); window.history.pushState(null, "", "#/");}} onConnect={() => setConnectionOpen(true)} connection={connection} modelTransport={modelTransport} proposals={proposalsByDeal.local ?? []} onProposalsChange={(proposals) => setProposalsByDeal((current) => ({...current, local: proposals}))} />{connectionDialog}</>;
+  return <><DealShell caseData={caseData} view={view} onNavigate={navigate} onChooseDeal={chooseDeal} onDeals={() => {window.history.pushState(null, "", "#/"); setView("deals");}} onConnect={() => setConnectionOpen(true)} connection={connection} modelTransport={modelTransport} proposals={proposalsByDeal[caseData.caseId] ?? []} onProposalsChange={(proposals) => setProposalsByDeal((current) => ({...current, [caseData.caseId]: proposals}))} />{connectionDialog}</>;
 }

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {readFileSync} from "node:fs";
+import {existsSync, mkdtempSync, readFileSync, rmSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
 import test from "node:test";
 import {canonicalCasePath, createToolHandlers, handleMessage, toolDefinitions} from "./server.mjs";
 
@@ -42,4 +44,31 @@ test("id-less tools/call notifications are dropped without proposal side effects
   assert.equal(response, null);
   assert.equal(handlers.proposals.length, 0);
   assert.equal(digest(), before);
+});
+
+test("proposal ledger is opt-in and binds successful proposals to retained digests", async () => {
+  const before = digest(); const temp = mkdtempSync(join(tmpdir(), "underwriting-ledger-")); const ledger = join(temp, "proposals.jsonl");
+  try {
+    const withoutLedger = createToolHandlers();
+    await withoutLedger.callTool("propose_observation", {deal_id: "atlasgrid", text: "Reconcile pricing.", evidence_refs: ["atlasgrid-SELECTED-gross-irr"]});
+    assert.equal(existsSync(ledger), false);
+    const handlers = createToolHandlers({proposalLedgerPath: ledger});
+    await handlers.callTool("propose_observation", {deal_id: "atlasgrid", text: "Reconcile pricing.", evidence_refs: ["atlasgrid-SELECTED-gross-irr"]});
+    await handlers.callTool("propose_diligence_request", {deal_id: "atlasgrid", title: "Confirm add-backs", why_it_matters: "Returns depend on normalized EBITDA.", proposed_owner: "QoE", evidence_refs: ["atlasgrid-SELECTED-gross-irr"]});
+    await handlers.callTool("propose_memo_section", {deal_id: "atlasgrid", section: "Downside", draft_text: "Covenant risk remains gating.", evidence_refs: ["AG-10"]});
+    const lines = readFileSync(ledger, "utf8").trim().split("\n").map(JSON.parse);
+    const cases = JSON.parse(readFileSync(canonicalCasePath, "utf8")); const deal = cases.cases.find((item) => item.caseId === "atlasgrid");
+    assert.equal(lines.length, 3);
+    for (const item of lines) { assert.equal(item.status, "PROPOSED"); assert.equal(item.approval_state, "PROPOSED"); assert.equal(item.deal_id, "atlasgrid"); assert.equal(item.manifest_sha256, deal.manifest_sha256); assert.equal(item.analysis_sha256, deal.analysis_sha256); }
+    assert.equal(digest(), before);
+  } finally { rmSync(temp, {recursive: true, force: true}); }
+});
+
+test("invalid and id-less proposal calls never append to the operator ledger", async () => {
+  const before = digest(); const temp = mkdtempSync(join(tmpdir(), "underwriting-ledger-")); const ledger = join(temp, "proposals.jsonl"); const handlers = createToolHandlers({proposalLedgerPath: ledger});
+  try {
+    await assert.rejects(() => handlers.callTool("propose_observation", {deal_id: "atlasgrid", text: "Invalid.", evidence_refs: ["unknown"]}), /evidence_reference_not_canonical/);
+    await handleMessage({jsonrpc: "2.0", method: "tools/call", params: {name: "propose_observation", arguments: {deal_id: "atlasgrid", text: "Invisible.", evidence_refs: ["atlasgrid-SELECTED-gross-irr"]}}}, handlers);
+    assert.equal(existsSync(ledger), false); assert.equal(handlers.proposals.length, 0); assert.equal(digest(), before);
+  } finally { rmSync(temp, {recursive: true, force: true}); }
 });

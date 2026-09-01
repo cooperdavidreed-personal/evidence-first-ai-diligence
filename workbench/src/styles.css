@@ -21,6 +21,10 @@ p { margin-bottom: 0; }
 .quiet-chip, .source-tag { display: inline-flex; align-items: center; width: fit-content; border: 1px solid var(--line-dark); border-radius: 999px; padding: 3px 8px; color: #4f585d; background: rgba(255,255,255,.7); font-size: 12px; font-weight: 600; }
 .primary-button { border: 1px solid var(--cobalt); border-radius: 6px; padding: 10px 15px; background: var(--cobalt); color: white; font-weight: 600; cursor: pointer; }
 .text-button { border: 0; padding: 0; background: transparent; color: var(--cobalt); font-weight: 600; cursor: pointer; }
+.page-actions { display: flex; align-items: center; gap: 9px; }
+.connection-button { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line-dark); border-radius: 6px; padding: 9px 12px; background: white; color: #3f484d; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.connection-dot { width: 7px; height: 7px; border: 1px solid #788187; border-radius: 50%; background: transparent; }
+.connection-dot.connected { border-color: var(--green); background: var(--green); }
 .loading-state { display: grid; min-height: 100vh; place-items: center; color: var(--muted); }
 
 .deals-page { width: min(1180px, calc(100% - 48px)); margin: 0 auto; padding: 68px 0; }
@@ -154,6 +158,7 @@ code { overflow-wrap: anywhere; font-family: "SFMono-Regular", Consolas, monospa
 .memo-sheet header h2 { margin: 5px 0; font: 600 30px/1.15 "Source Serif 4", Georgia, serif; }
 .memo-sheet article { border-bottom: 1px solid var(--line); padding: 22px 0; }
 .memo-sheet article h3 { margin: 7px 0; font: 600 19px/1.25 "Source Serif 4", Georgia, serif; }
+.memo-sheet article > small { display: block; margin-top: 8px; color: var(--muted); font-size: 12px; }
 .memo-sheet footer { padding-top: 18px; }
 .source-tag { border-color: var(--line); background: #f6f5f1; }
 .memo-actions { position: sticky; top: 84px; border: 1px solid var(--line); border-radius: 7px; padding: 18px; background: var(--paper); }
@@ -192,6 +197,64 @@ code { overflow-wrap: anywhere; font-family: "SFMono-Regular", Consolas, monospa
 .error-summary { margin-top: 16px; border-left: 3px solid var(--rust); padding: 12px 14px; background: var(--rust-soft); color: #65372f; }
 .error-summary ul { margin: 7px 0 0; padding-left: 18px; }
 
+.dialog-backdrop { position: fixed; z-index: 50; inset: 0; display: grid; place-items: center; overflow-y: auto; padding: 24px; background: rgba(27, 31, 34, .54); }
+.connection-dialog { width: min(860px, 100%); max-height: calc(100vh - 48px); display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; overflow: hidden; border: 1px solid #aeadA7; border-radius: 8px; background: var(--paper); box-shadow: 0 18px 50px rgba(20, 24, 27, .18); }
+.connection-dialog-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding: 24px 28px 18px; }
+.connection-dialog-header h1 { max-width: 660px; margin-bottom: 0; font-size: 29px; }
+.dialog-close { border: 0; padding: 0 3px; background: transparent; color: var(--muted); font-size: 26px; line-height: 1; cursor: pointer; }
+.connection-steps { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 0 28px; }
+.connection-steps span { border-bottom: 2px solid transparent; padding: 10px 0 8px; color: var(--muted); font-size: 12px; font-weight: 600; }
+.connection-steps span.active { border-bottom-color: var(--ink); color: var(--ink); }
+.connection-body { min-height: 0; overflow-y: auto; padding: 26px 28px 30px; }
+.ownership-contract { border-bottom: 1px solid var(--line); padding-bottom: 24px; }
+.ownership-contract > div { display: grid; grid-template-columns: repeat(2, 1fr); gap: 34px; margin-top: 20px; }
+.ownership-contract article + article { border-left: 1px solid var(--line); padding-left: 34px; }
+.ownership-contract h3 { font-size: 14px; }
+.ownership-contract ul { margin: 10px 0 0; padding-left: 18px; color: var(--muted); }
+.ownership-contract li + li { margin-top: 6px; }
+.route-options, .client-options { display: grid; gap: 9px; margin: 24px 0 0; border: 0; padding: 0; }
+.route-options legend, .client-options legend { margin-bottom: 4px; font-weight: 600; }
+.route-options label, .client-options label { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 11px; align-items: start; border: 1px solid var(--line); border-radius: 6px; padding: 14px; background: white; cursor: pointer; }
+.route-options label.selected, .client-options label.selected { border-color: #8798b6; box-shadow: inset 3px 0 var(--cobalt); }
+.route-options input, .client-options input { margin-top: 3px; }
+.route-options span, .client-options span { display: grid; gap: 2px; }
+.route-options small, .client-options small { color: var(--muted); font-size: 12px; font-weight: 400; }
+.client-options { margin-top: 0; }
+.client-options label { grid-template-columns: 18px minmax(0, 1fr) auto; }
+.client-options em { color: var(--muted); font-size: 12px; font-style: normal; font-weight: 600; }
+.adapter-explanation { max-width: 720px; }
+.adapter-explanation > p:not(.eyebrow) { color: var(--muted); }
+.adapter-explanation dl { display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px; margin: 24px 0 0; }
+.adapter-explanation dl div { border-top: 1px solid var(--line); padding-top: 12px; }
+.configuration-panel { max-width: 760px; }
+.configuration-panel > p:not(.eyebrow, .field-help, .connection-error, .boundary-copy) { color: var(--muted); }
+.endpoint-field { display: grid; gap: 7px; margin: 22px 0 0; color: var(--muted); font-size: 12px; font-weight: 600; }
+.endpoint-field input { width: 100%; border: 1px solid var(--line-dark); border-radius: 5px; padding: 10px; background: white; color: var(--ink); font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; }
+.field-help { margin: 8px 0 18px; color: var(--muted); font-size: 12px; }
+.connection-error { margin: 12px 0; border-left: 2px solid var(--rust); padding-left: 10px; color: var(--rust); }
+.setup-sequence { display: grid; gap: 20px; margin: 22px 0 0; padding-left: 22px; }
+.setup-sequence li { padding-left: 5px; }
+.setup-sequence li > span { display: block; margin-top: 3px; color: var(--muted); }
+.code-box { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; margin-top: 9px; border: 1px solid var(--line); border-radius: 6px; padding: 12px; background: #f1f0ec; }
+.code-box code, .code-box pre { min-width: 0; margin: 0; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+.copy-button { border: 1px solid var(--line-dark); border-radius: 5px; padding: 6px 8px; background: white; color: var(--cobalt); font-size: 12px; font-weight: 600; cursor: pointer; }
+.permission-ledger { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 24px; }
+.permission-ledger > div { display: grid; grid-template-columns: 38px 1fr; gap: 10px; border-top: 1px solid var(--line); padding-top: 12px; }
+.permission-ledger > div > span { font: 600 24px/1 "Source Serif 4", Georgia, serif; }
+.permission-ledger p { color: var(--muted); }
+.permission-ledger strong { display: block; color: var(--ink); }
+.boundary-copy { margin-top: 16px; border-left: 2px solid var(--line-dark); padding-left: 12px; color: var(--muted); }
+.hosted-required ol { display: grid; gap: 8px; margin: 20px 0; padding-left: 20px; }
+.connection-dialog-footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; border-top: 1px solid var(--line); padding: 14px 28px; background: white; }
+.connection-dialog-footer > div { display: flex; align-items: center; gap: 16px; }
+.connection-dialog-footer span { color: var(--muted); font-size: 12px; }
+.ledger-import > p { max-width: 780px; color: var(--muted); }
+.ledger-picker { display: inline-grid; gap: 2px; margin-top: 16px; border: 1px solid var(--line-dark); border-radius: 6px; padding: 9px 12px; background: white; color: var(--cobalt); font-weight: 600; cursor: pointer; }
+.ledger-picker input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
+.ledger-picker small { color: var(--muted); font-size: 12px; font-weight: 400; }
+.memo-sheet .source-tag { font-size: 13px; }
+.ledger-result { margin-top: 12px; color: var(--green); }
+
 @media (max-width: 980px) {
   .product-shell { grid-template-columns: 190px minmax(0, 1fr); }
   .deal-main { width: min(100% - 40px, 1120px); }
@@ -209,6 +272,7 @@ code { overflow-wrap: anywhere; font-family: "SFMono-Regular", Consolas, monospa
   .deals-page { width: calc(100% - 28px); padding: 28px 0 44px; }
   .intake-page { width: calc(100% - 28px); padding: 22px 0 50px; }
   .page-heading { align-items: flex-start; }
+  .page-actions { align-items: stretch; flex-direction: column-reverse; }
   .deal-grid, .intake-empty-state { grid-template-columns: 1fr; }
   .deal-card { min-height: 220px; }
   .product-shell { display: block; }
@@ -218,6 +282,8 @@ code { overflow-wrap: anywhere; font-family: "SFMono-Regular", Consolas, monospa
   .deal-topbar label { margin-left: auto; }
   .deal-topbar label > span, .topbar-meta { display: none; }
   .deal-topbar select { width: min(48vw, 220px); min-width: 0; padding: 7px; }
+  .deal-topbar .connection-button { width: 34px; justify-content: center; overflow: hidden; padding: 9px 12px; color: transparent; }
+  .deal-topbar .connection-dot { flex: 0 0 auto; }
   .mobile-nav { display: flex; overflow-x: auto; border-bottom: 1px solid var(--line); padding: 0 10px; background: var(--paper); }
   .mobile-nav button { flex: 0 0 auto; border: 0; border-bottom: 2px solid transparent; padding: 10px; background: transparent; color: var(--muted); font-size: 11px; }
   .mobile-nav button.active { border-bottom-color: var(--cobalt); color: var(--ink); font-weight: 600; }
@@ -236,6 +302,22 @@ code { overflow-wrap: anywhere; font-family: "SFMono-Regular", Consolas, monospa
   .memo-sheet { padding: 24px 18px; }
   .memo-sheet > header { display: grid; }
   .local-processing-note { display: grid; gap: 4px; }
+  .dialog-backdrop { align-items: stretch; padding: 0; }
+  .connection-dialog { width: 100%; max-height: 100vh; border: 0; border-radius: 0; }
+  .connection-dialog-header { padding: 20px 18px 15px; }
+  .connection-dialog-header h1 { font-size: 24px; }
+  .connection-steps { padding: 0 18px; }
+  .connection-body { padding: 22px 18px 26px; }
+  .ownership-contract > div, .adapter-explanation dl, .permission-ledger { grid-template-columns: 1fr; gap: 16px; }
+  .ownership-contract article + article { border-top: 1px solid var(--line); border-left: 0; padding-top: 16px; padding-left: 0; }
+  .client-options label { grid-template-columns: 18px minmax(0, 1fr); }
+  .client-options em { grid-column: 2; }
+  .code-box { grid-template-columns: 1fr; }
+  .copy-button { justify-self: start; }
+  .connection-dialog-footer { align-items: stretch; padding: 12px 18px; }
+  .connection-dialog-footer > div { align-items: flex-end; flex-direction: column; gap: 7px; text-align: right; }
+  .connection-dialog-footer span { max-width: 180px; }
+  .memo-sheet .source-tag { font-size: 12px; }
 }
 @media print {
   .sidebar, .deal-topbar, .mobile-nav, .deal-heading, .memo-actions { display: none !important; }
