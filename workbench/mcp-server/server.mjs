@@ -73,8 +73,13 @@ export async function handleMessage(message, handlers) {
   if (message.method === "notifications/initialized") return null;
   if (message.method === "tools/list") return result(message.id, {tools: toolDefinitions});
   if (message.method === "tools/call") {
-    try { const value = await handlers.callTool(message.params?.name, message.params?.arguments ?? {}); return result(message.id, {content: [{type: "text", text: JSON.stringify(value)}], structuredContent: value}); }
-    catch (caught) { return error(message.id, caught instanceof Error ? caught.message : "tool_call_failed"); }
+    const notification = !Object.prototype.hasOwnProperty.call(message, "id");
+    try {
+      const value = await handlers.callTool(message.params?.name, message.params?.arguments ?? {});
+      return notification ? null : result(message.id, {content: [{type: "text", text: JSON.stringify(value)}], structuredContent: value});
+    } catch (caught) {
+      return notification ? null : error(message.id, caught instanceof Error ? caught.message : "tool_call_failed");
+    }
   }
   if (!Object.prototype.hasOwnProperty.call(message, "id")) return null;
   return error(message.id, "method_not_found");

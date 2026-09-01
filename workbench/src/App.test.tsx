@@ -1,6 +1,6 @@
 import {render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import {beforeEach, describe, expect, it} from "vitest";
+import {beforeEach, describe, expect, it, vi} from "vitest";
 import WorkbenchApp, {dealViews, parseRoute} from "./App";
 import rawData from "./data/cases.json";
 import {assertWorkbenchData} from "./data-contract";
@@ -61,6 +61,30 @@ describe("Underwriting Desk investor workspace", () => {
     expect(screen.getByText("Decision use")).toBeInTheDocument();
     expect(screen.getByText("Limitation")).toBeInTheDocument();
     expect(screen.getByText("View method").closest("details")).not.toHaveAttribute("open");
+  });
+
+  it("fails closed with a readable boundary when retained analysis is incomplete", () => {
+    const candidate: unknown = structuredClone(rawData);
+    assertWorkbenchData(candidate);
+    const helios = structuredClone(candidate.cases.find((item) => item.caseId === "helios")!);
+    helios.analyses = helios.analyses.filter((analysis) => analysis.analysis_id !== "HX-06");
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    render(<WorkbenchApp initialCase={helios} initialRoute={{caseId: "helios", view: "diligence"}} />);
+    expect(screen.getByRole("heading", {name: "Analysis unavailable"})).toBeInTheDocument();
+    expect(screen.getByText(/no analytical conclusion is shown/)).toBeInTheDocument();
+    expect(screen.queryByText(/less compute per workload/)).not.toBeInTheDocument();
+    consoleError.mockRestore();
+  });
+
+  it("derives empirical direction from the retained estimate sign", () => {
+    const candidate: unknown = structuredClone(rawData);
+    assertWorkbenchData(candidate);
+    const helios = structuredClone(candidate.cases.find((item) => item.caseId === "helios")!);
+    const optimizer = helios.analyses.find((analysis) => analysis.analysis_id === "HX-06")!;
+    optimizer.outputs.find((output) => output.name === "optimizer_ate")!.value = "0.0911";
+    render(<WorkbenchApp initialCase={helios} initialRoute={{caseId: "helios", view: "diligence"}} />);
+    expect(screen.getByRole("heading", {name: "Optimizer test increased unit compute cost"})).toBeInTheDocument();
+    expect(screen.getByText(/9.5% more compute per workload/)).toBeInTheDocument();
   });
 
   it("keeps reproduction identifiers behind document disclosure", async () => {

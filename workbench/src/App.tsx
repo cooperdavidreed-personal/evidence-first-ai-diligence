@@ -1,4 +1,4 @@
-import {useMemo, useState} from "react";
+import {Component, useMemo, useState, type ReactNode} from "react";
 import {caseCatalog, isCaseId, loadCase, type CaseId} from "./case-data";
 import {DealIntake, LocalDealShell} from "./local-deal";
 import type {IntakeResult} from "./intake";
@@ -61,6 +61,25 @@ function numericAnalysisValue(value: string, label: string) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) throw new Error(`Required retained numeric value ${label} is invalid`);
   return parsed;
+}
+
+class RetainedEvidenceBoundary extends Component<{children: ReactNode; onReset: () => void}, {error: Error | null}> {
+  state = {error: null as Error | null};
+
+  static getDerivedStateFromError(error: Error) { return {error}; }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <section className="panel error-summary retained-evidence-error" role="alert" aria-labelledby="retained-evidence-error-heading">
+        <p className="eyebrow">Evidence boundary</p>
+        <h2 id="retained-evidence-error-heading">Analysis unavailable</h2>
+        <p>The retained package is incomplete for this view, so no analytical conclusion is shown.</p>
+        <button className="secondary-button" type="button" onClick={this.props.onReset}>Return to Deals</button>
+        <details className="method-disclosure"><summary>View technical reason</summary><p>{this.state.error.message}</p></details>
+      </section>
+    );
+  }
 }
 
 function DealList({onOpen, onNew, localDeal, onOpenLocal}: {onOpen: (caseId: CaseId) => void; onNew: () => void; localDeal: IntakeResult | null; onOpenLocal: () => void}) {
@@ -146,6 +165,8 @@ function Diligence({caseData}: {caseData: CaseData}) {
     const effect = numericAnalysisValue(analysisOutput(caseData, "HX-06", "optimizer_ate"), "HX-06.optimizer_ate");
     return {
       effectPercent: Math.abs(Math.expm1(effect)) * 100,
+      direction: effect <= 0 ? "less" : "more",
+      resultVerb: effect <= 0 ? "reduced" : "increased",
       population: analysis.population,
       estimate: effect.toFixed(4),
       interval: analysisDiagnostic(caseData, "HX-06", "unadjusted_confidence_interval"),
@@ -153,8 +174,11 @@ function Diligence({caseData}: {caseData: CaseData}) {
     };
   })() : (() => {
     const analysis = requiredAnalysis(caseData, "AG-07");
+    const effect = numericAnalysisValue(analysisOutput(caseData, "AG-07", "renewal_itt"), "AG-07.renewal_itt");
     return {
-      effectPoints: Math.abs(numericAnalysisValue(analysisOutput(caseData, "AG-07", "renewal_itt"), "AG-07.renewal_itt")),
+      effectPoints: Math.abs(effect),
+      direction: effect <= 0 ? "less" : "more",
+      resultVerb: effect <= 0 ? "reduced" : "increased",
       population: analysis.population,
     };
   })();
@@ -162,9 +186,9 @@ function Diligence({caseData}: {caseData: CaseData}) {
     <div className="view-stack">
       <section className="panel" aria-labelledby="issues-heading"><div className="section-heading"><div><p className="eyebrow">Worklist</p><h2 id="issues-heading">{issues.filter((issue) => issue.blocks_advancement).length} issues block the next step</h2></div><span>Human-owned</span></div><div className="issue-list">{issues.map((issue) => <article key={issue.issue_id}><div><span className={`status status-${issue.state.toLowerCase()}`}>{statusLabel(issue.state)}</span><span>{issue.materiality.toLowerCase()}</span></div><h3>{issue.title}</h3><p>{issue.consequence}</p><footer><span>Owner</span><strong>{issue.owner}</strong></footer></article>)}</div></section>
       {"effectPercent" in evidenceResult ? (
-        <section className="panel evidence-result" aria-labelledby="optimizer-heading"><div className="section-heading"><div><p className="eyebrow">Evidence test</p><h2 id="optimizer-heading">Optimizer test reduced unit compute cost</h2></div><span>Zero base-case credit</span></div><p className="result-lead">Customers randomly given the optimizer used about <strong>{evidenceResult.effectPercent.toFixed(1)}% less compute per workload</strong> than customers without it.</p><dl className="result-context"><div><dt>Population</dt><dd>{evidenceResult.population} across the declared test window.</dd></div><div><dt>Decision use</dt><dd>Candidate savings rate for the value plan; no base-case credit until replicated against production provider invoices.</dd></div><div><dt>Limitation</dt><dd>A planted effect in illustrative data. It says nothing about real customers or future margin.</dd></div></dl><details className="method-disclosure"><summary>View method</summary><p>Estimated change: {evidenceResult.estimate} log points; 95% interval {evidenceResult.interval}; baseline-adjusted precision companion {evidenceResult.companion}.</p></details></section>
+        <section className="panel evidence-result" aria-labelledby="optimizer-heading"><div className="section-heading"><div><p className="eyebrow">Evidence test</p><h2 id="optimizer-heading">Optimizer test {evidenceResult.resultVerb} unit compute cost</h2></div><span>Zero base-case credit</span></div><p className="result-lead">Customers randomly given the optimizer used about <strong>{evidenceResult.effectPercent.toFixed(1)}% {evidenceResult.direction} compute per workload</strong> than customers without it.</p><dl className="result-context"><div><dt>Population</dt><dd>{evidenceResult.population} across the declared test window.</dd></div><div><dt>Decision use</dt><dd>Candidate savings rate for the value plan; no base-case credit until replicated against production provider invoices.</dd></div><div><dt>Limitation</dt><dd>A planted effect in illustrative data. It says nothing about real customers or future margin.</dd></div></dl><details className="method-disclosure"><summary>View method</summary><p>Estimated change: {evidenceResult.estimate} log points; 95% interval {evidenceResult.interval}; baseline-adjusted precision companion {evidenceResult.companion}.</p></details></section>
       ) : (
-        <section className="panel evidence-result" aria-labelledby="renewal-heading"><div className="section-heading"><div><p className="eyebrow">Evidence test</p><h2 id="renewal-heading">Higher renewal offers reduced renewal</h2></div><span>Downside evidence</span></div><p className="result-lead">Accounts randomly offered the higher renewal price renewed <strong>{evidenceResult.effectPoints.toFixed(1)} percentage points less often</strong> than the comparison group.</p><dl className="result-context"><div><dt>Population</dt><dd>{evidenceResult.population}.</dd></div><div><dt>Decision use</dt><dd>No pricing upside credit in the selected structure.</dd></div><div><dt>Limitation</dt><dd>A planted effect in synthetic data, not evidence about a real company.</dd></div></dl></section>
+        <section className="panel evidence-result" aria-labelledby="renewal-heading"><div className="section-heading"><div><p className="eyebrow">Evidence test</p><h2 id="renewal-heading">Higher renewal offers {evidenceResult.resultVerb} renewal</h2></div><span>Downside evidence</span></div><p className="result-lead">Accounts randomly offered the higher renewal price renewed <strong>{evidenceResult.effectPoints.toFixed(1)} percentage points {evidenceResult.direction} often</strong> than the comparison group.</p><dl className="result-context"><div><dt>Population</dt><dd>{evidenceResult.population}.</dd></div><div><dt>Decision use</dt><dd>No pricing upside credit in the selected structure.</dd></div><div><dt>Limitation</dt><dd>A planted effect in synthetic data, not evidence about a real company.</dd></div></dl></section>
       )}
       <ModelReviewPanel evidence={caseData.summaryMetrics.map((metric) => ({id: metric.metric_id, title: metric.label, displayValue: metric.value, summary: metric.detail}))} />
     </div>
@@ -188,7 +212,7 @@ function Memo({caseData}: {caseData: CaseData}) {
 
 function DealShell({caseData, view, onNavigate, onChooseDeal, onDeals}: {caseData: CaseData; view: DealView; onNavigate: (view: DealView) => void; onChooseDeal: (caseId: CaseId) => void; onDeals: () => void}) {
   return (
-    <div className="product-shell"><aside className="sidebar"><button type="button" className="wordmark" onClick={onDeals} aria-label="Underwriting Desk deals"><span>UD</span><strong>Underwriting Desk</strong></button><nav aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}>{viewLabels[item]}</button>)}</nav><div className="sidebar-foot"><span className="quiet-chip">Illustrative data</span><p>Methods and lineage remain available on request.</p></div></aside><div className="shell-main"><header className="deal-topbar"><button type="button" className="mobile-wordmark" onClick={onDeals}>Underwriting Desk</button><label><span>Deal</span><select aria-label="Deal" value={caseData.caseId} onChange={(event) => onChooseDeal(event.target.value as CaseId)}>{caseCatalog.map((item) => <option value={item.caseId} key={item.caseId}>{item.company}</option>)}</select></label><div className="topbar-meta"><span>{caseData.caseType}</span><span>{caseData.decision.as_of ?? caseData.temporalScan.cutoff.slice(0, 10)}</span></div></header><nav className="mobile-nav" aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}>{viewLabels[item]}</button>)}</nav><main id="main-content" className="deal-main"><header className="deal-heading"><div><p className="eyebrow">{viewLabels[view]}</p><h1>{caseData.company}</h1><p>{caseData.dealContext.company_one_liner}</p></div><p className="ic-question"><span>IC question</span>{caseData.dealContext.investment_question}</p></header>{view === "overview" ? <Overview caseData={caseData} /> : null}{view === "financials" ? <Financials caseData={caseData} /> : null}{view === "diligence" ? <Diligence caseData={caseData} /> : null}{view === "documents" ? <Documents caseData={caseData} /> : null}{view === "memo" ? <Memo caseData={caseData} /> : null}</main></div></div>
+    <div className="product-shell"><aside className="sidebar"><button type="button" className="wordmark" onClick={onDeals} aria-label="Underwriting Desk deals"><span>UD</span><strong>Underwriting Desk</strong></button><nav aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}>{viewLabels[item]}</button>)}</nav><div className="sidebar-foot"><span className="quiet-chip">Illustrative data</span><p>Methods and lineage remain available on request.</p></div></aside><div className="shell-main"><header className="deal-topbar"><button type="button" className="mobile-wordmark" onClick={onDeals}>Underwriting Desk</button><label><span>Deal</span><select aria-label="Deal" value={caseData.caseId} onChange={(event) => onChooseDeal(event.target.value as CaseId)}>{caseCatalog.map((item) => <option value={item.caseId} key={item.caseId}>{item.company}</option>)}</select></label><div className="topbar-meta"><span>{caseData.caseType}</span><span>{caseData.decision.as_of ?? caseData.temporalScan.cutoff.slice(0, 10)}</span></div></header><nav className="mobile-nav" aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}>{viewLabels[item]}</button>)}</nav><main id="main-content" className="deal-main"><header className="deal-heading"><div><p className="eyebrow">{viewLabels[view]}</p><h1>{caseData.company}</h1><p>{caseData.dealContext.company_one_liner}</p></div><p className="ic-question"><span>IC question</span>{caseData.dealContext.investment_question}</p></header><RetainedEvidenceBoundary key={`${caseData.caseId}:${view}`} onReset={onDeals}>{view === "overview" ? <Overview caseData={caseData} /> : null}{view === "financials" ? <Financials caseData={caseData} /> : null}{view === "diligence" ? <Diligence caseData={caseData} /> : null}{view === "documents" ? <Documents caseData={caseData} /> : null}{view === "memo" ? <Memo caseData={caseData} /> : null}</RetainedEvidenceBoundary></main></div></div>
   );
 }
 

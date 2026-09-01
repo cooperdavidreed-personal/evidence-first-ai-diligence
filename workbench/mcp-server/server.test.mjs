@@ -35,3 +35,11 @@ test("unknown notifications are silent while unknown requests fail", async () =>
   assert.equal(await handleMessage({jsonrpc: "2.0", method: "notifications/cancelled"}, handlers), null);
   assert.deepEqual(await handleMessage({jsonrpc: "2.0", id: 7, method: "unsupported/request"}, handlers), {jsonrpc: "2.0", id: 7, error: {code: -32000, message: "method_not_found"}});
 });
+
+test("id-less tools/call notifications execute without emitting a response", async () => {
+  const handlers = createToolHandlers();
+  const response = await handleMessage({jsonrpc: "2.0", method: "tools/call", params: {name: "propose_observation", arguments: {deal_id: "atlasgrid", text: "Confirm pricing bridge.", evidence_refs: ["atlasgrid-SELECTED-gross-irr"]}}}, handlers);
+  assert.equal(response, null);
+  assert.equal(handlers.proposals.length, 1);
+  assert.equal(handlers.proposals[0].status, "PROPOSED");
+});
