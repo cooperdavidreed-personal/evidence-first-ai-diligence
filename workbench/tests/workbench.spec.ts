@@ -1,21 +1,17 @@
 import AxeBuilder from "@axe-core/playwright";
-import {createHash} from "node:crypto";
-import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {expect, test, type Page, type TestInfo} from "@playwright/test";
-
 import {captureVisualEvidence, writeAccessibilityEvidence} from "./visual-evidence";
 
-const workbenchDataSha256 = createHash("sha256")
-  .update(readFileSync(resolve(import.meta.dirname, "../src/data/cases.json")))
-  .digest("hex");
+const packagePaths = ["manifest.json", "deal.json", "monthly_financials.csv", "customer_arr.csv"].map((name) => resolve(import.meta.dirname, `../public/sample-package/${name}`));
+const views = ["Overview", "Financials", "Diligence", "Documents", "IC Memo"] as const;
 
 async function settleAtTop(page: Page) {
   await page.evaluate(async () => {
     await document.fonts.ready;
     document.documentElement.style.setProperty("scroll-behavior", "auto", "important");
     window.scrollTo(0, 0);
-    await new Promise<void>((resolveFrame) => requestAnimationFrame(() => requestAnimationFrame(() => resolveFrame())));
+    await new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())));
     window.scrollTo(0, 0);
   });
 }
@@ -24,145 +20,134 @@ async function accessibilitySnapshot(page: Page) {
   const scan = await new AxeBuilder({page}).analyze();
   const critical = scan.violations.filter((item) => ["critical", "serious"].includes(item.impact ?? ""));
   expect(critical).toEqual([]);
-  const width = await page.evaluate(() => ({client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth}));
-  expect(width.scroll).toBeLessThanOrEqual(width.client);
+  const dimensions = await page.evaluate(() => ({client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth}));
+  expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.client);
   const minimumVisibleTextPx = await page.evaluate(() => {
-    const sizes: number[] = [];
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const sizes: number[] = []; const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     while (walker.nextNode()) {
-      const node = walker.currentNode;
-      if (!node.textContent?.trim() || !(node.parentElement instanceof HTMLElement)) continue;
-      const parent = node.parentElement;
-      const style = getComputedStyle(parent);
-      const rect = parent.getBoundingClientRect();
+      const parent = walker.currentNode.parentElement;
+      if (!walker.currentNode.textContent?.trim() || !parent) continue;
+      const style = getComputedStyle(parent); const rect = parent.getBoundingClientRect();
       if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0 || rect.width === 0 || rect.height === 0) continue;
       sizes.push(Number.parseFloat(style.fontSize));
     }
     return Math.min(...sizes);
   });
-  if (width.client <= 390) expect(minimumVisibleTextPx).toBeGreaterThanOrEqual(8);
-  return {
-    critical_or_serious_count: critical.length,
-    violations: scan.violations.map((item) => ({id: item.id, impact: item.impact, nodes: item.nodes.length})),
-    root_client_width: width.client,
-    root_scroll_width: width.scroll,
-    minimum_visible_text_px: minimumVisibleTextPx,
-  };
+  expect(minimumVisibleTextPx).toBeGreaterThanOrEqual(dimensions.client <= 390 ? 11 : 12);
+  return {critical_or_serious_count: critical.length, violations: scan.violations.map((item) => ({id: item.id, impact: item.impact, nodes: item.nodes.length})), root_client_width: dimensions.client, root_scroll_width: dimensions.scroll, minimum_visible_text_px: minimumVisibleTextPx};
 }
 
-test("landing explains the product and opens a sample deal", async ({page}, testInfo: TestInfo) => {
+async function visibleDefaultText(page: Page) {
+  return page.evaluate(() => [...document.querySelectorAll<HTMLElement>("body *")].filter((element) => {
+    const rect = element.getBoundingClientRect(); const style = getComputedStyle(element);
+    return element.children.length === 0 && rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
+  }).map((element) => element.innerText).join("\n"));
+}
+
+async function assertPlainDefaultSurface(page: Page) {
+  const text = await visibleDefaultText(page);
+  expect(text).not.toMatch(/\b[0-9a-f]{64}\b/i);
+  expect(text).not.toMatch(/\b(?:underwriting|atlasgrid|helios)\.[a-z0-9_-]+\/v\d\b/i);
+  expect(text).not.toMatch(/(?:^|\s)data\/[a-z0-9_./-]+/i);
+  expect(text).not.toMatch(/\b(?:AG|HX)-[A-Z0-9-]+\b/);
+  expect(text).not.toMatch(/\b(?:log points|ITT|SMD|MC SE)\b/i);
+}
+
+async function visibleDealNavigation(page: Page) {
+  return page.locator('nav[aria-label="Deal navigation"]:visible');
+}
+
+test("Deals is a calm product root with no critical accessibility or overflow finding", async ({page}, testInfo: TestInfo) => {
   await page.goto("/", {waitUntil: "networkidle"});
-  await expect(page.getByRole("heading", {name: /Turn a crowded data room/})).toBeVisible();
-  await expect(page.getByText("Do we meet the $240M ask, counter at $210M, or walk?")).toBeVisible();
-  await expect(page.getByText(/\$220M ask/)).toHaveCount(0);
-  await expect(page.getByRole("button", {name: /Review a sample deal/})).toBeVisible();
+  await expect(page.getByRole("heading", {name: "Deals"})).toBeVisible();
+  await expect(page.getByRole("button", {name: "New deal"})).toBeVisible();
+  await expect(page.getByText("Evidence → economics → action")).toHaveCount(0);
   await settleAtTop(page);
-  await captureVisualEvidence(page, `${testInfo.project.name}-investor-workspace-landing.png`);
-  await page.getByRole("button", {name: /Review a sample deal/}).click();
-  await expect(page).toHaveURL(/#\/v2\/atlasgrid\/overview$/);
-  await expect(page.getByRole("heading", {name: "Do we meet the $240M ask, counter at $210M, or walk?"})).toBeVisible();
+  const scan = await accessibilitySnapshot(page);
+  await captureVisualEvidence(page, `${testInfo.project.name}-deals.png`);
+  writeAccessibilityEvidence(`${testInfo.project.name}-deals.json`, {boundary: "Automated route evidence only; not comprehensive WCAG or observed usability proof.", project: testInfo.project.name, scans: [{view: "Deals", ...scan}], viewport: page.viewportSize()});
 });
 
 for (const candidate of [
-  {id: "atlasgrid", name: "AtlasGrid Systems", question: "Do we meet the $240M ask, counter at $210M, or walk?"},
-  {id: "helios", name: "Helios Compute Control", question: "Do we fund $25M now and reserve $15M for verified milestones?"},
+  {id: "atlasgrid", company: "AtlasGrid Systems", posture: "REPRICE"},
+  {id: "helios", company: "Helios Compute Control", posture: "HOLD"},
 ]) {
-  test(`${candidate.name} investor journey, source inspection, and responsive evidence`, async ({page}, testInfo: TestInfo) => {
+  test(`${candidate.company} five-destination investor journey`, async ({page}, testInfo: TestInfo) => {
     test.setTimeout(60_000);
     const scans: Array<Record<string, unknown>> = [];
-    const caseSlug = candidate.name.toLowerCase().replaceAll(" ", "-");
-    await page.goto(`/?visual=${candidate.id}-overview#/v2/${candidate.id}/overview`, {waitUntil: "networkidle"});
-    await expect(page.getByRole("heading", {name: candidate.name})).toBeVisible();
-    await expect(page.getByRole("heading", {name: candidate.question})).toBeVisible();
-    await expect(page.getByText("SYNTHETIC — NOT INVESTMENT ADVICE", {exact: true})).toBeVisible();
-    await expect(page.getByRole("navigation", {name: "Primary investment views"}).getByRole("button")).toHaveCount(4);
-    await settleAtTop(page);
-    scans.push({view: "Overview", ...await accessibilitySnapshot(page)});
-    await captureVisualEvidence(page, `${testInfo.project.name}-${caseSlug}-overview.png`);
-
-    const assumption = candidate.id === "atlasgrid" ? "$220M" : "30.0% annual growth";
-    await expect(page.getByText(/Decision impact:/)).toBeVisible();
-    await page.getByRole("button", {name: assumption}).click();
-    await expect(page.getByText(candidate.id === "atlasgrid" ? /Return hurdle fails/ : /The binding loss test/)).toBeVisible();
-    if (candidate.id === "helios") await expect(page.getByText(/option pool modeled as fully granted common at exit/)).toBeVisible();
-    await expect(page).toHaveURL(candidate.id === "atlasgrid" ? /driver=entry_enterprise_value_cents/ : /driver=annual_revenue_growth/);
-
-    await expect(page.getByText("Private to this browser.")).toBeVisible();
-    await page.getByRole("button", {name: "Review approval"}).first().click();
-    await expect(page.getByText(/This records analyst judgment only/)).toBeVisible();
-    await page.getByRole("button", {name: "Cancel"}).click();
-    await expect(page.getByRole("button", {name: /Estimated effect/})).toBeVisible();
-
-    const lineage = page.getByRole("button", {name: /Inspect lineage/}).first();
-    await lineage.focus();
-    await page.keyboard.press("Enter");
-    await expect(page.getByRole("dialog")).toContainText("Calculation and decision chain");
-    await expect(page.getByRole("dialog")).toContainText("Readable source evidence");
-    if (testInfo.project.name === "desktop") await captureVisualEvidence(page, `desktop-${caseSlug}-contextual-source-drawer.png`);
-    await page.keyboard.press("Escape");
-    await expect(lineage).toBeFocused();
-
-    const routes = [
-      ["Thesis", "thesis", /How the evidence changes the call/],
-      ["Financials & Returns", "financials", /(Price, leverage, and downside|Terms, ownership, runway, and preferences)/],
-      ["Risks & Diligence", "risks", /Resolve these before the next committee step/],
-      ["Value Creation", "value-creation", /(Value creation reconciles|Value creation changes runway)/],
-      ["Memo", "memo", /IC question/],
-    ] as const;
-    for (const [view, slug, heading] of routes) {
-      await page.goto(`/?visual=${candidate.id}-${slug}#/v2/${candidate.id}/${slug}`, {waitUntil: "networkidle"});
-      await expect(page.getByRole("heading", {name: heading}).first()).toBeVisible();
+    await page.goto(`/#/v3/${candidate.id}/overview`, {waitUntil: "networkidle"});
+    await expect(page.getByRole("heading", {name: candidate.company})).toBeVisible();
+    await expect((await visibleDealNavigation(page)).getByRole("button")).toHaveCount(5);
+    await expect(page.getByRole("heading", {name: candidate.posture, exact: true})).toHaveCount(1);
+    for (const view of views) {
+      const navigation = await visibleDealNavigation(page);
+      await navigation.getByRole("button", {name: view}).click();
+      await expect(navigation.getByRole("button", {name: view})).toHaveAttribute("aria-current", "page");
       await settleAtTop(page);
+      await assertPlainDefaultSurface(page);
       scans.push({view, ...await accessibilitySnapshot(page)});
-      await captureVisualEvidence(page, `${testInfo.project.name}-${caseSlug}-${slug}.png`);
+      await captureVisualEvidence(page, `${testInfo.project.name}-${candidate.id}-${view.toLowerCase().replace(" ", "-")}.png`);
     }
-
-    await page.goto(`/#/v2/${candidate.id}/methodology`);
-    await expect(page.getByRole("heading", {name: /What the design can—and cannot—establish/})).toBeVisible();
-    scans.push({view: "Methodology", ...await accessibilitySnapshot(page)});
-
-    writeAccessibilityEvidence(`${testInfo.project.name}-${caseSlug}-redesign.json`, {
-      boundary: "Automated Axe scan found no critical or serious issue; tested root overflow is zero and mobile visible text is at least 8px. This is not comprehensive WCAG conformance or observed readability proof.",
-      case: candidate.name,
-      project: testInfo.project.name,
-      scans,
-      viewport: page.viewportSize(),
-      workbench_data_sha256: workbenchDataSha256,
-    });
+    if (candidate.id === "helios") {
+      await (await visibleDealNavigation(page)).getByRole("button", {name: "Diligence"}).click();
+      await expect(page.getByText(/8.7% less compute per workload/)).toBeVisible();
+      await expect(page.getByText("View method").locator(".." )).not.toHaveAttribute("open");
+      await expect(page.getByText(/no runtime credentials configured/)).toBeVisible();
+    }
+    writeAccessibilityEvidence(`${testInfo.project.name}-${candidate.id}-product.json`, {boundary: "No critical or serious Axe finding and no root overflow on the five tested default surfaces; not comprehensive WCAG or practitioner evidence.", case: candidate.company, project: testInfo.project.name, scans, viewport: page.viewportSize()});
   });
 }
 
-test("legacy routes and deal-room deep links migrate deterministically", async ({page}) => {
-  await page.goto("/#/v2/helios/evidence");
-  await expect(page).toHaveURL(/#\/v2\/helios\/thesis$/);
-  await page.getByRole("button", {name: "Explore the deal"}).click();
-  const search = page.getByRole("searchbox", {name: "Search room"});
-  await search.fill("HX-05");
-  await page.getByRole("button", {name: /Open analysis/}).click();
-  await expect(page).toHaveURL(/#\/v2\/helios\/methodology\?section=analysis-HX-05$/);
-  await expect(page.locator("#analysis-HX-05")).toBeVisible();
-  await page.goto("/#/v2/atlasgrid/underwriting?scenario=ask&driver=exit_multiple&cell=exit_multiple%3A5.5");
-  await expect(page).toHaveURL(/#\/v2\/atlasgrid\/financials\?scenario=ask&driver=exit_multiple&cell=exit_multiple%3A5.5$/);
-  await expect(page.getByRole("button", {name: "Seller ask"})).toHaveAttribute("aria-pressed", "true");
+test("ordinary multi-file intake produces a third in-memory deal and clears on refresh", async ({page}, testInfo: TestInfo) => {
+  test.setTimeout(60_000);
+  const externalRequests: string[] = [];
+  page.on("request", (request) => { const url = new URL(request.url()); if (!['127.0.0.1', 'localhost'].includes(url.hostname)) externalRequests.push(request.url()); });
+  await page.goto("/", {waitUntil: "networkidle"});
+  await page.getByRole("button", {name: "New deal"}).click();
+  await expect(page.getByText(/bytes stay in this browser tab/)).toBeVisible();
+  await page.getByTestId("deal-package-input").setInputFiles(packagePaths);
+  await page.getByRole("button", {name: "Validate and analyze"}).click();
+  await expect(page.getByRole("heading", {name: "READY FOR IC REVIEW"})).toBeVisible();
+  await expect(page.getByText(/analytical posture, not an investment recommendation/)).toBeVisible();
+  await expect(page.getByText("Hash mismatch")).toHaveCount(0);
+  await expect(page.getByRole("button", {name: "Open decision review"})).toBeVisible();
+  await captureVisualEvidence(page, `${testInfo.project.name}-northstar-package-ready.png`, true);
+  await page.getByRole("button", {name: "Open decision review"}).click();
+  await expect(page.getByRole("heading", {name: "Northstar Metrics"})).toBeVisible();
+  await expect((await visibleDealNavigation(page)).getByRole("button")).toHaveCount(5);
+  await expect(page.getByRole("heading", {name: "READY FOR IC REVIEW", exact: true})).toHaveCount(1);
+  const scans: Array<Record<string, unknown>> = [];
+  for (const view of views) {
+    await (await visibleDealNavigation(page)).getByRole("button", {name: view}).click();
+    await settleAtTop(page); await assertPlainDefaultSurface(page);
+    scans.push({view, ...await accessibilitySnapshot(page)});
+    await captureVisualEvidence(page, `${testInfo.project.name}-northstar-${view.toLowerCase().replace(" ", "-")}.png`);
+  }
+  expect(externalRequests).toEqual([]);
+  writeAccessibilityEvidence(`${testInfo.project.name}-northstar-intake.json`, {boundary: "Ordinary browser file selection through all five local-deal views; uploaded bytes were not observed leaving localhost. Automated evidence only.", project: testInfo.project.name, scans, viewport: page.viewportSize()});
+  await page.reload({waitUntil: "networkidle"});
+  await expect(page.getByRole("heading", {name: "Deals"})).toBeVisible();
+  await expect(page.getByText("Northstar Metrics")).toHaveCount(0);
 });
 
-test("each deep link loads only its selected case chunk until switch", async ({page}) => {
-  const requests: string[] = [];
-  page.on("response", (response) => {if (response.url().includes("underwriting-case-")) requests.push(response.url());});
-  await page.goto("/#/v2/helios/overview", {waitUntil: "networkidle"});
+test("missing required input fails closed before return conclusions", async ({page}, testInfo: TestInfo) => {
+  await page.goto("/", {waitUntil: "networkidle"});
+  await page.getByRole("button", {name: "New deal"}).click();
+  await page.getByTestId("deal-package-input").setInputFiles(packagePaths.filter((path) => !path.endsWith("customer_arr.csv")));
+  await page.getByRole("button", {name: "Validate and analyze"}).click();
+  await expect(page.getByRole("heading", {name: "NO CALL — PACKAGE INCOMPLETE"})).toBeVisible();
+  await expect(page.getByText("customer_arr.csv is required").first()).toBeVisible();
+  await expect(page.getByRole("button", {name: "Open decision review"})).toHaveCount(0);
+  await expect(page.getByText(/Gross multiple/)).toHaveCount(0);
+  await captureVisualEvidence(page, `${testInfo.project.name}-northstar-package-incomplete.png`, true);
+});
+
+test("deep links still load only the selected retained case chunk", async ({page}) => {
+  const requests: string[] = []; page.on("response", (response) => { if (response.url().includes("underwriting-case-")) requests.push(response.url()); });
+  await page.goto("/#/v3/helios/overview", {waitUntil: "networkidle"});
   expect(requests.some((url) => url.includes("helios"))).toBe(true);
   expect(requests.some((url) => url.includes("atlasgrid"))).toBe(false);
-  await page.getByRole("button", {name: "PE / Growth Equity AtlasGrid Systems"}).click();
+  await page.getByRole("combobox", {name: "Deal"}).selectOption("atlasgrid");
   await expect(page.getByRole("heading", {name: "AtlasGrid Systems"})).toBeVisible();
   expect(requests.filter((url) => url.includes("atlasgrid"))).toHaveLength(1);
-});
-
-test("Helios working assumptions recompute a retained case and preserve HOLD", async ({page}) => {
-  await page.goto("/#/v2/helios/overview", {waitUntil: "networkidle"});
-  await page.getByTestId("helios-assumption-growth").fill("30");
-  await page.getByTestId("helios-policy-loss-maximum").fill("8");
-  await page.getByTestId("helios-recalculate-working-case").click();
-  await expect(page.getByTestId("helios-working-change-record")).toContainText("Growth 48.0% → 30.0%");
-  await expect(page.getByTestId("helios-working-change-record")).toContainText("Loss ceiling 10.0% → 8.0%");
-  await expect(page.getByTestId("helios-working-case-status")).toContainText("HOLD");
 });

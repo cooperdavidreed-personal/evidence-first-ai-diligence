@@ -62,8 +62,9 @@ p { margin-bottom: 0; }
 .deal-heading > div > p:last-child { max-width: 650px; color: var(--muted); }
 .ic-question { border-left: 2px solid var(--line-dark); padding: 4px 0 4px 16px; font-weight: 600; }
 .ic-question span { display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; font-weight: 500; }
-.view-stack { display: grid; gap: 18px; margin-top: 24px; }
-.panel, .decision-panel { border: 1px solid var(--line); border-radius: 7px; padding: 22px; background: var(--paper); }
+.view-stack { min-width: 0; display: grid; gap: 18px; margin-top: 24px; }
+.view-stack > * { min-width: 0; }
+.panel, .decision-panel { min-width: 0; border: 1px solid var(--line); border-radius: 7px; padding: 22px; background: var(--paper); }
 .decision-panel { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 36px; border-top: 3px solid var(--rust); }
 .decision-copy h2 { margin: 0 0 12px; font-size: 32px; }
 .decision-copy > p:last-child { max-width: 760px; color: #454e53; }
@@ -74,7 +75,7 @@ p { margin-bottom: 0; }
 .first-read-grid h3 { margin: 22px 0 8px; font-size: 19px; }
 .first-read-grid article:first-child h3 { font: 600 30px/1 "Source Serif 4", Georgia, serif; }
 .first-read-grid article p:last-child { color: var(--muted); }
-.table-wrap { width: 100%; overflow-x: auto; }
+.table-wrap { width: 100%; max-width: 100%; overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; text-align: left; }
 th { border-bottom: 1px solid var(--line-dark); padding: 10px 12px; color: var(--muted); font-size: 12px; font-weight: 600; }
 td { border-bottom: 1px solid var(--line); padding: 12px; vertical-align: top; }
