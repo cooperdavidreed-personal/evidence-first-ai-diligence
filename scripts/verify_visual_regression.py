@@ -19,6 +19,7 @@ ACCESSIBILITY_CANDIDATE = ROOT / "dist" / "accessibility-candidates"
 MAX_CHANGED_PIXEL_RATIO = 0.02
 MAX_RMS_CHANNEL_DELTA = 3.0
 MAX_LOCALIZED_FOCUS_DRIFT_RATIO = 0.001
+MAX_STRUCTURAL_SCREENSHOT_HEIGHT = 20_000
 
 
 def _sha256(path: Path) -> str:
@@ -41,6 +42,21 @@ def _compare_png(baseline: Path, candidate: Path) -> tuple[float, float]:
             return changed_ratio, rms
 
 
+def _verify_cross_platform_dimensions(candidate: Path) -> None:
+    """Validate capture geometry without pretending Linux pixels equal macOS pixels."""
+    expected_width, minimum_height = (
+        (1440, 900) if candidate.name.startswith("desktop-") else (390, 844)
+    )
+    with Image.open(candidate) as actual:
+        actual.verify()
+        width, height = actual.size
+    if width != expected_width or not minimum_height <= height <= MAX_STRUCTURAL_SCREENSHOT_HEIGHT:
+        raise ValueError(
+            f"visual_capture_geometry_invalid:{candidate.name}:"
+            f"expected_width={expected_width}:minimum_height={minimum_height}:actual={(width, height)}"
+        )
+
+
 def main() -> int:
     manifest = json.loads((ROOT / "verification" / "visual-evidence.json").read_text())
     manifest_paths = [entry["path"] for entry in [*manifest["files"], *manifest["print_files"]] if entry["path"].endswith(".png")]
@@ -54,17 +70,20 @@ def main() -> int:
         if not candidate.is_file():
             failures.append(f"missing_candidate:{candidate.name}")
             continue
-        changed_ratio, rms = _compare_png(baseline, candidate)
-        if reference_comparable and (
-            changed_ratio > MAX_CHANGED_PIXEL_RATIO
-            or (
-                rms > MAX_RMS_CHANNEL_DELTA
-                and changed_ratio > MAX_LOCALIZED_FOCUS_DRIFT_RATIO
-            )
-        ):
-            failures.append(
-                f"visual_drift:{candidate.name}:changed={changed_ratio:.6f}:rms={rms:.6f}"
-            )
+        try:
+            if reference_comparable:
+                changed_ratio, rms = _compare_png(baseline, candidate)
+                if changed_ratio > MAX_CHANGED_PIXEL_RATIO or (
+                    rms > MAX_RMS_CHANNEL_DELTA
+                    and changed_ratio > MAX_LOCALIZED_FOCUS_DRIFT_RATIO
+                ):
+                    failures.append(
+                        f"visual_drift:{candidate.name}:changed={changed_ratio:.6f}:rms={rms:.6f}"
+                    )
+            else:
+                _verify_cross_platform_dimensions(candidate)
+        except (OSError, ValueError) as error:
+            failures.append(str(error))
     pdf_matches = 0
     for slug in ("atlasgrid", "helios"):
         for artifact in ("ic-snapshot", "underwriting-packet", "technical-appendix"):
