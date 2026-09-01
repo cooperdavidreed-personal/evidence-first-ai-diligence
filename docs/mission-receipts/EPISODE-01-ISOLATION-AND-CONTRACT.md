@@ -6,7 +6,7 @@ State: `VERIFIED`
 
 - Mission: `underwriting-product-vertical-slice-20260901`
 - Mission SHA-256: `374c6a781b94576e42a21d15d76973836aa2d74469c676371c4643f8f2064452`
-- Worktree: `/Users/bots/Dev/evidence-first-ai-diligence-product-20260901`
+- Worktree: this isolated repository checkout (exact host path retained only in non-public mission evidence)
 - Branch: `codex/underwriting-product-vertical-slice`
 - Exact base: `5795f00fe7466991605dfba95b7d0d3b90cde5bd`
 - Initial worktree state: clean before the frozen contract was written
