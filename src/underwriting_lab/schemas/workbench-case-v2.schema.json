@@ -105,7 +105,7 @@
     "peEngine": {"type": "object"},
     "vcEngine": {
       "type": "object",
-      "required": ["base", "milestone", "downside", "financing_shortfall", "distribution", "sensitivities", "milestone_contract", "exit_value_basis", "operating_exit_bridges"],
+      "required": ["base", "milestone", "downside", "financing_shortfall", "distribution", "sensitivities", "risk_policy", "risk_sensitivity", "milestone_contract", "exit_value_basis", "operating_exit_bridges"],
       "additionalProperties": false,
       "properties": {
         "base": {"type": "object"},
@@ -114,6 +114,8 @@
         "financing_shortfall": {"type": "object"},
         "distribution": {"type": "object"},
         "sensitivities": {"type": "object"},
+        "risk_policy": {"type": "object"},
+        "risk_sensitivity": {"type": "object"},
         "milestone_contract": {"type": "object"},
         "exit_value_basis": {"const": "EQUITY_VALUE"},
         "operating_exit_bridges": {

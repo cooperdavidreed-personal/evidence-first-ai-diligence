@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dailyaiagents.dev/schemas/vc-risk-sensitivity-v1.schema.json",
+  "title": "VC Risk Sensitivity v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "classification", "canonical_cell_id", "default_cell_id", "policy_threshold_choices", "canonical_policy_threshold", "cells", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "underwriting.vc-risk-sensitivity/v1"},
+    "classification": {"const": "SYNTHETIC_SCENARIO_NOT_FORECAST"},
+    "canonical_cell_id": {"type": "string", "minLength": 1},
+    "default_cell_id": {"type": "string", "minLength": 1},
+    "policy_threshold_choices": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string"}},
+    "canonical_policy_threshold": {"type": "string"},
+    "cells": {
+      "type": "array", "minItems": 4,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["cell_id", "profile_id", "profile_label", "profile_rationale", "template_weights", "catastrophe_probability", "is_canonical", "draws", "probability_below_one", "probability_below_one_monte_carlo_se_pp", "moic_quantiles", "xirr_quantiles", "distribution_receipt_sha256", "loss_decomposition", "canonical_policy_status", "analytical_posture", "receipt_sha256"],
+        "properties": {
+          "cell_id": {"type": "string", "minLength": 1},
+          "profile_id": {"type": "string", "minLength": 1},
+          "profile_label": {"type": "string", "minLength": 1},
+          "profile_rationale": {"type": "string", "minLength": 1},
+          "template_weights": {"type": "object", "minProperties": 4, "maxProperties": 4, "additionalProperties": {"type": "string"}},
+          "catastrophe_probability": {"type": "string"},
+          "is_canonical": {"type": "boolean"},
+          "draws": {"type": "integer", "minimum": 500},
+          "probability_below_one": {"type": "string"},
+          "probability_below_one_monte_carlo_se_pp": {"type": "string"},
+          "moic_quantiles": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "string"}},
+          "xirr_quantiles": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "string"}},
+          "distribution_receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "loss_decomposition": {
+            "type": "object", "additionalProperties": false,
+            "required": ["catastrophe_paths", "catastrophe_loss_paths", "continuous_paths", "continuous_loss_paths"],
+            "properties": {
+              "catastrophe_paths": {"type": "integer", "minimum": 0},
+              "catastrophe_loss_paths": {"type": "integer", "minimum": 0},
+              "continuous_paths": {"type": "integer", "minimum": 0},
+              "continuous_loss_paths": {"type": "integer", "minimum": 0}
+            }
+          },
+          "canonical_policy_status": {"enum": ["CLEARS", "MISSES"]},
+          "analytical_posture": {"const": "HOLD"},
+          "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

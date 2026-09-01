@@ -36,7 +36,13 @@ def _manifest_entry(destination: Path, path: Path, role: str) -> dict[str, objec
     }
 
 
-def build(repo: Path, destination: Path, workbench_dist: Path) -> None:
+def build(
+    repo: Path,
+    destination: Path,
+    workbench_dist: Path,
+    *,
+    include_demo: bool = False,
+) -> None:
     index = workbench_dist / "index.html"
     if not index.is_file():
         raise FileNotFoundError(f"missing built v2 workbench: {index}")
@@ -79,6 +85,27 @@ def build(repo: Path, destination: Path, workbench_dist: Path) -> None:
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
             staged.append((target, "synthetic-data-room"))
+
+    if include_demo:
+        demo_root = repo / "demo" / "release-fix"
+        for name in (
+            "underwriting-lab-demo-1080p.mp4",
+            "captions.srt",
+            "captions.vtt",
+            "transcript.txt",
+            "thumbnail-1280x720.png",
+            "manifest.json",
+            "review-findings.json",
+        ):
+            source = demo_root / name
+            if not source.is_file():
+                raise FileNotFoundError(
+                    f"missing release demo artifact: demo/release-fix/{name}"
+                )
+            target = destination / "demo" / "release-fix" / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+            staged.append((target, "release-demo"))
 
     accessibility_root = repo / "verification" / "accessibility-evidence"
     accessibility_files = sorted(accessibility_root.glob("*.json"))
@@ -148,7 +175,7 @@ def main() -> int:
     workbench_dist = Path(args.workbench_dist)
     if not workbench_dist.is_absolute():
         workbench_dist = repo / workbench_dist
-    build(repo, destination, workbench_dist)
+    build(repo, destination, workbench_dist, include_demo=True)
     print(json.dumps({"status": "PRODUCED", "path": str(destination)}, sort_keys=True))
     return 0
 

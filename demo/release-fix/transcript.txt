@@ -1,0 +1,15 @@
+This is the Underwriting Intelligence Lab: two fully synthetic cases, built to show evidence-to-decision work—not investment advice or autonomous judgment.
+
+AtlasGrid begins where an investment committee begins: the question, the current REPRICE posture, the proposed $210 million cap, and five unresolved gates.
+
+The seller’s $240 million ask misses the declared return hurdle. Changing the entry assumption loads a complete deterministic case; at $210 million, gross IRR reaches 23.3 percent, but quantitative clearance does not grant approval.
+
+Open any important number to see its meaning, formula, operands, and retained synthetic source.
+
+The partner packet carries the same recommendation, downside, decision conditions, ownership plan, and appendix into an exportable committee artifact.
+
+Helios applies the same discipline to venture financing. Point returns are attractive, yet the current call remains HOLD because the synthetic prior produces a 20 percent loss frequency, above the analyst-set 10 percent maximum.
+
+Assumptions and policy thresholds are editable in a working scenario, visibly classified, and never changed by a model. Alter growth, exit multiple, or the loss ceiling; the transaction engine recomputes ownership, runway, preferences, and returns, while the decision record preserves what changed and why.
+
+The result is not an AI answer. It is a reviewable underwriting system: evidence, economics, downside, judgment, and action—with synthetic limitations stated throughout.

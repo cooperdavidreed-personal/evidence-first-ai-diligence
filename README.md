@@ -4,8 +4,10 @@
 
 This portfolio candidate combines a deterministic Python analytics layer with a static React investment-committee workbench. Two fully synthetic cases demonstrate the same governed workflow across control buyout and venture/growth underwriting:
 
+**[Open the live workbench](https://cooperdavidreed-personal.github.io/evidence-first-ai-diligence/)** · **[Watch the 75–90 second product demonstration](https://cooperdavidreed-personal.github.io/evidence-first-ai-diligence/demo/release-fix/underwriting-lab-demo-1080p.mp4)** · **[Read the release verification report](docs/RELEASE-FIXES-REPORT.md)**
+
 - **AtlasGrid Systems:** a 60-month vertical-SaaS buyout that exposes retention survivorship, parent-level concentration, underburdened gross margin, challenged EBITDA add-backs, and leverage fragility. Illustrative IC decision: `REPRICE`.
-- **Helios Compute Control:** an AI-infrastructure growth investment that separates design-partner performance from ordinary cohorts, recomputes pipeline, models tiered market adoption, and runs exact event-by-event dilution, milestone, runway, preference-waterfall, and dated-return mechanics. Illustrative IC decision: `HOLD` because the declared synthetic stress mix produces a 20% loss frequency against a binding 10% maximum.
+- **Helios Compute Control:** an AI-infrastructure growth investment that separates design-partner performance from ordinary cohorts, recomputes pipeline, models tiered market adoption, and runs exact event-by-event dilution, milestone, runway, preference-waterfall, and dated-return mechanics. Illustrative IC decision: `HOLD` under the selected synthetic prior and analyst-set loss policy, with both exposed for bounded what-if review.
 
 > **Status: PUBLIC-DEMO CANDIDATE — OBSERVED PRACTITIONER TESTING NOT RUN**
 >
@@ -95,6 +97,7 @@ The accepted foundation still supports content-addressed evidence packets, exact
 - The econometric exercises recover planted synthetic effects. They do not validate a real-company causal claim or investment strategy.
 - Automated accessibility checks cover the tested routes only; they are not comprehensive WCAG certification.
 - There is no live model/API integration in the deployed slice. This avoids a shallow integration and keeps consequential writes out of scope until an approval protocol is implemented.
+- Helios's loss-frequency result is a synthetic stress output, not an empirical forecast. The workbench exposes the governing prior, scenario mix, loss definition, policy maximum, owner, rationale, and review status; local what-if edits never change the released decision or constitute approval.
 - Observed PE/VC practitioner usability and public deployment availability must be reported from current evidence, not inferred from local tests.
 
 ## Authorship and license

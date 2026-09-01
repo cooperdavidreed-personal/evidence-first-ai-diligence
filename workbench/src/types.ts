@@ -403,7 +403,7 @@ export interface VCSensitivityCell {
     exit_equity_value_cents: number;
   };
   point_return_hurdle_status: "CLEARS" | "MISSES";
-  binding_loss_hurdle_status: "MISSES";
+  binding_loss_hurdle_status: "CLEARS" | "MISSES";
   analytical_posture: "HOLD";
   receipt_sha256: string;
 }
@@ -421,14 +421,31 @@ export interface VCEngine {
     probability_below_one: string;
     probability_below_one_monte_carlo_se_pp: string;
     priors: {
-      schema_version: string;
+      schema_version: "underwriting.vc-distribution-priors/v1";
       catastrophe_probability: string;
       catastrophe_exit_multiple_low: string;
       catastrophe_exit_multiple_high: string;
+      continuous_exit_multiple_low: string;
       continuous_exit_multiple_high: string;
+      continuous_exit_multiple_sigma: string;
+      exit_timing_mean_months: string;
+      exit_timing_sigma_months: string;
+      exit_timing_delta_min_months: number;
+      exit_timing_delta_max_months: number;
+      minimum_exit_month: number;
+      maximum_exit_month: number;
+      operating_cash_factor_mean: string;
+      operating_cash_factor_sigma: string;
+      operating_cash_factor_low: string;
+      operating_cash_factor_high: string;
+      shortfall_operating_cash_factor_high: string;
+      maximum_liquidity_extension_months: number;
       loss_probability_band_low: string;
       loss_probability_band_high: string;
       rationale: string;
+      owner: string;
+      approval_status: "UNREVIEWED" | "APPROVED" | "REJECTED";
+      input_classification: "ANALYST_SCENARIO_ASSUMPTION";
       classification: "SYNTHETIC_SCENARIO_NOT_FORECAST";
       receipt_sha256: string;
     };
@@ -442,6 +459,48 @@ export interface VCEngine {
     default_axis: VCSensitivityCell["axis"];
     default_cell_id: string;
     cells: VCSensitivityCell[];
+    receipt_sha256: string;
+  };
+  risk_policy: {
+    schema_version: "helios.risk-policy/v1";
+    classification: "ILLUSTRATIVE_ANALYST_POLICY_NOT_FIRM_POLICY";
+    owner: string;
+    approval_status: "UNREVIEWED" | "APPROVED" | "REJECTED";
+    loss_definition: "gross_moic_below_1.0x";
+    maximum_probability_below_one: string;
+    editable_maximum_probability_choices: string[];
+    return_hurdles: {gross_xirr: string; gross_moic: string};
+    operating_hurdles: {ordinary_cohort_nrr: string; gross_margin: string; post_close_runway_months: number};
+    falsifiers: {ordinary_cohort_nrr: string; pipeline_conversion: string; gross_margin: string; post_close_runway_months: number};
+    rationale: string;
+    receipt_sha256: string;
+  };
+  risk_sensitivity: {
+    schema_version: "underwriting.vc-risk-sensitivity/v1";
+    classification: "SYNTHETIC_SCENARIO_NOT_FORECAST";
+    canonical_cell_id: string;
+    default_cell_id: string;
+    policy_threshold_choices: string[];
+    canonical_policy_threshold: string;
+    cells: Array<{
+      cell_id: string;
+      profile_id: string;
+      profile_label: string;
+      profile_rationale: string;
+      template_weights: Record<string, string>;
+      catastrophe_probability: string;
+      is_canonical: boolean;
+      draws: number;
+      probability_below_one: string;
+      probability_below_one_monte_carlo_se_pp: string;
+      moic_quantiles: string[];
+      xirr_quantiles: string[];
+      distribution_receipt_sha256: string;
+      loss_decomposition: {catastrophe_paths: number; catastrophe_loss_paths: number; continuous_paths: number; continuous_loss_paths: number};
+      canonical_policy_status: "CLEARS" | "MISSES";
+      analytical_posture: "HOLD";
+      receipt_sha256: string;
+    }>;
     receipt_sha256: string;
   };
   milestone_contract: {

@@ -622,17 +622,33 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
     write_json(case_root / "data/financing_plan.json", financing_plan)
     artifacts.append(_artifact(case_root, "data/financing_plan.json", "helios.financing-plan/v2", 4))
     venture_scenarios = {
-        "schema_version": "helios.venture-scenarios/v2",
+        "schema_version": "helios.venture-scenarios/v3",
         "draws": 1000,
         "distribution_seed_offset": 41,
         "exit_value_multiple_low": "0.05",
         "exit_value_multiple_high": "1.85",
+        "continuous_exit_multiple_sigma": "0.32",
         "catastrophe_probability": "0.20",
         "catastrophe_exit_multiple_low": "0.00",
         "catastrophe_exit_multiple_high": "0.02",
+        "exit_timing_mean_months": "2",
+        "exit_timing_sigma_months": "7",
+        "exit_timing_delta_min_months": -12,
+        "exit_timing_delta_max_months": 18,
+        "minimum_exit_month": 24,
+        "maximum_exit_month": 78,
+        "operating_cash_factor_mean": "1.00",
+        "operating_cash_factor_sigma": "0.07",
+        "operating_cash_factor_low": "0.85",
+        "operating_cash_factor_high": "1.12",
+        "shortfall_operating_cash_factor_high": "1.00",
+        "maximum_liquidity_extension_months": 18,
         "loss_probability_band_low": "0.15",
         "loss_probability_band_high": "0.40",
         "prior_rationale": "Synthetic Series C stress prior chosen before recomputation to make capital-loss risk decision-relevant; it is not an empirical forecast.",
+        "prior_owner": "Illustrative investment committee",
+        "prior_approval_status": "UNREVIEWED",
+        "prior_classification": "ANALYST_SCENARIO_ASSUMPTION",
         "path_method": "WEIGHTED_SCENARIO_STATE_PLUS_OPERATING_EXIT_AND_TIMING_FULL_ENGINE_REPLAY",
         "scenario_state_weights": {
             "MILESTONE": "0.45",
@@ -640,9 +656,50 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
             "DOWNSIDE": "0.15",
             "FINANCING_SHORTFALL": "0.10",
         },
+        "risk_sensitivity": {
+            "scenario_weight_profiles": [
+                {
+                    "profile_id": "BASELINE",
+                    "label": "Baseline prior mix",
+                    "rationale": "Canonical synthetic prior retained for the released decision record.",
+                    "weights": {"MILESTONE": "0.45", "BASE": "0.30", "DOWNSIDE": "0.15", "FINANCING_SHORTFALL": "0.10"},
+                },
+                {
+                    "profile_id": "DOWNSIDE_TILT",
+                    "label": "Downside-tilted prior mix",
+                    "rationale": "Illustrative what-if that shifts weight from milestone success toward downside and financing shortfall.",
+                    "weights": {"MILESTONE": "0.30", "BASE": "0.25", "DOWNSIDE": "0.25", "FINANCING_SHORTFALL": "0.20"},
+                },
+            ],
+            "catastrophe_probabilities": ["0.10", "0.20", "0.30"],
+            "operating_sensitivity_values": {
+                "annual_revenue_growth": ["0.30", "0.48", "0.60"],
+                "exit_revenue_multiple": ["3.0", "4.0", "5.0"],
+                "ordinary_cohort_nrr_floor": "1.05",
+                "ordinary_cohort_nrr_upside": "1.25",
+                "later_round_pre_money_cents": [30_000_000_000, 45_000_000_000, 60_000_000_000],
+                "milestone_states": ["FAIL", "PASS"],
+            },
+        },
     }
     write_json(case_root / "data/venture_scenarios.json", venture_scenarios)
-    artifacts.append(_artifact(case_root, "data/venture_scenarios.json", "helios.venture-scenarios/v2", 1))
+    artifacts.append(_artifact(case_root, "data/venture_scenarios.json", "helios.venture-scenarios/v3", 1))
+    risk_policy = {
+        "schema_version": "helios.risk-policy/v1",
+        "classification": "ILLUSTRATIVE_ANALYST_POLICY_NOT_FIRM_POLICY",
+        "owner": "Illustrative investment committee",
+        "approval_status": "UNREVIEWED",
+        "loss_definition": "gross_moic_below_1.0x",
+        "maximum_probability_below_one": "0.10",
+        "editable_maximum_probability_choices": ["0.08", "0.10", "0.15", "0.20"],
+        "return_hurdles": {"gross_xirr": "0.30", "gross_moic": "3.0"},
+        "operating_hurdles": {"ordinary_cohort_nrr": "1.05", "gross_margin": "0.70", "post_close_runway_months": 18},
+        "falsifiers": {"ordinary_cohort_nrr": "1.00", "pipeline_conversion": "0.20", "gross_margin": "0.65", "post_close_runway_months": 12},
+        "rationale": "Illustrative policy thresholds are declared before analysis for the synthetic case. They are not an adopted firm policy and require human review.",
+    }
+    risk_policy["receipt_sha256"] = digest(risk_policy)
+    write_json(case_root / "data/risk_policy.json", risk_policy)
+    artifacts.append(_artifact(case_root, "data/risk_policy.json", "helios.risk-policy/v1", 1))
     team_diligence = {
         "schema_version": "helios.team-diligence/v2",
         "roles": [

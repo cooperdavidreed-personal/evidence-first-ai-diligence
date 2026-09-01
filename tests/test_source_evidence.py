@@ -15,7 +15,7 @@ from scripts.sync_portfolio_source_rooms import verify_or_update
 
 @pytest.mark.parametrize(
     ("case_id", "seed", "expected_pairs"),
-    [("atlasgrid", 20260828, 24), ("helios", 20260829, 20)],
+    [("atlasgrid", 20260828, 24), ("helios", 20260829, 21)],
 )
 def test_every_analysis_input_has_resolvable_granular_source_evidence(
     tmp_path: Path,

@@ -6,10 +6,10 @@ This appendix retains reproducibility records, raw identifiers, mappings, and fo
 
 ## Content identity
 
-- Manifest SHA-256: `ad7d829e3247f537f0a9fb463e9dfa49091504abac3a94ce9fd69abdb39aeab9`
-- Analysis SHA-256: `90c60989c3a41479a9ad50021ef60a384296055b6e5eea90a7f23fcd112b8a38`
-- Decision SHA-256: `8449b8a25074b0846e84ad78cdcf61b7e0b61520cd1b988b3ce38a2853993661`
-- Packet SHA-256: `8e65461e1af6b14cc30401489c647a7fd0f65e7629966e1f50f5b5c3096a0116`
+- Manifest SHA-256: `4f590ab6ea0b33914062348b7e3bdcca71475bb97a2e4c85b9594a94b4fe17f4`
+- Analysis SHA-256: `39bd296edbdf32b39c3070d744824a84d2469fa6028aff823670ea7e19a71072`
+- Decision SHA-256: `501f4a36e3b48b5fa96c5bec789d3643a3313240216c2a120114049112fb22cd`
+- Packet SHA-256: `392b74abebaaf1b51fa5b3913b382fb67e6e4058d04e598bbca893b78f8a8841`
 
 ## Analysis receipts
 
@@ -23,7 +23,7 @@ This appendix retains reproducibility records, raw identifiers, mappings, and fo
 | HX-06 | CAUSAL_SYNTHETIC_ONLY | REPORTED | `0e1b65ba0e8dee3c2a13481cb97850a5a43ce3ab6ac091b2678138c2010e6f2b` | `13ce7025a4507d27baea7edc84ff4f3dde9478baf64ce720e87899fa8a8f6c20` |
 | HX-07 | NOT_IDENTIFIED | ABSTAIN | `1d274869a7fe75ea3c635061cb3dd615d1ceb7a273b83d4917d477f76515e3cc` | `73fa9bef8097c9ee38a1100648c9c5f18cd6e8856ad5aedd9ba839e3836809f7` |
 | HX-08 | ACCOUNTING_IDENTITY | REPORTED | `a837153dd36285f132e0c74662d034ab3543b5be1a4d011d069d78086fe9ca29` | `9fff1fd75cee1f45e1913ad9dc9cf96f816b87ee795247085f49c6ef6957067f` |
-| HX-09 | SCENARIO | REPORTED | `7780c967d835a7e2f5e001adc48968e348de043ce81d2ec84707a7f1ca315bfe` | `a3281b77b07ffcb6fc2ebd342bd371764b0f8185acfaa99313abfc8c568fe0b5` |
+| HX-09 | SCENARIO | REPORTED | `7780c967d835a7e2f5e001adc48968e348de043ce81d2ec84707a7f1ca315bfe` | `814cbc3df911d6fa721a2e4232410f7e429d433def1aace7312494c88753d634` |
 
 ## Evidence-to-model mappings
 

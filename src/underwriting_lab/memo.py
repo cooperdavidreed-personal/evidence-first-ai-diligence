@@ -74,14 +74,22 @@ def _packet(case: dict[str, Any]) -> dict[str, Any]:
                 "result_receipt_sha256": engine[key]["receipt_sha256"],
                 "sources_and_uses": engine[key]["sources_and_uses"],
                 "ending_debt_cents": engine[key]["debt_schedule"]["ending_debt_cents"],
-                "minimum_liquidity_cents": engine[key]["debt_schedule"]["minimum_liquidity_cents"],
-                "first_covenant_breach_month": engine[key]["debt_schedule"]["first_covenant_breach_month"],
-                "has_payment_default": engine[key]["debt_schedule"]["has_payment_default"],
+                "minimum_liquidity_cents": engine[key]["debt_schedule"][
+                    "minimum_liquidity_cents"
+                ],
+                "first_covenant_breach_month": engine[key]["debt_schedule"][
+                    "first_covenant_breach_month"
+                ],
+                "has_payment_default": engine[key]["debt_schedule"][
+                    "has_payment_default"
+                ],
                 "debt_schedule": engine[key]["debt_schedule"],
                 "arr_cents_by_month": engine[key]["arr_cents_by_month"],
                 "revenue_cents_by_month": engine[key]["revenue_cents_by_month"],
                 "sponsor_cash_flows": engine[key]["sponsor_cash_flows"],
-                "exit_enterprise_value_cents": engine[key]["exit_enterprise_value_cents"],
+                "exit_enterprise_value_cents": engine[key][
+                    "exit_enterprise_value_cents"
+                ],
                 "exit_equity_value_cents": engine[key]["exit_equity_value_cents"],
                 "earnout_cents": engine[key]["earnout_cents"],
                 "gross_moic": engine[key]["gross_moic"],
@@ -149,8 +157,99 @@ def _vc_packet(case: dict[str, Any]) -> dict[str, Any]:
         ],
         "temporal_scan": case["temporalScan"],
     }
+    # Risk-policy editing is a separate product surface. Preserve its approved
+    # state in the packet when a newer case contract supplies it, while keeping
+    # older deterministic fixtures fully supported.
+    risk_policy = (
+        engine.get("risk_policy") or case.get("riskPolicy") or case.get("risk_policy")
+    )
+    risk_sensitivity = (
+        engine.get("risk_sensitivity")
+        or case.get("riskSensitivity")
+        or case.get("risk_sensitivity")
+    )
+    if isinstance(risk_policy, dict):
+        body["risk_policy"] = risk_policy
+    if isinstance(risk_sensitivity, dict):
+        body["risk_sensitivity"] = risk_sensitivity
     body["packet_sha256"] = digest(body)
     return body
+
+
+def _percent_number(value: Any, fallback: Decimal) -> Decimal:
+    """Read a percentage defensively from decimal, percent, or display text."""
+    if value is None:
+        return fallback
+    match = re.search(r"-?\d+(?:\.\d+)?", str(value))
+    if not match:
+        return fallback
+    parsed = Decimal(match.group(0))
+    if abs(parsed) <= 1 and "%" not in str(value):
+        parsed *= 100
+    return parsed
+
+
+def _vc_risk_context(
+    packet: dict[str, Any], loss_hurdle: dict[str, Any]
+) -> dict[str, Any]:
+    """Return investor-readable risk context across current and future schemas."""
+    policy = packet.get("risk_policy")
+    if not isinstance(policy, dict):
+        policy = {}
+    sensitivity = packet.get("risk_sensitivity")
+    if not isinstance(sensitivity, dict):
+        sensitivity = {}
+    threshold = _percent_number(
+        next(
+            (
+                policy[key]
+                for key in (
+                    "maximum_probability_below_one_percent",
+                    "maximum_probability_below_one",
+                    "loss_probability_threshold_percent",
+                    "threshold_percent",
+                    "threshold",
+                )
+                if key in policy
+            ),
+            loss_hurdle.get("threshold_value"),
+        ),
+        Decimal("10"),
+    )
+    label = next(
+        (
+            str(policy[key])
+            for key in ("label", "name", "policy_name", "version")
+            if policy.get(key)
+        ),
+        "Illustrative analyst-set loss maximum",
+    )
+    approval = next(
+        (
+            str(policy[key])
+            for key in ("approval_status", "status", "state")
+            if policy.get(key)
+        ),
+        "precommitted synthetic-case threshold",
+    )
+    sensitivity_summary = next(
+        (
+            str(sensitivity[key])
+            for key in ("decision_summary", "summary", "headline", "interpretation")
+            if sensitivity.get(key)
+        ),
+        "",
+    )
+    if not sensitivity_summary:
+        cells = sensitivity.get("cells") or sensitivity.get("scenarios")
+        if isinstance(cells, list):
+            sensitivity_summary = f"{len(cells)} retained risk-sensitivity cases are available for review."
+    return {
+        "threshold_percent": threshold,
+        "label": label,
+        "approval": approval,
+        "sensitivity_summary": sensitivity_summary,
+    }
 
 
 def _vc_memo_markdown(packet: dict[str, Any]) -> str:
@@ -165,13 +264,18 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
         for item in decision["metric_pairs"]
         if item["metric_id"] == "helios-hx-09-probability_below_1x"
     )
+    risk_context = _vc_risk_context(packet, loss_hurdle)
     close_event = next(
-        item for item in selected["financing_events"] if item["event_id"] == "series-c-close"
+        item
+        for item in selected["financing_events"]
+        if item["event_id"] == "series-c-close"
     )
     first_close_ownership = Decimal(close_event["ownership_numerator"]) / Decimal(
         close_event["ownership_denominator"]
     )
-    annual_cash = [item for item in selected["cash_by_month"] if item["month"] % 12 == 0]
+    annual_cash = [
+        item for item in selected["cash_by_month"] if item["month"] % 12 == 0
+    ]
     analysis = {item["analysis_id"]: item for item in packet["analysis_receipts"]}
     lever_rows = list(
         zip(
@@ -201,7 +305,7 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
         "## Recommendation and executable terms",
         "",
         decision["rationale"],
-        f"**Binding loss hurdle:** {Decimal(loss_hurdle['observed_value']):.1f}% versus {loss_hurdle['threshold']}; status `{loss_hurdle['status']}`. The conditional posture is not funding approval while this test and the diligence gates remain open.",
+        f"**Binding loss hurdle:** {_percent_number(loss_hurdle['observed_value'], Decimal('20')):.1f}% versus <= {risk_context['threshold_percent']:.1f}%; status `{loss_hurdle['status']}`. The conditional posture is not funding approval while this test and the diligence gates remain open.",
         "",
         "| Term | Exact selected-case position |",
         "|---|---|",
@@ -267,7 +371,10 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
         "",
         "| Year | Ending cash |",
         "|---:|---:|",
-        *[f"| {item['month'] // 12} | {_money(item['ending_cash_cents'])} |" for item in annual_cash],
+        *[
+            f"| {item['month'] // 12} | {_money(item['ending_cash_cents'])} |"
+            for item in annual_cash
+        ],
         "",
         "## Preference waterfall and investor return bridge",
         "",
@@ -287,7 +394,9 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
         "|---|---|---:|---:|---:|",
         *[
             f"| {class_id} | {'CONVERT' if selected['waterfall']['conversion_profile'][class_id] else 'PREFERENCE'} | {_money(selected['waterfall']['class_preference_cents'][class_id])} | {_money(selected['waterfall']['class_residual_cents'][class_id])} | {_money(proceeds)} |"
-            for class_id, proceeds in selected["waterfall"]["class_proceeds_cents"].items()
+            for class_id, proceeds in selected["waterfall"][
+                "class_proceeds_cents"
+            ].items()
         ],
         "",
         f"Series C invests {_money(selected['target_invested_cents'])} in dated funded tranches and receives {_money(selected['target_proceeds_cents'])} at exit: **{_percent(selected['gross_xirr'])} gross XIRR / {_multiple(selected['gross_moic'])} gross MOIC**.",
@@ -296,10 +405,12 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
         "",
         "The 1,000 retained paths replay the full financing ledger and exact waterfall. They are scenario priors, not a forecast or evidence of real-world accuracy.",
         "",
-        "Declared scenario-state priors: " + "; ".join(
+        "Declared scenario-state priors: "
+        + "; ".join(
             f"{name.replace('_', ' ').title()} {_percent(value)}"
             for name, value in packet["distribution"]["template_weights"].items()
-        ) + ".",
+        )
+        + ".",
         "",
         "| Statistic | p10 | p50 | p90 |",
         "|---|---:|---:|---:|",
@@ -308,6 +419,21 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
         "",
         f"- Probability below 1.0x: **{_percent(packet['distribution']['probability_below_one'])}** (Monte Carlo SE **{packet['distribution']['probability_below_one_monte_carlo_se_pp']} pp**, 1,000 draws).",
         f"- Sensitivity book: {len(packet['sensitivities']['cells'])} full-engine cells across exit value, exit date, later-round price, and milestone state.",
+        *(
+            [
+                "",
+                "### Risk policy and decision sensitivity",
+                "",
+                f"{risk_context['label']}: maximum probability below 1.0x of {risk_context['threshold_percent']:.1f}%; state {risk_context['approval']}.",
+                *(
+                    [risk_context["sensitivity_summary"]]
+                    if risk_context["sensitivity_summary"]
+                    else []
+                ),
+            ]
+            if "risk_policy" in packet or "risk_sensitivity" in packet
+            else []
+        ),
         "",
         "## Econometric credit and zero-credit map",
         "",
@@ -376,8 +502,14 @@ def _memo_markdown(packet: dict[str, Any]) -> str:
     distribution = packet["distribution"]
     operating = selected["engine_inputs"]["operating"]
     transaction = selected["engine_inputs"]["transaction"]
-    selected_annual = [item for item in selected["debt_schedule"]["months"] if item["month"] % 12 == 0]
-    downside_annual = {item["month"]: item for item in downside["debt_schedule"]["months"] if item["month"] % 12 == 0}
+    selected_annual = [
+        item for item in selected["debt_schedule"]["months"] if item["month"] % 12 == 0
+    ]
+    downside_annual = {
+        item["month"]: item
+        for item in downside["debt_schedule"]["months"]
+        if item["month"] % 12 == 0
+    }
     matrix = packet["sensitivities"]["entry_exit_matrix"]
     pure_human_value = sum(
         item["exit_equity_delta_cents"]
@@ -461,10 +593,14 @@ def _memo_markdown(packet: dict[str, Any]) -> str:
         "| Entry / exit | 5.5x | 6.5x | 7.5x |",
         "|---|---:|---:|---:|",
         *[
-            "| " + entry_label + " | " + " | ".join(
+            "| "
+            + entry_label
+            + " | "
+            + " | ".join(
                 f"{_percent(next(item for item in matrix if item['assumption_label'] == f'{entry_label} / {exit_label}')['gross_xirr'])} / {_multiple(next(item for item in matrix if item['assumption_label'] == f'{entry_label} / {exit_label}')['gross_moic'])}"
                 for exit_label in ("5.5x", "6.5x", "7.5x")
-            ) + " |"
+            )
+            + " |"
             for entry_label in ("$200M", "$210M", "$220M")
         ],
         "",
@@ -551,7 +687,9 @@ def _memo_markdown(packet: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _memo_html(markdown: str, packet: dict[str, Any], artifact_kind: str = "packet") -> str:
+def _memo_html(
+    markdown: str, packet: dict[str, Any], artifact_kind: str = "packet"
+) -> str:
     def inline(value: str) -> str:
         rendered = escape(value)
         rendered = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", rendered)
@@ -565,7 +703,9 @@ def _memo_html(markdown: str, packet: dict[str, Any], artifact_kind: str = "pack
             paragraphs.append(f"<h1>{inline(line[2:])}</h1>")
         elif line.startswith("## "):
             compact_receipts = line[3:] == "Receipt appendix"
-            paragraphs.append(f"<h2{' class=receipt-title' if compact_receipts else ''}>{inline(line[3:])}</h2>")
+            paragraphs.append(
+                f"<h2{' class=receipt-title' if compact_receipts else ''}>{inline(line[3:])}</h2>"
+            )
         elif line.startswith("### "):
             paragraphs.append(f"<h3>{inline(line[4:])}</h3>")
         elif line.startswith("> "):
@@ -577,7 +717,9 @@ def _memo_html(markdown: str, packet: dict[str, Any], artifact_kind: str = "pack
             tag = "th" if not in_table else "td"
             if not in_table:
                 paragraphs.append("<table><thead>")
-            paragraphs.append("<tr>" + "".join(f"<{tag}>{item}</{tag}>" for item in cells) + "</tr>")
+            paragraphs.append(
+                "<tr>" + "".join(f"<{tag}>{item}</{tag}>" for item in cells) + "</tr>"
+            )
             if not in_table:
                 paragraphs.append("</thead><tbody>")
                 in_table = True
@@ -586,13 +728,18 @@ def _memo_html(markdown: str, packet: dict[str, Any], artifact_kind: str = "pack
                 paragraphs.append("</tbody></table>")
                 in_table = False
             if line.startswith("- "):
-                paragraphs.append(f"<p class='bullet{' receipt-row' if compact_receipts else ''}'>• {inline(line[2:])}</p>")
+                paragraphs.append(
+                    f"<p class='bullet{' receipt-row' if compact_receipts else ''}'>• {inline(line[2:])}</p>"
+                )
             elif line:
-                paragraphs.append(f"<p{' class=receipt-row' if compact_receipts else ''}>{inline(line)}</p>")
+                paragraphs.append(
+                    f"<p{' class=receipt-row' if compact_receipts else ''}>{inline(line)}</p>"
+                )
     if in_table:
         paragraphs.append("</tbody></table>")
     style = """
-    @page{size:letter;margin:.55in .55in .66in;@bottom-left{content:"Underwriting Intelligence Lab";font:7.5px monospace;color:#586269}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:7.5px monospace;color:#586269}}*{box-sizing:border-box}body{margin:0;color:#20262b;font:11px/1.43 Arial,sans-serif}h1,h2,h3{font-family:Georgia,serif;font-weight:500;break-after:avoid-page}h1{font-size:30px;border-bottom:2px solid #20262b;padding-bottom:12px}h2{font-size:19px;margin-top:24px;border-bottom:1px solid #aaa;padding-bottom:5px}h3{font-size:14px}aside{border:1px solid #8a3d2f;color:#8a3d2f;padding:8px;font:700 9px monospace;break-inside:avoid}p{margin:6px 0;orphans:3;widows:3}p:has(+table),h2:has(+p),h3:has(+p){break-after:avoid-page}.bullet{padding-left:12px}.receipt-title{margin-top:18px}.receipt-row{display:inline-block;width:50%;margin:2px 0;padding-right:8px;font-size:8px;line-height:1.25;vertical-align:top}code{font:9px monospace;color:#234fa4;overflow-wrap:anywhere}.receipt-row code{font-size:7px}table{width:100%;border-collapse:collapse;margin:9px 0 16px;break-inside:avoid-page;table-layout:fixed}th,td{border-bottom:1px solid #ccc;padding:5.5px;text-align:left;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{font:700 8.5px monospace;text-transform:uppercase;color:#586269}tr{break-inside:avoid}footer{display:block;clear:both;margin-top:8px;border-top:1px solid #20262b;padding-top:4px;font:7.5px monospace;color:#586269;break-inside:avoid}.atlasgrid-memo{font-size:10.1px;line-height:1.36}.atlasgrid-memo h1{font-size:28px;padding-bottom:9px}.atlasgrid-memo h2{font-size:17px;margin-top:18px;padding-bottom:4px}.atlasgrid-memo h3{font-size:13px;margin:12px 0 5px}.atlasgrid-memo p{margin:4px 0}.atlasgrid-memo table{margin:7px 0 12px}.atlasgrid-memo th,.atlasgrid-memo td{padding:4.5px}.atlasgrid-memo th{font-size:8px}.atlasgrid-memo code{font-size:8.5px}.snapshot{font-size:9.5px;line-height:1.27}.snapshot h1{font-size:23px;margin:0 0 8px;padding-bottom:7px}.snapshot h2{font-size:14px;margin:11px 0 4px;padding-bottom:2px}.snapshot p{margin:3px 0}.snapshot table{margin:4px 0 7px}.snapshot th,.snapshot td{padding:3px;font-size:7.5px}.technical{font-size:8.5px;line-height:1.25}.technical h1{font-size:23px}.technical h2{font-size:15px;margin-top:15px}.technical h3{font-size:11px}.technical table{margin:5px 0 9px}.technical th,.technical td{padding:3px;font-size:7px}.technical code{font-size:6.5px;word-break:break-all}@media print{footer{display:none}}@media screen{body{max-width:900px;margin:40px auto;padding:40px;background:#fbf9f4}}
+    @page{size:letter;margin:.48in .5in .62in;@bottom-left{content:"Underwriting Intelligence Lab";font:7.5px Arial,sans-serif;color:#657078}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:7.5px Arial,sans-serif;color:#657078}}
+    *{box-sizing:border-box}body{margin:0;color:#20272d;font:10px/1.32 Arial,sans-serif;font-variant-numeric:tabular-nums}h1,h2,h3{font-family:Georgia,serif;font-weight:500;break-after:avoid-page}h1{font-size:25px;line-height:1.08;border-bottom:2px solid #20272d;padding-bottom:9px;margin:0 0 8px}h2{font-size:16px;line-height:1.15;margin:17px 0 6px;border-bottom:1px solid #aeb4b7;padding-bottom:4px}h3{font-size:11.5px;line-height:1.2;margin:10px 0 4px;color:#315f8b}aside{border:1px solid #9b3f31;color:#87382d;padding:5px 8px;font:700 7.5px Arial,sans-serif;letter-spacing:.55px;break-inside:avoid;margin-bottom:6px}p{margin:4px 0;orphans:3;widows:3}p:has(+table),h2:has(+p),h3:has(+p){break-after:avoid-page}.bullet{padding-left:10px}.receipt-title{margin-top:14px}.receipt-row{display:inline-block;width:50%;margin:2px 0;padding-right:8px;font-size:7.5px;line-height:1.2;vertical-align:top}code{font:8px monospace;color:#315f8b;overflow-wrap:anywhere}.receipt-row code{font-size:6.6px}table{width:100%;border-collapse:collapse;margin:6px 0 10px;break-inside:avoid-page;table-layout:fixed}thead{display:table-header-group}th,td{border-bottom:1px solid #ccd0d2;padding:4px;text-align:left;vertical-align:top;overflow-wrap:anywhere;word-break:normal}th{font:700 7.4px Arial,sans-serif;text-transform:uppercase;letter-spacing:.35px;color:#59646b;background:#f3f4f4}td{font-size:8.4px;line-height:1.25}tr{break-inside:avoid}footer{display:block;clear:both;margin-top:8px;border-top:1px solid #20272d;padding-top:4px;font:7.5px Arial,sans-serif;color:#657078;break-inside:avoid}.packet>p:first-of-type{font-weight:600}.atlasgrid-memo.packet,.helios-memo.packet{font-size:9.4px;line-height:1.29}.packet h1{font-size:25px}.packet h2{font-size:15px;margin-top:14px}.packet h3{font-size:11px;margin-top:8px}.packet p{margin:3.5px 0}.packet table{margin:5px 0 8px}.packet th,.packet td{padding:3.5px}.packet td{font-size:7.9px}.technical{font-size:8.3px;line-height:1.23}.technical h1{font-size:22px}.technical h2{font-size:14px;margin-top:13px}.technical h3{font-size:10.5px}.technical table{margin:5px 0 8px}.technical th,.technical td{padding:3px;font-size:6.8px}.technical code{font-size:6.3px;word-break:break-all}@media print{footer{display:none}}@media screen{body{max-width:900px;margin:36px auto;padding:38px;background:#fbf9f4}}
     """
     body_class = f"{escape(packet['case_id'])}-memo {escape(artifact_kind)}"
     return f"<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>{escape(packet['company'])} IC memorandum</title><style>{style}</style></head><body class='{body_class}'>{''.join(paragraphs)}<footer>Packet {packet['packet_sha256']} · {escape(packet['disclosure'])}</footer></body></html>"
@@ -609,6 +756,19 @@ def _remove_sections(markdown: str, headings: set[str]) -> str:
     return "\n".join(retained).rstrip() + "\n"
 
 
+def _remove_subsections(markdown: str, headings: set[str]) -> str:
+    retained: list[str] = []
+    skipping = False
+    for line in markdown.splitlines():
+        if line.startswith("## "):
+            skipping = False
+        elif line.startswith("### "):
+            skipping = line[4:] in headings
+        if not skipping:
+            retained.append(line)
+    return "\n".join(retained).rstrip() + "\n"
+
+
 def _packet_markdown(markdown: str, case_id: str) -> str:
     technical_sections = {
         "Receipt appendix",
@@ -616,11 +776,22 @@ def _packet_markdown(markdown: str, case_id: str) -> str:
         "Evidence-to-model credit",
     }
     cleaned = _remove_sections(markdown, technical_sections)
+    cleaned = _remove_subsections(cleaned, {"Economic mapping register"})
     lines = [
-        line for line in cleaned.splitlines()
-        if not line.startswith(("**Authority:**", "**Knowledge cutoff:**", "**Packet receipt:**", "**Workflow state:**"))
+        line
+        for line in cleaned.splitlines()
+        if not line.startswith(
+            (
+                "**Authority:**",
+                "**Knowledge cutoff:**",
+                "**Packet receipt:**",
+                "**Workflow state:**",
+            )
+        )
     ]
-    result = "\n".join(lines).replace("`MISSES`", "Misses").replace("`CLEARS`", "Clears")
+    result = (
+        "\n".join(lines).replace("`MISSES`", "Misses").replace("`CLEARS`", "Clears")
+    )
     practitioner_terms = {
         "HUMAN_JUDGMENT": "Analyst judgment",
         "MIXED_CAUSAL_SYNTHETIC_AND_HUMAN_JUDGMENT": "Synthetic causal analysis plus analyst judgment",
@@ -634,7 +805,9 @@ def _packet_markdown(markdown: str, case_id: str) -> str:
         "SERIES_C": "Series C",
         "WITHHOLD_TRANCHE_AND_REUNDERWRITE_RUNWAY": "Withhold tranche and re-underwrite runway",
     }
-    for raw, readable in sorted(practitioner_terms.items(), key=lambda item: len(item[0]), reverse=True):
+    for raw, readable in sorted(
+        practitioner_terms.items(), key=lambda item: len(item[0]), reverse=True
+    ):
         result = result.replace(raw, readable)
     result = re.sub(
         r"(?m)^- OPEN \*\*[^*]+\*\* - (.+?) Owner: (.+?)\. Decision consequence: (.+)$",
@@ -653,9 +826,83 @@ def _packet_markdown(markdown: str, case_id: str) -> str:
 def _snapshot_markdown(case: dict[str, Any]) -> str:
     decision = case["decision"]
     issues = decision["issue_summary"]
-    metrics = case["summaryMetrics"][:5]
+    metrics = {item["label"]: item for item in case["summaryMetrics"]}
+    if case["caseId"] == "atlasgrid":
+        engine = case["peEngine"]
+        decision_request = (
+            "Authorize a counter at a $210M fixed-value cap, retain the $120M debt cap, "
+            "and condition any earnout on verified live ARR, retention, and margin quality."
+        )
+        headline_metrics = [
+            (
+                "Selected return",
+                _percent(engine["selected"]["gross_xirr"]),
+                _multiple(engine["selected"]["gross_moic"]),
+            ),
+            (
+                "Seller-ask return",
+                _percent(engine["ask"]["gross_xirr"]),
+                "below the 22% hurdle",
+            ),
+            (
+                "Downside return",
+                _percent(engine["downside"]["gross_xirr"]),
+                _multiple(engine["downside"]["gross_moic"]),
+            ),
+            (
+                "Normalized EBITDA",
+                metrics["Normalized LTM EBITDA"]["value"],
+                metrics["Normalized LTM EBITDA"]["detail"],
+            ),
+        ]
+        evidence_lines = [
+            f"Complete-cohort NRR is {metrics['Complete-cohort NRR']['value']} versus {metrics['Complete-cohort NRR']['detail'].lower()}.",
+            f"Parent concentration is {metrics['Top-10 parent concentration']['value']} versus {metrics['Top-10 parent concentration']['detail'].lower()}.",
+            f"Fully burdened gross margin is {metrics['Fully burdened gross margin']['value']} versus {metrics['Fully burdened gross margin']['detail'].lower()}.",
+        ]
+    else:
+        engine = case["vcEngine"]
+        loss_hurdle = next(
+            item
+            for item in decision["metric_pairs"]
+            if item["metric_id"] == "helios-hx-09-probability_below_1x"
+        )
+        policy = (
+            engine.get("risk_policy")
+            or case.get("riskPolicy")
+            or case.get("risk_policy")
+            or {}
+        )
+        packet_like = (
+            {"risk_policy": policy} if isinstance(policy, dict) and policy else {}
+        )
+        risk_context = _vc_risk_context(packet_like, loss_hurdle)
+        decision_request = (
+            "HOLD under the selected synthetic prior and analyst-set loss maximum. Do not "
+            "authorize funding while diligence remains unresolved; reopen only after human "
+            "IC review of the risk specification and new evidence."
+        )
+        headline_metrics = [
+            (
+                "Loss probability",
+                f"{_percent_number(loss_hurdle['observed_value'], Decimal('20')):.1f}%",
+                f"maximum {risk_context['threshold_percent']:.1f}%",
+            ),
+            ("First close", "$25M", "13.51% ownership"),
+            ("Conditional tranche", "$15M", "month 12; evidence gated"),
+            (
+                "Conditional upside",
+                _percent(engine["milestone"]["gross_xirr"]),
+                f"{_multiple(engine['milestone']['gross_moic'])}; not the recommendation",
+            ),
+        ]
+        evidence_lines = [
+            f"Ordinary-cohort NRR is {metrics['Ordinary-cohort NRR']['value']}; {metrics['Ordinary-cohort NRR']['detail'].lower()}.",
+            f"Blended gross margin is {metrics['Blended gross margin']['value']}; {metrics['Blended gross margin']['detail'].lower()}.",
+            f"Runway is {metrics['Runway']['value']}; {metrics['Runway']['detail'].lower()}.",
+        ]
     lines = [
-        f"# {case['company']} - one-page IC snapshot",
+        f"# {case['company']} - IC decision brief",
         "",
         f"> {case['disclosure']}",
         "",
@@ -663,28 +910,267 @@ def _snapshot_markdown(case: dict[str, Any]) -> str:
         "",
         decision["rationale"],
         "",
-        "## Decision economics",
+        f"**Decision requested:** {decision_request}",
         "",
-        "| Measure | Result | Basis |",
+        "## Decision at a glance",
+        "",
+        "| Measure | Result | Context |",
         "|---|---:|---|",
-        *[f"| {item['label']} | {item['value']} | {item['detail']} |" for item in metrics],
+        *[
+            f"| {label} | {value} | {context} |"
+            for label, value, context in headline_metrics
+        ],
         "",
-        "## What blocks advancement",
+        "## Evidence that changes the call",
         "",
-        f"{issues['counts']['advancement_blockers']} blocking issues, including {issues['counts']['failed_quantitative_hurdles']} failed quantitative hurdle(s).",
+        *[f"- {item}" for item in evidence_lines],
         "",
-        *[f"- **{item['title']}** - {item['owner']}; {item['stage'].replace('_', ' ').lower()}. {item['consequence']}" for item in issues["issues"][:4]],
+        "## What must be true",
         "",
-        "## Path to yes",
+        *[
+            f"- **{item['title']}** - {item['owner']}. {item['consequence']}"
+            for item in issues["issues"][:3]
+        ],
         "",
-        *[f"- {item}" for item in decision["path_to_yes"]],
+        f"**Path to reconsideration:** {' '.join(decision['path_to_yes'][:3])}",
         "",
-        "**Approval:** Requires investment committee approval. No capital action is authorized.",
+        "**Authority:** Requires investment committee approval. No capital action is authorized.",
         "",
         f"Analysis cutoff: {decision['as_of'][:10]}",
         "",
     ]
     return _ascii_dashes("\n".join(lines))
+
+
+def _bar_row(
+    label: str, value: Decimal, maximum: Decimal, display: str, tone: str = ""
+) -> str:
+    width = max(Decimal("1.5"), min(Decimal("100"), value / maximum * 100))
+    return (
+        f"<div class='bar-row {escape(tone)}'><div class=bar-label><span>{escape(label)}</span>"
+        f"<strong>{escape(display)}</strong></div><div class=bar-track>"
+        f"<span class=bar-fill style='width:{width:.2f}%'></span></div></div>"
+    )
+
+
+def _snapshot_html(case: dict[str, Any], packet: dict[str, Any]) -> str:
+    decision = case["decision"]
+    issues = decision["issue_summary"]["issues"][:3]
+    metrics = {item["label"]: item for item in case["summaryMetrics"]}
+    as_of = decision["as_of"][:10]
+    if case["caseId"] == "atlasgrid":
+        engine = packet["scenarios"]
+        action = (
+            "Authorize a counter at a $210M fixed-value cap; retain the $120M debt cap; "
+            "make contingent value depend on verified live ARR, retention, and margin quality."
+        )
+        hero_gate = (
+            "The seller ask returns "
+            f"{_percent(engine['ask']['gross_xirr'])}, below the 22% hurdle. "
+            f"The selected structure reaches {_percent(engine['selected']['gross_xirr'])}."
+        )
+        cards = [
+            (
+                "Selected return",
+                _percent(engine["selected"]["gross_xirr"]),
+                _multiple(engine["selected"]["gross_moic"]),
+            ),
+            ("Seller ask", _percent(engine["ask"]["gross_xirr"]), "Misses 22% IRR"),
+            (
+                "Named downside",
+                _percent(engine["downside"]["gross_xirr"]),
+                _multiple(engine["downside"]["gross_moic"]),
+            ),
+            (
+                "Normalized EBITDA",
+                metrics["Normalized LTM EBITDA"]["value"],
+                "Seller: $34.9M",
+            ),
+        ]
+        return_rows = [
+            (
+                "Seller ask",
+                Decimal(engine["ask"]["gross_xirr"]) * 100,
+                _percent(engine["ask"]["gross_xirr"]),
+                "warn",
+            ),
+            (
+                "Selected",
+                Decimal(engine["selected"]["gross_xirr"]) * 100,
+                _percent(engine["selected"]["gross_xirr"]),
+                "good",
+            ),
+            (
+                "Downside",
+                Decimal(engine["downside"]["gross_xirr"]) * 100,
+                _percent(engine["downside"]["gross_xirr"]),
+                "risk",
+            ),
+        ]
+        chart_one = (
+            "<div class=visual data-visual='scenario-return' role=img "
+            "aria-label='Gross IRR: seller ask 17.6 percent, selected 23.3 percent, downside 6.2 percent; hurdle 22 percent.'>"
+            "<div class=visual-head><div><h2>Price discipline changes the answer</h2>"
+            "<p>Gross IRR by deterministic case</p></div><span class=legend>22% hurdle</span></div>"
+            "<div class=bar-chart><span class=hurdle style='left:73.33%'></span>"
+            + "".join(
+                _bar_row(label, value, Decimal("30"), display, tone)
+                for label, value, display, tone in return_rows
+            )
+            + "</div></div>"
+        )
+        comparisons = [
+            ("Retention", "Active-only 105.5%", "Complete cohort 99.9%"),
+            ("Concentration", "Entity view 3.4%", "Parent view 20.4%"),
+            ("Gross margin", "Reported 80.5%", "Fully burdened 72.8%"),
+            ("EBITDA", "Seller $34.9M", "Normalized $25.9M"),
+        ]
+        chart_two_title = "The underwriting reset"
+        chart_two_caption = "Management framing versus decision-grade definition"
+        chart_two_aria = "Reported and underwritten comparisons for retention, concentration, gross margin, and EBITDA."
+        chart_two_rows = comparisons
+        qualifier = "Synthetic causal estimates recover planted mechanisms only. Scenario outputs are not forecasts."
+    else:
+        engine = packet["scenarios"]
+        loss_hurdle = next(
+            item
+            for item in decision["metric_pairs"]
+            if item["metric_id"] == "helios-hx-09-probability_below_1x"
+        )
+        risk_context = _vc_risk_context(packet, loss_hurdle)
+        observed_loss = _percent_number(loss_hurdle["observed_value"], Decimal("20"))
+        threshold = Decimal(risk_context["threshold_percent"])
+        action = (
+            "HOLD under the selected synthetic prior and analyst-set loss maximum. Do not "
+            "authorize funding while diligence remains unresolved; reopen only after human "
+            "IC review of the risk specification and new evidence."
+        )
+        hero_gate = (
+            f"Modeled probability below 1.0x is {observed_loss:.1f}% versus a "
+            f"{threshold:.1f}% maximum. Conditional upside does not override the failed gate."
+        )
+        close_event = next(
+            item
+            for item in engine["milestone"]["financing_events"]
+            if item["event_id"] == "series-c-close"
+        )
+        first_close_ownership = Decimal(close_event["ownership_numerator"]) / Decimal(
+            close_event["ownership_denominator"]
+        )
+        cards = [
+            ("Modeled loss risk", f"{observed_loss:.1f}%", f"Maximum {threshold:.1f}%"),
+            ("First close", "$25M", f"{first_close_ownership * 100:.2f}% ownership"),
+            (
+                "Conditional tranche",
+                _money(packet["milestone_contract"]["amount_cents"]),
+                "Month 12; evidence gated",
+            ),
+            (
+                "Conditional upside",
+                _percent(engine["milestone"]["gross_xirr"]),
+                f"{_multiple(engine['milestone']['gross_moic'])}; not approval",
+            ),
+        ]
+        meter_max = max(Decimal("30"), observed_loss * Decimal("1.25"))
+        marker = max(Decimal("0"), min(Decimal("100"), threshold / meter_max * 100))
+        chart_one = (
+            "<div class=visual data-visual='loss-policy' role=img "
+            f"aria-label='Modeled probability below 1.0x is {observed_loss:.1f} percent versus a maximum of {threshold:.1f} percent.'>"
+            "<div class=visual-head><div><h2>The analyst-set gate fails</h2>"
+            f"<p>{escape(str(risk_context['label']))}; {escape(str(risk_context['approval']))}</p></div>"
+            f"<span class=legend>Maximum {threshold:.1f}%</span></div>"
+            f"<div class=meter-body><div class=risk-meter><span class=risk-fill style='width:{min(Decimal('100'), observed_loss / meter_max * 100):.2f}%'></span>"
+            f"<span class=policy-marker style='left:{marker:.2f}%'></span></div>"
+            f"<div class=meter-scale><span>0%</span><strong>Current {observed_loss:.1f}%</strong><span>{meter_max:.0f}%</span></div></div></div>"
+        )
+        scenario_rows = [
+            (
+                "Base",
+                Decimal(engine["base"]["gross_moic"]),
+                _multiple(engine["base"]["gross_moic"]),
+                "neutral",
+            ),
+            (
+                "Milestone",
+                Decimal(engine["milestone"]["gross_moic"]),
+                _multiple(engine["milestone"]["gross_moic"]),
+                "good",
+            ),
+            (
+                "Downside",
+                Decimal(engine["downside"]["gross_moic"]),
+                _multiple(engine["downside"]["gross_moic"]),
+                "risk",
+            ),
+            (
+                "Shortfall",
+                Decimal(engine["financing_shortfall"]["gross_moic"]),
+                _multiple(engine["financing_shortfall"]["gross_moic"]),
+                "warn",
+            ),
+        ]
+        chart_two_title = "Returns depend on the financing path"
+        chart_two_caption = (
+            "Gross MOIC; scenario outputs are conditional, not forecasts"
+        )
+        chart_two_aria = "Gross MOIC: base 6.4, milestone 8.2, downside 1.4, financing shortfall 2.3."
+        chart_two_rows = scenario_rows
+        qualifier = "The 1,000 paths replay declared synthetic scenario priors. They do not estimate real-world investment accuracy."
+
+    cards_html = "".join(
+        f"<div class=stat><span>{escape(label)}</span><strong>{escape(value)}</strong><small>{escape(detail)}</small></div>"
+        for label, value, detail in cards
+    )
+    if case["caseId"] == "atlasgrid":
+        chart_two_body = "".join(
+            f"<div class=compare-row><strong>{escape(label)}</strong><span>{escape(first)}</span>"
+            f"<b aria-hidden=true>→</b><span class=underwritten>{escape(second)}</span></div>"
+            for label, first, second in chart_two_rows
+        )
+    else:
+        chart_two_body = (
+            "<div class=bar-chart>"
+            + "".join(
+                _bar_row(label, value, Decimal("10"), display, tone)
+                for label, value, display, tone in chart_two_rows
+            )
+            + "</div>"
+        )
+    chart_two = (
+        f"<div class=visual data-visual='decision-sensitivity' role=img aria-label='{escape(chart_two_aria)}'>"
+        f"<div class=visual-head><div><h2>{escape(chart_two_title)}</h2><p>{escape(chart_two_caption)}</p></div></div>"
+        f"{chart_two_body}</div>"
+    )
+    issue_html = "".join(
+        f"<li><strong>{escape(item['title'])}</strong><span>{escape(item['owner'])}</span>"
+        f"<p>{escape(item['consequence'])}</p></li>"
+        for item in issues
+    )
+    path = "; ".join(item.rstrip(".") for item in decision["path_to_yes"][:3]) + "."
+    style = """
+    @page{size:letter;margin:.42in .48in .58in;@bottom-left{content:"Underwriting Intelligence Lab";font:7.5px Arial,sans-serif;color:#657078}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:7.5px Arial,sans-serif;color:#657078}}
+    *{box-sizing:border-box}body{margin:0;color:#20272d;font:10.15px/1.28 Arial,sans-serif;font-variant-numeric:tabular-nums;background:#fff}h1,h2,p{margin:0}h1{font:500 24px/1.03 Georgia,serif;letter-spacing:-.25px}h2{font:600 12px/1.15 Arial,sans-serif}.brief{display:grid;gap:11px;min-height:9.15in;grid-template-rows:auto auto auto minmax(210px,1fr) auto auto}.brief-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-bottom:2px solid #20272d;padding-bottom:8px}.eyebrow{font:700 7.5px/1.2 Arial,sans-serif;text-transform:uppercase;letter-spacing:1px;color:#3a5f8a;margin-bottom:4px}.metadata{text-align:right;min-width:175px}.disclosure{display:inline-block;border:1px solid #9b3f31;color:#87382d;padding:4px 7px;font:700 7px/1.15 Arial,sans-serif;letter-spacing:.5px}.as-of{display:block;margin-top:5px;color:#657078;font-size:8px}.decision-band{display:grid;grid-template-columns:1.28fr .72fr;border-left:7px solid #9b3f31;background:#f3f0e9;break-inside:avoid}.decision-copy{padding:10px 12px}.decision-label{font:700 7.5px/1.2 Arial,sans-serif;text-transform:uppercase;letter-spacing:1px;color:#657078}.decision{font:600 26px/1 Georgia,serif;margin:2px 0 5px;color:#87382d}.rationale{font-size:10.5px;line-height:1.3}.decision-request{padding:10px 12px;border-left:1px solid #d5d0c6;background:#faf8f3}.decision-request strong{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.7px;color:#3a5f8a;margin-bottom:4px}.decision-request p{font-weight:600;line-height:1.3}.hero-gate{margin-top:5px;color:#4d565d;font-size:8.5px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;break-inside:avoid}.stat{border-top:3px solid #3a5f8a;background:#f7f8f8;padding:7px 8px;min-height:55px}.stat>span{display:block;color:#657078;font-size:7.5px;text-transform:uppercase;letter-spacing:.45px}.stat>strong{display:block;font:600 17px/1.08 Georgia,serif;margin:3px 0 2px}.stat small{display:block;color:#4d565d;font-size:7.5px;line-height:1.15}.visuals{display:grid;grid-template-columns:1fr 1fr;gap:8px;break-inside:avoid}.visual{border:1px solid #cbd0d2;padding:10px 11px;min-height:210px;display:flex;flex-direction:column}.visual-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:8px}.visual-head p{color:#657078;font-size:8px;margin-top:3px}.legend{font-size:8px;color:#87382d;border-bottom:2px solid #87382d;white-space:nowrap}.bar-chart{position:relative;flex:1;display:flex;flex-direction:column;justify-content:space-around}.bar-row{margin:6px 0}.bar-label{display:flex;justify-content:space-between;font-size:8.5px;margin-bottom:3px}.bar-track{height:8px;background:#e3e6e7;overflow:hidden}.bar-fill{display:block;height:100%;background:#6c7d89}.bar-row.good .bar-fill{background:#315f8b}.bar-row.warn .bar-fill{background:#a17632}.bar-row.risk .bar-fill{background:#9b3f31}.hurdle{position:absolute;top:0;bottom:0;border-left:1.5px dashed #87382d;z-index:2}.compare-row{display:grid;grid-template-columns:.78fr 1fr 14px 1.15fr;gap:5px;align-items:center;border-top:1px solid #e1dfd9;padding:6px 0;font-size:8.2px;flex:1}.compare-row:first-child{border-top:0}.compare-row>b{text-align:center;color:#657078}.compare-row .underwritten{font-weight:700;color:#244d75}.meter-body{margin:auto 0}.risk-meter{height:30px;background:#e3e6e7;position:relative;margin:0 0 6px}.risk-fill{height:100%;display:block;background:#9b3f31}.policy-marker{position:absolute;top:-8px;bottom:-8px;border-left:3px solid #20272d}.meter-scale{display:flex;justify-content:space-between;font-size:8.5px}.meter-scale strong{color:#87382d}.gates{display:grid;grid-template-columns:1fr .62fr;gap:10px;border-top:2px solid #20272d;padding-top:8px;break-inside:avoid}.gates h2{margin-bottom:5px}.gate-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.gate-list li{border-left:3px solid #a17632;padding-left:7px}.gate-list strong,.gate-list span{display:block}.gate-list strong{font-size:8.7px}.gate-list span{font-size:7.6px;color:#657078;margin:2px 0}.gate-list p{font-size:7.8px;line-height:1.2}.path{border-left:1px solid #cbd0d2;padding-left:11px}.path p{font-size:8.4px;line-height:1.25}.boundary{border-top:1px solid #cbd0d2;padding-top:6px;color:#657078;font-size:7.7px;display:flex;justify-content:space-between;gap:12px}.boundary strong{color:#20272d}@media screen{body{max-width:8.5in;margin:24px auto;padding:.42in .48in;background:#fff;box-shadow:0 2px 18px #0002}}@media print{footer{display:none}}
+    @media screen{body{margin:0 auto;padding:10px .48in}}
+    """
+    return (
+        "<!doctype html><html lang=en><head><meta charset=utf-8>"
+        "<meta name=viewport content='width=device-width,initial-scale=1'>"
+        f"<title>{escape(case['company'])} IC decision brief</title><style>{style}</style></head>"
+        "<body><main class=brief data-decision-brief>"
+        f"<header class=brief-head><div><p class=eyebrow>{'Private equity buyout' if case['caseId'] == 'atlasgrid' else 'Venture and growth equity'} | IC decision brief</p>"
+        f"<h1>{escape(case['company'])}</h1></div><div class=metadata>"
+        f"<aside class=disclosure>{escape(case['disclosure'])}</aside><span class=as-of>Analysis cutoff {escape(as_of)}</span></div></header>"
+        f"<section class=decision-band aria-labelledby=decision-heading><div class=decision-copy><p class=decision-label>Recommendation</p>"
+        f"<h2 class=decision id=decision-heading>{escape(decision['decision'].replace('_', ' '))}</h2>"
+        f"<p class=rationale>{escape(decision['rationale'])}</p></div><div class=decision-request>"
+        f"<strong>Decision requested</strong><p>{escape(action)}</p><p class=hero-gate>{escape(hero_gate)}</p></div></section>"
+        f"<section class=stats aria-label='Decision economics'>{cards_html}</section>"
+        f"<section class=visuals aria-label='Decision visuals'>{chart_one}{chart_two}</section>"
+        f"<section class=gates><div><h2>What must be true before advancement</h2><ol class=gate-list>{issue_html}</ol></div>"
+        f"<div class=path><h2>Path to reconsideration</h2><p>{escape(path)}</p></div></section>"
+        f"<section class=boundary><span>{escape(qualifier)}</span><strong>Human IC approval required. No capital action is authorized.</strong></section>"
+        "</main></body></html>"
+    )
 
 
 def _technical_appendix_markdown(case: dict[str, Any], packet: dict[str, Any]) -> str:
@@ -715,19 +1201,28 @@ def _technical_appendix_markdown(case: dict[str, Any], packet: dict[str, Any]) -
         "",
         "| Analysis | Classification | State | Specification | Receipt |",
         "|---|---|---|---|---|",
-        *[f"| {item['analysis_id']} | {item['classification']} | {item['state']} | `{item['spec_sha256']}` | `{item['receipt_sha256']}` |" for item in case["analyses"]],
+        *[
+            f"| {item['analysis_id']} | {item['classification']} | {item['state']} | `{item['spec_sha256']}` | `{item['receipt_sha256']}` |"
+            for item in case["analyses"]
+        ],
         "",
         "## Evidence-to-model mappings",
         "",
         "| Analysis | Credit class | Observed value | Model treatment |",
         "|---|---|---|---|",
-        *[f"| {item['source_analysis_id']} | {item['credit_tier']} | {item['observed_value']} | {item['model_credit']} |" for item in case["evidenceMappings"]],
+        *[
+            f"| {item['source_analysis_id']} | {item['credit_tier']} | {item['observed_value']} | {item['model_credit']} |"
+            for item in case["evidenceMappings"]
+        ],
         "",
         "## Formula register",
         "",
         "| Formula | Operation | Output metric | Operands |",
         "|---|---|---|---|",
-        *[f"| `{item['formula_id']}` | {item['operation']} | `{item['output_metric_id']}` | {operand_summary(item['operand_ids'])} |" for item in case["formulaRegistry"]],
+        *[
+            f"| `{item['formula_id']}` | {item['operation']} | `{item['output_metric_id']}` | {operand_summary(item['operand_ids'])} |"
+            for item in case["formulaRegistry"]
+        ],
         "",
         "## Reproducibility boundary",
         "",
@@ -737,7 +1232,9 @@ def _technical_appendix_markdown(case: dict[str, Any], packet: dict[str, Any]) -
     return _ascii_dashes("\n".join(lines))
 
 
-def build_ic_packet_from_case(case: dict[str, Any], output_dir: str | Path) -> dict[str, Path]:
+def build_ic_packet_from_case(
+    case: dict[str, Any], output_dir: str | Path
+) -> dict[str, Path]:
     validate_workbench_case(case)
     if case.get("caseId") == "atlasgrid" and "peEngine" in case:
         packet_builder = _packet
@@ -770,13 +1267,25 @@ def build_ic_packet_from_case(case: dict[str, Any], output_dir: str | Path) -> d
     technical_html_path = destination / "technical-appendix.html"
     model_appendix_path = destination / "model-appendix.json"
     snapshot_md_path.write_text(snapshot_markdown, encoding="utf-8")
-    snapshot_html_path.write_text(_memo_html(snapshot_markdown, packet, "snapshot"), encoding="utf-8")
+    snapshot_html_path.write_text(_snapshot_html(case, packet), encoding="utf-8")
     packet_md_path.write_text(packet_markdown, encoding="utf-8")
-    packet_html_path.write_text(_memo_html(packet_markdown, packet, "packet"), encoding="utf-8")
+    packet_html_path.write_text(
+        _memo_html(packet_markdown, packet, "packet"), encoding="utf-8"
+    )
     technical_md_path.write_text(technical_markdown, encoding="utf-8")
-    technical_html_path.write_text(_memo_html(technical_markdown, packet, "technical"), encoding="utf-8")
+    technical_html_path.write_text(
+        _memo_html(technical_markdown, packet, "technical"), encoding="utf-8"
+    )
     write_json(model_appendix_path, packet)
-    artifacts = [snapshot_md_path, snapshot_html_path, packet_md_path, packet_html_path, technical_md_path, technical_html_path, model_appendix_path]
+    artifacts = [
+        snapshot_md_path,
+        snapshot_html_path,
+        packet_md_path,
+        packet_html_path,
+        technical_md_path,
+        technical_html_path,
+        model_appendix_path,
+    ]
     receipt = {
         "schema_version": "underwriting.ic-packet-receipt/v2",
         "packet_sha256": packet["packet_sha256"],
@@ -797,6 +1306,8 @@ def build_ic_packet_from_case(case: dict[str, Any], output_dir: str | Path) -> d
     }
 
 
-def build_ic_packet(analysis_path: str | Path, output_dir: str | Path) -> dict[str, Path]:
+def build_ic_packet(
+    analysis_path: str | Path, output_dir: str | Path
+) -> dict[str, Path]:
     case = json.loads(Path(analysis_path).read_text(encoding="utf-8"))
     return build_ic_packet_from_case(case, output_dir)

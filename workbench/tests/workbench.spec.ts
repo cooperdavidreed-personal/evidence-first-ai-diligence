@@ -156,3 +156,13 @@ test("each deep link loads only its selected case chunk until switch", async ({p
   await expect(page.getByRole("heading", {name: "AtlasGrid Systems"})).toBeVisible();
   expect(requests.filter((url) => url.includes("atlasgrid"))).toHaveLength(1);
 });
+
+test("Helios working assumptions recompute a retained case and preserve HOLD", async ({page}) => {
+  await page.goto("/#/v2/helios/overview", {waitUntil: "networkidle"});
+  await page.getByTestId("helios-assumption-growth").fill("30");
+  await page.getByTestId("helios-policy-loss-maximum").fill("8");
+  await page.getByTestId("helios-recalculate-working-case").click();
+  await expect(page.getByTestId("helios-working-change-record")).toContainText("Growth 48.0% → 30.0%");
+  await expect(page.getByTestId("helios-working-change-record")).toContainText("Loss ceiling 10.0% → 8.0%");
+  await expect(page.getByTestId("helios-working-case-status")).toContainText("HOLD");
+});

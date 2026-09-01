@@ -3,7 +3,7 @@ import {compareDecimalStrings, registeredMetric} from "./data-contract";
 import {caseCatalog, isCaseId, loadCase, type CaseId} from "./case-data";
 import {ChartRegistryCaption} from "./chart-registry";
 import { PESnapshotTerms, PEUnderwritingRoom, PEValueCreation } from "./pe";
-import { VCSnapshotTerms, VCUnderwritingRoom, VCValueCreation } from "./vc";
+import { VCRiskAssumptionLab, VCSnapshotTerms, VCUnderwritingRoom, VCValueCreation } from "./vc";
 import { ThesisGraphView } from "./thesis-graph";
 import {ValuePlanDetails} from "./value-plan";
 import {DecisionWorkspace} from "./decision-workspace";
@@ -683,7 +683,7 @@ function OverviewDecision({caseData}: {caseData: CaseData}) {
   const moicMetric = isPe ? "atlasgrid-SELECTED-gross-moic" : "helios-MILESTONE-gross-moic";
   const terms = caseData.peEngine
     ? `${asMoney(caseData.peEngine.selected.engine_inputs.transaction.entry_enterprise_value_cents as number)} recommended cap`
-    : "No funding while loss hurdle remains failed";
+    : "No funding while the canonical loss test or required diligence remains unresolved";
   return <aside className="overview-decision" aria-label="Current analytical recommendation">
     <div><span>Current call</span><strong>{caseData.decision.decision.replaceAll("_", " ")}</strong><small>{caseData.decision.issue_summary.counts.advancement_blockers} issues block advancement</small></div>
     <dl><div><dt>{caseData.peEngine ? "Recommended terms" : "Current funding posture"}</dt><dd>{terms}</dd></div><div><dt>Path-to-yes economics</dt><dd>{registeredDisplay(caseData, irrMetric)} · {registeredDisplay(caseData, moicMetric)}</dd></div></dl>
@@ -857,7 +857,7 @@ export default function App({initialCase, initialRoute}: {initialCase: CaseData;
       {view !== "Landing" && <><nav className="view-nav" aria-label="Primary investment views">{primaryViews.map((item, index) => <button key={item} aria-current={view === item ? "page" : undefined} onClick={() => navigate(caseId, item)}><span>0{index + 1}</span>{primaryLabel[item] ?? item}</button>)}</nav><details className="evidence-menu" open={utilityViews.includes(view)}><summary>Evidence</summary><nav className="utility-nav" aria-label="Evidence and supporting views">{utilityViews.map((item) => <button key={item} aria-current={view === item ? "page" : undefined} onClick={() => navigate(caseId, item)}>{item}</button>)}</nav></details></>}
       <main id="workspace" tabIndex={-1} ref={workspaceRef}>
         {view === "Landing" && <Landing onOpen={(nextCase) => navigate(nextCase, "Overview")} />}
-        {view === "Overview" && <div className="view-stack"><section className="investment-question"><p className="kicker">Investment committee question</p><h2>{investmentQuestion(caseData)}</h2><p>{caseData.decision.rationale}</p><OverviewDecision caseData={caseData} /></section><DealContext caseData={caseData} /><AssumptionLab caseData={caseData} routeState={routeControls} onRouteState={(next) => navigate(caseId, view, null, {...routeControls, ...next})} /><DecisionWorkspace caseData={caseData} /><EmpiricalTestSpotlight caseData={caseData} openMetric={openRegisteredMetric} onNavigate={() => navigate(caseId, "Methodology", null, {section: `analysis-${caseData.caseId === "atlasgrid" ? "AG-07" : "HX-06"}`})} /><Snapshot caseData={caseData} openMetric={openRegisteredMetric} onNavigate={(nextView, section) => navigate(caseId, nextView, null, {section})} /></div>}
+        {view === "Overview" && <div className="view-stack"><section className="investment-question"><p className="kicker">Investment committee question</p><h2>{investmentQuestion(caseData)}</h2><p>{caseData.decision.rationale}</p><OverviewDecision caseData={caseData} /></section><DealContext caseData={caseData} /><AssumptionLab caseData={caseData} routeState={routeControls} onRouteState={(next) => navigate(caseId, view, null, {...routeControls, ...next})} />{caseData.vcEngine && <VCRiskAssumptionLab caseData={caseData} />}<DecisionWorkspace caseData={caseData} /><EmpiricalTestSpotlight caseData={caseData} openMetric={openRegisteredMetric} onNavigate={() => navigate(caseId, "Methodology", null, {section: `analysis-${caseData.caseId === "atlasgrid" ? "AG-07" : "HX-06"}`})} /><Snapshot caseData={caseData} openMetric={openRegisteredMetric} onNavigate={(nextView, section) => navigate(caseId, nextView, null, {section})} /></div>}
         {view === "Thesis" && <ThesisView caseData={caseData} />}
         {view === "Financials & Returns" && <UnderwritingRoom caseData={caseData} openMetric={openRegisteredMetric} routeState={routeControls} onRouteState={(next) => navigate(caseId, view, null, {...routeControls, ...next})} />}
         {view === "Risks & Diligence" && <RisksDiligence caseData={caseData} openMetric={openRegisteredMetric} onNavigate={(nextView, section) => navigate(caseId, nextView, null, {section})} />}

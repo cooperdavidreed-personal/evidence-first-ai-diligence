@@ -372,9 +372,38 @@ def test_distribution_replays_engine_paths_and_is_deterministic() -> None:
     )
     assert delayed.gross_xirr < base.gross_xirr
     assert first["template_weights"] == {"MILESTONE": "1"}
+    assert first["priors"]["continuous_exit_multiple_sigma"] == "0.32"
+    assert first["priors"]["exit_timing_delta_min_months"] == -12
+    assert first["priors"]["maximum_exit_month"] == 78
+    assert first["priors"]["operating_cash_factor_high"] == "1.12"
+    assert first["priors"]["maximum_liquidity_extension_months"] == 18
+    assert first["priors"]["input_classification"] == "ANALYST_SCENARIO_ASSUMPTION"
+    assert first["priors"]["approval_status"] == "UNREVIEWED"
     assert first["receipt_sha256"] == digest(
         {key: value for key, value in first.items() if key != "receipt_sha256"}
     )
+
+
+def test_distribution_catastrophe_prior_changes_retained_loss_frequency() -> None:
+    base = _run("MILESTONE")
+    low = simulate_vc_distribution(
+        base_result=base,
+        seed=41,
+        draws=500,
+        catastrophe_probability=Decimal("0.10"),
+        catastrophe_exit_multiple_low=Decimal("0"),
+        catastrophe_exit_multiple_high=Decimal("0.02"),
+    )
+    high = simulate_vc_distribution(
+        base_result=base,
+        seed=41,
+        draws=500,
+        catastrophe_probability=Decimal("0.30"),
+        catastrophe_exit_multiple_low=Decimal("0"),
+        catastrophe_exit_multiple_high=Decimal("0.02"),
+    )
+    assert Decimal(low["probability_below_one"]) < Decimal(high["probability_below_one"])
+    assert low["receipt_sha256"] != high["receipt_sha256"]
 
 
 def test_xirr_dynamically_brackets_venture_return() -> None:

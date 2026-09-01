@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dailyaiagents.com/schemas/underwriting-demo-review-v1.json",
+  "title": "Underwriting demo independent review",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "reviewer",
+    "source_commit",
+    "video_sha256",
+    "media_review_mode",
+    "verdict",
+    "summary",
+    "findings",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {"const": "underwriting.demo-review/v1"},
+    "reviewer": {"enum": ["CLAUDE", "CHATGPT", "GROK"]},
+    "source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "video_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "media_review_mode": {"enum": ["VIDEO_AND_AUDIO", "VIDEO_PLUS_TRANSCRIPT"]},
+    "verdict": {"enum": ["PASS", "QUALITY_SHORT"]},
+    "summary": {"type": "string", "minLength": 1},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "timestamp_seconds", "finding", "evidence", "recommended_change"],
+        "properties": {
+          "severity": {"enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]},
+          "timestamp_seconds": {"type": "number", "minimum": 0, "maximum": 90},
+          "finding": {"type": "string", "minLength": 1},
+          "evidence": {"type": "string", "minLength": 1},
+          "recommended_change": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "limitations": {"type": "array", "items": {"type": "string"}}
+  }
+}

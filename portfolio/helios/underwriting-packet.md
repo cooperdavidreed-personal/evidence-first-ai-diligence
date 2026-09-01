@@ -8,8 +8,8 @@
 
 ## Recommendation and executable terms
 
-Hold because the scenario-weighted probability below 1.0x is 20%, above the binding 10% maximum. The proposed milestone financing is a path to reconsideration, not a current investment recommendation.
-**Binding loss hurdle:** 20.0% versus <=10%; status Misses. The conditional posture is not funding approval while this test and the diligence gates remain open.
+Hold because, under the canonical unreviewed synthetic prior, 20.00% of retained paths fall below 1.0x versus the illustrative 10.00% policy maximum. This result is driven by the explicit catastrophe-state assumption; the proposed milestone financing is a path to reconsideration, not a current investment recommendation.
+**Binding loss hurdle:** 20.0% versus <= 10.0%; status Misses. The conditional posture is not funding approval while this test and the diligence gates remain open.
 
 | Term | Exact selected-case position |
 |---|---|
@@ -115,6 +115,11 @@ Declared scenario-state priors: Base 30.0%; Downside 15.0%; Financing Shortfall 
 - Probability below 1.0x: **20.0%** (Monte Carlo SE **1.26 pp**, 1,000 draws).
 - Sensitivity book: 14 full-engine cells across exit value, exit date, later-round price, and milestone state.
 
+### Risk policy and decision sensitivity
+
+Illustrative analyst-set loss maximum: maximum probability below 1.0x of 10.0%; state UNREVIEWED.
+6 retained risk-sensitivity cases are available for review.
+
 ## Value creation and board cadence
 
 Combined full-model impact: **$3M minimum cash**, **$3.4M Series C proceeds**, **0.3% gross XIRR**, including an explicit **$0 interaction residual**.
@@ -125,27 +130,13 @@ Combined full-model impact: **$3M minimum cash**, **$3.4M Series C proceeds**, *
 | Optimizer unit economics | Synthetic causal analysis plus scenario assumption | 70.61% / 74% | CTO | $53,661/month cash; $7.7M exit value; $2M cost | Provider price changes or workload mix invalidate transferred savings |
 | Enterprise sales governance | DESCRIPTIVE | 48 inflated opportunities / <15% forecast error | CRO / Finance | $0/month cash; $0 exit value; $1.2M cost | Enterprise cycle elongation remains unidentified |
 
-### Economic mapping register
-
-- **Ordinary-cohort expansion:** ordinary_base_arr_cents * max(0, target_nrr - observed_nrr) * gross_margin * 50% realization. Inputs: exit_multiple_on_annual_cash=10.0; gross_margin=0.7061223762551445; observed_nrr=1.1706504793654182; ordinary_base_arr_cents=3234114396; realization_factor=0.50; target_nrr=1.25
-- **Optimizer unit economics:** ltm_compute_cost_cents * (1 - exp(precommitted_unadjusted_optimizer_itt_log_points)) * adoption_rate. Inputs: adoption_rate=0.65; causal_boundary=Synthetic ITT identifies the planted test population only; adoption and valuation multiple remain scenario judgments.; exit_multiple_on_annual_cash=12.0; ltm_compute_cost_cents=1138084029; multiplicative_cost_savings_rate=0.08704747623808384; precommitted_unadjusted_optimizer_itt_log_points=-0.09107139999999998
-- **Enterprise sales governance:** zero_base_case_credit_until_stage_history_and_conversion_design_are_identified. Inputs: modeled_value_credit_cents=0
-
-| Phase | Timing | Owner | Milestone | KPI | Stop rule |
-|---|---|---|---|---|---|
-| Pre-close | Before signing | Deal lead | Verify cap table, preferences, side letters, and milestone definitions. | All financing operands reconciled | Do not fund with unresolved ownership or waterfall terms. |
-| Day 1 | Funding date | CEO / CFO | Lock usage-margin, runway, and ordinary-cohort definitions. | Signed operating metric dictionary | Do not release milestone capital on non-reconciled metrics. |
-| Day 30 | Close + 30 days | CFO | Install weekly runway and provider-cost forecast. | Cash, committed spend, gross margin | Escalate if runway falls below financing plan. |
-| Day 100 | Close + 100 days | CRO / CTO | Reconcile pipeline history and optimizer adoption economics. | Ordinary-cohort NRR, conversion, cost savings | Hold second tranche if milestones are not independently evidenced. |
-| Year 1 | Quarterly through month 12 | Board | Re-underwrite ownership, runway, and exit cases. | Dilution, runway, margin, milestone state | Replan financing before the declared runway floor. |
-
 ## Falsifiers, open diligence, and limitations
 
-- FALSIFIER: Ordinary-cohort NRR below 100%
-- FALSIFIER: Pipeline conversion below 20%
-- FALSIFIER: Gross margin below 65%
+- FALSIFIER: Ordinary-cohort NRR below 100.00%
+- FALSIFIER: Pipeline conversion below 20.00%
+- FALSIFIER: Gross margin below 65.00%
 - FALSIFIER: Runway below 12 months post-close
-- **Loss hurdle exceeds policy maximum** Owner: Deal lead. If unresolved: Hold. Do not revise the prior or hurdle after observing the failure; reconsider only after independent approval of an evidence-supported risk specification or replacement deterministic stress policy.
+- **Loss hurdle exceeds policy maximum** Owner: Illustrative investment committee. If unresolved: Hold under the canonical synthetic prior. Do not revise the prior or policy after observing the result; alternative values remain unreviewed what-if sensitivities.
 - **Reconcile pipeline stage history** Owner: Revenue operations diligence lead. If unresolved: Do not credit forecast conversion until the complete opportunity history is reconciled.
 - **Test ordinary-customer transferability** Owner: Commercial diligence lead. If unresolved: Remove pooled-retention credit if design-partner and ordinary-customer terms are not comparable.
 - **Reconcile provider unit costs** Owner: Technical and financial diligence leads. If unresolved: Do not release milestone capital until margin improvement ties to invoices and telemetry.

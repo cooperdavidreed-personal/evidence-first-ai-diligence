@@ -1,0 +1,21 @@
+{
+  "schema_version": "underwriting.demo-thumbnail-spec/v1",
+  "width": 1280,
+  "height": 720,
+  "source_frame": "01-atlasgrid-decision.png",
+  "eyebrow": "SYNTHETIC PE + VC UNDERWRITING",
+  "headline": "Evidence to decision",
+  "subhead": "Deterministic mechanics · human judgment",
+  "case_line": "AtlasGrid · REPRICE   /   Helios · HOLD",
+  "colors": {
+    "canvas": "#F7F4ED",
+    "graphite": "#20262B",
+    "cobalt": "#234FA4"
+  },
+  "prohibitions": [
+    "No AI art",
+    "No gradients or glow",
+    "No enterprise, adoption, or performance claim",
+    "No invented company or investment metric"
+  ]
+}

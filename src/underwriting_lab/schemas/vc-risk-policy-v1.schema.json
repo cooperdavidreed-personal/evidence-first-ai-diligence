@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dailyaiagents.dev/schemas/vc-risk-policy-v1.schema.json",
+  "title": "VC Risk Policy v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "classification", "owner", "approval_status", "loss_definition", "maximum_probability_below_one", "editable_maximum_probability_choices", "return_hurdles", "operating_hurdles", "falsifiers", "rationale", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "helios.risk-policy/v1"},
+    "classification": {"const": "ILLUSTRATIVE_ANALYST_POLICY_NOT_FIRM_POLICY"},
+    "owner": {"type": "string", "minLength": 1},
+    "approval_status": {"enum": ["UNREVIEWED", "APPROVED", "REJECTED"]},
+    "loss_definition": {"const": "gross_moic_below_1.0x"},
+    "maximum_probability_below_one": {"type": "string", "pattern": "^0\\.[0-9]+$"},
+    "editable_maximum_probability_choices": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "pattern": "^0\\.[0-9]+$"}},
+    "return_hurdles": {
+      "type": "object", "additionalProperties": false, "required": ["gross_xirr", "gross_moic"],
+      "properties": {"gross_xirr": {"type": "string"}, "gross_moic": {"type": "string"}}
+    },
+    "operating_hurdles": {
+      "type": "object", "additionalProperties": false, "required": ["ordinary_cohort_nrr", "gross_margin", "post_close_runway_months"],
+      "properties": {"ordinary_cohort_nrr": {"type": "string"}, "gross_margin": {"type": "string"}, "post_close_runway_months": {"type": "integer", "minimum": 1}}
+    },
+    "falsifiers": {
+      "type": "object", "additionalProperties": false, "required": ["ordinary_cohort_nrr", "pipeline_conversion", "gross_margin", "post_close_runway_months"],
+      "properties": {"ordinary_cohort_nrr": {"type": "string"}, "pipeline_conversion": {"type": "string"}, "gross_margin": {"type": "string"}, "post_close_runway_months": {"type": "integer", "minimum": 1}}
+    },
+    "rationale": {"type": "string", "minLength": 1},
+    "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

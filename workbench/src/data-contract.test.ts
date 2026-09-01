@@ -12,6 +12,7 @@ describe("workbench v2 data contract", () => {
     expect(atlasgrid?.renderManifest.formula_sample_metric_ids).toHaveLength(10);
     expect(helios?.renderManifest.formula_sample_metric_ids).toHaveLength(10);
     expect(helios?.vcEngine?.distribution.draws).toBe(1000);
+    expect(helios?.vcEngine?.risk_sensitivity.cells).toHaveLength(6);
   });
 
   it("fails closed when a formula output is tampered", () => {
@@ -44,6 +45,14 @@ describe("workbench v2 data contract", () => {
     const helios = candidate.cases.find((item) => item.caseId === "helios")!;
     helios.vcEngine!.milestone.pool_exit_treatment = "UNISSUED_CANCELLED";
     expect(() => assertWorkbenchData(candidate)).toThrow(/vc_primary_pool_exit_treatment_invalid/);
+  });
+
+  it("binds Helios risk policy to the canonical distribution and decision", () => {
+    const candidate: unknown = structuredClone(rawData);
+    assertWorkbenchData(candidate);
+    const helios = candidate.cases.find((item) => item.caseId === "helios")!;
+    helios.vcEngine!.risk_policy.maximum_probability_below_one = "0.20";
+    expect(() => assertWorkbenchData(candidate)).toThrow(/vc_sensitivity_posture_invalid|vc_risk_sensitivity_policy_binding|vc_risk_policy_decision/);
   });
 
   it("recomputes dated XIRR from every retained dated cash flow", () => {

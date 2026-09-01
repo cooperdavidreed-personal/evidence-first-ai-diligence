@@ -1030,7 +1030,7 @@ def build_case_metric_contract(
             "classification": "SCENARIO",
             "locator_ids": list(locators_by_analysis["HX-09"]),
             "receipt_sha256": distribution["receipt_sha256"],
-            "assumption_ids": ["vc-distribution-priors"],
+            "assumption_ids": ["vc-distribution-priors", "vc-risk-policy"],
             "downstream_ids": ["decision"],
         }
         vc_draw_count_id = "helios-distribution-draw-count"

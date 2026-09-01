@@ -397,6 +397,12 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         raise UnderwritingError("vc_distribution_priors_digest_mismatch")
     if priors.get("classification") != "SYNTHETIC_SCENARIO_NOT_FORECAST":
         raise UnderwritingError("vc_distribution_priors_classification_invalid")
+    if (
+        priors.get("input_classification") != "ANALYST_SCENARIO_ASSUMPTION"
+        or priors.get("approval_status") not in {"UNREVIEWED", "APPROVED", "REJECTED"}
+        or not priors.get("owner")
+    ):
+        raise UnderwritingError("vc_distribution_priors_governance_invalid")
     if distribution["base_result_receipt_sha256"] != engine["milestone"]["receipt_sha256"]:
         raise UnderwritingError("vc_distribution_base_binding_mismatch")
     template_weights = {
@@ -416,6 +422,61 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         expected = record_body.pop("receipt_sha256")
         if expected != digest(record_body):
             raise UnderwritingError("vc_distribution_path_digest_mismatch")
+    risk_policy = engine.get("risk_policy")
+    if not isinstance(risk_policy, dict):
+        raise UnderwritingError("vc_risk_policy_missing")
+    _validate_hashed_v2_document(risk_policy, "vc-risk-policy-v1.schema.json")
+    policy_threshold = Decimal(risk_policy["maximum_probability_below_one"])
+    policy_choices = [Decimal(value) for value in risk_policy["editable_maximum_probability_choices"]]
+    if not Decimal("0") <= policy_threshold <= Decimal("1") or policy_threshold not in policy_choices:
+        raise UnderwritingError("vc_risk_policy_threshold_invalid")
+    if any(value < 0 or value > 1 for value in policy_choices):
+        raise UnderwritingError("vc_risk_policy_choices_invalid")
+    risk_sensitivity = engine.get("risk_sensitivity")
+    if not isinstance(risk_sensitivity, dict):
+        raise UnderwritingError("vc_risk_sensitivity_missing")
+    _validate_hashed_v2_document(risk_sensitivity, "vc-risk-sensitivity-v1.schema.json")
+    if Decimal(risk_sensitivity["canonical_policy_threshold"]) != policy_threshold:
+        raise UnderwritingError("vc_risk_sensitivity_policy_binding_mismatch")
+    if [Decimal(value) for value in risk_sensitivity["policy_threshold_choices"]] != policy_choices:
+        raise UnderwritingError("vc_risk_sensitivity_policy_choices_mismatch")
+    risk_cells = risk_sensitivity["cells"]
+    if len({cell["cell_id"] for cell in risk_cells}) != len(risk_cells):
+        raise UnderwritingError("vc_risk_sensitivity_cell_duplicate")
+    canonical_cells = [cell for cell in risk_cells if cell["is_canonical"]]
+    if len(canonical_cells) != 1:
+        raise UnderwritingError("vc_risk_sensitivity_canonical_count_invalid")
+    canonical_risk_cell = canonical_cells[0]
+    if (
+        canonical_risk_cell["cell_id"] != risk_sensitivity["canonical_cell_id"]
+        or risk_sensitivity["default_cell_id"] != risk_sensitivity["canonical_cell_id"]
+        or Decimal(canonical_risk_cell["catastrophe_probability"])
+        != Decimal(priors["catastrophe_probability"])
+        or {key: Decimal(value) for key, value in canonical_risk_cell["template_weights"].items()}
+        != template_weights
+        or canonical_risk_cell["distribution_receipt_sha256"] != distribution["receipt_sha256"]
+        or Decimal(canonical_risk_cell["probability_below_one"])
+        != Decimal(distribution["probability_below_one"])
+    ):
+        raise UnderwritingError("vc_risk_sensitivity_canonical_binding_mismatch")
+    for cell in risk_cells:
+        body = dict(cell)
+        expected = body.pop("receipt_sha256")
+        if expected != digest(body):
+            raise UnderwritingError("vc_risk_sensitivity_cell_digest_mismatch")
+        weights = {key: Decimal(value) for key, value in cell["template_weights"].items()}
+        if set(weights) != set(template_weights) or any(value <= 0 for value in weights.values()) or sum(weights.values(), Decimal("0")) != Decimal("1"):
+            raise UnderwritingError("vc_risk_sensitivity_weights_invalid")
+        decomposition = cell["loss_decomposition"]
+        if decomposition["catastrophe_paths"] + decomposition["continuous_paths"] != cell["draws"]:
+            raise UnderwritingError("vc_risk_sensitivity_path_decomposition_mismatch")
+        loss_count = decomposition["catastrophe_loss_paths"] + decomposition["continuous_loss_paths"]
+        expected_probability = (Decimal(loss_count) / Decimal(cell["draws"])).quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN)
+        if Decimal(cell["probability_below_one"]) != expected_probability:
+            raise UnderwritingError("vc_risk_sensitivity_loss_decomposition_mismatch")
+        expected_status = "CLEARS" if expected_probability <= policy_threshold else "MISSES"
+        if cell["canonical_policy_status"] != expected_status or cell["analytical_posture"] != "HOLD":
+            raise UnderwritingError("vc_risk_sensitivity_posture_invalid")
     sensitivity = engine["sensitivities"]
     sensitivity_body = dict(sensitivity)
     sensitivity_sha256 = sensitivity_body.pop("receipt_sha256")
@@ -478,7 +539,8 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
             != enterprise_value + int(bridge["cash_at_exit_cents"])
         ):
             raise UnderwritingError("vc_sensitivity_operating_bridge_mismatch")
-        if cell.get("binding_loss_hurdle_status") != "MISSES" or cell.get("analytical_posture") != "HOLD":
+        expected_loss_status = "CLEARS" if Decimal(distribution["probability_below_one"]) <= policy_threshold else "MISSES"
+        if cell.get("binding_loss_hurdle_status") != expected_loss_status or cell.get("analytical_posture") != "HOLD":
             raise UnderwritingError("vc_sensitivity_binding_posture_invalid")
     quantile_indices = [
         int((Decimal(len(records) - 1) * probability).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN))
@@ -766,6 +828,20 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             expected_display += f" (MC SE {quantize(standard_error_pp)} pp)"
         if pair["observed"] != expected_display:
             raise UnderwritingError("decision_metric_display_mismatch")
+
+    if case.get("vcEngine"):
+        loss_pair = pairs_by_id.get("helios-hx-09-probability_below_1x")
+        if not loss_pair:
+            raise UnderwritingError("vc_risk_policy_decision_pair_missing")
+        expected_loss_threshold_percent = (
+            Decimal(case["vcEngine"]["risk_policy"]["maximum_probability_below_one"])
+            * Decimal(100)
+        )
+        if (
+            loss_pair["operator"] != "<="
+            or Decimal(loss_pair["threshold_value"]) != expected_loss_threshold_percent
+        ):
+            raise UnderwritingError("vc_risk_policy_decision_pair_mismatch")
 
     return_hurdles = [
         pair for pair in pairs_by_id.values()

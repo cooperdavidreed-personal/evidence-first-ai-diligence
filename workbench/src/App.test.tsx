@@ -49,7 +49,7 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
     );
     expect(screen.getByRole("heading", {name: "HOLD"})).toBeInTheDocument();
     expect(screen.getAllByText(/Requires investment committee approval/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/20%, above the binding 10% maximum/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/canonical unreviewed synthetic prior/).length).toBeGreaterThan(0);
   });
 
   it("reruns canonical PE and VC assumption cells from the overview", async () => {
@@ -72,6 +72,24 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
     expect(screen.getByText("36.6%")).toBeInTheDocument();
     expect(screen.getByText("4.3x")).toBeInTheDocument();
     expect(screen.getByText(/option pool modeled as fully granted common at exit/)).toBeInTheDocument();
+  });
+
+  it("recalculates a bounded local Helios working case without changing the canonical HOLD", async () => {
+    window.history.replaceState(null, "", "/#/v2/helios/overview");
+    const user = userEvent.setup();
+    render(<App />);
+    const growth = await screen.findByTestId("helios-assumption-growth");
+    const policy = screen.getByTestId("helios-policy-loss-maximum");
+    await user.clear(growth);
+    await user.type(growth, "30");
+    await user.clear(policy);
+    await user.type(policy, "8");
+    await user.click(screen.getByTestId("helios-recalculate-working-case"));
+    expect(screen.getByTestId("helios-working-change-record")).toHaveTextContent("Growth 48.0% → 30.0%");
+    expect(screen.getByTestId("helios-working-change-record")).toHaveTextContent("Loss ceiling 10.0% → 8.0%");
+    expect(screen.getByTestId("helios-working-case-status")).toHaveTextContent("HOLD");
+    expect(screen.getByTestId("helios-working-assumptions")).toHaveTextContent("milestone");
+    expect(screen.getByTestId("helios-working-assumptions")).toHaveTextContent("financing shortfall");
   });
 
   it("migrates legacy routes deterministically", async () => {

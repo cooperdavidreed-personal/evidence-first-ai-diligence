@@ -1,0 +1,126 @@
+{
+  "schema_version": "underwriting.demo-storyboard/v3",
+  "status": "SOURCE_TEMPLATE_READY_RENDER_NOT_RUN",
+  "target_duration_seconds": 86,
+  "allowed_duration_seconds": [75, 90],
+  "resolution": "1920x1080",
+  "fps": 30,
+  "capture": "REAL_LOCAL_WORKBENCH_INTERACTIONS",
+  "required_test_ids": [
+    "helios-working-assumptions",
+    "helios-assumption-growth",
+    "helios-policy-loss-maximum",
+    "helios-recalculate-working-case",
+    "helios-working-case-status",
+    "helios-working-change-record"
+  ],
+  "selector_expectations": {
+    "helios-working-assumptions": "Visible container for the editable working case; not the immutable canonical case.",
+    "helios-assumption-growth": "Editable numeric input in human percentage units; initial 48 and accepts 30.",
+    "helios-policy-loss-maximum": "Editable numeric input in human percentage units; initial 10 and accepts the stricter value 8.",
+    "helios-recalculate-working-case": "Ordinary button that deterministically recomputes the working case without changing canonical data or granting approval.",
+    "helios-working-case-status": "Visible result region containing HOLD after recomputation.",
+    "helios-working-change-record": "Visible audit delta containing 48.0% to 30.0% and 10.0% to 8.0%, with basis and human ownership."
+  },
+  "required_visible_claims": [
+    "SYNTHETIC",
+    "REPRICE",
+    "$210M recommended cap",
+    "5 issues block advancement",
+    "17.6%",
+    "23.3%",
+    "HOLD",
+    "20.00%",
+    "illustrative 10.00% policy maximum",
+    "48.0%",
+    "30.0%",
+    "10.0%",
+    "8.0%"
+  ],
+  "scenes": [
+    {
+      "id": "landing-boundary",
+      "start": 0,
+      "end": 8,
+      "route": "/",
+      "proof": "Two synthetic cases; no investment advice or autonomous judgment.",
+      "narration": "This is the Underwriting Intelligence Lab: two fully synthetic cases, built to show evidence-to-decision work—not investment advice or autonomous judgment."
+    },
+    {
+      "id": "atlasgrid-decision",
+      "start": 8,
+      "end": 17,
+      "route": "#/v2/atlasgrid/overview",
+      "proof": "REPRICE; $210M proposed cap; five unresolved advancement gates.",
+      "narration": "AtlasGrid begins where an investment committee begins: the question, the current REPRICE posture, the proposed $210 million cap, and five unresolved gates."
+    },
+    {
+      "id": "atlasgrid-returns",
+      "start": 17,
+      "end": 31,
+      "route": "#/v2/atlasgrid/financials",
+      "proof": "$240M ask misses; $210M selected case reaches 23.3% gross IRR; authority remains withheld.",
+      "narration": "The seller’s $240 million ask misses the declared return hurdle. Changing the entry assumption loads a complete deterministic case; at $210 million, gross IRR reaches 23.3 percent, but quantitative clearance does not grant approval."
+    },
+    {
+      "id": "atlasgrid-lineage",
+      "start": 31,
+      "end": 37,
+      "route": "#/v2/atlasgrid/financials",
+      "proof": "Business meaning, formula, operands, and retained synthetic source are visible in one drawer.",
+      "narration": "Open any important number to see its meaning, formula, operands, and retained synthetic source."
+    },
+    {
+      "id": "atlasgrid-packet",
+      "start": 37,
+      "end": 45,
+      "route": "#/v2/atlasgrid/memo",
+      "proof": "The partner-grade packet export is reachable from the decision memo.",
+      "narration": "The partner packet carries the same recommendation, downside, decision conditions, ownership plan, and appendix into an exportable committee artifact."
+    },
+    {
+      "id": "helios-decision",
+      "start": 45,
+      "end": 59,
+      "route": "#/v2/helios/overview",
+      "proof": "HOLD under the selected unreviewed synthetic prior because modeled loss frequency is 20% versus an illustrative analyst-set 10% maximum.",
+      "narration": "Helios applies the same discipline to venture financing. Point returns are attractive, yet the current call remains HOLD because the synthetic prior produces a 20 percent loss frequency, above the analyst-set 10 percent maximum."
+    },
+    {
+      "id": "helios-controls",
+      "start": 59,
+      "end": 77,
+      "route": "#/v2/helios/overview",
+      "proof": "A working-case change tightens the loss ceiling and recomputes deterministic ownership, runway, preference, and return outputs without changing human authority.",
+      "narration": "Assumptions and policy thresholds are editable in a working scenario, visibly classified, and never changed by a model. Alter growth, exit multiple, or the loss ceiling; the transaction engine recomputes ownership, runway, preferences, and returns, while the decision record preserves what changed and why."
+    },
+    {
+      "id": "decision-close",
+      "start": 77,
+      "end": 86,
+      "route": "#/v2/helios/memo",
+      "proof": "Evidence, economics, downside, judgment, and action end in a synthetic, human-owned decision record.",
+      "narration": "The result is not an AI answer. It is a reviewable underwriting system: evidence, economics, downside, judgment, and action—with synthetic limitations stated throughout."
+    }
+  ],
+  "expected_review_frames": [
+    "00-landing.png",
+    "01-atlasgrid-decision.png",
+    "02-atlasgrid-seller-ask.png",
+    "03-atlasgrid-selected.png",
+    "04-atlasgrid-lineage.png",
+    "05-atlasgrid-memo.png",
+    "06-atlasgrid-packet-export.png",
+    "07-helios-hold.png",
+    "08-helios-assumptions-before.png",
+    "09-helios-growth-edited.png",
+    "10-helios-recomputed-hold.png",
+    "11-helios-memo-close.png"
+  ],
+  "limitations": [
+    "Both cases and all company records are fictional and synthetic.",
+    "The film demonstrates deterministic local product behavior, not firm adoption, investment accuracy, confidential-data readiness, or investment authority.",
+    "The model does not approve assumptions, policy thresholds, transactions, or recommendations.",
+    "Provider narration is not valid until a governed ElevenLabs execution receipt is present and verified."
+  ]
+}

@@ -1333,6 +1333,7 @@ def _helios(
     team_diligence = read_json(root / artifacts["team-diligence"]["path"])
     market_assumptions = read_json(root / artifacts["market-assumptions"]["path"])
     venture_scenarios = read_json(root / artifacts["venture-scenarios"]["path"])
+    risk_policy = read_json(root / artifacts["risk-policy"]["path"])
     months = sorted({row["month"] for row in customers})
     base_month, end_month = months[-13], months[-1]
     base_rows = [row for row in customers if row["month"] == base_month and int(row["revenue_cents"]) > 0]
@@ -1524,9 +1525,25 @@ def _helios(
         catastrophe_probability=Decimal(venture_scenarios["catastrophe_probability"]),
         catastrophe_exit_multiple_low=Decimal(venture_scenarios["catastrophe_exit_multiple_low"]),
         catastrophe_exit_multiple_high=Decimal(venture_scenarios["catastrophe_exit_multiple_high"]),
+        continuous_exit_multiple_sigma=Decimal(venture_scenarios["continuous_exit_multiple_sigma"]),
+        exit_timing_mean_months=Decimal(venture_scenarios["exit_timing_mean_months"]),
+        exit_timing_sigma_months=Decimal(venture_scenarios["exit_timing_sigma_months"]),
+        exit_timing_delta_min_months=int(venture_scenarios["exit_timing_delta_min_months"]),
+        exit_timing_delta_max_months=int(venture_scenarios["exit_timing_delta_max_months"]),
+        minimum_exit_month=int(venture_scenarios["minimum_exit_month"]),
+        maximum_exit_month=int(venture_scenarios["maximum_exit_month"]),
+        operating_cash_factor_mean=Decimal(venture_scenarios["operating_cash_factor_mean"]),
+        operating_cash_factor_sigma=Decimal(venture_scenarios["operating_cash_factor_sigma"]),
+        operating_cash_factor_low=Decimal(venture_scenarios["operating_cash_factor_low"]),
+        operating_cash_factor_high=Decimal(venture_scenarios["operating_cash_factor_high"]),
+        shortfall_operating_cash_factor_high=Decimal(venture_scenarios["shortfall_operating_cash_factor_high"]),
+        maximum_liquidity_extension_months=int(venture_scenarios["maximum_liquidity_extension_months"]),
         loss_probability_band_low=Decimal(venture_scenarios["loss_probability_band_low"]),
         loss_probability_band_high=Decimal(venture_scenarios["loss_probability_band_high"]),
         prior_rationale=venture_scenarios["prior_rationale"],
+        prior_owner=venture_scenarios["prior_owner"],
+        prior_approval_status=venture_scenarios["prior_approval_status"],
+        prior_classification=venture_scenarios["prior_classification"],
     )
     moic_q = [Decimal(value) for value in vc_distribution["moic_quantiles"]]
     irr_q = [Decimal(value) for value in vc_distribution["xirr_quantiles"]]
@@ -1542,6 +1559,89 @@ def _helios(
         (three_x_probability * (Decimal(1) - three_x_probability) / Decimal(vc_distribution["draws"])).sqrt()
         * Decimal(100)
     )
+    canonical_policy_threshold = Decimal(risk_policy["maximum_probability_below_one"])
+    risk_sensitivity_cells: list[dict[str, Any]] = []
+    risk_configuration = venture_scenarios["risk_sensitivity"]
+    for profile in risk_configuration["scenario_weight_profiles"]:
+        profile_weights = {
+            key: Decimal(value) for key, value in profile["weights"].items()
+        }
+        for catastrophe_probability_text in risk_configuration["catastrophe_probabilities"]:
+            catastrophe_probability = Decimal(catastrophe_probability_text)
+            is_canonical = (
+                profile["profile_id"] == "BASELINE"
+                and catastrophe_probability
+                == Decimal(venture_scenarios["catastrophe_probability"])
+            )
+            distribution = vc_distribution if is_canonical else simulate_vc_distribution(
+                base_result=selected_vc,
+                scenario_results=tuple(scenario_results.values()),
+                seed=scenario_seed,
+                draws=int(venture_scenarios["draws"]),
+                scenario_weights=profile_weights,
+                exit_multiple_low=Decimal(venture_scenarios["exit_value_multiple_low"]),
+                exit_multiple_high=Decimal(venture_scenarios["exit_value_multiple_high"]),
+                catastrophe_probability=catastrophe_probability,
+                catastrophe_exit_multiple_low=Decimal(venture_scenarios["catastrophe_exit_multiple_low"]),
+                catastrophe_exit_multiple_high=Decimal(venture_scenarios["catastrophe_exit_multiple_high"]),
+                continuous_exit_multiple_sigma=Decimal(venture_scenarios["continuous_exit_multiple_sigma"]),
+                exit_timing_mean_months=Decimal(venture_scenarios["exit_timing_mean_months"]),
+                exit_timing_sigma_months=Decimal(venture_scenarios["exit_timing_sigma_months"]),
+                exit_timing_delta_min_months=int(venture_scenarios["exit_timing_delta_min_months"]),
+                exit_timing_delta_max_months=int(venture_scenarios["exit_timing_delta_max_months"]),
+                minimum_exit_month=int(venture_scenarios["minimum_exit_month"]),
+                maximum_exit_month=int(venture_scenarios["maximum_exit_month"]),
+                operating_cash_factor_mean=Decimal(venture_scenarios["operating_cash_factor_mean"]),
+                operating_cash_factor_sigma=Decimal(venture_scenarios["operating_cash_factor_sigma"]),
+                operating_cash_factor_low=Decimal(venture_scenarios["operating_cash_factor_low"]),
+                operating_cash_factor_high=Decimal(venture_scenarios["operating_cash_factor_high"]),
+                shortfall_operating_cash_factor_high=Decimal(venture_scenarios["shortfall_operating_cash_factor_high"]),
+                maximum_liquidity_extension_months=int(venture_scenarios["maximum_liquidity_extension_months"]),
+                prior_rationale=profile["rationale"],
+                prior_owner=venture_scenarios["prior_owner"],
+                prior_approval_status="UNREVIEWED",
+                prior_classification=venture_scenarios["prior_classification"],
+            )
+            cell_loss_probability = Decimal(distribution["probability_below_one"])
+            path_records = distribution["path_records"]
+            catastrophe_paths = [item for item in path_records if item["prior_state"] == "CATASTROPHE"]
+            continuous_paths = [item for item in path_records if item["prior_state"] == "CONTINUOUS"]
+            cell: dict[str, Any] = {
+                "cell_id": f"vc-risk-{profile['profile_id'].lower().replace('_', '-')}-cat-{int(catastrophe_probability * 100):02d}",
+                "profile_id": profile["profile_id"],
+                "profile_label": profile["label"],
+                "profile_rationale": profile["rationale"],
+                "template_weights": {key: format(value, "f") for key, value in profile_weights.items()},
+                "catastrophe_probability": format(catastrophe_probability, "f"),
+                "is_canonical": is_canonical,
+                "draws": distribution["draws"],
+                "probability_below_one": distribution["probability_below_one"],
+                "probability_below_one_monte_carlo_se_pp": distribution["probability_below_one_monte_carlo_se_pp"],
+                "moic_quantiles": distribution["moic_quantiles"],
+                "xirr_quantiles": distribution["xirr_quantiles"],
+                "distribution_receipt_sha256": distribution["receipt_sha256"],
+                "loss_decomposition": {
+                    "catastrophe_paths": len(catastrophe_paths),
+                    "catastrophe_loss_paths": sum(Decimal(item["gross_moic"]) < 1 for item in catastrophe_paths),
+                    "continuous_paths": len(continuous_paths),
+                    "continuous_loss_paths": sum(Decimal(item["gross_moic"]) < 1 for item in continuous_paths),
+                },
+                "canonical_policy_status": "CLEARS" if cell_loss_probability <= canonical_policy_threshold else "MISSES",
+                "analytical_posture": "HOLD",
+            }
+            cell["receipt_sha256"] = digest(cell)
+            risk_sensitivity_cells.append(cell)
+    canonical_risk_cell = next(item for item in risk_sensitivity_cells if item["is_canonical"])
+    risk_sensitivity: dict[str, Any] = {
+        "schema_version": "underwriting.vc-risk-sensitivity/v1",
+        "classification": "SYNTHETIC_SCENARIO_NOT_FORECAST",
+        "canonical_cell_id": canonical_risk_cell["cell_id"],
+        "default_cell_id": canonical_risk_cell["cell_id"],
+        "policy_threshold_choices": risk_policy["editable_maximum_probability_choices"],
+        "canonical_policy_threshold": risk_policy["maximum_probability_below_one"],
+        "cells": risk_sensitivity_cells,
+    }
+    risk_sensitivity["receipt_sha256"] = digest(risk_sensitivity)
     selected_exit_bridge = selected_vc.assumptions.exit_valuation
     if selected_exit_bridge is None:
         raise UnderwritingError("vc_selected_exit_bridge_missing")
@@ -1592,11 +1692,13 @@ def _helios(
             "operating_exit_bridge": dict(result.assumptions.exit_valuation or {}),
             "point_return_hurdle_status": (
                 "CLEARS"
-                if result.gross_xirr >= Decimal("0.30")
-                and result.gross_moic >= Decimal("3.0")
+                if result.gross_xirr >= Decimal(risk_policy["return_hurdles"]["gross_xirr"])
+                and result.gross_moic >= Decimal(risk_policy["return_hurdles"]["gross_moic"])
                 else "MISSES"
             ),
-            "binding_loss_hurdle_status": "MISSES",
+            "binding_loss_hurdle_status": (
+                "CLEARS" if loss_probability <= canonical_policy_threshold else "MISSES"
+            ),
             "analytical_posture": "HOLD",
         }
         body["receipt_sha256"] = digest(body)
@@ -1660,26 +1762,33 @@ def _helios(
         )
 
     operating_base = selected_vc.assumptions
-    for annual_growth in (Decimal("0.30"), Decimal("0.48"), Decimal("0.60")):
+    operating_sensitivity_values = risk_configuration["operating_sensitivity_values"]
+    annual_growth_values = tuple(Decimal(value) for value in operating_sensitivity_values["annual_revenue_growth"])
+    for annual_growth in annual_growth_values:
         add_vc_sensitivity(
             "annual_revenue_growth",
             f"{quantize(annual_growth * 100, '0.1')}% annual growth",
             format(annual_growth, "f"),
             operating_exit_assumptions(operating_base, annual_growth=annual_growth),
             baseline_scenario_id="MILESTONE",
-            is_baseline=annual_growth == Decimal("0.48"),
+            is_baseline=annual_growth == Decimal(str(selected_exit_bridge["annual_revenue_growth"])),
         )
-    for exit_multiple in (Decimal("3.0"), Decimal("4.0"), Decimal("5.0")):
+    exit_multiple_values = tuple(Decimal(value) for value in operating_sensitivity_values["exit_revenue_multiple"])
+    for exit_multiple in exit_multiple_values:
         add_vc_sensitivity(
             "exit_revenue_multiple",
             f"{quantize(exit_multiple, '0.1')}x revenue",
             format(exit_multiple, "f"),
             operating_exit_assumptions(operating_base, exit_multiple=exit_multiple),
             baseline_scenario_id="MILESTONE",
-            is_baseline=exit_multiple == Decimal("4.0"),
+            is_baseline=exit_multiple == Decimal(str(selected_exit_bridge["exit_revenue_multiple"])),
         )
     baseline_nrr = Decimal(str(ordinary_nrr))
-    for nrr_target in (Decimal("1.05"), baseline_nrr, Decimal("1.25")):
+    for nrr_target in (
+        Decimal(operating_sensitivity_values["ordinary_cohort_nrr_floor"]),
+        baseline_nrr,
+        Decimal(operating_sensitivity_values["ordinary_cohort_nrr_upside"]),
+    ):
         add_vc_sensitivity(
             "ordinary_cohort_nrr",
             f"{quantize(nrr_target * 100, '0.1')}% ordinary-cohort NRR",
@@ -1689,7 +1798,12 @@ def _helios(
             is_baseline=nrr_target == baseline_nrr,
         )
     later_round_base = scenario_results["BASE"].assumptions
-    for pre_money in (30_000_000_000, 45_000_000_000, 60_000_000_000):
+    baseline_later_round_price = next(
+        int(event.pre_money_cents)
+        for event in later_round_base.events
+        if event.event_id == "series-d-base" and event.pre_money_cents is not None
+    )
+    for pre_money in tuple(int(value) for value in operating_sensitivity_values["later_round_pre_money_cents"]):
         events = tuple(
             replace(event, pre_money_cents=pre_money)
             if event.event_id == "series-d-base"
@@ -1702,9 +1816,11 @@ def _helios(
             str(pre_money),
             operating_exit_assumptions(replace(later_round_base, events=events)),
             baseline_scenario_id="BASE",
-            is_baseline=pre_money == 45_000_000_000,
+            is_baseline=pre_money == baseline_later_round_price,
         )
-    for state, scenario_key in (("FAIL", "BASE"), ("PASS", "MILESTONE")):
+    scenario_by_milestone_state = {"FAIL": "BASE", "PASS": "MILESTONE"}
+    for state in operating_sensitivity_values["milestone_states"]:
+        scenario_key = scenario_by_milestone_state[state]
         add_vc_sensitivity(
             "milestone_state",
             state,
@@ -2031,7 +2147,7 @@ def _helios(
             classification="SCENARIO",
             method="1,000 seeded full financing-ledger, cash-path, exact-waterfall, MOIC, and dated-XIRR reruns",
             population="Declared synthetic venture scenario distribution",
-            inputs=[_input(artifacts["cap-table"]), _input(artifacts["financing-plan"]), _input(artifacts["venture-scenarios"]), _input(artifacts["team-diligence"])],
+            inputs=[_input(artifacts["cap-table"]), _input(artifacts["financing-plan"]), _input(artifacts["venture-scenarios"]), _input(artifacts["risk-policy"]), _input(artifacts["team-diligence"])],
             outputs=[_output("p10_moic", quantize(moic_q[0]), "multiple"), _output("p50_moic", quantize(moic_q[1]), "multiple"), _output("p90_moic", quantize(moic_q[2]), "multiple"), _output("p10_xirr", quantize(irr_q[0] * 100), "percent"), _output("p50_xirr", quantize(irr_q[1] * 100), "percent"), _output("p90_xirr", quantize(irr_q[2] * 100), "percent"), _output("probability_below_1x", quantize(loss_probability * 100), "percent"), _output("probability_at_least_3x", quantize(three_x_probability * 100), "percent"), _output("selected_ltm_revenue_cents", selected_exit_bridge["observed_ltm_revenue_cents"], "cents"), _output("selected_terminal_revenue_cents", selected_exit_bridge["terminal_revenue_cents"], "cents"), _output("selected_exit_revenue_multiple", selected_exit_bridge["exit_revenue_multiple"], "multiple"), _output("selected_exit_equity_value_cents", selected_exit_bridge["exit_equity_value_cents"], "cents")],
             assumptions=["Scenario-state weights, exit value, exit timing, and operating-cash factors are disclosed conditional priors; every retained path replays financing events and the exact legal waterfall.", "Each scenario exit equity value is derived from observed LTM revenue, a declared five-year annual growth rate, a declared revenue multiple, and modeled exit cash; the full operating cash ledger determines negative net debt."],
             diagnostics=[_diagnostic("draws", vc_distribution["draws"]), _diagnostic("loss_probability_monte_carlo_se_pp", quantize(loss_probability_mce_pp), "REPORTED"), _diagnostic("three_x_probability_monte_carlo_se_pp", quantize(three_x_probability_mce_pp), "REPORTED"), _diagnostic("operating_exit_bridge", "ltm_revenue_x_growth_x_revenue_multiple_less_net_debt", "PASS"), _diagnostic("ordered_moic_quantiles", "true", "PASS" if moic_q[0] <= moic_q[1] <= moic_q[2] else "FAIL"), _diagnostic("ordered_xirr_quantiles", "true", "PASS" if irr_q[0] <= irr_q[1] <= irr_q[2] else "FAIL"), _diagnostic("waterfall_conservation_max_error_cents", 0, "PASS"), _diagnostic("xirr_npv_residual_max_cents", quantize(max(item.xirr_npv_residual_cents for item in scenario_results.values())), "PASS")],
@@ -2084,31 +2200,42 @@ def _helios(
         lineage_item(node_id="hx-pipeline", label="Pipeline stage-history audit", artifact_id="stage-history", field="opportunity_id,observation_index,stage", analysis_id="HX-04", output_names=["inflated_opportunities", "weighted_pipeline_inflation", "weighted_pipeline_inflation_cents"], transformation="Compare reported stage with the latest eligible history, then reweight using declared probabilities", downstream="Milestone financing and forecast governance"),
         lineage_item(node_id="hx-optimizer", label="Optimizer randomized test", artifact_id="optimizer-experiment", field="customer_id,treatment,baseline_log_cost,outcome_log_cost_change", analysis_id="HX-06", output_names=["optimizer_ate", "optimizer_baseline_adjusted_companion"], transformation="Use the precommitted unadjusted randomized ITT for recovery and economic mapping; show baseline adjustment only as a labeled precision companion", downstream="Optimizer replication milestone and scenario-limited unit-economics mapping"),
         lineage_item(node_id="hx-ownership", label="Series C ownership", artifact_id="financing-plan", field="scenario_books[*].events,event_id,class_id,pre_money_cents,pool_target", analysis_id="HX-08", output_names=["first_close_new_shares", "fully_funded_series_c_ownership"], transformation="Event-ordered integer-share capitalization with exact rational price and option-pool refresh", downstream="First-close and fully funded ownership"),
-        lineage_item(node_id="hx-return", label="Series C return distribution", artifact_id="venture-scenarios", field="draws,scenario_state_weights,exit_value_multiple_low,exit_value_multiple_high,path_method", analysis_id="HX-09", output_names=["p10_moic", "p50_moic", "p90_moic", "p10_xirr", "p50_xirr", "p90_xirr", "probability_below_1x", "probability_at_least_3x"], transformation="One-thousand seeded full event-ledger, waterfall, MOIC, and dated-XIRR reruns under four visible scenario-state priors", downstream="Conditional venture outcome range; not a forecast"),
+        lineage_item(node_id="hx-return", label="Series C return distribution", artifact_id="venture-scenarios", field="all declared scenario weights, catastrophe/continuous exit priors, timing bounds, operating-cash perturbations, and sensitivity ranges", analysis_id="HX-09", output_names=["p10_moic", "p50_moic", "p90_moic", "p10_xirr", "p50_xirr", "p90_xirr", "probability_below_1x", "probability_at_least_3x"], transformation="One-thousand seeded full event-ledger, waterfall, MOIC, and dated-XIRR reruns under source-bound analyst scenario priors", downstream="Conditional venture outcome range; not a forecast"),
+        lineage_item(node_id="hx-risk-policy", label="Illustrative risk policy", artifact_id="risk-policy", field="loss definition, maximum probability below 1.0x, operating and return hurdles, falsifiers, owner, and approval status", analysis_id="HX-09", output_names=["probability_below_1x"], transformation="Compare the retained conditional loss frequency with a separately declared illustrative analyst-policy maximum", downstream="Quantitative hurdle state; never investment authorization"),
         lineage_item(node_id="hx-team", label="Role-level team diligence", artifact_id="team-diligence", field="roles[*].role,strength,gap,evidence_state,financing_consequence", analysis_id="HX-09", output_names=["p50_moic"], transformation="Role-specific evidence-state and financing-consequence register", downstream="Closing conditions and board ownership"),
     ]
+    operating_policy = risk_policy["operating_hurdles"]
+    return_policy = risk_policy["return_hurdles"]
+    nrr_hurdle_pct = Decimal(operating_policy["ordinary_cohort_nrr"]) * 100
+    margin_hurdle_pct = Decimal(operating_policy["gross_margin"]) * 100
+    runway_hurdle = Decimal(operating_policy["post_close_runway_months"])
+    xirr_hurdle = Decimal(return_policy["gross_xirr"])
+    moic_hurdle = Decimal(return_policy["gross_moic"])
+    loss_hurdle_pct = canonical_policy_threshold * 100
+    loss_probability_pct = loss_probability * 100
+    loss_hurdle_misses = loss_probability > canonical_policy_threshold
     metric_pairs = [
-        _decision_pair(metric="Ordinary-cohort NRR", metric_id="helios-hx-02-ordinary_nrr", operator=">=", threshold=">=105%", threshold_value="105", observed=f"{quantize(ordinary_nrr * 100)}%", observed_value=quantize(ordinary_nrr * 100)),
-        _decision_pair(metric="Gross margin", metric_id="helios-hx-01-gross_margin", operator=">=", threshold=">=70%", threshold_value="70", observed=f"{quantize(gross_margin * 100)}%", observed_value=quantize(gross_margin * 100)),
-        _decision_pair(metric="Post-close runway", metric_id="helios-hx-03-post_close_runway_floor", operator=">=", threshold=">=18 months", threshold_value="18", observed=f">={quantize(post_close_runway_floor)} modeled months", observed_value=post_close_runway_floor),
-        _decision_pair(metric="Milestone · Series C gross XIRR", metric_id="helios-MILESTONE-gross-xirr", operator=">=", threshold=">=30%", threshold_value="0.30", observed=f"{quantize(selected_vc.gross_xirr * 100)}%", observed_value=selected_vc.gross_xirr),
-        _decision_pair(metric="Series C gross MOIC", metric_id="helios-MILESTONE-gross-moic", operator=">=", threshold=">=3.0x", threshold_value="3.0", observed=f"{quantize(selected_vc.gross_moic)}x", observed_value=selected_vc.gross_moic),
-        _decision_pair(metric="Modeled loss probability", metric_id="helios-hx-09-probability_below_1x", operator="<=", threshold="<=10%", threshold_value="10", observed=f"{quantize(loss_probability * 100)}% (MC SE {quantize(loss_probability_mce_pp)} pp)", observed_value=quantize(loss_probability * 100)),
+        _decision_pair(metric="Ordinary-cohort NRR", metric_id="helios-hx-02-ordinary_nrr", operator=">=", threshold=f">={quantize(nrr_hurdle_pct)}%", threshold_value=quantize(nrr_hurdle_pct), observed=f"{quantize(ordinary_nrr * 100)}%", observed_value=quantize(ordinary_nrr * 100)),
+        _decision_pair(metric="Gross margin", metric_id="helios-hx-01-gross_margin", operator=">=", threshold=f">={quantize(margin_hurdle_pct)}%", threshold_value=quantize(margin_hurdle_pct), observed=f"{quantize(gross_margin * 100)}%", observed_value=quantize(gross_margin * 100)),
+        _decision_pair(metric="Post-close runway", metric_id="helios-hx-03-post_close_runway_floor", operator=">=", threshold=f">={format(runway_hurdle, 'f')} months", threshold_value=format(runway_hurdle, "f"), observed=f">={quantize(post_close_runway_floor)} modeled months", observed_value=post_close_runway_floor),
+        _decision_pair(metric="Milestone · Series C gross XIRR", metric_id="helios-MILESTONE-gross-xirr", operator=">=", threshold=f">={quantize(xirr_hurdle * 100)}%", threshold_value=format(xirr_hurdle, "f"), observed=f"{quantize(selected_vc.gross_xirr * 100)}%", observed_value=selected_vc.gross_xirr),
+        _decision_pair(metric="Series C gross MOIC", metric_id="helios-MILESTONE-gross-moic", operator=">=", threshold=f">={format(moic_hurdle, 'f')}x", threshold_value=format(moic_hurdle, "f"), observed=f"{quantize(selected_vc.gross_moic)}x", observed_value=selected_vc.gross_moic),
+        _decision_pair(metric="Modeled loss probability", metric_id="helios-hx-09-probability_below_1x", operator="<=", threshold=f"<={quantize(loss_hurdle_pct)}%", threshold_value=quantize(loss_hurdle_pct), observed=f"{quantize(loss_probability_pct)}% (MC SE {quantize(loss_probability_mce_pp)} pp)", observed_value=quantize(loss_probability_pct)),
     ]
     condition_states = [
-        _condition_state(condition_id="hx-ordinary-nrr", text="Ordinary-cohort NRR at or above 105%", metric_pairs=metric_pairs, metric_ids=("helios-hx-02-ordinary_nrr",)),
-        _condition_state(condition_id="hx-gross-margin", text="Gross margin at or above 70%", metric_pairs=metric_pairs, metric_ids=("helios-hx-01-gross_margin",)),
-        _condition_state(condition_id="hx-milestone-return", text="Milestone case gross XIRR at or above 30% and gross MOIC at or above 3.0x", metric_pairs=metric_pairs, metric_ids=("helios-MILESTONE-gross-xirr", "helios-MILESTONE-gross-moic")),
-        _condition_state(condition_id="hx-loss-range", text="Modeled probability below 1.0x at or below 10%", metric_pairs=metric_pairs, metric_ids=("helios-hx-09-probability_below_1x",)),
+        _condition_state(condition_id="hx-ordinary-nrr", text=f"Ordinary-cohort NRR at or above {quantize(nrr_hurdle_pct)}%", metric_pairs=metric_pairs, metric_ids=("helios-hx-02-ordinary_nrr",)),
+        _condition_state(condition_id="hx-gross-margin", text=f"Gross margin at or above {quantize(margin_hurdle_pct)}%", metric_pairs=metric_pairs, metric_ids=("helios-hx-01-gross_margin",)),
+        _condition_state(condition_id="hx-milestone-return", text=f"Milestone case gross XIRR at or above {quantize(xirr_hurdle * 100)}% and gross MOIC at or above {format(moic_hurdle, 'f')}x", metric_pairs=metric_pairs, metric_ids=("helios-MILESTONE-gross-xirr", "helios-MILESTONE-gross-moic")),
+        _condition_state(condition_id="hx-loss-range", text=f"Modeled probability below 1.0x at or below {quantize(loss_hurdle_pct)}%", metric_pairs=metric_pairs, metric_ids=("helios-hx-09-probability_below_1x",)),
         _condition_state(condition_id="hx-pipeline-history", text="Pipeline stage-history audit complete", metric_pairs=metric_pairs),
         _condition_state(condition_id="hx-optimizer-replication", text="Optimizer RCT effect replicated", metric_pairs=metric_pairs),
         _condition_state(condition_id="hx-design-partner-transferability", text="Ordinary-customer contract and renewal terms are comparable", metric_pairs=metric_pairs),
         _condition_state(condition_id="hx-unit-cost-reconciliation", text="Provider unit costs reconcile to invoices and telemetry", metric_pairs=metric_pairs),
         _condition_state(condition_id="hx-executed-terms", text="Executed financing terms and waterfall reconcile", metric_pairs=metric_pairs),
-        _condition_state(condition_id="hx-runway", text="At least 18 modeled months post-close runway", metric_pairs=metric_pairs, metric_ids=("helios-hx-03-post_close_runway_floor",)),
+        _condition_state(condition_id="hx-runway", text=f"At least {format(runway_hurdle, 'f')} modeled months post-close runway", metric_pairs=metric_pairs, metric_ids=("helios-hx-03-post_close_runway_floor",)),
     ]
     issue_summary = _issue_summary([
-        {"issue_id": "HX-H01", "title": "Loss hurdle exceeds policy maximum", "owner": "Deal lead", "stage": "PRE_IC", "materiality": "CRITICAL", "kind": "QUANTITATIVE_HURDLE", "state": "FAILED", "blocks_advancement": True, "consequence": "Hold. Do not revise the prior or hurdle after observing the failure; reconsider only after independent approval of an evidence-supported risk specification or replacement deterministic stress policy.", "linked_condition_ids": ["hx-loss-range"], "evidence_state": "PRESENT", "evidence_metric_ids": ["helios-hx-09-probability_below_1x"], "analysis_ids": ["HX-09"], "source_locator_ids": [], "consequence_target": "sensitivity"},
+        {"issue_id": "HX-H01", "title": "Loss hurdle exceeds policy maximum" if loss_hurdle_misses else "Loss hurdle clears quantitatively", "owner": "Illustrative investment committee", "stage": "PRE_IC", "materiality": "CRITICAL", "kind": "QUANTITATIVE_HURDLE", "state": "FAILED" if loss_hurdle_misses else "CLEARED", "blocks_advancement": loss_hurdle_misses, "consequence": "Hold under the canonical synthetic prior. Do not revise the prior or policy after observing the result; alternative values remain unreviewed what-if sensitivities." if loss_hurdle_misses else "The quantitative loss test clears, but unresolved diligence and human investment committee approval still block funding.", "linked_condition_ids": ["hx-loss-range"], "evidence_state": "PRESENT", "evidence_metric_ids": ["helios-hx-09-probability_below_1x"], "analysis_ids": ["HX-09"], "source_locator_ids": ["locator-hx-09-risk-policy"], "consequence_target": "sensitivity"},
         {"issue_id": "HX-D01", "title": "Reconcile pipeline stage history", "owner": "Revenue operations diligence lead", "stage": "PRE_IC", "materiality": "HIGH", "kind": "DILIGENCE", "state": "OPEN", "blocks_advancement": True, "consequence": "Do not credit forecast conversion until the complete opportunity history is reconciled.", "linked_condition_ids": ["hx-pipeline-history"], "evidence_state": "PARTIAL", "evidence_metric_ids": ["helios-hx-04-inflated_opportunities"], "analysis_ids": ["HX-04"], "source_locator_ids": [], "consequence_target": "sensitivity"},
         {"issue_id": "HX-D02", "title": "Test ordinary-customer transferability", "owner": "Commercial diligence lead", "stage": "PRE_SIGNING", "materiality": "HIGH", "kind": "DILIGENCE", "state": "OPEN", "blocks_advancement": True, "consequence": "Remove pooled-retention credit if design-partner and ordinary-customer terms are not comparable.", "linked_condition_ids": ["hx-design-partner-transferability"], "evidence_state": "PARTIAL", "evidence_metric_ids": ["helios-hx-02-ordinary_nrr"], "analysis_ids": ["HX-02"], "source_locator_ids": [], "consequence_target": "sensitivity"},
         {"issue_id": "HX-D03", "title": "Reconcile provider unit costs", "owner": "Technical and financial diligence leads", "stage": "PRE_IC", "materiality": "CRITICAL", "kind": "DILIGENCE", "state": "OPEN", "blocks_advancement": True, "consequence": "Do not release milestone capital until margin improvement ties to invoices and telemetry.", "linked_condition_ids": ["hx-unit-cost-reconciliation"], "evidence_state": "PARTIAL", "evidence_metric_ids": ["helios-hx-01-gross_margin"], "analysis_ids": ["HX-01", "HX-06"], "source_locator_ids": [], "consequence_target": "cash"},
@@ -2122,12 +2249,12 @@ def _helios(
         "status": "DECISION_RECORD_INCOMPLETE",
         "signature_status": "PENDING_FOUNDER_SIGNATURE",
         "as_of": CUTOFF,
-        "rationale": "Hold because the scenario-weighted probability below 1.0x is 20%, above the binding 10% maximum. The proposed milestone financing is a path to reconsideration, not a current investment recommendation.",
+        "rationale": f"Hold because, under the canonical unreviewed synthetic prior, {quantize(loss_probability_pct)}% of retained paths fall below 1.0x versus the illustrative {quantize(loss_hurdle_pct)}% policy maximum. This result is driven by the explicit catastrophe-state assumption; the proposed milestone financing is a path to reconsideration, not a current investment recommendation.",
         "conditions": [item["text"] for item in condition_states],
         "condition_states": condition_states,
         "open_conditions": _open_condition_count(condition_states),
         "issue_summary": issue_summary,
-        "terms": ["No capital deployment while the binding loss hurdle remains failed"],
+        "terms": ["No capital deployment while the canonical loss hurdle or any required diligence condition remains unresolved"],
         "path_to_yes": ["Illustrative $25M first close + $15M conditional tranche", "$160M pre-money; 12% post-financing unissued pool", "1x non-participating Series C; pre-money holders bear pool refresh", "Reopen only after an independently approved risk specification or replacement deterministic stress policy"],
         "metric_pairs": metric_pairs,
         "verification_sources": ["HX-01", "HX-02", "HX-03", "HX-04", "HX-06", "HX-09"],
@@ -2165,7 +2292,12 @@ def _helios(
             "statement": "Helios can become the system of control for volatile enterprise GPU spend if ordinary cohorts retain and optimizer savings translate into durable platform economics.",
             "counterthesis": "Design-partner selection, inflated pipeline, cloud-cost exposure, and preference-heavy outcomes may make growth and TAM appear more durable than they are.",
             "drivers": ["Usage-linked expansion", "Measured optimizer efficiency", "Large but tier-uncertain spend universe", "Gross-margin progression with scale"],
-            "falsifiers": ["Ordinary-cohort NRR below 100%", "Pipeline conversion below 20%", "Gross margin below 65%", "Runway below 12 months post-close"],
+            "falsifiers": [
+                f"Ordinary-cohort NRR below {quantize(Decimal(risk_policy['falsifiers']['ordinary_cohort_nrr']) * 100)}%",
+                f"Pipeline conversion below {quantize(Decimal(risk_policy['falsifiers']['pipeline_conversion']) * 100)}%",
+                f"Gross margin below {quantize(Decimal(risk_policy['falsifiers']['gross_margin']) * 100)}%",
+                f"Runway below {format(Decimal(risk_policy['falsifiers']['post_close_runway_months']), 'f')} months post-close",
+            ],
             "requests": [{"request_id": item["issue_id"], "request": item["title"], "owner": item["owner"], "due_state": item["stage"], "materiality": item["materiality"], "decision_consequence": item["consequence"]} for item in issue_summary["issues"]],
         },
         "chartRegistry": [
@@ -2188,10 +2320,10 @@ def _helios(
             {"phase": "Year 1", "timing": "Quarterly through month 12", "owner": "Board", "milestone": "Re-underwrite ownership, runway, and exit cases.", "kpi": "Dilution, runway, margin, milestone state", "stop_rule": "Replan financing before the declared runway floor."},
         ],
         "falsifierStates": [
-            {"label": "Ordinary-cohort NRR below 100%", "status": "CLEAR" if ordinary_nrr >= 1 else "TRIGGERED", "observed": f"{quantize(ordinary_nrr * 100)}%", "lineage": ["hx-nrr"]},
-            {"label": "Pipeline conversion below 20%", "status": "OPEN", "observed": "Stage-history audit flags inflation; conversion not matured", "lineage": ["hx-pipeline"]},
-            {"label": "Gross margin below 65%", "status": "CLEAR" if gross_margin >= 0.65 else "TRIGGERED", "observed": f"{quantize(gross_margin * 100)}%", "lineage": ["hx-margin"]},
-            {"label": "Runway below 12 months post-close", "status": "CLEAR" if post_close_runway_floor >= 12 else "TRIGGERED", "observed": f">={quantize(post_close_runway_floor)} modeled months", "lineage": ["hx-runway"]},
+            {"label": f"Ordinary-cohort NRR below {quantize(Decimal(risk_policy['falsifiers']['ordinary_cohort_nrr']) * 100)}%", "status": "CLEAR" if ordinary_nrr >= Decimal(risk_policy["falsifiers"]["ordinary_cohort_nrr"]) else "TRIGGERED", "observed": f"{quantize(ordinary_nrr * 100)}%", "lineage": ["hx-nrr", "hx-risk-policy"]},
+            {"label": f"Pipeline conversion below {quantize(Decimal(risk_policy['falsifiers']['pipeline_conversion']) * 100)}%", "status": "OPEN", "observed": "Stage-history audit flags inflation; conversion not matured", "lineage": ["hx-pipeline", "hx-risk-policy"]},
+            {"label": f"Gross margin below {quantize(Decimal(risk_policy['falsifiers']['gross_margin']) * 100)}%", "status": "CLEAR" if gross_margin >= Decimal(risk_policy["falsifiers"]["gross_margin"]) else "TRIGGERED", "observed": f"{quantize(gross_margin * 100)}%", "lineage": ["hx-margin", "hx-risk-policy"]},
+            {"label": f"Runway below {format(Decimal(risk_policy['falsifiers']['post_close_runway_months']), 'f')} months post-close", "status": "CLEAR" if post_close_runway_floor >= Decimal(risk_policy["falsifiers"]["post_close_runway_months"]) else "TRIGGERED", "observed": f">={quantize(post_close_runway_floor)} modeled months", "lineage": ["hx-runway", "hx-risk-policy"]},
         ],
         "analyses": receipts,
         "distributionLineage": "hx-return",
@@ -2208,6 +2340,8 @@ def _helios(
             "downside": scenario_results["DOWNSIDE"].receipt(),
             "financing_shortfall": scenario_results["FINANCING_SHORTFALL"].receipt(),
             "distribution": vc_distribution,
+            "risk_policy": risk_policy,
+            "risk_sensitivity": risk_sensitivity,
             "sensitivities": vc_sensitivity_book,
             "milestone_contract": financing_plan["milestone_contract"],
             "exit_value_basis": financing_plan["exit_value_basis"],

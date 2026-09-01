@@ -18,19 +18,40 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
     artifacts = build_ic_packet_from_case(case, tmp_path / "packet")
     repeated = build_ic_packet_from_case(case, tmp_path / "packet-repeat")
     for artifact_name in artifacts:
-        assert artifacts[artifact_name].read_bytes() == repeated[artifact_name].read_bytes()
+        assert (
+            artifacts[artifact_name].read_bytes()
+            == repeated[artifact_name].read_bytes()
+        )
     packet = json.loads(artifacts["appendix"].read_text(encoding="utf-8"))
     packet_body = dict(packet)
     packet_digest = packet_body.pop("packet_sha256")
     assert packet_digest == digest(packet_body)
     assert packet["analysis_sha256"] == case["analysis_sha256"]
+    if "vcEngine" in case and "risk_policy" in case["vcEngine"]:
+        assert packet["risk_policy"] == case["vcEngine"]["risk_policy"]
+        assert packet["risk_sensitivity"] == case["vcEngine"]["risk_sensitivity"]
     assert packet["maximum_bid_cents"] == case["peEngine"]["maximum_bid_cents"]
     for scenario in ("ask", "selected", "downside"):
-        assert packet["scenarios"][scenario]["gross_xirr"] == case["peEngine"][scenario]["gross_xirr"]
-        assert packet["scenarios"][scenario]["gross_moic"] == case["peEngine"][scenario]["gross_moic"]
-        assert packet["scenarios"][scenario]["ending_debt_cents"] == case["peEngine"][scenario]["debt_schedule"]["ending_debt_cents"]
-        assert packet["scenarios"][scenario]["result_receipt_sha256"] == case["peEngine"][scenario]["receipt_sha256"]
-    assert packet["value_creation_bridge"]["receipt_sha256"] == case["valueCreationBridge"]["receipt_sha256"]
+        assert (
+            packet["scenarios"][scenario]["gross_xirr"]
+            == case["peEngine"][scenario]["gross_xirr"]
+        )
+        assert (
+            packet["scenarios"][scenario]["gross_moic"]
+            == case["peEngine"][scenario]["gross_moic"]
+        )
+        assert (
+            packet["scenarios"][scenario]["ending_debt_cents"]
+            == case["peEngine"][scenario]["debt_schedule"]["ending_debt_cents"]
+        )
+        assert (
+            packet["scenarios"][scenario]["result_receipt_sha256"]
+            == case["peEngine"][scenario]["receipt_sha256"]
+        )
+    assert (
+        packet["value_creation_bridge"]["receipt_sha256"]
+        == case["valueCreationBridge"]["receipt_sha256"]
+    )
 
     receipt = json.loads(artifacts["receipt"].read_text(encoding="utf-8"))
     receipt_body = dict(receipt)
@@ -51,7 +72,10 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
     assert "`REPRICE`" in markdown
     assert "23.3%" in markdown
     assert "$215.4M" in markdown
-    assert "Synthetic causal estimates recover planted assignment mechanisms only" in markdown
+    assert (
+        "Synthetic causal estimates recover planted assignment mechanisms only"
+        in markdown
+    )
     for section in [
         "## Operating case and valuation bridge",
         "## Leverage, liquidity, and covenant workpaper",
@@ -76,7 +100,10 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
     for phase in ("Pre-close", "Day 1", "Day 30", "Day 100", "Year 1"):
         assert f"| {phase} |" in markdown
     snapshot = artifacts["snapshot_markdown"].read_text(encoding="utf-8")
-    assert "# AtlasGrid Systems - one-page IC snapshot" in snapshot
+    assert "# AtlasGrid Systems - IC decision brief" in snapshot
+    assert "**Decision requested:**" in snapshot
+    assert "## Evidence that changes the call" in snapshot
+    assert "## What must be true" in snapshot
     assert "Requires investment committee approval" in snapshot
     assert "SHA-256" not in snapshot
     technical = artifacts["technical_markdown"].read_text(encoding="utf-8")
@@ -85,6 +112,13 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
     html = artifacts["packet_html"].read_text(encoding="utf-8")
     assert "@page{size:letter" in html
     assert packet_digest in html
+    snapshot_html = artifacts["snapshot_html"].read_text(encoding="utf-8")
+    assert "data-decision-brief" in snapshot_html
+    assert snapshot_html.count("data-visual=") == 2
+    assert "Price discipline changes the answer" in snapshot_html
+    assert "The underwriting reset" in snapshot_html
+    assert "22% hurdle" in snapshot_html
+    assert packet_digest not in snapshot_html
 
 
 def test_ic_packet_is_byte_deterministic(tmp_path: Path) -> None:
@@ -105,7 +139,9 @@ def test_ic_packet_fails_closed_on_failed_diagnostic(tmp_path: Path) -> None:
     case = json.loads(analysis_path.read_text(encoding="utf-8"))
     tampered = deepcopy(case)
     ag10 = next(item for item in tampered["analyses"] if item["analysis_id"] == "AG-10")
-    diagnostic = next(item for item in ag10["diagnostics"] if item["name"] == "xirr_npv_residual")
+    diagnostic = next(
+        item for item in ag10["diagnostics"] if item["name"] == "xirr_npv_residual"
+    )
     diagnostic["status"] = "FAIL"
     prior_receipt = ag10.pop("receipt_sha256")
     ag10["receipt_sha256"] = digest(ag10)
@@ -133,7 +169,10 @@ def test_helios_ic_packet_reconciles_engine_terms_and_receipts(tmp_path: Path) -
     artifacts = build_ic_packet_from_case(case, tmp_path / "packet")
     repeated = build_ic_packet_from_case(case, tmp_path / "packet-repeat")
     for artifact_name in artifacts:
-        assert artifacts[artifact_name].read_bytes() == repeated[artifact_name].read_bytes()
+        assert (
+            artifacts[artifact_name].read_bytes()
+            == repeated[artifact_name].read_bytes()
+        )
     markdown = artifacts["packet_markdown"].read_text(encoding="utf-8")
     assert "Reconcile executed financing terms" in markdown
     assert "PRE_SIGNING" not in markdown
@@ -145,8 +184,14 @@ def test_helios_ic_packet_reconciles_engine_terms_and_receipts(tmp_path: Path) -
     assert expected == digest(body)
     assert packet["analysis_sha256"] == case["analysis_sha256"]
     for key in ("base", "milestone", "downside", "financing_shortfall"):
-        assert packet["scenarios"][key]["receipt_sha256"] == case["vcEngine"][key]["receipt_sha256"]
-        assert packet["scenarios"][key]["gross_xirr"] == case["vcEngine"][key]["gross_xirr"]
+        assert (
+            packet["scenarios"][key]["receipt_sha256"]
+            == case["vcEngine"][key]["receipt_sha256"]
+        )
+        assert (
+            packet["scenarios"][key]["gross_xirr"]
+            == case["vcEngine"][key]["gross_xirr"]
+        )
     markdown = artifacts["packet_markdown"].read_text(encoding="utf-8")
     for section in (
         "## Recommendation and executable terms",
@@ -159,6 +204,7 @@ def test_helios_ic_packet_reconciles_engine_terms_and_receipts(tmp_path: Path) -
         assert section in markdown
     assert "## Econometric credit and zero-credit map" not in markdown
     assert "## Receipt appendix" not in markdown
+    assert "### Economic mapping register" not in markdown
     assert "**Current decision:** HOLD - LOSS HURDLE NOT MET." in markdown
     assert "Selected milestone returns" in markdown
     assert "**Binding loss hurdle:** 20.0%" in markdown
@@ -169,8 +215,17 @@ def test_helios_ic_packet_reconciles_engine_terms_and_receipts(tmp_path: Path) -
     assert "gross XIRR" in markdown
     snapshot = artifacts["snapshot_markdown"].read_text(encoding="utf-8")
     assert "## HOLD" in snapshot
-    assert "20%, above the binding 10% maximum" in snapshot
+    assert "20.00% of retained paths fall below 1.0x" in snapshot
+    assert "illustrative 10.00% policy maximum" in snapshot
     assert "SHA-256" not in snapshot
+    snapshot_html = artifacts["snapshot_html"].read_text(encoding="utf-8")
+    assert snapshot_html.count("data-visual=") == 2
+    assert "The analyst-set gate fails" in snapshot_html
+    assert "Conditional upside does not override the failed gate" in snapshot_html
+    assert "not approval" in snapshot_html
+    if "risk_policy" in case["vcEngine"]:
+        assert "Illustrative analyst-set loss maximum" in snapshot_html
+        assert "UNREVIEWED" in snapshot_html
     technical = artifacts["technical_markdown"].read_text(encoding="utf-8")
     assert "HX-09" in technical
     assert "## Formula register" in technical

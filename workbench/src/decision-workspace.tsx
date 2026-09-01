@@ -23,11 +23,15 @@ function assumptionsFor(caseData: CaseData): Assumption[] {
     const primary = caseData.vcEngine.milestone.financing_events.find((item) => item.event_type === "PRIMARY");
     const tranche = caseData.vcEngine.milestone.financing_events.find((item) => item.event_type === "MILESTONE");
     const bridge = caseData.vcEngine.operating_exit_bridges.milestone;
+    const policy = caseData.vcEngine.risk_policy;
+    const priors = caseData.vcEngine.distribution.priors;
     return [
       {id: "initial-close", label: "Initial financing close", value: money(primary?.new_money_cents ?? 0), basis: "Proposed financing term", consequence: "Changes ownership, runway, and preference proceeds."},
       {id: "milestone-tranche", label: "Conditional milestone tranche", value: money(tranche?.new_money_cents ?? 0), basis: "Proposed financing term", consequence: "Funds only after the retained milestone tests and human approval."},
       {id: "revenue-growth", label: "Annual revenue growth", value: `${(Number(bridge.annual_revenue_growth) * 100).toFixed(1)}%`, basis: "Analyst scenario assumption", consequence: "Changes terminal revenue and the operating exit bridge."},
       {id: "exit-multiple", label: "Exit revenue multiple", value: `${Number(bridge.exit_revenue_multiple).toFixed(1)}x`, basis: "Analyst scenario assumption", consequence: "Changes enterprise value and investor return outcomes."},
+      {id: "loss-prior", label: "Catastrophe-state prior", value: `${(Number(priors.catastrophe_probability) * 100).toFixed(0)}%`, basis: `${priors.input_classification.replaceAll("_", " ").toLowerCase()} · ${priors.approval_status.toLowerCase()}`, consequence: "Directly changes the retained probability below 1.0x; it is synthetic judgment, not an empirical default forecast."},
+      {id: "loss-policy", label: "Maximum probability below 1.0x", value: `${(Number(policy.maximum_probability_below_one) * 100).toFixed(0)}%`, basis: `${policy.classification.replaceAll("_", " ").toLowerCase()} · ${policy.approval_status.toLowerCase()}`, consequence: "Defines the illustrative loss-frequency test. Approval records local analyst judgment only and does not make this a firm policy."},
     ];
   }
   return [];

@@ -73,7 +73,92 @@ function SensitivityBook({caseData, openMetric, routeState, onRouteState}: {case
   const definition = book.axis_definitions.find((item) => item.axis === axis)!;
   const labels = Object.fromEntries(book.axis_definitions.map((item) => [item.axis, item.label])) as Record<VCSensitivityCell["axis"], string>;
   const card = (suffix: string, detail: string) => <BoundCard caseData={caseData} metricId={`helios-${selected.cell_id}-${suffix}`} detail={`${detail} Independent full-model rerun with formula-bound operands.`} openMetric={openMetric} />;
-  return <section className="finance-panel sensitivity-book" aria-labelledby="vc-sensitivity-title"><div className="panel-heading"><div><p className="kicker">Operating-driver underwriting</p><h3 id="vc-sensitivity-title">VC sensitivity book</h3></div><button type="button" className="text-action" onClick={() => onRouteState?.({driver: book.default_axis, cell: book.default_cell_id})}>Reset</button></div><p className="assumption"><strong>{definition.label}:</strong> {definition.model_rule}. Baseline: {selected.baseline_scenario_id === "MILESTONE" ? "milestone path-to-yes case" : "base case with later financing"}. Every result remains <strong>HOLD</strong> while the binding 20% loss frequency exceeds 10%.</p><div className="sensitivity-controls"><label htmlFor="vc-axis">Driver</label><select id="vc-axis" value={axis} onChange={(event) => {const nextAxis = event.target.value as VCSensitivityCell["axis"]; onRouteState?.({driver: nextAxis, cell: book.baseline_cell_ids[nextAxis]});}}>{book.axis_order.map((item) => <option value={item} key={item}>{labels[item]}</option>)}</select><div className="scenario-tabs">{cells.map((item) => <button key={item.cell_id} aria-pressed={item.cell_id === selected.cell_id} onClick={() => onRouteState?.({driver: axis, cell: item.cell_id})}>{item.assumption_label}{item.is_baseline ? " · baseline" : ""}</button>)}</div></div><div className="finance-metric-grid sensitivity-result">{card("terminal-revenue", "Terminal revenue derived from the selected operating driver.")}{card("exit-revenue-multiple", "Explicit revenue multiple applied to terminal revenue.")}{card("exit-equity-value", "Enterprise value plus exact modeled exit cash.")}{card("ownership", "Fully diluted Series C ownership.")}{card("gross-xirr", "Point-return test: dated gross-to-investor XIRR.")}{card("gross-moic", "Point-return test: gross proceeds divided by funded capital.")}</div><p className="decision-note"><strong>Binding posture: HOLD.</strong> Point returns may clear while the declared synthetic stress mix still fails the loss-frequency hurdle.</p></section>;
+  const policy = caseData.vcEngine!.risk_policy;
+  const lossRate = caseData.vcEngine!.distribution.probability_below_one;
+  const lossStatus = Number(lossRate) <= Number(policy.maximum_probability_below_one) ? "clears" : "misses";
+  return <section className="finance-panel sensitivity-book" aria-labelledby="vc-sensitivity-title"><div className="panel-heading"><div><p className="kicker">Operating-driver underwriting</p><h3 id="vc-sensitivity-title">VC sensitivity book</h3></div><button type="button" className="text-action" onClick={() => onRouteState?.({driver: book.default_axis, cell: book.default_cell_id})}>Reset</button></div><p className="assumption"><strong>{definition.label}:</strong> {definition.model_rule}. Baseline: {selected.baseline_scenario_id === "MILESTONE" ? "milestone path-to-yes case" : "base case with later financing"}. Every result remains <strong>HOLD</strong>; the canonical synthetic loss frequency of {percent(lossRate)} {lossStatus} the illustrative {percent(policy.maximum_probability_below_one)} ceiling.</p><div className="sensitivity-controls"><label htmlFor="vc-axis">Driver</label><select id="vc-axis" value={axis} onChange={(event) => {const nextAxis = event.target.value as VCSensitivityCell["axis"]; onRouteState?.({driver: nextAxis, cell: book.baseline_cell_ids[nextAxis]});}}>{book.axis_order.map((item) => <option value={item} key={item}>{labels[item]}</option>)}</select><div className="scenario-tabs">{cells.map((item) => <button key={item.cell_id} aria-pressed={item.cell_id === selected.cell_id} onClick={() => onRouteState?.({driver: axis, cell: item.cell_id})}>{item.assumption_label}{item.is_baseline ? " · baseline" : ""}</button>)}</div></div><div className="finance-metric-grid sensitivity-result">{card("terminal-revenue", "Terminal revenue derived from the selected operating driver.")}{card("exit-revenue-multiple", "Explicit revenue multiple applied to terminal revenue.")}{card("exit-equity-value", "Enterprise value plus exact modeled exit cash.")}{card("ownership", "Fully diluted Series C ownership.")}{card("gross-xirr", "Point-return test: dated gross-to-investor XIRR.")}{card("gross-moic", "Point-return test: gross proceeds divided by funded capital.")}</div><p className="decision-note"><strong>Binding posture: HOLD.</strong> A point-return or selected risk test clearing does not close the open diligence gates or authorize funding.</p></section>;
+}
+
+export function VCRiskAssumptionLab({caseData}: {caseData: CaseData}) {
+  const engine = caseData.vcEngine!;
+  const book = engine.risk_sensitivity;
+  const canonical = book.cells.find((item) => item.cell_id === book.canonical_cell_id)!;
+  const growthCells = engine.sensitivities.cells.filter((item) => item.axis === "annual_revenue_growth");
+  const canonicalGrowth = Number(engine.operating_exit_bridges.milestone.annual_revenue_growth) * 100;
+  const profileIds = [...new Set(book.cells.map((item) => item.profile_id))];
+  const catastropheProbabilities = [...new Set(book.cells.map((item) => item.catastrophe_probability))];
+  const [profileId, setProfileId] = useState(canonical.profile_id);
+  const [catastropheProbability, setCatastropheProbability] = useState(canonical.catastrophe_probability);
+  const [draftGrowth, setDraftGrowth] = useState(canonicalGrowth.toFixed(1));
+  const [draftPolicy, setDraftPolicy] = useState((Number(book.canonical_policy_threshold) * 100).toFixed(1));
+  const [appliedGrowth, setAppliedGrowth] = useState(canonicalGrowth);
+  const [appliedPolicy, setAppliedPolicy] = useState(Number(book.canonical_policy_threshold) * 100);
+  const [reviewStatus, setReviewStatus] = useState<"UNREVIEWED" | "APPROVED" | "REJECTED">("UNREVIEWED");
+  const [hasApplied, setHasApplied] = useState(false);
+  useEffect(() => {
+    setProfileId(canonical.profile_id);
+    setCatastropheProbability(canonical.catastrophe_probability);
+    setDraftGrowth(canonicalGrowth.toFixed(1));
+    setDraftPolicy((Number(book.canonical_policy_threshold) * 100).toFixed(1));
+    setAppliedGrowth(canonicalGrowth);
+    setAppliedPolicy(Number(book.canonical_policy_threshold) * 100);
+    setReviewStatus("UNREVIEWED");
+    setHasApplied(false);
+  }, [canonical.cell_id, book.canonical_policy_threshold, canonicalGrowth]);
+  const selected = book.cells.find((item) => item.profile_id === profileId && item.catastrophe_probability === catastropheProbability) ?? canonical;
+  const workingGrowthCell = growthCells.find((item) => Math.abs(Number(item.driver_value) * 100 - appliedGrowth) < 0.001) ?? growthCells.find((item) => item.is_baseline)!;
+  const supportedGrowth = growthCells.some((item) => Math.abs(Number(item.driver_value) * 100 - Number(draftGrowth)) < 0.001);
+  const validPolicy = Number.isFinite(Number(draftPolicy)) && Number(draftPolicy) >= 0 && Number(draftPolicy) <= 100;
+  const clears = Number(selected.probability_below_one) * 100 <= appliedPolicy;
+  const change = (update: () => void) => {
+    update();
+    setReviewStatus("UNREVIEWED");
+  };
+  const reset = () => {
+    setProfileId(canonical.profile_id);
+    setCatastropheProbability(canonical.catastrophe_probability);
+    setDraftGrowth(canonicalGrowth.toFixed(1));
+    setDraftPolicy((Number(book.canonical_policy_threshold) * 100).toFixed(1));
+    setAppliedGrowth(canonicalGrowth);
+    setAppliedPolicy(Number(book.canonical_policy_threshold) * 100);
+    setReviewStatus("UNREVIEWED");
+    setHasApplied(false);
+  };
+  const recalculate = () => {
+    if (!supportedGrowth || !validPolicy) return;
+    setAppliedGrowth(Number(draftGrowth));
+    setAppliedPolicy(Number(draftPolicy));
+    setReviewStatus("UNREVIEWED");
+    setHasApplied(true);
+  };
+  return <section className="risk-assumption-lab" aria-labelledby="risk-assumption-title" data-testid="helios-working-assumptions">
+    <div className="panel-heading">
+      <div><p className="kicker">Editable local what-if</p><h2 id="risk-assumption-title">Challenge the loss prior and policy</h2></div>
+      <button type="button" className="text-action" onClick={reset} data-testid="helios-risk-reset">Reset canonical</button>
+    </div>
+    <p>These controls select retained deterministic simulations; they never regenerate math in the browser or overwrite the signed canonical case. All inputs are synthetic analyst assumptions, not a firm policy or market forecast.</p>
+    <div className="risk-assumption-controls">
+      <label>Annual revenue growth (%)<input type="number" min="0" max="200" step="0.1" value={draftGrowth} onChange={(event) => change(() => setDraftGrowth(event.target.value))} aria-invalid={!supportedGrowth} aria-describedby="helios-growth-help" data-testid="helios-assumption-growth" /><small id="helios-growth-help">Retained deterministic cases: {growthCells.map((item) => `${(Number(item.driver_value) * 100).toFixed(1)}%`).join(", ")}</small></label>
+      <label>Scenario mix<select value={profileId} onChange={(event) => change(() => setProfileId(event.target.value))} data-testid="helios-risk-profile">{profileIds.map((id) => {const cell = book.cells.find((item) => item.profile_id === id)!; return <option key={id} value={id}>{cell.profile_label}</option>;})}</select></label>
+      <label>Catastrophe prior<select value={catastropheProbability} onChange={(event) => change(() => setCatastropheProbability(event.target.value))} data-testid="helios-catastrophe-prior">{catastropheProbabilities.map((value) => <option key={value} value={value}>{percent(value)}</option>)}</select></label>
+      <label>Maximum probability below 1.0x (%)<input type="number" min="0" max="100" step="0.1" value={draftPolicy} onChange={(event) => change(() => setDraftPolicy(event.target.value))} aria-invalid={!validPolicy} data-testid="helios-policy-loss-maximum" /></label>
+    </div>
+    {(!supportedGrowth || !validPolicy) && <p role="alert">{!supportedGrowth ? "Choose a retained growth case shown above; unsupported values are not interpolated." : "Loss ceiling must be between 0% and 100%."}</p>}
+    <button type="button" onClick={recalculate} disabled={!supportedGrowth || !validPolicy} data-testid="helios-recalculate-working-case">Recalculate working case</button>
+    <div className="risk-assumption-result" data-testid="helios-risk-result">
+      <article><span>Selected loss frequency</span><strong>{percent(selected.probability_below_one)}</strong><small>MC SE {selected.probability_below_one_monte_carlo_se_pp} pp · {selected.draws.toLocaleString()} paths</small></article>
+      <article><span>Loss decomposition</span><strong>{selected.loss_decomposition.catastrophe_loss_paths} catastrophe / {selected.loss_decomposition.continuous_loss_paths} continuous</strong><small>loss paths below 1.0x gross MOIC</small></article>
+      <article><span>Selected policy test</span><strong data-status={clears ? "CLEARS" : "MISSES"}>{clears ? "Clears" : "Misses"}</strong><small>{percent(selected.probability_below_one)} vs {appliedPolicy.toFixed(1)}% maximum</small></article>
+      <article><span>Working return</span><strong>{percent(workingGrowthCell.gross_xirr)} / {multiple(workingGrowthCell.gross_moic)}</strong><small>{percent(workingGrowthCell.target_ownership)} ownership · {money(workingGrowthCell.minimum_cash_cents)} minimum cash</small></article>
+    </div>
+    <p className="risk-rationale"><strong>{selected.profile_label}.</strong> {selected.profile_rationale}</p>
+    <dl className="risk-state-weights" aria-label="Selected synthetic scenario-state weights">{Object.entries(selected.template_weights).map(([state, weight]) => <div key={state}><dt>{state.replaceAll("_", " ").toLowerCase()}</dt><dd>{percent(weight)}</dd></div>)}</dl>
+    <p className="risk-rationale"><strong>Source classification:</strong> {engine.distribution.priors.input_classification.replaceAll("_", " ").toLowerCase()}. These weights are transparent synthetic analyst judgments; they are not empirically calibrated default rates.</p>
+    <div className="risk-review" data-testid="helios-risk-review"><span>Local review state: <strong>{reviewStatus.toLowerCase()}</strong></span><button type="button" onClick={() => setReviewStatus("APPROVED")}>Record approval</button><button type="button" onClick={() => setReviewStatus("REJECTED")}>Record rejection</button></div>
+    <div className="working-change-record" data-testid="helios-working-change-record"><strong>Working-case change record</strong><span>Growth {canonicalGrowth.toFixed(1)}% → {appliedGrowth.toFixed(1)}%</span><span>Loss ceiling {(Number(book.canonical_policy_threshold) * 100).toFixed(1)}% → {appliedPolicy.toFixed(1)}%</span><small>{hasApplied ? `Recomputed from retained case ${workingGrowthCell.cell_id}; preference, dilution, runway, and returns receipt ${workingGrowthCell.result_receipt_sha256.slice(0, 12)}…` : "Canonical baseline retained; no local change applied."}</small></div>
+    <p className="decision-note" data-testid="helios-working-case-status"><strong>HOLD.</strong> {clears ? "The selected synthetic risk test clears, but unresolved diligence and pending investment-committee approval still block funding." : "The selected synthetic risk test exceeds the selected loss ceiling."} This local what-if does not change the canonical decision or receipt.</p>
+    <details><summary>Canonical assumptions and governance</summary><dl><div><dt>Canonical prior</dt><dd>{canonical.profile_label} · {percent(canonical.catastrophe_probability)} catastrophe probability</dd></div><div><dt>Canonical policy</dt><dd>{percent(book.canonical_policy_threshold)} maximum probability below 1.0x</dd></div><div><dt>Policy owner / state</dt><dd>{engine.risk_policy.owner} · {engine.risk_policy.approval_status.toLowerCase()}</dd></div><div><dt>Simulation owner / state</dt><dd>{engine.distribution.priors.owner} · {engine.distribution.priors.approval_status.toLowerCase()}</dd></div></dl><p>{engine.risk_policy.rationale}</p></details>
+  </section>;
 }
 
 export function VCUnderwritingRoom({caseData, openMetric, routeState, onRouteState}: {caseData: CaseData; openMetric: OpenMetric; routeState?: {scenario?: string | null; compare?: string | null; driver?: string | null; cell?: string | null}; onRouteState?: (state: {scenario?: string; compare?: string; driver?: string; cell?: string}) => void}) {
@@ -90,7 +175,7 @@ export function VCUnderwritingRoom({caseData, openMetric, routeState, onRouteSta
   const labels: Record<ScenarioKey, string> = {base: "Tranche withheld · Series D", milestone: "Tranche released · no Series D", downside: "Down round · tranche withheld", financing_shortfall: "Shortfall bridge · tranche withheld"};
   return <div className="view-stack pe-room vc-room">
     <section className="underwriting-head"><div><p className="kicker">Venture financing · exact event ledger</p><h2>Terms, ownership, runway, and preferences</h2><p>Every scenario and sensitivity is a retained full-model rerun. Unfunded tranches contribute no cash, shares, preference, or investor outflow.</p></div><div><div className="scenario-tabs">{(Object.keys(labels) as ScenarioKey[]).map((item) => <button key={item} aria-pressed={item === scenarioKey} onClick={() => {setScenarioKey(item); onRouteState?.({scenario: item});}}>{labels[item]}</button>)}</div><label className="compare-control">Compare with <select value={compareKey} onChange={(event) => onRouteState?.({compare: event.target.value})}>{(Object.keys(labels) as ScenarioKey[]).map((item) => <option key={item} value={item}>{labels[item]}</option>)}</select></label></div></section>
-    <section className="scenario-comparison" aria-label="Side-by-side scenario comparison"><article><span>Selected · {labels[scenarioKey]}</span><strong>{percent(result.gross_xirr)} / {multiple(result.gross_moic)}</strong><small>{percent(result.target_ownership)} ownership · {money(result.minimum_cash_cents)} minimum cash</small></article><article><span>Comparison · {labels[compareKey]}</span><strong>{percent(comparison.gross_xirr)} / {multiple(comparison.gross_moic)}</strong><small>{percent(comparison.target_ownership)} ownership · {money(comparison.minimum_cash_cents)} minimum cash</small></article><p><strong>Binding decision: HOLD.</strong> Comparing attractive point-return cases does not override the failed loss-frequency hurdle.</p></section>
+    <section className="scenario-comparison" aria-label="Side-by-side scenario comparison"><article><span>Selected · {labels[scenarioKey]}</span><strong>{percent(result.gross_xirr)} / {multiple(result.gross_moic)}</strong><small>{percent(result.target_ownership)} ownership · {money(result.minimum_cash_cents)} minimum cash</small></article><article><span>Comparison · {labels[compareKey]}</span><strong>{percent(comparison.gross_xirr)} / {multiple(comparison.gross_moic)}</strong><small>{percent(comparison.target_ownership)} ownership · {money(comparison.minimum_cash_cents)} minimum cash</small></article><p><strong>Binding decision: HOLD.</strong> Comparing attractive point-return cases does not override the canonical risk test, open diligence, or human approval boundary.</p></section>
     <ChartRegistryCaption caseData={caseData} location="Underwriting Room" conclusion={`${labels[scenarioKey]} retains ${money(result.minimum_cash_cents)} minimum cash and funds ${money(result.target_invested_cents)} of Series C capital.`} />
     <section className="terms-ribbon"><BoundCard caseData={caseData} metricId={`${prefix}-target-invested`} detail="Total Series C cash actually funded in the selected scenario." openMetric={openMetric} /><BoundCard caseData={caseData} metricId={`${prefix}-ownership`} detail="Series C fully diluted ownership after event-by-event dilution." openMetric={openMetric} /><BoundCard caseData={caseData} metricId={`${prefix}-gross-xirr`} detail="Irregular-date gross-to-investor XIRR; not MOIC CAGR." openMetric={openMetric} /><BoundCard caseData={caseData} metricId={`${prefix}-gross-moic`} detail="Exact exit proceeds divided by funded Series C cash." openMetric={openMetric} /></section>
     <aside className="engine-receipt"><span>Selected scenario</span><strong>{labels[scenarioKey]}</strong><small>Full audit detail remains available in the Evidence layer.</small></aside>

@@ -250,6 +250,18 @@ def test_helios_contract_gates(generated: dict[str, tuple[Path, dict]]) -> None:
     priors = case["vcEngine"]["distribution"]["priors"]
     assert Decimal(priors["loss_probability_band_low"]) <= probability <= Decimal(priors["loss_probability_band_high"])
     assert pairs["Post-close runway"]["observed"].startswith(">=60")
+    policy = case["vcEngine"]["risk_policy"]
+    assert policy["classification"] == "ILLUSTRATIVE_ANALYST_POLICY_NOT_FIRM_POLICY"
+    assert policy["approval_status"] == "UNREVIEWED"
+    assert Decimal(pairs["Modeled loss probability"]["threshold_value"]) == Decimal(policy["maximum_probability_below_one"]) * 100
+    risk_book = case["vcEngine"]["risk_sensitivity"]
+    assert len(risk_book["cells"]) == 6
+    canonical = next(item for item in risk_book["cells"] if item["is_canonical"])
+    assert canonical["cell_id"] == risk_book["canonical_cell_id"]
+    assert canonical["probability_below_one"] == case["vcEngine"]["distribution"]["probability_below_one"]
+    assert canonical["distribution_receipt_sha256"] == case["vcEngine"]["distribution"]["receipt_sha256"]
+    assert all(item["analytical_posture"] == "HOLD" for item in risk_book["cells"])
+    assert any(item["canonical_policy_status"] == "CLEARS" for item in risk_book["cells"])
 
 
 def test_every_headline_metric_has_valid_lineage(generated: dict[str, tuple[Path, dict]]) -> None:

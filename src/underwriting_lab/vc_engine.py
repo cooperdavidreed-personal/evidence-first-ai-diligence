@@ -845,9 +845,25 @@ def simulate_vc_distribution(
     catastrophe_probability: Decimal = Decimal("0"),
     catastrophe_exit_multiple_low: Decimal = Decimal("0"),
     catastrophe_exit_multiple_high: Decimal = Decimal("0.18"),
+    continuous_exit_multiple_sigma: Decimal = Decimal("0.32"),
+    exit_timing_mean_months: Decimal = Decimal("2"),
+    exit_timing_sigma_months: Decimal = Decimal("7"),
+    exit_timing_delta_min_months: int = -12,
+    exit_timing_delta_max_months: int = 18,
+    minimum_exit_month: int = 24,
+    maximum_exit_month: int = 78,
+    operating_cash_factor_mean: Decimal = Decimal("1"),
+    operating_cash_factor_sigma: Decimal = Decimal("0.07"),
+    operating_cash_factor_low: Decimal = Decimal("0.85"),
+    operating_cash_factor_high: Decimal = Decimal("1.12"),
+    shortfall_operating_cash_factor_high: Decimal = Decimal("1.00"),
+    maximum_liquidity_extension_months: int = 18,
     loss_probability_band_low: Decimal | None = None,
     loss_probability_band_high: Decimal | None = None,
     prior_rationale: str = "No explicit catastrophe prior supplied.",
+    prior_owner: str = "Unspecified analyst",
+    prior_approval_status: str = "UNREVIEWED",
+    prior_classification: str = "ANALYST_SCENARIO_ASSUMPTION",
 ) -> dict[str, Any]:
     if draws < 500:
         raise UnderwritingError("vc_distribution_draws_below_minimum")
@@ -855,6 +871,23 @@ def simulate_vc_distribution(
         raise UnderwritingError("vc_catastrophe_probability_invalid")
     if not Decimal("0") <= catastrophe_exit_multiple_low <= catastrophe_exit_multiple_high <= exit_multiple_high:
         raise UnderwritingError("vc_catastrophe_multiple_invalid")
+    if continuous_exit_multiple_sigma <= 0:
+        raise UnderwritingError("vc_continuous_exit_sigma_invalid")
+    if exit_timing_sigma_months <= 0 or exit_timing_delta_min_months > exit_timing_delta_max_months:
+        raise UnderwritingError("vc_exit_timing_prior_invalid")
+    if minimum_exit_month < 1 or maximum_exit_month < minimum_exit_month:
+        raise UnderwritingError("vc_exit_month_bounds_invalid")
+    if not (
+        Decimal("0") < operating_cash_factor_low <= operating_cash_factor_mean
+        <= shortfall_operating_cash_factor_high <= operating_cash_factor_high
+    ) or operating_cash_factor_sigma <= 0:
+        raise UnderwritingError("vc_operating_cash_prior_invalid")
+    if maximum_liquidity_extension_months < 0:
+        raise UnderwritingError("vc_liquidity_extension_invalid")
+    if not prior_rationale or not prior_owner or prior_approval_status not in {"UNREVIEWED", "APPROVED", "REJECTED"}:
+        raise UnderwritingError("vc_prior_governance_invalid")
+    if prior_classification != "ANALYST_SCENARIO_ASSUMPTION":
+        raise UnderwritingError("vc_prior_classification_invalid")
     if (loss_probability_band_low is None) != (loss_probability_band_high is None):
         raise UnderwritingError("vc_loss_probability_band_incomplete")
     if loss_probability_band_low is not None and not (
@@ -906,16 +939,22 @@ def simulate_vc_distribution(
             shock = Decimal(str(rng.gauss(0, 1)))
             multiple = min(
                 exit_multiple_high,
-                max(exit_multiple_low, Decimal("1") + shock * Decimal("0.32")),
+                max(exit_multiple_low, Decimal("1") + shock * continuous_exit_multiple_sigma),
             )
-        timing_delta = max(-12, min(18, int(round(rng.gauss(2, 7)))))
+        timing_delta = max(
+            exit_timing_delta_min_months,
+            min(
+                exit_timing_delta_max_months,
+                int(round(rng.gauss(float(exit_timing_mean_months), float(exit_timing_sigma_months)))),
+            ),
+        )
         operating_factor = Decimal(
             str(
                 max(
-                    0.85,
+                    float(operating_cash_factor_low),
                     min(
-                        1.00 if template_id == "FINANCING_SHORTFALL" else 1.12,
-                        rng.gauss(1.00, 0.07),
+                        float(shortfall_operating_cash_factor_high if template_id == "FINANCING_SHORTFALL" else operating_cash_factor_high),
+                        rng.gauss(float(operating_cash_factor_mean), float(operating_cash_factor_sigma)),
                     ),
                 )
             )
@@ -936,15 +975,15 @@ def simulate_vc_distribution(
         )
         terminal_monthly_cash = operating_path_values[-1]
         extra_liquidity_months = (
-            18
+            maximum_liquidity_extension_months
             if terminal_monthly_cash >= 0
             else max(0, adjusted_horizon_cash // abs(terminal_monthly_cash))
         )
         liquidity_supported_ceiling = min(
-            78, template.assumptions.exit_month + extra_liquidity_months
+            maximum_exit_month, template.assumptions.exit_month + extra_liquidity_months
         )
         exit_month = max(
-            24,
+            minimum_exit_month,
             min(
                 liquidity_supported_ceiling,
                 template.assumptions.exit_month + timing_delta,
@@ -1028,10 +1067,27 @@ def simulate_vc_distribution(
         "catastrophe_probability": format(catastrophe_probability, "f"),
         "catastrophe_exit_multiple_low": format(catastrophe_exit_multiple_low, "f"),
         "catastrophe_exit_multiple_high": format(catastrophe_exit_multiple_high, "f"),
+        "continuous_exit_multiple_low": format(exit_multiple_low, "f"),
         "continuous_exit_multiple_high": format(exit_multiple_high, "f"),
+        "continuous_exit_multiple_sigma": format(continuous_exit_multiple_sigma, "f"),
+        "exit_timing_mean_months": format(exit_timing_mean_months, "f"),
+        "exit_timing_sigma_months": format(exit_timing_sigma_months, "f"),
+        "exit_timing_delta_min_months": exit_timing_delta_min_months,
+        "exit_timing_delta_max_months": exit_timing_delta_max_months,
+        "minimum_exit_month": minimum_exit_month,
+        "maximum_exit_month": maximum_exit_month,
+        "operating_cash_factor_mean": format(operating_cash_factor_mean, "f"),
+        "operating_cash_factor_sigma": format(operating_cash_factor_sigma, "f"),
+        "operating_cash_factor_low": format(operating_cash_factor_low, "f"),
+        "operating_cash_factor_high": format(operating_cash_factor_high, "f"),
+        "shortfall_operating_cash_factor_high": format(shortfall_operating_cash_factor_high, "f"),
+        "maximum_liquidity_extension_months": maximum_liquidity_extension_months,
         "loss_probability_band_low": format(loss_probability_band_low, "f") if loss_probability_band_low is not None else None,
         "loss_probability_band_high": format(loss_probability_band_high, "f") if loss_probability_band_high is not None else None,
         "rationale": prior_rationale,
+        "owner": prior_owner,
+        "approval_status": prior_approval_status,
+        "input_classification": prior_classification,
         "classification": "SYNTHETIC_SCENARIO_NOT_FORECAST",
     }
     priors["receipt_sha256"] = digest(priors)

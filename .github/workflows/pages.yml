@@ -6,9 +6,12 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/pages.yml'
+      - 'demo/release-fix/**'
+      - 'docs/RELEASE-FIXES-REPORT.md'
       - 'output/pdf/**'
       - 'portfolio/**'
       - 'pyproject.toml'
+      - 'README.md'
       - 'scripts/build_pages.py'
       - 'src/**'
       - 'uv.lock'
