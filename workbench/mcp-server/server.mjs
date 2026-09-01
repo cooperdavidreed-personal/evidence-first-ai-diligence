@@ -74,11 +74,12 @@ export async function handleMessage(message, handlers) {
   if (message.method === "tools/list") return result(message.id, {tools: toolDefinitions});
   if (message.method === "tools/call") {
     const notification = !Object.prototype.hasOwnProperty.call(message, "id");
+    if (notification) return null;
     try {
       const value = await handlers.callTool(message.params?.name, message.params?.arguments ?? {});
-      return notification ? null : result(message.id, {content: [{type: "text", text: JSON.stringify(value)}], structuredContent: value});
+      return result(message.id, {content: [{type: "text", text: JSON.stringify(value)}], structuredContent: value});
     } catch (caught) {
-      return notification ? null : error(message.id, caught instanceof Error ? caught.message : "tool_call_failed");
+      return error(message.id, caught instanceof Error ? caught.message : "tool_call_failed");
     }
   }
   if (!Object.prototype.hasOwnProperty.call(message, "id")) return null;

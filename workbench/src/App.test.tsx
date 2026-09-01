@@ -85,6 +85,20 @@ describe("Underwriting Desk investor workspace", () => {
     render(<WorkbenchApp initialCase={helios} initialRoute={{caseId: "helios", view: "diligence"}} />);
     expect(screen.getByRole("heading", {name: "Optimizer test increased unit compute cost"})).toBeInTheDocument();
     expect(screen.getByText(/9.5% more compute per workload/)).toBeInTheDocument();
+    expect(screen.getByText("Adverse signal")).toBeInTheDocument();
+    expect(screen.getByText(/Adverse unit-cost signal/)).toBeInTheDocument();
+  });
+
+  it("renders an honest neutral state for a zero empirical estimate", () => {
+    const candidate: unknown = structuredClone(rawData);
+    assertWorkbenchData(candidate);
+    const helios = structuredClone(candidate.cases.find((item) => item.caseId === "helios")!);
+    const optimizer = helios.analyses.find((analysis) => analysis.analysis_id === "HX-06")!;
+    optimizer.outputs.find((output) => output.name === "optimizer_ate")!.value = "0";
+    render(<WorkbenchApp initialCase={helios} initialRoute={{caseId: "helios", view: "diligence"}} />);
+    expect(screen.getByRole("heading", {name: "Optimizer test did not change unit compute cost"})).toBeInTheDocument();
+    expect(screen.getByText(/no measurable difference in compute per workload/)).toBeInTheDocument();
+    expect(screen.getByText("No measured effect")).toBeInTheDocument();
   });
 
   it("keeps reproduction identifiers behind document disclosure", async () => {

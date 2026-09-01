@@ -165,8 +165,10 @@ function Diligence({caseData}: {caseData: CaseData}) {
     const effect = numericAnalysisValue(analysisOutput(caseData, "HX-06", "optimizer_ate"), "HX-06.optimizer_ate");
     return {
       effectPercent: Math.abs(Math.expm1(effect)) * 100,
-      direction: effect <= 0 ? "less" : "more",
-      resultVerb: effect <= 0 ? "reduced" : "increased",
+      comparison: effect < 0 ? `${(Math.abs(Math.expm1(effect)) * 100).toFixed(1)}% less compute per workload` : effect > 0 ? `${(Math.abs(Math.expm1(effect)) * 100).toFixed(1)}% more compute per workload` : "no measurable difference in compute per workload",
+      resultVerb: effect < 0 ? "reduced" : effect > 0 ? "increased" : "did not change",
+      evidenceLabel: effect < 0 ? "Zero base-case credit" : effect > 0 ? "Adverse signal" : "No measured effect",
+      decisionUse: effect < 0 ? "Candidate savings rate for the value plan; no base-case credit until replicated against production provider invoices." : effect > 0 ? "Adverse unit-cost signal; no savings credit until the test is replicated against production provider invoices." : "No unit-cost savings signal and no base-case credit.",
       population: analysis.population,
       estimate: effect.toFixed(4),
       interval: analysisDiagnostic(caseData, "HX-06", "unadjusted_confidence_interval"),
@@ -177,8 +179,10 @@ function Diligence({caseData}: {caseData: CaseData}) {
     const effect = numericAnalysisValue(analysisOutput(caseData, "AG-07", "renewal_itt"), "AG-07.renewal_itt");
     return {
       effectPoints: Math.abs(effect),
-      direction: effect <= 0 ? "less" : "more",
-      resultVerb: effect <= 0 ? "reduced" : "increased",
+      comparison: effect < 0 ? `${Math.abs(effect).toFixed(1)} percentage points less often` : effect > 0 ? `${Math.abs(effect).toFixed(1)} percentage points more often` : "at the same observed rate",
+      resultVerb: effect < 0 ? "reduced" : effect > 0 ? "increased" : "did not change",
+      evidenceLabel: effect < 0 ? "Downside evidence" : effect > 0 ? "Upside signal" : "No measured effect",
+      decisionUse: effect < 0 ? "No pricing upside credit in the selected structure." : effect > 0 ? "Potential pricing upside; no base-case credit without replication." : "No pricing credit from this test.",
       population: analysis.population,
     };
   })();
@@ -186,9 +190,9 @@ function Diligence({caseData}: {caseData: CaseData}) {
     <div className="view-stack">
       <section className="panel" aria-labelledby="issues-heading"><div className="section-heading"><div><p className="eyebrow">Worklist</p><h2 id="issues-heading">{issues.filter((issue) => issue.blocks_advancement).length} issues block the next step</h2></div><span>Human-owned</span></div><div className="issue-list">{issues.map((issue) => <article key={issue.issue_id}><div><span className={`status status-${issue.state.toLowerCase()}`}>{statusLabel(issue.state)}</span><span>{issue.materiality.toLowerCase()}</span></div><h3>{issue.title}</h3><p>{issue.consequence}</p><footer><span>Owner</span><strong>{issue.owner}</strong></footer></article>)}</div></section>
       {"effectPercent" in evidenceResult ? (
-        <section className="panel evidence-result" aria-labelledby="optimizer-heading"><div className="section-heading"><div><p className="eyebrow">Evidence test</p><h2 id="optimizer-heading">Optimizer test {evidenceResult.resultVerb} unit compute cost</h2></div><span>Zero base-case credit</span></div><p className="result-lead">Customers randomly given the optimizer used about <strong>{evidenceResult.effectPercent.toFixed(1)}% {evidenceResult.direction} compute per workload</strong> than customers without it.</p><dl className="result-context"><div><dt>Population</dt><dd>{evidenceResult.population} across the declared test window.</dd></div><div><dt>Decision use</dt><dd>Candidate savings rate for the value plan; no base-case credit until replicated against production provider invoices.</dd></div><div><dt>Limitation</dt><dd>A planted effect in illustrative data. It says nothing about real customers or future margin.</dd></div></dl><details className="method-disclosure"><summary>View method</summary><p>Estimated change: {evidenceResult.estimate} log points; 95% interval {evidenceResult.interval}; baseline-adjusted precision companion {evidenceResult.companion}.</p></details></section>
+        <section className="panel evidence-result" aria-labelledby="optimizer-heading"><div className="section-heading"><div><p className="eyebrow">Evidence test</p><h2 id="optimizer-heading">Optimizer test {evidenceResult.resultVerb} unit compute cost</h2></div><span>{evidenceResult.evidenceLabel}</span></div><p className="result-lead">Customers randomly given the optimizer showed <strong>{evidenceResult.comparison}</strong> than customers without it.</p><dl className="result-context"><div><dt>Population</dt><dd>{evidenceResult.population} across the declared test window.</dd></div><div><dt>Decision use</dt><dd>{evidenceResult.decisionUse}</dd></div><div><dt>Limitation</dt><dd>A planted effect in illustrative data. It says nothing about real customers or future margin.</dd></div></dl><details className="method-disclosure"><summary>View method</summary><p>Estimated change: {evidenceResult.estimate} log points; 95% interval {evidenceResult.interval}; baseline-adjusted precision companion {evidenceResult.companion}.</p></details></section>
       ) : (
-        <section className="panel evidence-result" aria-labelledby="renewal-heading"><div className="section-heading"><div><p className="eyebrow">Evidence test</p><h2 id="renewal-heading">Higher renewal offers {evidenceResult.resultVerb} renewal</h2></div><span>Downside evidence</span></div><p className="result-lead">Accounts randomly offered the higher renewal price renewed <strong>{evidenceResult.effectPoints.toFixed(1)} percentage points {evidenceResult.direction} often</strong> than the comparison group.</p><dl className="result-context"><div><dt>Population</dt><dd>{evidenceResult.population}.</dd></div><div><dt>Decision use</dt><dd>No pricing upside credit in the selected structure.</dd></div><div><dt>Limitation</dt><dd>A planted effect in synthetic data, not evidence about a real company.</dd></div></dl></section>
+        <section className="panel evidence-result" aria-labelledby="renewal-heading"><div className="section-heading"><div><p className="eyebrow">Evidence test</p><h2 id="renewal-heading">Higher renewal offers {evidenceResult.resultVerb} renewal</h2></div><span>{evidenceResult.evidenceLabel}</span></div><p className="result-lead">Accounts randomly offered the higher renewal price renewed <strong>{evidenceResult.comparison}</strong> than the comparison group.</p><dl className="result-context"><div><dt>Population</dt><dd>{evidenceResult.population}.</dd></div><div><dt>Decision use</dt><dd>{evidenceResult.decisionUse}</dd></div><div><dt>Limitation</dt><dd>A planted effect in synthetic data, not evidence about a real company.</dd></div></dl></section>
       )}
       <ModelReviewPanel evidence={caseData.summaryMetrics.map((metric) => ({id: metric.metric_id, title: metric.label, displayValue: metric.value, summary: metric.detail}))} />
     </div>
