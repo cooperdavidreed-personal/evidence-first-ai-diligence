@@ -14,15 +14,15 @@ The strongest feasible candidate is implemented, independently reviewed by Claud
 
 - Exact base: `5795f00fe7466991605dfba95b7d0d3b90cde5bd`
 - Owned isolated branch: `codex/underwriting-product-vertical-slice`
-- Exact product candidate: `2f1ead6f08ff5ecc9c112a3eb8db674ef2042524`
+- Exact product candidate: `8633bd0519e3a477a2b2a4a490d795e4b0581d32`
 - Independently reviewed hardening predecessor: `57d74c13331f1fc82bdb99bc0ca0d73fa68e80f0`
 - Remote: `origin` at `https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence.git`
-- Remote branch contains the exact product candidate `2f1ead6f08ff5ecc9c112a3eb8db674ef2042524`: `VERIFIED`
+- Remote branch contains the exact product candidate `8633bd0519e3a477a2b2a4a490d795e4b0581d32`: `VERIFIED`
 - Merge: `NOT RUN`
 - Filesystem writer: Codex only
 - Source lanes listed in the mission register: preserved; no writes were made to them
 
-The final receipt commit is documentation-only and may advance the branch tip beyond the exact product candidate above. Product-test identity remains `2f1ead6f08ff5ecc9c112a3eb8db674ef2042524`.
+The final receipt commit is documentation-only and may advance the branch tip beyond the exact product candidate above. Product-test identity remains `8633bd0519e3a477a2b2a4a490d795e4b0581d32`.
 
 ## Part disposition
 
@@ -46,16 +46,16 @@ Full Python/kernel verification ran at repaired parent `8b3eeb81aee7d8042ebfb38a
 
 The exact product candidate differs from that parent only in workbench disclosure/test/evidence and provider-documentation bytes. Python/kernel, lockfile, retained-case, and source-room bytes are unchanged. The exact product-candidate non-Python pipeline then produced:
 
-- Frontend/data/intake/model: `39/39 PASS`.
+- Frontend/data/intake/model: `40/40 PASS`.
 - MCP: `6/6 PASS`.
-- TypeScript/Vite production build and lazy-chunk budgets: `PASS` — shell gzip 82,878 bytes; AtlasGrid payload gzip 718,257 bytes; Helios payload gzip 607,795 bytes.
+- TypeScript/Vite production build and lazy-chunk budgets: `PASS` — shell gzip 82,996 bytes; AtlasGrid payload gzip 718,257 bytes; Helios payload gzip 607,795 bytes.
 - Browser: `18 passed`, `6 intentional mobile-project skips`, `24 discovered`; every active test passed.
 - Pixel regression: `40/40 PASS`.
 - Accessibility evidence: `8/8 PASS`; zero critical or serious Axe findings and no root overflow on the retained routes. This is automated evidence, not comprehensive WCAG evidence.
 - Normalized PDFs: `6/6 PASS`, 35 pages, tagged and normalized.
 - Visual manifest identity: `PASS`; self-digest `d6e151fb150fe58a18bcd09999d8c24836f975c1e277a255da2efcbba7f63df2`.
 - Public artifact/secret/path scan: `PASS` over 350 candidate files.
-- Final documentation-tree public artifact/secret/path scan: `PASS` over 354 candidate files.
+- Final documentation-tree public artifact/secret/path scan: `PASS` over 355 candidate files.
 
 ## Product evidence retained
 
@@ -80,6 +80,8 @@ Only providers whose mission state was `READY` were invoked. Every Claude Code a
 - Grok bounded final retry at `8b3eeb81aee7d8042ebfb38a6c43ced103518321`: `FAILED_RETRYABLE`; provider file-read error followed by cancellation; no review credit. The Grok order ceiling is exhausted, so final state is `HELD_PROVIDER`.
 - Claude post-repair final review at the exact product candidate: `PRODUCED`; repository writes 0; `CRITICAL_DEFECTS: NONE`; verdict `NO_UNRESOLVED_CRITICAL_DEFECT`; stdout SHA-256 `cb6861e35dacdcfd21cd91d8ad6b01bf14380f404181acb274b4b168642ccb57`.
 - Claude post-handoff hardening review at `57d74c13331f1fc82bdb99bc0ca0d73fa68e80f0`: `PRODUCED`; repository writes 0; `CRITICAL_OR_HIGH_FINDINGS: NONE`; verdict `NO_UNRESOLVED_CRITICAL_OR_HIGH_FINDING`; stdout SHA-256 `d8390c2590837cbf96026c98d304abb1d85e153c9d2716a5825e6643d5191c1f`. Its sign-neutrality and notification-side-effect lower findings were repaired in exact product commit `2f1ead6f08ff5ecc9c112a3eb8db674ef2042524` and covered by the final integrated gate.
+
+GitHub run `33524773690` exposed a slower-runner-only unit-test timing dependency in retained-case loading: the test DOM was torn down while the real lazy payload was still resolving. Exact product commit `8633bd0519e3a477a2b2a4a490d795e4b0581d32` injects a deterministic loader at the unit boundary, retains real lazy loading in production and Playwright, adds a fail-closed user recovery state, and passes the complete local product gate. The exact-head GitHub run remains `QUEUED`; no hosted CI pass is claimed yet.
 
 Provider envelopes included list-price-equivalent usage metadata. That metadata is not evidence of a separately billed marginal charge. No API-key route or paid fallback was used, and separately authorized marginal spend was `$0`.
 
