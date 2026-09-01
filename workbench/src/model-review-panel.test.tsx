@@ -27,8 +27,11 @@ describe("model review panel", () => {
     await user.click(screen.getByRole("button", {name: "Send selected evidence"}));
     expect(await screen.findByRole("heading", {name: "Burn window may be too short"})).toBeInTheDocument();
     expect(screen.getByText("Model proposed")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", {name: "Accept proposal"}));
+    const accept = screen.getByRole("button", {name: "Accept proposal"});
+    expect(accept).toBeDisabled();
+    await user.type(screen.getByRole("textbox", {name: "Human reviewer"}), "Avery Chen");
+    await user.click(accept);
     expect(screen.getByText("accepted")).toBeInTheDocument();
-    expect(screen.getByText("Reviewed by Current analyst")).toBeInTheDocument();
+    expect(screen.getByText("Reviewed by Avery Chen")).toBeInTheDocument();
   });
 });

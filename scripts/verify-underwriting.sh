@@ -55,3 +55,4 @@ cd ..
 uv run python scripts/verify_visual_regression.py
 uv run python scripts/verify_pdf_contract.py
 uv run python scripts/build_visual_manifest.py
+uv run python scripts/scan_public.py

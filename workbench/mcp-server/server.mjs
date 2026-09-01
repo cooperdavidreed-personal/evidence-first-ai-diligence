@@ -76,6 +76,7 @@ export async function handleMessage(message, handlers) {
     try { const value = await handlers.callTool(message.params?.name, message.params?.arguments ?? {}); return result(message.id, {content: [{type: "text", text: JSON.stringify(value)}], structuredContent: value}); }
     catch (caught) { return error(message.id, caught instanceof Error ? caught.message : "tool_call_failed"); }
   }
+  if (!Object.prototype.hasOwnProperty.call(message, "id")) return null;
   return error(message.id, "method_not_found");
 }
 

@@ -42,6 +42,26 @@ function statusLabel(status: string) {
   return labels[status] ?? status.toLowerCase().replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
 }
 function plainObserved(value: string) { return value.replace(/\s*\(MC SE[^)]*\)/i, ""); }
+function requiredAnalysis(caseData: CaseData, analysisId: string) {
+  const analysis = caseData.analyses.find((item) => item.analysis_id === analysisId);
+  if (!analysis) throw new Error(`Required retained analysis ${analysisId} is missing`);
+  return analysis;
+}
+function analysisOutput(caseData: CaseData, analysisId: string, outputName: string) {
+  const output = requiredAnalysis(caseData, analysisId).outputs.find((item) => item.name === outputName);
+  if (!output) throw new Error(`Required retained output ${analysisId}.${outputName} is missing`);
+  return output.value;
+}
+function analysisDiagnostic(caseData: CaseData, analysisId: string, diagnosticName: string) {
+  const diagnostic = requiredAnalysis(caseData, analysisId).diagnostics.find((item) => item.name === diagnosticName);
+  if (!diagnostic) throw new Error(`Required retained diagnostic ${analysisId}.${diagnosticName} is missing`);
+  return diagnostic.value;
+}
+function numericAnalysisValue(value: string, label: string) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) throw new Error(`Required retained numeric value ${label} is invalid`);
+  return parsed;
+}
 
 function DealList({onOpen, onNew, localDeal, onOpenLocal}: {onOpen: (caseId: CaseId) => void; onNew: () => void; localDeal: IntakeResult | null; onOpenLocal: () => void}) {
   return (
@@ -73,13 +93,17 @@ function DealList({onOpen, onNew, localDeal, onOpenLocal}: {onOpen: (caseId: Cas
 
 function DecisionTests({caseData}: {caseData: CaseData}) {
   const tests = caseData.decision.metric_pairs ?? [];
+  const heliosStress = caseData.caseId === "helios" ? {
+    lossShare: numericAnalysisValue(analysisOutput(caseData, "HX-09", "probability_below_1x"), "HX-09.probability_below_1x"),
+    precision: numericAnalysisValue(analysisDiagnostic(caseData, "HX-09", "loss_probability_monte_carlo_se_pp"), "HX-09.loss_probability_monte_carlo_se_pp"),
+  } : null;
   return (
     <section className="panel" aria-labelledby="decision-tests-heading">
       <div className="section-heading"><div><p className="eyebrow">Declared policy</p><h2 id="decision-tests-heading">Decision tests</h2></div><span>{tests.filter((test) => test.status === "MISSES").length} misses</span></div>
       <div className="table-wrap" tabIndex={0} aria-label="Scrollable decision tests"><table><thead><tr><th>Test</th><th>Observed</th><th>Required</th><th>Result</th></tr></thead><tbody>
         {tests.map((test, index) => <tr key={`${test.metric}-${index}`}><td>{test.metric.replace("Gross XIRR", "Annualized gross return")}</td><td>{plainObserved(test.observed)}</td><td>{test.threshold}</td><td><span className={`status status-${test.status.toLowerCase()}`}>{statusLabel(test.status)}</span></td></tr>)}
       </tbody></table></div>
-      {caseData.caseId === "helios" ? <details className="method-disclosure"><summary>View simulation precision</summary><p>The modeled loss share is 20.0%. Its simulation-noise estimate is ±1.26 percentage points. This is a declared synthetic stress result, not a forecast.</p></details> : null}
+      {heliosStress ? <details className="method-disclosure"><summary>View simulation precision</summary><p>The modeled loss share is {heliosStress.lossShare.toFixed(1)}%. Its simulation-noise estimate is ±{heliosStress.precision.toFixed(2)} percentage points. This is a declared synthetic stress result, not a forecast.</p></details> : null}
     </section>
   );
 }
@@ -117,13 +141,30 @@ function Financials({caseData}: {caseData: CaseData}) {
 
 function Diligence({caseData}: {caseData: CaseData}) {
   const issues = caseData.decision.issue_summary.issues;
+  const evidenceResult = caseData.caseId === "helios" ? (() => {
+    const analysis = requiredAnalysis(caseData, "HX-06");
+    const effect = numericAnalysisValue(analysisOutput(caseData, "HX-06", "optimizer_ate"), "HX-06.optimizer_ate");
+    return {
+      effectPercent: Math.abs(Math.expm1(effect)) * 100,
+      population: analysis.population,
+      estimate: effect.toFixed(4),
+      interval: analysisDiagnostic(caseData, "HX-06", "unadjusted_confidence_interval"),
+      companion: numericAnalysisValue(analysisOutput(caseData, "HX-06", "optimizer_baseline_adjusted_companion"), "HX-06.optimizer_baseline_adjusted_companion").toFixed(4),
+    };
+  })() : (() => {
+    const analysis = requiredAnalysis(caseData, "AG-07");
+    return {
+      effectPoints: Math.abs(numericAnalysisValue(analysisOutput(caseData, "AG-07", "renewal_itt"), "AG-07.renewal_itt")),
+      population: analysis.population,
+    };
+  })();
   return (
     <div className="view-stack">
       <section className="panel" aria-labelledby="issues-heading"><div className="section-heading"><div><p className="eyebrow">Worklist</p><h2 id="issues-heading">{issues.filter((issue) => issue.blocks_advancement).length} issues block the next step</h2></div><span>Human-owned</span></div><div className="issue-list">{issues.map((issue) => <article key={issue.issue_id}><div><span className={`status status-${issue.state.toLowerCase()}`}>{statusLabel(issue.state)}</span><span>{issue.materiality.toLowerCase()}</span></div><h3>{issue.title}</h3><p>{issue.consequence}</p><footer><span>Owner</span><strong>{issue.owner}</strong></footer></article>)}</div></section>
-      {caseData.caseId === "helios" ? (
-        <section className="panel evidence-result" aria-labelledby="optimizer-heading"><div className="section-heading"><div><p className="eyebrow">Evidence test</p><h2 id="optimizer-heading">Optimizer test reduced unit compute cost</h2></div><span>Zero base-case credit</span></div><p className="result-lead">Customers randomly given the optimizer used about <strong>8.7% less compute per workload</strong> than customers without it.</p><dl className="result-context"><div><dt>Population</dt><dd>120 synthetic customers across the declared test window.</dd></div><div><dt>Decision use</dt><dd>Candidate savings rate for the value plan; no base-case credit until replicated against production provider invoices.</dd></div><div><dt>Limitation</dt><dd>A planted effect in illustrative data. It says nothing about real customers or future margin.</dd></div></dl><details className="method-disclosure"><summary>View method</summary><p>Estimated change: −0.0911 log points; 95% interval −0.1187 to −0.0634; baseline-adjusted precision companion −0.0915.</p></details></section>
+      {"effectPercent" in evidenceResult ? (
+        <section className="panel evidence-result" aria-labelledby="optimizer-heading"><div className="section-heading"><div><p className="eyebrow">Evidence test</p><h2 id="optimizer-heading">Optimizer test reduced unit compute cost</h2></div><span>Zero base-case credit</span></div><p className="result-lead">Customers randomly given the optimizer used about <strong>{evidenceResult.effectPercent.toFixed(1)}% less compute per workload</strong> than customers without it.</p><dl className="result-context"><div><dt>Population</dt><dd>{evidenceResult.population} across the declared test window.</dd></div><div><dt>Decision use</dt><dd>Candidate savings rate for the value plan; no base-case credit until replicated against production provider invoices.</dd></div><div><dt>Limitation</dt><dd>A planted effect in illustrative data. It says nothing about real customers or future margin.</dd></div></dl><details className="method-disclosure"><summary>View method</summary><p>Estimated change: {evidenceResult.estimate} log points; 95% interval {evidenceResult.interval}; baseline-adjusted precision companion {evidenceResult.companion}.</p></details></section>
       ) : (
-        <section className="panel evidence-result" aria-labelledby="renewal-heading"><div className="section-heading"><div><p className="eyebrow">Evidence test</p><h2 id="renewal-heading">Higher renewal offers reduced renewal</h2></div><span>Downside evidence</span></div><p className="result-lead">Accounts randomly offered the higher renewal price renewed <strong>6.7 percentage points less often</strong> than the comparison group.</p><dl className="result-context"><div><dt>Population</dt><dd>800 illustrative renewal-eligible accounts.</dd></div><div><dt>Decision use</dt><dd>No pricing upside credit in the selected structure.</dd></div><div><dt>Limitation</dt><dd>A planted effect in synthetic data, not evidence about a real company.</dd></div></dl></section>
+        <section className="panel evidence-result" aria-labelledby="renewal-heading"><div className="section-heading"><div><p className="eyebrow">Evidence test</p><h2 id="renewal-heading">Higher renewal offers reduced renewal</h2></div><span>Downside evidence</span></div><p className="result-lead">Accounts randomly offered the higher renewal price renewed <strong>{evidenceResult.effectPoints.toFixed(1)} percentage points less often</strong> than the comparison group.</p><dl className="result-context"><div><dt>Population</dt><dd>{evidenceResult.population}.</dd></div><div><dt>Decision use</dt><dd>No pricing upside credit in the selected structure.</dd></div><div><dt>Limitation</dt><dd>A planted effect in synthetic data, not evidence about a real company.</dd></div></dl></section>
       )}
       <ModelReviewPanel evidence={caseData.summaryMetrics.map((metric) => ({id: metric.metric_id, title: metric.label, displayValue: metric.value, summary: metric.detail}))} />
     </div>
@@ -167,6 +208,6 @@ export default function App({initialCase, initialRoute}: {initialCase: CaseData;
   if (loading) return <div className="loading-state" role="status">Opening deal…</div>;
   if (intakeOpen) return <DealIntake onCancel={() => setIntakeOpen(false)} onComplete={(result) => {setLocalDeal(result); setIntakeOpen(false); setActiveLocal(true); setView("overview"); window.history.pushState(null, "", "#/v3/local/overview");}} />;
   if (view === "deals") return <DealList onOpen={chooseDeal} onNew={() => setIntakeOpen(true)} localDeal={localDeal} onOpenLocal={() => {setActiveLocal(true); setView("overview"); window.history.pushState(null, "", "#/v3/local/overview");}} />;
-  if (activeLocal && localDeal) return <LocalDealShell result={localDeal} view={view} onNavigate={(next) => {setView(next); window.history.pushState(null, "", `#/v3/local/${next}`); window.scrollTo(0, 0);}} onDeals={() => {setActiveLocal(false); setView("deals"); window.history.pushState(null, "", "/");}} />;
-  return <DealShell caseData={caseData} view={view} onNavigate={navigate} onChooseDeal={chooseDeal} onDeals={() => {window.history.pushState(null, "", "/"); setView("deals");}} />;
+  if (activeLocal && localDeal) return <LocalDealShell result={localDeal} view={view} onNavigate={(next) => {setView(next); window.history.pushState(null, "", `#/v3/local/${next}`); window.scrollTo(0, 0);}} onDeals={() => {setActiveLocal(false); setView("deals"); window.history.pushState(null, "", "#/");}} />;
+  return <DealShell caseData={caseData} view={view} onNavigate={navigate} onChooseDeal={chooseDeal} onDeals={() => {window.history.pushState(null, "", "#/"); setView("deals");}} />;
 }

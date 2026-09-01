@@ -1,3 +1,5 @@
+import {compareDecimalStrings} from "./data-contract";
+
 export const PACKAGE_VERSION = "growth-saas-quick-package/v1";
 export const REQUIRED_FILES = ["manifest.json", "deal.json", "monthly_financials.csv", "customer_arr.csv"] as const;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -81,10 +83,14 @@ function safeInteger(value: unknown, field: string) {
   return value;
 }
 function decimal(value: unknown, field: string, min: number, max: number) {
-  if (typeof value !== "string" || !/^-?\d+(?:\.\d+)?$/.test(value)) throw new Error(`${field} must be a declared decimal string`);
+  if (typeof value !== "string" || !/^-?\d+(?:\.\d{1,12})?$/.test(value)) throw new Error(`${field} must be a declared decimal string with at most 12 decimal places`);
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < min || parsed > max) throw new Error(`${field} is outside the supported range`);
   return parsed;
+}
+function clearsDecimalThreshold(observed: number, required: number) {
+  if (!Number.isFinite(observed) || !Number.isFinite(required)) throw new Error("Decision threshold operand is not finite");
+  return compareDecimalStrings(observed.toFixed(12), required.toFixed(12)) >= 0;
 }
 function text(value: unknown, field: string) {
   if (typeof value !== "string" || value.trim().length === 0 || value.length > 200) throw new Error(`${field} must be a non-empty string`);
@@ -244,14 +250,14 @@ function analyze(deal: DealInput, monthly: MonthlyRow[], customers: CustomerRow[
   const postMoney = deal.preMoneyCents + deal.investmentCents; if (!Number.isSafeInteger(postMoney) || deal.investmentCents === 0 || postMoney <= 0) throw new Error("Proposed financing must have positive, safe integer-cent values");
   const postMoneyOwnership = deal.investmentCents / postMoney;
   const terminalRevenueCents = Math.round(ltmRevenueCents * ((1 + deal.annualRevenueGrowth) ** deal.years));
-  const exitEquityCents = Math.round(terminalRevenueCents * deal.exitRevenueMultiple + deal.cashCents);
+  const exitEquityCents = Math.round(terminalRevenueCents * deal.exitRevenueMultiple);
   if (!Number.isSafeInteger(terminalRevenueCents) || !Number.isSafeInteger(exitEquityCents)) throw new Error("Exit scenario exceeds safe integer-cent range");
   const grossProceedsCents = Math.round(exitEquityCents * postMoneyOwnership); const grossMoic = grossProceedsCents / deal.investmentCents;
   const annualizedGrossReturn = grossMoic <= 0 ? -1 : grossMoic ** (1 / deal.years) - 1;
-  const runwayClears = runwayMonths === null || runwayMonths >= deal.minimumRunwayMonths;
+  const runwayClears = runwayMonths === null || clearsDecimalThreshold(runwayMonths, deal.minimumRunwayMonths);
   const tests: QuickDecisionTest[] = [
-    {label: "Gross multiple", observed: `${grossMoic.toFixed(2)}x`, required: `At least ${deal.minimumGrossMoic.toFixed(2)}x`, status: grossMoic >= deal.minimumGrossMoic ? "CLEARS" : "MISSES"},
-    {label: "Annualized gross return", observed: percent(annualizedGrossReturn), required: `At least ${percent(deal.minimumAnnualizedReturn)}`, status: annualizedGrossReturn >= deal.minimumAnnualizedReturn ? "CLEARS" : "MISSES"},
+    {label: "Gross multiple", observed: `${grossMoic.toFixed(2)}x`, required: `At least ${deal.minimumGrossMoic.toFixed(2)}x`, status: clearsDecimalThreshold(grossMoic, deal.minimumGrossMoic) ? "CLEARS" : "MISSES"},
+    {label: "Annualized gross return", observed: percent(annualizedGrossReturn), required: `At least ${percent(deal.minimumAnnualizedReturn)}`, status: clearsDecimalThreshold(annualizedGrossReturn, deal.minimumAnnualizedReturn) ? "CLEARS" : "MISSES"},
     {label: "Cash runway", observed: runwayMonths === null ? "Cash generative" : `${runwayMonths.toFixed(1)} months`, required: `At least ${deal.minimumRunwayMonths.toFixed(1)} months`, status: runwayClears ? "CLEARS" : "MISSES"},
   ];
   const metrics: QuickMetric[] = [
@@ -260,7 +266,7 @@ function analyze(deal: DealInput, monthly: MonthlyRow[], customers: CustomerRow[
     {id: "ordinary-nrr", label: "Ordinary-cohort NRR", value: ordinaryNrr, display: percent(ordinaryNrr), meaning: `ARR retained from customers present in ${basePeriod}, measured at ${latestPeriod}.`, limitation: "Simple fixed cohort; no segmentation, contract review, or parent-account reconciliation.", sourceFiles: ["customer_arr.csv"]},
     {id: "runway", label: "Recent runway", value: runwayMonths, display: runwayMonths === null ? "Cash generative" : `${runwayMonths.toFixed(1)} mo`, meaning: "Cash divided by average positive net burn over the latest three months.", limitation: "No financing events, working-capital schedule, or committed costs beyond the uploaded rows.", sourceFiles: ["deal.json", "monthly_financials.csv"]},
     {id: "ownership", label: "Post-money ownership", value: postMoneyOwnership, display: percent(postMoneyOwnership), meaning: "New investment divided by declared pre-money value plus new investment.", limitation: "No option-pool refresh, preferences, dilution, or later financing rounds.", sourceFiles: ["deal.json"]},
-    {id: "gross-moic", label: "Gross multiple", value: grossMoic, display: `${grossMoic.toFixed(2)}x`, meaning: "Illustrative exit equity proceeds divided by the proposed investment.", limitation: "Scenario only; no preference waterfall, fees, taxes, dilution, or debt.", sourceFiles: ["deal.json", "monthly_financials.csv"]},
+    {id: "gross-moic", label: "Gross multiple", value: grossMoic, display: `${grossMoic.toFixed(2)}x`, meaning: "Illustrative exit equity proceeds divided by the proposed investment.", limitation: "Scenario assumes debt- and cash-neutral exit equity; no preference waterfall, fees, taxes, or dilution.", sourceFiles: ["deal.json", "monthly_financials.csv"]},
     {id: "annualized-return", label: "Annualized gross return", value: annualizedGrossReturn, display: percent(annualizedGrossReturn), meaning: `Annualized return across the declared ${deal.years}-year scenario.`, limitation: "Scenario only; not a forecast or investment recommendation.", sourceFiles: ["deal.json", "monthly_financials.csv"]},
   ];
   return {ltmRevenueCents, grossMargin, ordinaryNrr, recentNetBurnCents, runwayMonths, postMoneyOwnership, terminalRevenueCents, exitEquityCents, grossMoic, annualizedGrossReturn, metrics, tests};
@@ -268,6 +274,12 @@ function analyze(deal: DealInput, monthly: MonthlyRow[], customers: CustomerRow[
 
 function incomplete(files: IntakeFileStatus[], errors: string[], deal: DealInput | null = null): IntakeResult {
   return {packageState: "INCOMPLETE", posture: "NO CALL — PACKAGE INCOMPLETE", rationale: errors[0] ?? "Required package evidence is incomplete.", files, errors, deal, analysis: null, processedLocally: true};
+}
+
+function analysisErrorTarget(detail: string) {
+  if (/Customer ARR|customer|ARR|cohort/i.test(detail)) return "customer_arr.csv";
+  if (/monthly financials|LTM revenue|cost of revenue|net burn|CSV|period/i.test(detail)) return "monthly_financials.csv";
+  return "deal.json";
 }
 
 export async function processDealPackage(input: File[]): Promise<IntakeResult> {
@@ -332,7 +344,7 @@ export async function processDealPackage(input: File[]): Promise<IntakeResult> {
     return {packageState: "READY", posture: failed.length === 0 ? "READY FOR IC REVIEW" : "HOLD", rationale: failed.length === 0 ? "The complete package clears all declared return and runway tests. This is an analytical posture, not an investment recommendation or approval." : `${failed.map((test) => test.label).join(", ")} miss the declared threshold. The complete package remains on hold.`, files: statuses, errors: [], deal, analysis, processedLocally: true};
   } catch (error) {
     const detail = error instanceof Error ? error.message : "Package analysis failed"; errors.push(detail);
-    const target = /Customer ARR|customer|ARR/.test(detail) ? "customer_arr.csv" : /Monthly|revenue|cost|burn|CSV|period/.test(detail) ? "monthly_financials.csv" : "deal.json";
+    const target = analysisErrorTarget(detail);
     const status = statuses.find((item) => item.name === target); if (status) { status.state = "INVALID"; status.detail = detail; }
     return incomplete(statuses, errors, deal);
   }

@@ -58,6 +58,7 @@ describe("Growth SaaS Quick Package", () => {
     expect(result.analysis?.ordinaryNrr).toBeCloseTo(585 / 700, 8);
     expect(result.analysis?.postMoneyOwnership).toBeCloseTo(1 / 3, 8);
     expect(result.analysis?.grossMoic).toBeGreaterThan(3.2);
+    expect(result.analysis?.exitEquityCents).toBe(Math.round(result.analysis!.terminalRevenueCents * 5));
     expect(result.analysis?.tests.every((test) => test.status === "CLEARS")).toBe(true);
     expect(result.processedLocally).toBe(true);
   });
@@ -86,6 +87,22 @@ describe("Growth SaaS Quick Package", () => {
     expect(result.posture).toBe("NO CALL — PACKAGE INCOMPLETE");
     expect(result.errors.join(" ")).toMatch(/integer cents/);
     expect(result.analysis).toBeNull();
+  });
+
+  it("attributes invalid deal assumptions to deal.json", async () => {
+    const invalidDeal = deal.replace('"annual_revenue_growth":"0.25"', '"annual_revenue_growth":"9.0"');
+    const result = await processDealPackage(await packageFiles({deal: invalidDeal}));
+    expect(result.packageState).toBe("INCOMPLETE");
+    expect(result.files.find((file) => file.name === "deal.json")?.state).toBe("INVALID");
+    expect(result.files.find((file) => file.name === "monthly_financials.csv")?.state).toBe("RECOGNIZED");
+  });
+
+  it("rejects thresholds beyond the declared 12-place precision", async () => {
+    const invalidDeal = deal.replace('"minimum_gross_moic":"2.5"', '"minimum_gross_moic":"2.5000000000001"');
+    const result = await processDealPackage(await packageFiles({deal: invalidDeal}));
+    expect(result.packageState).toBe("INCOMPLETE");
+    expect(result.files.find((file) => file.name === "deal.json")?.state).toBe("INVALID");
+    expect(result.errors.join(" ")).toMatch(/12 decimal places/);
   });
 
   it("rejects duplicate financial periods", async () => {

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
 import {readFileSync} from "node:fs";
 import test from "node:test";
-import {canonicalCasePath, createToolHandlers, toolDefinitions} from "./server.mjs";
+import {canonicalCasePath, createToolHandlers, handleMessage, toolDefinitions} from "./server.mjs";
 
 function digest() { return createHash("sha256").update(readFileSync(canonicalCasePath)).digest("hex"); }
 
@@ -28,4 +28,10 @@ test("unknown evidence and forbidden tools fail closed", async () => {
   const handlers = createToolHandlers();
   await assert.rejects(() => handlers.callTool("propose_memo_section", {deal_id: "helios", section: "downside", draft_text: "Draft", evidence_refs: ["unknown"]}), /evidence_reference_not_canonical/);
   await assert.rejects(() => handlers.callTool("set_decision", {deal_id: "helios", decision: "INVEST"}), /tool_not_found/);
+});
+
+test("unknown notifications are silent while unknown requests fail", async () => {
+  const handlers = createToolHandlers();
+  assert.equal(await handleMessage({jsonrpc: "2.0", method: "notifications/cancelled"}, handlers), null);
+  assert.deepEqual(await handleMessage({jsonrpc: "2.0", id: 7, method: "unsupported/request"}, handlers), {jsonrpc: "2.0", id: 7, error: {code: -32000, message: "method_not_found"}});
 });
