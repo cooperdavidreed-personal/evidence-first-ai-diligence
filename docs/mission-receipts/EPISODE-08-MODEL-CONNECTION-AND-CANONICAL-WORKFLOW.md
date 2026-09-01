@@ -4,7 +4,9 @@ Recorded: `2026-09-01T17:45:00Z`
 
 State: `VERIFIED_LOCAL`
 
-Implementation commit: `2688e065491f16142ce08238e2a75dca7bb80373`
+Initial implementation commit: `2688e065491f16142ce08238e2a75dca7bb80373`
+
+Post-review repair commit: `85f379ddbb329354421076f6ae5569058a7c8133`
 
 ## Product question
 
@@ -26,6 +28,8 @@ The answer is implemented as an ordinary workflow, not a marketing claim: the De
 
 Claude performed a read-only product-moat review from checkpoint `740fa62709b66c5c98c88447afc3a259ec95a6c9` with zero writes. Its decisive finding was that a connection wizard alone would be AI theater. It required a complete proposal-ledger-to-human-review-to-memo workflow; that workflow is now implemented and deterministically tested.
 
+Claude's exact-candidate review at `4c6fe115db9a9fd6a3d57fca073addf3bc87ec1d` returned `PORTFOLIO_CANDIDATE_READY` with zero writes and no critical or high finding. The four actionable low findings were then closed: human-readable evidence labels replace raw identifiers, the ledger tightens existing-file permissions, imported ids use a ledger namespace, and the current receipt identity is explicit. Claude stdout SHA-256: `202228ea14f08c3e5a24dfd1403f2a11737c829ecbb534611df7b9e58f8eead9`.
+
 Grok was not invoked because the mission's four-order Grok ceiling was already exhausted. Its state remains `HELD_PROVIDER`, not silently reset.
 
 ## Exact local acceptance
@@ -35,9 +39,9 @@ Command: `bash scripts/verify-underwriting.sh`
 - Python/kernel: `182/182 PASS` in `724.25s`
 - Declared mutation gates: `16/16 PASS`; dynamic `13`, static `1`, whole-program score `NOT_CLAIMED`
 - Frontend unit/data/intake/model/connection: `54/54 PASS`
-- MCP: `8/8 PASS`
+- MCP: `9/9 PASS`
 - TypeScript and Vite production build: `PASS`
-- Lazy case-chunk boundary: `PASS`; shell gzip `89,099` bytes; AtlasGrid payload gzip `718,257`; Helios payload gzip `607,795`
+- Lazy case-chunk boundary: `PASS`; shell gzip `89,305` bytes; AtlasGrid payload gzip `718,257`; Helios payload gzip `607,795`
 - Browser: `22 PASS`, `6` intentional mobile-print skips, `28` discovered
 - Visual regression: `PASS`; `40` PNG references
 - Accessibility evidence: `8/8 PASS`; automated route evidence only, not comprehensive WCAG proof
