@@ -17,7 +17,7 @@ The strongest feasible candidate is implemented, independently reviewed by Claud
 - Exact product candidate: `2f1ead6f08ff5ecc9c112a3eb8db674ef2042524`
 - Independently reviewed hardening predecessor: `57d74c13331f1fc82bdb99bc0ca0d73fa68e80f0`
 - Remote: `origin` at `https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence.git`
-- Remote branch push through the prior receipt head `85a09ace69dd7e5a8d9a23106a3e45a51731b6b7`: `VERIFIED`
+- Remote branch contains the exact product candidate `2f1ead6f08ff5ecc9c112a3eb8db674ef2042524`: `VERIFIED`
 - Merge: `NOT RUN`
 - Filesystem writer: Codex only
 - Source lanes listed in the mission register: preserved; no writes were made to them
@@ -55,7 +55,7 @@ The exact product candidate differs from that parent only in workbench disclosur
 - Normalized PDFs: `6/6 PASS`, 35 pages, tagged and normalized.
 - Visual manifest identity: `PASS`; self-digest `d6e151fb150fe58a18bcd09999d8c24836f975c1e277a255da2efcbba7f63df2`.
 - Public artifact/secret/path scan: `PASS` over 350 candidate files.
-- Final documentation-tree public artifact/secret/path scan: `PASS` over 352 candidate files.
+- Final documentation-tree public artifact/secret/path scan: `PASS` over 354 candidate files.
 
 ## Product evidence retained
 
