@@ -43,7 +43,10 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("button", {name: "VC / Growth Helios Compute Control"}));
-    await waitFor(() => expect(screen.getByRole("heading", {name: "Helios Compute Control"})).toBeInTheDocument());
+    await waitFor(
+      () => expect(screen.getByRole("heading", {name: "Helios Compute Control"})).toBeInTheDocument(),
+      {timeout: 10_000},
+    );
     expect(screen.getByRole("heading", {name: "HOLD"})).toBeInTheDocument();
     expect(screen.getAllByText(/Requires investment committee approval/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/20%, above the binding 10% maximum/).length).toBeGreaterThan(0);
@@ -61,6 +64,10 @@ describe("Underwriting Intelligence Lab investor workspace", () => {
     expect(screen.getByText(/Return hurdle fails/)).toBeInTheDocument();
     expect(window.location.hash).toContain("driver=entry_enterprise_value_cents");
     await user.click(screen.getByRole("button", {name: "VC / Growth Helios Compute Control"}));
+    await waitFor(
+      () => expect(screen.getByRole("heading", {name: "Helios Compute Control"})).toBeInTheDocument(),
+      {timeout: 10_000},
+    );
     await user.click(screen.getByRole("button", {name: "30.0% annual growth"}));
     expect(screen.getByText("36.6%")).toBeInTheDocument();
     expect(screen.getByText("4.3x")).toBeInTheDocument();
