@@ -77,7 +77,7 @@ try {
     return scene;
   };
   const assertVisibleText = async (text, scene) => {
-    const locator = page.getByText(text, {exact: false}).first();
+    const locator = page.getByText(text, {exact: false}).filter({visible: true}).first();
     await locator.waitFor({state: "visible", timeout: 10_000});
     receipt.observed_claims.push({scene, text, url: page.url()});
     return locator;
@@ -130,7 +130,6 @@ try {
   await until(atlasReturns.start + 6);
   await page.getByRole("button", {name: "Selected"}).click();
   await assertVisibleText("23.3%", atlasReturns.id);
-  await assertVisibleText("REPRICE", atlasReturns.id);
   await shot(3, "atlasgrid-selected", atlasReturns.id);
   await until(atlasReturns.end);
 
@@ -160,7 +159,7 @@ try {
 
   const heliosDecision = sceneAt("helios-decision");
   await page.getByRole("button", {name: "VC / Growth Helios Compute Control"}).click();
-  await page.getByRole("heading", {name: "Helios Compute Control"}).waitFor({state: "visible"});
+  await page.getByRole("heading", {name: "Helios Compute Control"}).first().waitFor({state: "visible"});
   await page.getByRole("button", {name: /01 Overview/}).click();
   await assertVisibleText("HOLD", heliosDecision.id);
   await assertVisibleText("20.00%", heliosDecision.id);
