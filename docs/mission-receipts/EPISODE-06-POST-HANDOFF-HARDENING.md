@@ -1,6 +1,6 @@
 # Episode 06 — post-handoff hardening
 
-Recorded: `2026-09-01T15:32:44Z`
+Recorded: `2026-09-01T15:44:50Z`
 
 State: `VERIFIED`
 
@@ -11,21 +11,23 @@ Close three noncritical robustness findings from the exact-candidate Claude revi
 ## Product commit
 
 - Parent: `85a09ace69dd7e5a8d9a23106a3e45a51731b6b7`
-- Exact hardened product: `57d74c13331f1fc82bdb99bc0ca0d73fa68e80f0`
+- Initial hardened product: `57d74c13331f1fc82bdb99bc0ca0d73fa68e80f0`
+- Exact hardened product after independent-review repair: `2f1ead6f08ff5ecc9c112a3eb8db674ef2042524`
 - Writer: Codex only
 
 ## Changes
 
 1. Retained-analysis contract failures now render a readable `Analysis unavailable` boundary and suppress analytical conclusions instead of blanking the view.
-2. Empirical result headings and “more/less” descriptions derive from the retained estimate sign rather than assuming a negative effect.
-3. Id-less MCP `tools/call` notifications execute under the existing proposal-only authority and emit no JSON-RPC response.
+2. Empirical result headings, badges, decision-use language, and negative/positive/neutral descriptions derive from the retained estimate sign rather than assuming a negative effect.
+3. Id-less MCP `tools/call` notifications are dropped before execution so they cannot create an invisible proposal or emit an invalid JSON-RPC response.
+4. Claude independently reviewed the initial hardening source with zero writes and returned `NO_UNRESOLVED_CRITICAL_OR_HIGH_FINDING`; its two actionable lower findings were repaired before the exact final integrated gate.
 
 ## Exact-head verification
 
 Command: `UNDERWRITING_SKIP_PYTEST=1 bash scripts/verify-underwriting.sh`
 
 - Mutation/source-room/analysis/coverage/memo/recovery gates: `PASS`
-- Frontend/data/intake/model: `38/38 PASS`
+- Frontend/data/intake/model: `39/39 PASS`
 - MCP: `6/6 PASS`
 - TypeScript/Vite build and lazy chunks: `PASS`
 - Browser: `18 passed`, `6 intentional mobile print skips`, `24 discovered`

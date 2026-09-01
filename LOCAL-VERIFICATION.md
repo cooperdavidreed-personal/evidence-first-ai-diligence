@@ -3,7 +3,7 @@
 Status: `PRODUCT CANDIDATE VERIFIED LOCALLY — FOUNDER REVIEW PENDING`
 
 - Exact mission base: `5795f00fe7466991605dfba95b7d0d3b90cde5bd`
-- Product candidate commit: `57d74c13331f1fc82bdb99bc0ca0d73fa68e80f0`
+- Product candidate commit: `2f1ead6f08ff5ecc9c112a3eb8db674ef2042524`
 - Branch: `codex/underwriting-product-vertical-slice`
 - Environment: macOS, Python 3.12.13, Node 26.3.0, Chromium
 - Complete kernel command at parent `8b3eeb81aee7d8042ebfb38a6c43ced103518321`: `bash scripts/verify-underwriting.sh`
@@ -26,10 +26,10 @@ The only changes from the full-suite parent to the product candidate are workben
 
 - Python/kernel repository suite: `182/182 PASS` in `660.97s`.
 - Mutation gates: `16` declared, `13` dynamic, `1` static; `PASS`; whole-program score explicitly `NOT_CLAIMED`.
-- Frontend/data/intake/model: `38/38 PASS` across five files.
+- Frontend/data/intake/model: `39/39 PASS` across five files.
 - MCP surface/boundary: `6/6 PASS`.
 - Production TypeScript/Vite build: `PASS`.
-- Lazy case chunks: `PASS`; shell gzip `82,693` bytes, AtlasGrid payload gzip `718,257` bytes, Helios payload gzip `607,795` bytes.
+- Lazy case chunks: `PASS`; shell gzip `82,878` bytes, AtlasGrid payload gzip `718,257` bytes, Helios payload gzip `607,795` bytes.
 - Browser: `18 passed, 6 skipped / 24 discovered`; all six skips are desktop-only print tests under the mobile project.
 - Visual regression: `40/40` PNG candidates `PASS` on the reference macOS platform.
 - Accessibility records: `8/8 PASS`; no tested default surface had a critical or serious Axe finding or root overflow.
