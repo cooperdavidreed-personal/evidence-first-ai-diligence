@@ -57,6 +57,33 @@ def _verify_cross_platform_dimensions(candidate: Path) -> None:
         )
 
 
+def _verify_cross_platform_accessibility(baseline: Path, candidate: Path) -> None:
+    """Recheck accessibility invariants without requiring cross-BLAS data hashes."""
+    expected = json.loads(baseline.read_text())
+    actual = json.loads(candidate.read_text())
+    for key in ("boundary", "case", "project", "viewport"):
+        if actual.get(key) != expected.get(key):
+            raise ValueError(f"accessibility_contract_mismatch:{candidate.name}:{key}")
+    expected_views = [scan["view"] for scan in expected["scans"]]
+    actual_scans = actual.get("scans")
+    if not isinstance(actual_scans, list) or [scan.get("view") for scan in actual_scans] != expected_views:
+        raise ValueError(f"accessibility_view_set_mismatch:{candidate.name}")
+    expected_width = expected["viewport"]["width"]
+    for scan in actual_scans:
+        if scan.get("critical_or_serious_count") != 0 or scan.get("violations") != []:
+            raise ValueError(f"accessibility_violation:{candidate.name}:{scan.get('view')}")
+        client_width = scan.get("root_client_width")
+        scroll_width = scan.get("root_scroll_width")
+        minimum_text = scan.get("minimum_visible_text_px")
+        if client_width != expected_width or not isinstance(scroll_width, int) or scroll_width > client_width:
+            raise ValueError(f"accessibility_overflow:{candidate.name}:{scan.get('view')}")
+        if not isinstance(minimum_text, (int, float)) or minimum_text < 8:
+            raise ValueError(f"accessibility_text_floor:{candidate.name}:{scan.get('view')}")
+    current_data_hash = _sha256(ROOT / "workbench" / "src" / "data" / "cases.json")
+    if actual.get("workbench_data_sha256") != current_data_hash:
+        raise ValueError(f"accessibility_data_binding_mismatch:{candidate.name}")
+
+
 def main() -> int:
     manifest = json.loads((ROOT / "verification" / "visual-evidence.json").read_text())
     manifest_paths = [entry["path"] for entry in [*manifest["files"], *manifest["print_files"]] if entry["path"].endswith(".png")]
@@ -105,8 +132,13 @@ def main() -> int:
         candidate = ACCESSIBILITY_CANDIDATE / baseline.name
         if not candidate.is_file():
             failures.append(f"missing_accessibility_candidate:{baseline.name}")
-        elif baseline.read_bytes() != candidate.read_bytes():
+        elif reference_comparable and baseline.read_bytes() != candidate.read_bytes():
             failures.append(f"accessibility_evidence_drift:{baseline.name}")
+        elif not reference_comparable:
+            try:
+                _verify_cross_platform_accessibility(baseline, candidate)
+            except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError) as error:
+                failures.append(str(error))
     if failures:
         raise SystemExit("visual-regression FAIL:\n" + "\n".join(failures))
     if reference_comparable:
