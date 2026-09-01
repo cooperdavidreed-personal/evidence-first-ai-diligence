@@ -107,24 +107,6 @@ def build(
             shutil.copy2(source, target)
             staged.append((target, "release-demo"))
 
-    accessibility_root = repo / "verification" / "accessibility-evidence"
-    accessibility_files = sorted(accessibility_root.glob("*.json"))
-    if len(accessibility_files) != 4:
-        raise RuntimeError(
-            f"expected four accessibility evidence files, got {len(accessibility_files)}"
-        )
-    for source in accessibility_files:
-        staged.append(
-            (
-                _copy_file(
-                    repo,
-                    destination,
-                    f"verification/accessibility-evidence/{source.name}",
-                ),
-                "accessibility-evidence",
-            )
-        )
-
     visual_manifest_path = repo / "verification/visual-evidence.json"
     visual_manifest = json.loads(visual_manifest_path.read_text(encoding="utf-8"))
     expected_manifest_sha256 = visual_manifest.get("manifest_sha256")
@@ -135,6 +117,31 @@ def build(
     staged.append(
         (_copy_file(repo, destination, "verification/visual-evidence.json"), "visual-manifest")
     )
+    accessibility_entries = visual_manifest.get("accessibility_files")
+    if accessibility_entries is None:
+        accessibility_root = repo / "verification" / "accessibility-evidence"
+        accessibility_entries = [
+            {"path": source.relative_to(repo).as_posix()}
+            for source in sorted(accessibility_root.glob("*.json"))
+        ]
+        if len(accessibility_entries) != 4:
+            raise RuntimeError(
+                f"expected four legacy accessibility evidence files, got {len(accessibility_entries)}"
+            )
+    if not isinstance(accessibility_entries, list) or not accessibility_entries:
+        raise RuntimeError("visual manifest contains no accessibility evidence")
+    for entry in accessibility_entries:
+        relative = entry.get("path")
+        if not isinstance(relative, str) or not relative.startswith("verification/accessibility-evidence/"):
+            raise RuntimeError("visual manifest contains an invalid accessibility path")
+        path = _copy_file(repo, destination, relative)
+        data = path.read_bytes()
+        if "bytes" in entry and (
+            len(data) != entry.get("bytes")
+            or hashlib.sha256(data).hexdigest() != entry.get("sha256")
+        ):
+            raise RuntimeError(f"visual manifest mismatch: {relative}")
+        staged.append((path, "accessibility-evidence"))
     visual_entries = [*visual_manifest.get("files", []), *visual_manifest.get("print_files", [])]
     if not visual_entries:
         raise RuntimeError("visual manifest contains no candidate artifacts")

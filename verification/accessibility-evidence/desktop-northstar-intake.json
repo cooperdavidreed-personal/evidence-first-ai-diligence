@@ -1,0 +1,63 @@
+{
+  "boundary": "Ordinary browser file selection through all five local-deal views; uploaded bytes were not observed leaving localhost. Automated evidence only.",
+  "project": "desktop",
+  "scans": [
+    {
+      "view": "Overview",
+      "critical_or_serious_count": 0,
+      "violations": [
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ],
+      "root_client_width": 1440,
+      "root_scroll_width": 1440,
+      "minimum_visible_text_px": 12
+    },
+    {
+      "view": "Financials",
+      "critical_or_serious_count": 0,
+      "violations": [],
+      "root_client_width": 1440,
+      "root_scroll_width": 1440,
+      "minimum_visible_text_px": 12
+    },
+    {
+      "view": "Diligence",
+      "critical_or_serious_count": 0,
+      "violations": [],
+      "root_client_width": 1440,
+      "root_scroll_width": 1440,
+      "minimum_visible_text_px": 12
+    },
+    {
+      "view": "Documents",
+      "critical_or_serious_count": 0,
+      "violations": [
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ],
+      "root_client_width": 1440,
+      "root_scroll_width": 1440,
+      "minimum_visible_text_px": 12
+    },
+    {
+      "view": "IC Memo",
+      "critical_or_serious_count": 0,
+      "violations": [],
+      "root_client_width": 1440,
+      "root_scroll_width": 1440,
+      "minimum_visible_text_px": 12
+    }
+  ],
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "workbench_data_sha256": "d3093e468b6aee69871dca8cb79e9dd869cbf8441555ac3d7166bf5863b6c95b"
+}
