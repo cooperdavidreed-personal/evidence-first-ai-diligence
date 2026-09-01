@@ -33,7 +33,8 @@ describe("Underwriting Desk investor workspace", () => {
     expect(screen.getByText(/bytes stay in this browser tab/)).toBeInTheDocument();
     expect(screen.getByTestId("deal-package-input")).toHaveAttribute("multiple");
     expect(screen.getByRole("button", {name: "Validate and analyze"})).toBeDisabled();
-    expect(screen.getByText(/No file or file content is persisted, uploaded, or sent/)).toBeInTheDocument();
+    expect(screen.getByText(/Selected file bytes are not persisted or uploaded/)).toBeInTheDocument();
+    expect(screen.getByText(/metric summaries you select, after confirmation/)).toBeInTheDocument();
   });
 
   it("opens a retained case with exactly five in-deal destinations", async () => {

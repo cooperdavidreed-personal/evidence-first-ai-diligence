@@ -27,7 +27,7 @@ export function DealIntake({onCancel, onComplete}: {onCancel: () => void; onComp
       </header>
       <section className="local-processing-note" aria-label="Local processing boundary">
         <strong>Your selected bytes stay in this browser tab.</strong>
-        <p>No file or file content is persisted, uploaded, or sent to the optional model route. Refresh clears the deal.</p>
+        <p>Selected file bytes are not persisted or uploaded. A later configured model job can send only the metric summaries you select, after confirmation. Refresh clears the deal.</p>
       </section>
       <div className="intake-layout">
         <section className="panel" aria-labelledby="choose-package-heading">

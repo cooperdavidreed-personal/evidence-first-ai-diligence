@@ -72,6 +72,16 @@ describe("Growth SaaS Quick Package", () => {
     expect(result.files.find((file) => file.name === "customer_arr.csv")?.state).toBe("MISSING");
   });
 
+  it("keeps a complete package on hold when a declared threshold misses", async () => {
+    const holdDeal = deal.replace('"minimum_gross_moic":"2.5"', '"minimum_gross_moic":"4.0"');
+    const result = await processDealPackage(await packageFiles({deal: holdDeal}));
+    expect(result.packageState).toBe("READY");
+    expect(result.posture).toBe("HOLD");
+    expect(result.analysis).not.toBeNull();
+    expect(result.analysis?.tests.find((test) => test.label === "Gross multiple")?.status).toBe("MISSES");
+    expect(result.rationale).toMatch(/remain.*hold/i);
+  });
+
   it("stops on a manifest digest mismatch", async () => {
     const files = await packageFiles();
     const replacement = new TestFile([`${monthly}\n2026-07,1,1,1`], "monthly_financials.csv", {type: "text/csv"});

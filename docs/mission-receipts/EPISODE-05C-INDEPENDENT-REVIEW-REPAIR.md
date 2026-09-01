@@ -22,7 +22,16 @@
 - No review credit is awarded.
 - Partial output SHA-256: `d2e69db9015bd0fc3f5722d74db1a031e844c6ad2396df0ce28598dc68ad975f`.
 - Stderr SHA-256: `24dee4a239ff6cd1b24a51c691bf6266bf375e43d746be9d39cc9122b01b6e6c`.
-- No login/account repair or alternate route was attempted. One final bounded Grok attempt remains after repair.
+- No login/account repair or alternate route was attempted.
+
+### Final bounded Grok retry
+
+- Repaired candidate: `8b3eeb81aee7d8042ebfb38a6c43ced103518321`.
+- Runner state: `FAILED_RETRYABLE`; a provider file-read error was followed by session cancellation before the required response sections were returned.
+- No final-review credit is awarded. The partial internal trace leaned toward no high-impact finding, but it is not a provider verdict.
+- Output SHA-256: `9359b17c3793a5f2b063d86b928cb1541296b676cf8dda42f640646a7850f29f`.
+- Stderr SHA-256: `6c57f4ab88ffd35437bacdf625133c6678390aafab3351d12348021e57e6b9fa`.
+- The Grok order ceiling is exhausted. No login repair, account mutation, or further Grok invocation is authorized.
 
 ## Repairs from Claude's noncritical findings
 
@@ -44,10 +53,10 @@
 - TypeScript/Vite build and lazy case-chunk budgets: `PASS`.
 - Focused desktop/mobile product browser tests: `12/12 PASS`.
 - Intentional refreshed baseline browser run: `18 passed, 6 skipped / 24 discovered`.
-- Updated visual manifest self-digest: `46097c18e0b0e9c64af327ae1ec0305c57bd9bc098df513336199454992fea92`.
+- Final repaired visual manifest self-digest after tightening the upload/model disclosure: `d6e151fb150fe58a18bcd09999d8c24836f975c1e277a255da2efcbba7f63df2`.
 - Manual inspection of repaired desktop local Financials and mobile Helios Diligence: no critical clipping, overlap, or illegibility observed.
 
 ## Still unproved
 
 - A complete exact-head verification run after repair is `NOT RUN`.
-- Grok final verdict, push, Vercel deployment, and deployed ordinary-user verification are `NOT RUN`.
+- Grok final verdict is `HELD_PROVIDER`; push, Vercel deployment, and deployed ordinary-user verification are `NOT RUN`.
