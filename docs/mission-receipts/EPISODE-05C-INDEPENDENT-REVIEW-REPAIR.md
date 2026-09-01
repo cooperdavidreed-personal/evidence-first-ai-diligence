@@ -56,7 +56,15 @@
 - Final repaired visual manifest self-digest after tightening the upload/model disclosure: `d6e151fb150fe58a18bcd09999d8c24836f975c1e277a255da2efcbba7f63df2`.
 - Manual inspection of repaired desktop local Financials and mobile Helios Diligence: no critical clipping, overlap, or illegibility observed.
 
+## Post-repair exact-head closure
+
+- Full Python/kernel suite at `8b3eeb81aee7d8042ebfb38a6c43ced103518321`: `182/182 PASS` in `675.48s`.
+- Final product commit: `feb8d5902b28383c907c748a4d4b7dea53a300d2`; its only changes from the full-suite parent are workbench disclosure/test/evidence bytes and provider documentation. Python/kernel, lockfile, retained-case, and source-room bytes are unchanged.
+- Exact product-head non-Python pipeline: mutation gates `PASS`; source rooms, analyses, estimator coverage, memo/packet/appendix sets, and recovery ledger reproduced; frontend `36/36 PASS`; MCP `5/5 PASS`; build/chunks `PASS`; browser `18 passed, 6 intentional skips / 24`; visual `40/40`; accessibility `8/8`; PDF `6/6`; manifest `PASS`; public scan `PASS` over `350` candidate files.
+- Claude post-repair final review: `PRODUCED`, exact commit confirmed, repository writes `0`, `CRITICAL_DEFECTS: NONE`, verdict `NO_UNRESOLVED_CRITICAL_DEFECT`; output SHA-256 `cb6861e35dacdcfd21cd91d8ad6b01bf14380f404181acb274b4b168642ccb57`.
+- The Claude provider envelope again reported list-price-equivalent usage metadata. It is not evidence of a separately authorized marginal charge; no API-key or paid fallback route was used.
+
 ## Still unproved
 
-- A complete exact-head verification run after repair is `NOT RUN`.
-- Grok final verdict is `HELD_PROVIDER`; push, Vercel deployment, and deployed ordinary-user verification are `NOT RUN`.
+- Grok final verdict is `HELD_PROVIDER`; both bounded final attempts ended `FAILED_RETRYABLE` before returning the required sections.
+- Push, Vercel deployment, and deployed ordinary-user verification are `NOT RUN`.

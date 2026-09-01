@@ -3,13 +3,14 @@
 Status: `PRODUCT CANDIDATE VERIFIED LOCALLY — FOUNDER REVIEW PENDING`
 
 - Exact mission base: `5795f00fe7466991605dfba95b7d0d3b90cde5bd`
-- Product checkpoint: `097234e4b8f71b2edbb70200584a507ddb196e7d`
+- Product candidate commit: `feb8d5902b28383c907c748a4d4b7dea53a300d2`
 - Branch: `codex/underwriting-product-vertical-slice`
 - Environment: macOS, Python 3.12.13, Node 26.3.0, Chromium
-- Complete command: `bash scripts/verify-underwriting.sh`
+- Complete kernel command at parent `8b3eeb81aee7d8042ebfb38a6c43ced103518321`: `bash scripts/verify-underwriting.sh`
+- Exact product-head non-Python command: `UNDERWRITING_SKIP_PYTEST=1 bash scripts/verify-underwriting.sh`
 - Complete run date: `2026-09-01`
 
-The exact independently reviewed and deployed candidate head is recorded in the final mission receipt after those gates complete. That avoids a circular self-hash claim in this file.
+The only changes from the full-suite parent to the product candidate are workbench disclosure/test/evidence bytes and provider documentation; Python/kernel, lockfile, retained-case, and source-room bytes are unchanged. Deployment evidence is recorded separately after that gate completes.
 
 ## Product evidence
 
@@ -25,15 +26,15 @@ The exact independently reviewed and deployed candidate head is recorded in the 
 
 - Python/kernel repository suite: `182/182 PASS` in `660.97s`.
 - Mutation gates: `16` declared, `13` dynamic, `1` static; `PASS`; whole-program score explicitly `NOT_CLAIMED`.
-- Frontend/data/intake/model: `33/33 PASS` across five files.
-- MCP surface/boundary: `4/4 PASS`.
+- Frontend/data/intake/model: `36/36 PASS` across five files.
+- MCP surface/boundary: `5/5 PASS`.
 - Production TypeScript/Vite build: `PASS`.
-- Lazy case chunks: `PASS`; shell gzip `81,847` bytes, AtlasGrid payload gzip `718,257` bytes, Helios payload gzip `607,795` bytes.
+- Lazy case chunks: `PASS`; shell gzip `82,421` bytes, AtlasGrid payload gzip `718,257` bytes, Helios payload gzip `607,795` bytes.
 - Browser: `18 passed, 6 skipped / 24 discovered`; all six skips are desktop-only print tests under the mobile project.
 - Visual regression: `40/40` PNG candidates `PASS` on the reference macOS platform.
 - Accessibility records: `8/8 PASS`; no tested default surface had a critical or serious Axe finding or root overflow.
 - PDF contract: `6/6 PASS`, `35` pages total, all six tagged and metadata-normalized.
-- Visual manifest: `PASS`; `36` product PNGs, `8` accessibility JSON records, and `10` print artifacts; manifest digest `ec6edec6399c09713579134b3c32b52c6f23818e4b091e164ce02f0ea343916f`.
+- Visual manifest: `PASS`; `36` product PNGs, `8` accessibility JSON records, and `10` print artifacts; manifest digest `d6e151fb150fe58a18bcd09999d8c24836f975c1e277a255da2efcbba7f63df2`.
 
 ## Preserved analytical boundary
 
@@ -45,4 +46,5 @@ The verifier regenerated both retained source rooms, analyses, estimator-coverag
 - Comprehensive WCAG conformance: `NOT CLAIMED`.
 - Real-company accuracy, arbitrary data-room support, investment performance, confidential-data readiness, enterprise security, or autonomous investment judgment: `NOT CLAIMED`.
 - Runtime provider inference: `HELD_PROVIDER` because no runtime endpoint/credential is configured; deterministic workflows remain available.
-- Independent final Claude/Grok review, remote push, Vercel deployment, and deployed ordinary-user verification: recorded separately and not implied by this local receipt.
+- Independent final Claude review: `NO_UNRESOLVED_CRITICAL_DEFECT`; final Grok verdict: `HELD_PROVIDER` after both bounded read-only attempts ended `FAILED_RETRYABLE` without the required response sections.
+- Remote push, Vercel deployment, and deployed ordinary-user verification: recorded separately and not implied by this local receipt.
