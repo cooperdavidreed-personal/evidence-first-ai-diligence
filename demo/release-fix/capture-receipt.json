@@ -1,0 +1,191 @@
+{
+  "schema_version": "underwriting.demo-capture-receipt/v1",
+  "capture": "REAL_LOCAL_WORKBENCH_INTERACTIONS",
+  "resolution": "1920x1080",
+  "target_duration_seconds": 86,
+  "required_test_ids": [
+    "helios-working-assumptions",
+    "helios-assumption-growth",
+    "helios-policy-loss-maximum",
+    "helios-recalculate-working-case",
+    "helios-working-case-status",
+    "helios-working-change-record"
+  ],
+  "observed_claims": [
+    {
+      "scene": "landing-boundary",
+      "text": "Turn a crowded data room into a decision",
+      "url": "http://127.0.0.1:4186/#/v2/atlasgrid/start"
+    },
+    {
+      "scene": "landing-boundary",
+      "text": "Synthetic cases",
+      "url": "http://127.0.0.1:4186/#/v2/atlasgrid/start"
+    },
+    {
+      "scene": "atlasgrid-decision",
+      "text": "REPRICE",
+      "url": "http://127.0.0.1:4186/#/v2/atlasgrid/overview"
+    },
+    {
+      "scene": "atlasgrid-decision",
+      "text": "$210M recommended cap",
+      "url": "http://127.0.0.1:4186/#/v2/atlasgrid/overview"
+    },
+    {
+      "scene": "atlasgrid-decision",
+      "text": "5 issues block advancement",
+      "url": "http://127.0.0.1:4186/#/v2/atlasgrid/overview"
+    },
+    {
+      "scene": "atlasgrid-returns",
+      "text": "17.6%",
+      "url": "http://127.0.0.1:4186/#/v2/atlasgrid/financials?scenario=ask"
+    },
+    {
+      "scene": "atlasgrid-returns",
+      "text": "23.3%",
+      "url": "http://127.0.0.1:4186/#/v2/atlasgrid/financials?scenario=selected"
+    },
+    {
+      "scene": "atlasgrid-lineage",
+      "text": "Calculation and decision chain",
+      "url": "http://127.0.0.1:4186/#/v2/atlasgrid/financials?metric=atlasgrid-SELECTED-gross-irr&scenario=selected"
+    },
+    {
+      "scene": "atlasgrid-lineage",
+      "text": "Readable source evidence",
+      "url": "http://127.0.0.1:4186/#/v2/atlasgrid/financials?metric=atlasgrid-SELECTED-gross-irr&scenario=selected"
+    },
+    {
+      "scene": "atlasgrid-packet",
+      "text": "Requires investment committee approval",
+      "url": "http://127.0.0.1:4186/#/v2/atlasgrid/memo"
+    },
+    {
+      "scene": "helios-decision",
+      "text": "HOLD",
+      "url": "http://127.0.0.1:4186/#/v2/helios/overview"
+    },
+    {
+      "scene": "helios-decision",
+      "text": "20.00%",
+      "url": "http://127.0.0.1:4186/#/v2/helios/overview"
+    },
+    {
+      "scene": "helios-decision",
+      "text": "illustrative 10.00% policy maximum",
+      "url": "http://127.0.0.1:4186/#/v2/helios/overview"
+    },
+    {
+      "scene": "helios-controls",
+      "text": "HOLD",
+      "url": "http://127.0.0.1:4186/#/v2/helios/overview"
+    },
+    {
+      "scene": "helios-controls",
+      "text": "48.0%",
+      "url": "http://127.0.0.1:4186/#/v2/helios/overview"
+    },
+    {
+      "scene": "helios-controls",
+      "text": "30.0%",
+      "url": "http://127.0.0.1:4186/#/v2/helios/overview"
+    },
+    {
+      "scene": "helios-controls",
+      "text": "10.0%",
+      "url": "http://127.0.0.1:4186/#/v2/helios/overview"
+    },
+    {
+      "scene": "helios-controls",
+      "text": "8.0%",
+      "url": "http://127.0.0.1:4186/#/v2/helios/overview"
+    },
+    {
+      "scene": "decision-close",
+      "text": "HOLD",
+      "url": "http://127.0.0.1:4186/#/v2/helios/memo"
+    },
+    {
+      "scene": "decision-close",
+      "text": "SYNTHETIC",
+      "url": "http://127.0.0.1:4186/#/v2/helios/memo"
+    }
+  ],
+  "frames": [
+    {
+      "filename": "00-landing.png",
+      "scene": "landing-boundary",
+      "url": "http://127.0.0.1:4186/#/v2/atlasgrid/start",
+      "elapsed_seconds": 0.081
+    },
+    {
+      "filename": "01-atlasgrid-decision.png",
+      "scene": "atlasgrid-decision",
+      "url": "http://127.0.0.1:4186/#/v2/atlasgrid/overview",
+      "elapsed_seconds": 8.174
+    },
+    {
+      "filename": "02-atlasgrid-seller-ask.png",
+      "scene": "atlasgrid-returns",
+      "url": "http://127.0.0.1:4186/#/v2/atlasgrid/financials?scenario=ask",
+      "elapsed_seconds": 17.188
+    },
+    {
+      "filename": "03-atlasgrid-selected.png",
+      "scene": "atlasgrid-returns",
+      "url": "http://127.0.0.1:4186/#/v2/atlasgrid/financials?scenario=selected",
+      "elapsed_seconds": 23.119
+    },
+    {
+      "filename": "04-atlasgrid-lineage.png",
+      "scene": "atlasgrid-lineage",
+      "url": "http://127.0.0.1:4186/#/v2/atlasgrid/financials?metric=atlasgrid-SELECTED-gross-irr&scenario=selected",
+      "elapsed_seconds": 31.341
+    },
+    {
+      "filename": "05-atlasgrid-memo.png",
+      "scene": "atlasgrid-packet",
+      "url": "http://127.0.0.1:4186/#/v2/atlasgrid/memo",
+      "elapsed_seconds": 37.364
+    },
+    {
+      "filename": "06-atlasgrid-packet-export.png",
+      "scene": "atlasgrid-packet",
+      "url": "http://127.0.0.1:4186/#/v2/atlasgrid/memo",
+      "elapsed_seconds": 42.085
+    },
+    {
+      "filename": "07-helios-hold.png",
+      "scene": "helios-decision",
+      "url": "http://127.0.0.1:4186/#/v2/helios/overview",
+      "elapsed_seconds": 45.95
+    },
+    {
+      "filename": "08-helios-assumptions-before.png",
+      "scene": "helios-controls",
+      "url": "http://127.0.0.1:4186/#/v2/helios/overview",
+      "elapsed_seconds": 59.332
+    },
+    {
+      "filename": "09-helios-growth-edited.png",
+      "scene": "helios-controls",
+      "url": "http://127.0.0.1:4186/#/v2/helios/overview",
+      "elapsed_seconds": 66.082
+    },
+    {
+      "filename": "10-helios-recomputed-hold.png",
+      "scene": "helios-controls",
+      "url": "http://127.0.0.1:4186/#/v2/helios/overview",
+      "elapsed_seconds": 71.648
+    },
+    {
+      "filename": "11-helios-memo-close.png",
+      "scene": "decision-close",
+      "url": "http://127.0.0.1:4186/#/v2/helios/memo",
+      "elapsed_seconds": 77.535
+    }
+  ],
+  "actual_capture_seconds": 86.002
+}

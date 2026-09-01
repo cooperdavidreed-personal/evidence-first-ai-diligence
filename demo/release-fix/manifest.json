@@ -1,0 +1,333 @@
+{
+  "audio": {
+    "channels": 1,
+    "codec": "mp3",
+    "file": "narration.mp3",
+    "final_codec": "aac",
+    "raw_duration_seconds": 81.8155,
+    "sample_rate_hz": 48000,
+    "sha256": "dd3a6b59a96614ee8a999638b6b7ed833cee2a3ddf9331940644b75be084d3ff",
+    "target_integrated_lufs": -16,
+    "target_true_peak_dbtp": -1
+  },
+  "captions": {
+    "captions.srt": {
+      "bytes": 2220,
+      "sha256": "4a5324361b2a25230e641df1c9b3084ba4efb0de36ddc64a5fe3e9b094b06b11"
+    },
+    "captions.vtt": {
+      "bytes": 2174,
+      "sha256": "a43970f968312756e9af0ab5e13a72892a843842f413225e382ff6be951b5d2a"
+    }
+  },
+  "capture": "REAL_LOCAL_WORKBENCH_INTERACTIONS",
+  "capture_receipt": {
+    "file": "capture-receipt.json",
+    "sha256": "ad906f4dda4b868526b63e599a2cc314fb0cb6f23ad33a1d02a602bfb773ddb5"
+  },
+  "duration_seconds": 86,
+  "fps": 30,
+  "limitations": [
+    "Both cases and all company records are fictional and synthetic.",
+    "The film demonstrates deterministic local product behavior, not firm adoption, investment accuracy, confidential-data readiness, or investment authority.",
+    "The model does not approve assumptions, policy thresholds, transactions, or recommendations.",
+    "Provider narration is not valid until a governed ElevenLabs execution receipt is present and verified."
+  ],
+  "manifest_sha256": "7516650e0659970e862bde6e0cffffade133a8f7d6f36139e84b64db1bc23b99",
+  "pdfs": [
+    {
+      "bytes": 346751,
+      "path": "output/pdf/atlasgrid-ic-snapshot-letter.pdf",
+      "sha256": "554f36a029a751158ca10af0b912e7488ba61d2b333dd0377ee35b9ccf3b1126"
+    },
+    {
+      "bytes": 889772,
+      "path": "output/pdf/atlasgrid-technical-appendix-letter.pdf",
+      "sha256": "b1bd46472ac62bd7150edfe6452e642ee681ad37c181bf4d775e5ba46d176370"
+    },
+    {
+      "bytes": 290069,
+      "path": "output/pdf/atlasgrid-underwriting-packet-letter.pdf",
+      "sha256": "44a9e9df2d752051bc741d39b1971a1231d36e4c3d892b042265554ed461567f"
+    },
+    {
+      "bytes": 314073,
+      "path": "output/pdf/helios-ic-snapshot-letter.pdf",
+      "sha256": "b5f58690f58419023eee3045d7f606dc905bc06205225e975c380bd1872e1ca0"
+    },
+    {
+      "bytes": 558908,
+      "path": "output/pdf/helios-technical-appendix-letter.pdf",
+      "sha256": "2052f7c655514fa207e000fa9f7f385b4866c634c13929f0e2b3244a9250cc52"
+    },
+    {
+      "bytes": 279161,
+      "path": "output/pdf/helios-underwriting-packet-letter.pdf",
+      "sha256": "0dda6e419c2dd550d5a689ced3fca1d29dbf9ae80d88da4cdc40722f7ce3c680"
+    }
+  ],
+  "resolution": "1920x1080",
+  "review_frames": [
+    {
+      "bytes": 137503,
+      "path": "review-frames/00-landing.png",
+      "sha256": "0b9f5b4d80ebb7e8523ef46b1cdcfc80c558c1b89bb260e7eb482ab64f25553f"
+    },
+    {
+      "bytes": 192253,
+      "path": "review-frames/01-atlasgrid-decision.png",
+      "sha256": "7541519adaa075bdb22a66e6a9997c1dcb40aad53e4f32a9a62d6feebc781617"
+    },
+    {
+      "bytes": 152338,
+      "path": "review-frames/02-atlasgrid-seller-ask.png",
+      "sha256": "c7bb7c3a312c4d99c46abf35e8e86195837ffaf5c9c09013b1a87b5249355293"
+    },
+    {
+      "bytes": 154137,
+      "path": "review-frames/03-atlasgrid-selected.png",
+      "sha256": "12cbb3db3c47c96c3f837e42dd4664ea045e231b4244ff89ddfb4b092ee6ab25"
+    },
+    {
+      "bytes": 156444,
+      "path": "review-frames/04-atlasgrid-lineage.png",
+      "sha256": "da455b055ba9f0dfbc1f699d53cf722cbef36e6a38d6307661e31810715314a8"
+    },
+    {
+      "bytes": 182093,
+      "path": "review-frames/05-atlasgrid-memo.png",
+      "sha256": "5929f423873a8cf22061fc0bec5db4821d2b071861d1f82295520246d1838f64"
+    },
+    {
+      "bytes": 182158,
+      "path": "review-frames/06-atlasgrid-packet-export.png",
+      "sha256": "391ca8ee60796480720244794ec71811363d36ef637b1196e5192a1db47ad6ff"
+    },
+    {
+      "bytes": 216135,
+      "path": "review-frames/07-helios-hold.png",
+      "sha256": "1ed3883954969d8f5223ca6897cebfa56a76ca2342db033a700e713ef401b5dc"
+    },
+    {
+      "bytes": 125483,
+      "path": "review-frames/08-helios-assumptions-before.png",
+      "sha256": "365a1a3fb59ca73bd2e8a6a418c321557e5a4641909ac39b424e80c373de1434"
+    },
+    {
+      "bytes": 126194,
+      "path": "review-frames/09-helios-growth-edited.png",
+      "sha256": "0c44d5d0a23675c2c613602463da2e8ab5e8dbf6ce27596841068924f2c7b6f5"
+    },
+    {
+      "bytes": 150816,
+      "path": "review-frames/10-helios-recomputed-hold.png",
+      "sha256": "12d3e727b4a6043244cbfecfa022ce7d9d2c9d571004aa9ab2e41576cd24c699"
+    },
+    {
+      "bytes": 206160,
+      "path": "review-frames/11-helios-memo-close.png",
+      "sha256": "f371d1e95cc286a4be84cecd1495d605be1c2ffc7e90e5d42666c56155542ddf"
+    }
+  ],
+  "schema_version": "underwriting.demo-manifest/v3",
+  "sha256": "fd3b692b9b5eccb0ae353eda0c9a7d3b5c8e80b4756b46fc4ee7900bdc06d38c",
+  "source_closure": [
+    {
+      "path": "demo/release-fix/captions.srt",
+      "sha256": "4a5324361b2a25230e641df1c9b3084ba4efb0de36ddc64a5fe3e9b094b06b11"
+    },
+    {
+      "path": "demo/release-fix/captions.vtt",
+      "sha256": "a43970f968312756e9af0ab5e13a72892a843842f413225e382ff6be951b5d2a"
+    },
+    {
+      "path": "demo/release-fix/review-protocol.json",
+      "sha256": "6783b11f9adf4c1b1632a22885f1f6978b0312fc71d202b7b9d624003309f432"
+    },
+    {
+      "path": "demo/release-fix/review.schema.json",
+      "sha256": "13dc1d095289a47ae0505ab4424710504ece6ccffd1e6bf22dd51d374522a8f6"
+    },
+    {
+      "path": "demo/release-fix/storyboard.json",
+      "sha256": "d91806fabcb3a6c7a33fe0d4fa6a904271df98ff5f75703d3ef6f5f7ab0d716c"
+    },
+    {
+      "path": "demo/release-fix/thumbnail-spec.json",
+      "sha256": "f4807eb0547b305e2be515afe4595a47a9f95a9caf5be4ae50c28249ba3e4e97"
+    },
+    {
+      "path": "demo/release-fix/transcript.txt",
+      "sha256": "6c8cd6c01f2270c1bcbac83086fa7dbd11c2e9df99d8c4913f849fcf0c695934"
+    },
+    {
+      "path": "output/pdf/atlasgrid-ic-snapshot-letter.pdf",
+      "sha256": "554f36a029a751158ca10af0b912e7488ba61d2b333dd0377ee35b9ccf3b1126"
+    },
+    {
+      "path": "output/pdf/atlasgrid-technical-appendix-letter.pdf",
+      "sha256": "b1bd46472ac62bd7150edfe6452e642ee681ad37c181bf4d775e5ba46d176370"
+    },
+    {
+      "path": "output/pdf/atlasgrid-underwriting-packet-letter.pdf",
+      "sha256": "44a9e9df2d752051bc741d39b1971a1231d36e4c3d892b042265554ed461567f"
+    },
+    {
+      "path": "output/pdf/helios-ic-snapshot-letter.pdf",
+      "sha256": "b5f58690f58419023eee3045d7f606dc905bc06205225e975c380bd1872e1ca0"
+    },
+    {
+      "path": "output/pdf/helios-technical-appendix-letter.pdf",
+      "sha256": "2052f7c655514fa207e000fa9f7f385b4866c634c13929f0e2b3244a9250cc52"
+    },
+    {
+      "path": "output/pdf/helios-underwriting-packet-letter.pdf",
+      "sha256": "0dda6e419c2dd550d5a689ced3fca1d29dbf9ae80d88da4cdc40722f7ce3c680"
+    },
+    {
+      "path": "scripts/render_demo.py",
+      "sha256": "cd74de93b2741b90f0f30448064de638573781d94261f3f4f1ccee992f18511a"
+    },
+    {
+      "path": "scripts/verify_demo.py",
+      "sha256": "42016c9df91a01c1502541e575db20dcde70e3cdbdab33d71a6aee209db6155e"
+    },
+    {
+      "path": "workbench/case-data-plugin.ts",
+      "sha256": "440f302fc143c931c4a968accacaf05bed766e4426e0c7700e17bf89df100179"
+    },
+    {
+      "path": "workbench/index.html",
+      "sha256": "0709c2e97090084dcf54b865165521077340bc062bd75b2ebc42438926ededfb"
+    },
+    {
+      "path": "workbench/package.json",
+      "sha256": "0110cd6f940416f3f5f1f58ac5306d638c8a40d2e3cf2f23975f58face259c21"
+    },
+    {
+      "path": "workbench/pnpm-lock.yaml",
+      "sha256": "301d919086da754c9d68b7de873cdce960e2d39801a2ed45589d84bac8dbd378"
+    },
+    {
+      "path": "workbench/scripts/render-demo.mjs",
+      "sha256": "cf9111f217b952a5fdb187a86e4688b1c712c06e6bf33d58e14f825374eec2ed"
+    },
+    {
+      "path": "workbench/src/App.test.tsx",
+      "sha256": "4a33f666d8d00f7794df8d79ad6b8c03c97dfc0a54bc1474dfdf7e5485f75786"
+    },
+    {
+      "path": "workbench/src/App.tsx",
+      "sha256": "70d7d993b4ae5e5304fce5b682aa4428d26b30acd060682eea786453f1e8b30b"
+    },
+    {
+      "path": "workbench/src/case-data.ts",
+      "sha256": "41c1ccfe3e5f0608b54e3069780b0dccfc1ec0bf8c5e7a1f4bc74a296b45cd9b"
+    },
+    {
+      "path": "workbench/src/chart-registry.tsx",
+      "sha256": "fa6a2b3fd96353c8942ec32c02b21f8940ad73a5129d9c6610ff4cae66fd6576"
+    },
+    {
+      "path": "workbench/src/data-contract.test.ts",
+      "sha256": "44b955251f7d7cf9c7353ec1600d0784071ddeba593966a35fba49999e0b7c08"
+    },
+    {
+      "path": "workbench/src/data-contract.ts",
+      "sha256": "cae66b2db5f4e153c2219a865bbf77a1e839a0ed2cae5e5222e8c68ad27c4fa4"
+    },
+    {
+      "path": "workbench/src/data/cases.json",
+      "sha256": "d3093e468b6aee69871dca8cb79e9dd869cbf8441555ac3d7166bf5863b6c95b"
+    },
+    {
+      "path": "workbench/src/decision-workspace.tsx",
+      "sha256": "954575c8cbbe03000c97be188b22880f2317dcb8c80a690c9f0f1bb18609e380"
+    },
+    {
+      "path": "workbench/src/main.tsx",
+      "sha256": "4494aa600c38d3d09250d2f09cb795ed9141354e7215109eed017c683b1846c9"
+    },
+    {
+      "path": "workbench/src/pe.tsx",
+      "sha256": "017b068ab8015ce79bd38aab8021d2fc9c1247a4450610663d80a19f1ea636e2"
+    },
+    {
+      "path": "workbench/src/styles.css",
+      "sha256": "a0b8f83f7394f8621a50832c711a41dc85c65f2633d014f87bd7586f76b471bb"
+    },
+    {
+      "path": "workbench/src/test-setup.ts",
+      "sha256": "9408a30df297f52f573665036d4dd2b8f0b324c7b5ed37e2bd83fa6587065ae5"
+    },
+    {
+      "path": "workbench/src/thesis-graph.tsx",
+      "sha256": "6c94c125b53513e43ba2a70250556cb2dbf5ffdf2f1af93f03661b6ece730468"
+    },
+    {
+      "path": "workbench/src/types.ts",
+      "sha256": "8d33293401ecba7a96e1ab19397e480ea6de37697a27c8022604e34756b9f6cf"
+    },
+    {
+      "path": "workbench/src/value-plan.tsx",
+      "sha256": "c4c4eb3d9c685486006902e8c45c5a7e075ac6e5f9fe6997f8854e394c9f4485"
+    },
+    {
+      "path": "workbench/src/vc.tsx",
+      "sha256": "2159f397a79223da601c3747908894f5387bfaa1f07d4bd976964f8c6c45d97a"
+    },
+    {
+      "path": "workbench/src/virtual-cases.d.ts",
+      "sha256": "159feaf4d9a9bd7a32257f4614a9d769395241176f85d7595aa48f0782a944a0"
+    },
+    {
+      "path": "workbench/tsconfig.app.json",
+      "sha256": "b6c0c9cd28b18c660933eba6a379be41a72b5d7559c41642a5618e2812e63dd1"
+    },
+    {
+      "path": "workbench/tsconfig.json",
+      "sha256": "c9282416074477d08cc7640977168c2e8265cac3c3a4e984ba3d340f85684d56"
+    },
+    {
+      "path": "workbench/tsconfig.node.json",
+      "sha256": "39f8b650b2e23c9f66406ca7cddbcf70232475a10f0f31abe22a57119f0deaaf"
+    },
+    {
+      "path": "workbench/vite.config.ts",
+      "sha256": "0bc43e6ec8c670fb8877fa6c43ba96e2b5b8c27e69e5393b66d6577826fdf7d0"
+    }
+  ],
+  "source_closure_sha256": "74f4b727c3fea1965cdc0346f5754f796790ef3a259275c8dc0fe45bbd84ed0e",
+  "source_commit": "a0ae46c11d3faf4d2885e19c54583c285f8cd69f",
+  "source_tree_oid": "61d4f0cdaafefd49b1887e60fc0e1e00e0570c3b",
+  "status": "RENDERED_PENDING_INDEPENDENT_REVIEW",
+  "thumbnail": {
+    "bytes": 168794,
+    "file": "thumbnail-1280x720.png",
+    "resolution": "1280x720",
+    "sha256": "5b5743f86f78f0f7b2991469eaa2cd54bd779f248a7009c4b8d5c77e5a18a5d2"
+  },
+  "toolchain": {
+    "ffmpeg": "ffmpeg version 8.1.2 Copyright (c) 2000-2026 the FFmpeg developers",
+    "node": "v26.3.0",
+    "pnpm": "11.19.0"
+  },
+  "transcript": {
+    "bytes": 1523,
+    "file": "transcript.txt",
+    "sha256": "6c8cd6c01f2270c1bcbac83086fa7dbd11c2e9df99d8c4913f849fcf0c695934"
+  },
+  "tts": {
+    "publishable": true,
+    "receipt": "tts-execution.json",
+    "receipt_sha256": "d68e28a3ec76719eabfc70eaa802f21cf10a85dc8410a97be2a71d350c0c6103",
+    "tts_billed_characters": 1516,
+    "tts_model_id": "eleven_multilingual_v2",
+    "tts_provider": "elevenlabs",
+    "tts_render_call": "ElevenLabs signed-in web UI; speed 1.18 as encoded in the provider download filename; stability 0.5; similarity 0.75; speaker boost on; MP3 44.1 kHz 128 kbps",
+    "tts_request_id": "NOT_EXPOSED_BY_SIGNED_IN_WEB_UI",
+    "tts_voice_id": "NOT_EXPOSED_BY_SIGNED_IN_WEB_UI",
+    "tts_voice_name": "Roger - Laid-Back, Casual & Resonant"
+  },
+  "video": "underwriting-lab-demo-1080p.mp4"
+}

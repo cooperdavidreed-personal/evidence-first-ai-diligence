@@ -1,0 +1,23 @@
+{
+  "schema_version": "media-tts-execution/v1",
+  "tts_provider": "elevenlabs",
+  "tts_voice_id": "NOT_EXPOSED_BY_SIGNED_IN_WEB_UI",
+  "tts_voice_name": "Roger - Laid-Back, Casual & Resonant",
+  "tts_model_id": "eleven_multilingual_v2",
+  "tts_billed_characters": 1516,
+  "tts_request_id": "NOT_EXPOSED_BY_SIGNED_IN_WEB_UI",
+  "tts_request_id_status": "NOT_EXPOSED",
+  "tts_render_call": "ElevenLabs signed-in web UI; speed 1.18 as encoded in the provider download filename; stability 0.5; similarity 0.75; speaker boost on; MP3 44.1 kHz 128 kbps",
+  "execution_surface": "SIGNED_IN_WEB_UI",
+  "api_route_status": "BLOCKED_LKG_EXPIRED",
+  "output_path": "/tmp/uil-release-demo/elevenlabs-narration-revised.mp3",
+  "output_sha256": "dd3a6b59a96614ee8a999638b6b7ed833cee2a3ddf9331940644b75be084d3ff",
+  "output_bytes": 1325696,
+  "raw_duration_seconds": 81.8155,
+  "publishable": true,
+  "observed_at": "2026-09-01T05:10:15Z",
+  "limitations": [
+    "The provider web interface exposed the voice name and model but not their internal voice or request identifiers.",
+    "The final audio is bound by SHA-256; no API credential or hidden account state is retained."
+  ]
+}

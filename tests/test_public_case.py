@@ -99,6 +99,34 @@ def test_reviewed_demo_binary_requires_exact_manifest_digest(tmp_path: Path) -> 
         reviewed_demo_allowlist(tmp_path)
 
 
+def test_reviewed_release_fix_binaries_require_manifest_binding(tmp_path: Path) -> None:
+    release = tmp_path / "demo" / "release-fix"
+    release.mkdir(parents=True)
+    video = release / "underwriting-lab-demo-1080p.mp4"
+    thumbnail = release / "thumbnail-1280x720.png"
+    video.write_bytes(b"reviewed-release-fix")
+    thumbnail.write_bytes(b"reviewed-thumbnail")
+    manifest = {
+        "schema_version": "underwriting.demo-manifest/v3",
+        "status": "RENDERED_PENDING_INDEPENDENT_REVIEW",
+        "video": video.name,
+        "sha256": hashlib.sha256(video.read_bytes()).hexdigest(),
+        "thumbnail": {
+            "file": thumbnail.name,
+            "sha256": hashlib.sha256(thumbnail.read_bytes()).hexdigest(),
+        },
+    }
+    manifest["manifest_sha256"] = hashlib.sha256(canonical_json(manifest)).hexdigest()
+    (release / "manifest.json").write_bytes(canonical_json(manifest) + b"\n")
+    assert reviewed_demo_allowlist(tmp_path) == {
+        "demo/release-fix/thumbnail-1280x720.png",
+        "demo/release-fix/underwriting-lab-demo-1080p.mp4",
+    }
+    thumbnail.write_bytes(b"tampered")
+    with pytest.raises(ValueError, match="release_fix_binary_digest_mismatch"):
+        reviewed_demo_allowlist(tmp_path)
+
+
 def test_current_blind_review_fails_when_snapshot_digest_is_stale(tmp_path: Path) -> None:
     verification = tmp_path / "verification"
     verification.mkdir(parents=True)

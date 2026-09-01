@@ -1,0 +1,189 @@
+{
+  "schema_version": "underwriting.demo-review-summary/v1",
+  "source_commit": "a0ae46c11d3faf4d2885e19c54583c285f8cd69f",
+  "video_sha256": "fd3b692b9b5eccb0ae353eda0c9a7d3b5c8e80b4756b46fc4ee7900bdc06d38c",
+  "blocking_rule": "Any unresolved CRITICAL or HIGH finding forces QUALITY_SHORT.",
+  "outcome": "PASS",
+  "reviewers": [
+    {
+      "reviewer": "CLAUDE",
+      "verdict": "PASS",
+      "media_review_mode": "VIDEO_PLUS_TRANSCRIPT",
+      "summary": "Both previously blocking defects are resolved. (1) Browser-recompute/exit-multiple overclaim: the transcript no longer mentions exit multiples or in-browser recalculation; it says 'retained deterministic cases update transaction outputs and returns'. On-screen copy (frames 08-10) states the controls 'select retained deterministic simulations; they never regenerate math in the browser', and workbench/src/vc.tsx lines 108-109 and 127-133 confirm the Recalculate handler only sets applied growth/policy and looks up a retained sensitivity cell and a retained risk cell; no arithmetic runs client-side. The post-edit working return 36.6% / 4.3x is arithmetically consistent with a retained 30%-growth case ($57M x 1.30^5 x 4.0x exit multiple + $17M cash, 20% ownership on $40M funded = 4.32x). (2) Sub-second Helios pacing: render-demo.mjs lines 170-193 and capture-receipt.json place the before-frame at 59.3s, growth edit at 66.0s, loss-ceiling edit at 69.0s, recalc click at 71.0s, result frame at 71.6s, hold to 77.0s, i.e., 3s / 2s / ~0.6s / 5.4s spacing, aligned with caption cues 15-18 (65-69s 'Alter growth or the loss ceiling', 69-73s 'retained deterministic cases update', 73-77s 'decision record preserves each change'). Financial cross-checks reconcile across frames and both packets: AtlasGrid sources/uses ($219.6M and $250.2M) balance to $0 residual, exit bridge $311.2M - $16.4M + $3.9M = $298.7M, seller-ask MOIC 298.7/132.6 = 2.3x and selected MOIC 298.7/(102+4.5 earnout) = 2.8x, entry 8.10x normalized EBITDA and 2.50x revenue, sensitivity grid $210M/6.5x = 23.3%/2.8x, downside 6.2%/1.3x with $45.6M exit debt, 7.8% below-1.0x with binomial SE 0.85pp; Helios 200/1,000 = 20.00% vs 10.00% ceiling, 56.3%/8.2x milestone returns (326.9/40 = 8.17x), 20.00% Series C fully funded (2,902,757/14,513,788), exit EV $404.4M x 4.0x = $1,617.6M. IC judgment is disciplined: REPRICE with quantitative clearance explicitly not granting approval; HOLD driven openly by the analyst-set catastrophe prior with an unreviewed illustrative policy. Synthetic/no-authority boundaries appear on the landing frame, every case header, both packets, and the close narration. Remaining findings are MEDIUM/LOW refinements that do not change any stated number or claim boundary.",
+      "findings": [
+        {
+          "severity": "MEDIUM",
+          "timestamp_seconds": 33,
+          "finding": "Narration promises the viewer will 'see its meaning, formula, operands, and retained synthetic source', but the lineage frame shows the Calculation and decision chain and Readable source evidence sections collapsed; only the definition, evidence class, and section headings are visible during the 6-second hold.",
+          "evidence": "review-frames/04-atlasgrid-lineage.png shows accordions '02 Calculation and decision chain +', '03 Readable source evidence (5 granular retained locators) +', '04 Audit metadata +' unexpanded; captions.srt cue 9 (31.0-37.0s); render-demo.mjs lines 136-145 open the dialog and assert the headings but never expand a section.",
+          "recommended_change": "In the capture script, expand the 'Calculation and decision chain' section (and ideally one source locator) after the dialog opens so the formula and operands are on screen while the narration names them, or soften the narration to 'open any important number to reach its meaning, formula, operands, and retained synthetic source'."
+        },
+        {
+          "severity": "MEDIUM",
+          "timestamp_seconds": 8,
+          "finding": "'Minimum covenant headroom 0.6x' on the AtlasGrid overview and financials screens does not visibly reconcile with the partner packet's leverage workpaper, whose selected-case headroom column bottoms out at 1.38x, because the screen figure is a monthly (month-1) minimum and the packet table is year-end; neither surface labels the granularity.",
+          "evidence": "review-frames/01-atlasgrid-decision.png footer: 'Sponsor equity at close $102M · minimum covenant headroom 0.6x'; review-frames/04-atlasgrid-lineage.png: 'MINIMUM HEADROOM 0.6x' beneath the 60-bar monthly debt tape; atlasgrid-underwriting-packet-letter.pdf page 1 leverage table: selected headroom 1.38x/2.36x/3.27x/4.12x/4.91x (each equals 5.25x minus year-end leverage). Month-1 leverage $120M / $25.9M LTM EBITDA = 4.63x gives 5.25x - 4.63x = 0.62x, consistent with the on-screen 0.6x, so the numbers are compatible but the basis is inferred, not stated.",
+          "recommended_change": "Label the on-screen figure as 'minimum monthly covenant headroom' and add a monthly-minimum row (or footnote) to the packet's leverage workpaper so an IC reader can reconcile 0.6x with 1.38x without arithmetic."
+        },
+        {
+          "severity": "LOW",
+          "timestamp_seconds": 20.5,
+          "finding": "Narration says 'changing the entry assumption loads a complete deterministic case', but the film exercises the Seller ask / Selected scenario tabs on the Financials page rather than the $200M/$210M/$220M 'Test the decisive assumption' entry-EV control shown on the Overview at 8s; the claim is true in effect (upfront EV changes $240M to $210M) but the named control is never touched.",
+          "evidence": "render-demo.mjs lines 124-134 click 'Seller ask' then 'Selected'; review-frames/02 and 03 show the scenario toggle changing UPFRONT EV $240M to $210M; review-frames/01 shows the entry-EV chooser with copy 'Each choice loads a complete precomputed underwriting case'.",
+          "recommended_change": "Either click the $210M entry-EV chip on the Overview during cue 6 (20.5-24.0s) or reword the narration to 'selecting the restructured entry loads a complete deterministic case'."
+        },
+        {
+          "severity": "LOW",
+          "timestamp_seconds": 71.6,
+          "finding": "The button label 'Recalculate working case' and the change-record text 'Recomputed from retained case ...' use compute language while the panel and narration correctly say retained cases are selected and no math runs in the browser; the behavior is verified correct in source, so this is wording drift, not an overclaim.",
+          "evidence": "review-frames/10-helios-recomputed-hold.png; workbench/src/vc.tsx line 127-133 (recalculate only sets appliedGrowth/appliedPolicy), line 109 (workingGrowthCell is a lookup in engine.sensitivities.cells), line 108 (selected is a lookup in risk_sensitivity.cells), line 158 (change-record string).",
+          "recommended_change": "Rename to 'Apply retained case' and 'Selected retained case vc-annual_revenue_growth-1; ... receipt ...' to match the stated boundary exactly."
+        },
+        {
+          "severity": "LOW",
+          "timestamp_seconds": 55,
+          "finding": "The Helios loss frequency is entirely catastrophe-state driven (200 catastrophe / 0 continuous loss paths) and equals the selected 20.0% catastrophe prior, yet it is presented with 'MC SE 1.26 pp' (the binomial formula sqrt(0.2*0.8/1000)); if state assignment is stratified to the prior, that SE overstates sampling uncertainty and may suggest the 20% could plausibly fall under the 10% ceiling with more draws.",
+          "evidence": "review-frames/08-10 result tiles; helios-underwriting-packet-letter.pdf page 2 'Probability below 1.0x: 20.0% (Monte Carlo SE 1.26 pp, 1,000 draws)'; data-contract.ts lines 319-324 only validate that decomposition sums to draws and to the probability, not how catastrophe paths are drawn.",
+          "recommended_change": "Label the SE as a nominal binomial figure or omit it when all loss paths are catastrophe-state, and state explicitly that the loss test is a direct consequence of the analyst-set catastrophe prior (the overview frame already says this; carry it to the result tile and packet)."
+        },
+        {
+          "severity": "LOW",
+          "timestamp_seconds": 45,
+          "finding": "The Helios overview holds static from about 46s to 59s (13 seconds with no interaction) and caption cue 12 stretches a seven-word sentence over 6 seconds, which is the slowest stretch of the film.",
+          "evidence": "capture-receipt.json frame 07 elapsed 45.95s, frame 08 at 59.33s; captions.srt cue 12 (45.0-51.0s) 'Helios applies the same discipline to venture financing.'; render-demo.mjs lines 160-168 take one screenshot then wait until scene end.",
+          "recommended_change": "During 51-59s, scroll to or emphasize the 'Return hurdle clears ... binding loss test ... still prevent advancement' line and the 20.00% vs 10.00% text so the narration's numbers are visually anchored; optionally shorten scene 12 by 2 seconds and give it to the lineage or controls scenes."
+        },
+        {
+          "severity": "LOW",
+          "timestamp_seconds": 23,
+          "finding": "The selected-basis comparison card reads 'Selected · Selected', a duplicated label caused by the scenario name matching the card prefix.",
+          "evidence": "review-frames/03-atlasgrid-selected.png left card header 'Selected · Selected 23.3% / 2.8x'; the seller-ask frame reads 'Selected · Seller ask'.",
+          "recommended_change": "Render the card prefix as 'Current basis' or suppress the prefix when the scenario label is 'Selected'."
+        },
+        {
+          "severity": "LOW",
+          "timestamp_seconds": 77,
+          "finding": "In the Helios packet, Series C ownership is stated as 13.51% at first close, but the cap-table BASE row ($25M funded) shows 12.94% ownership with no stated basis for the difference (pool refresh timing or exit dilution), which an IC reader may read as an inconsistency.",
+          "evidence": "helios-underwriting-packet-letter.pdf page 1 terms table 'Series C ownership 13.51% at first close / 20.00% fully funded' (1,814,223 / 13,425,254 = 13.51%); page 2 cap table BASE row 'Funded $25M, Ownership 12.94%'.",
+          "recommended_change": "Add a basis note to the cap-table ownership column (e.g., 'at exit, after option-pool refresh treated as fully granted') or align the two figures on one basis."
+        },
+        {
+          "severity": "LOW",
+          "timestamp_seconds": 0,
+          "finding": "The shipped dist/release-demo/storyboard.json still carries status 'SOURCE_TEMPLATE_READY_RENDER_NOT_RUN' while manifest.json reports 'RENDERED_PENDING_INDEPENDENT_REVIEW', so the rendered bundle contains a stale pre-render status.",
+          "evidence": "dist/release-demo/storyboard.json line 3; dist/release-demo/manifest.json line 303.",
+          "recommended_change": "Stamp the copied storyboard with a rendered status (or drop the status field from the dist copy) when the manifest is written."
+        },
+        {
+          "severity": "LOW",
+          "timestamp_seconds": 0,
+          "finding": "The TTS execution receipt is self-attested from the signed-in ElevenLabs web UI with voice and request identifiers NOT_EXPOSED and api_route_status BLOCKED_LKG_EXPIRED, while the manifest limitation says provider narration is not valid until a governed receipt is present and verified; the receipt is present and honestly scoped but only partially governed.",
+          "evidence": "dist/release-demo/tts-execution.json lines 4, 8-12, 17; manifest.json lines 34, 320-330.",
+          "recommended_change": "Either re-render through the API route when the credential is restored so request and voice IDs are captured, or amend the manifest limitation to state that this release's narration receipt is web-UI attested and bound only by audio SHA-256."
+        }
+      ],
+      "limitations": [
+        "I did not decode the MP4 or the narration audio; review was performed on the exact transcript, captions.srt timing, storyboard, capture receipt, render script, and the 12 review frames (VIDEO_PLUS_TRANSCRIPT mode). Audio-transcript fidelity, audio/video sync, loudness, and any visual artifacts between frames are unverified.",
+        "I did not compute any SHA-256 values. The video SHA fd3b692b... and source commit a0ae46c... are bound as supplied and as recorded in dist/release-demo/manifest.json (sha256 and source_commit fields); this is a documentary binding, not independent hashing.",
+        "The 12 review frames are Playwright screenshots taken during the capture session (per render-demo.mjs and capture-receipt.json elapsed times), not frames extracted from the final MP4; timing conclusions rely on the receipt and script rather than on the encoded video.",
+        "Financial checks are arithmetic cross-checks between displayed values in frames and packets (sources/uses, exit bridge, MOIC, multiples, share counts); I did not re-run the deterministic engine or audit workbench/src/data/cases.json values against the Python engine.",
+        "The monthly-versus-annual explanation for the 0.6x vs 1.38x headroom figures is inferred from the numbers (5.25x covenant minus leverage) and was not confirmed against source or the technical appendix.",
+        "I did not determine whether catastrophe-state assignment in the retained risk cells is stratified or sampled; the MC SE finding is conditional on that.",
+        "No shell commands were run, no files were edited, and no multi-model agreement validation was performed."
+      ],
+      "provider_execution_status": null,
+      "normalization_note": null
+    },
+    {
+      "reviewer": "CHATGPT",
+      "verdict": "PASS",
+      "media_review_mode": "VIDEO_PLUS_TRANSCRIPT",
+      "summary": "The corrected 86-second demonstration now makes a disciplined and accurate product claim. The prior overstatement is resolved: the narration says that retained deterministic cases update transaction outputs and returns, and that the decision record preserves each change and its bound result, which matches the visible Helios workflow. Pacing is also improved: scenes have enough time to establish the investment question, PE reprice mechanics, lineage, export surface, VC HOLD rationale, editable assumptions, and human-approval boundary, while narration ends around 81.6 seconds and leaves a deliberate final visual hold. The work communicates a credible evidence-to-decision system, the two rendered underwriting packets remain legible and substantive, and no unresolved CRITICAL or HIGH defect was found.",
+      "findings": [
+        {
+          "severity": "MEDIUM",
+          "timestamp_seconds": 42,
+          "finding": "The packet export remains asserted more strongly than it is visually demonstrated.",
+          "evidence": "The film focuses the Open underwriting packet control and the attached three-page packets are genuine, coherent artifacts, but the video never opens or previews a rendered packet page.",
+          "recommended_change": "In a future cut, briefly open the packet or show a two-second recommendation-page preview so the export quality is proven inside the film rather than only by the attached deliverables."
+        },
+        {
+          "severity": "LOW",
+          "timestamp_seconds": 63,
+          "finding": "The Helios working-case controls are functionally clear but visually less polished than the surrounding finance-native interface.",
+          "evidence": "The numeric inputs and Recalculate working case button retain a relatively plain browser-control treatment alongside otherwise carefully composed typography, grids, decision ribbons, and memo surfaces.",
+          "recommended_change": "Apply the established control styling and focus treatment while preserving keyboard behavior and visible input affordances."
+        },
+        {
+          "severity": "LOW",
+          "timestamp_seconds": 42,
+          "finding": "The underwriting packets are professionally readable but their final-page density could be improved.",
+          "evidence": "Both packets render cleanly without clipping or overlap, yet page three uses only the upper portion of the sheet and leaves substantial unused space after the final analytical sections.",
+          "recommended_change": "On a later editorial pass, rebalance page breaks or add a compact decision-owner checklist to make the final page feel more intentionally composed."
+        },
+        {
+          "severity": "LOW",
+          "timestamp_seconds": 0,
+          "finding": "The storyboard retains a pre-render status even though the bound manifest and capture receipt prove that rendering completed.",
+          "evidence": "storyboard.json says SOURCE_TEMPLATE_READY_RENDER_NOT_RUN, while manifest.json records RENDERED_PENDING_INDEPENDENT_REVIEW and binds the final video hash, source commit, frames, audio, PDFs, and capture receipt.",
+          "recommended_change": "Rename the storyboard status to a durable source-template state or update it during rendering so release metadata does not appear internally contradictory."
+        }
+      ],
+      "limitations": [
+        "Audio was assessed through the final transcript, caption timing, stream metadata, and silence timing rather than direct listening, so voice tone, pronunciation, and subjective mix quality were not independently judged.",
+        "The review inspected all 12 final frames, sampled the full 86-second visual sequence at three-second intervals, and rendered every page of both underwriting packets; it was not an observed PE or VC practitioner usability session.",
+        "All company information and investment conclusions are fictional and synthetic, so this review does not establish real-world investment accuracy, firm adoption, confidential-data readiness, or investment performance.",
+        "The letter-size PDFs were visually inspected as rendered files but were not tested on physical printers or across multiple third-party PDF applications."
+      ],
+      "provider_execution_status": null,
+      "normalization_note": null
+    },
+    {
+      "reviewer": "GROK",
+      "verdict": "PASS",
+      "media_review_mode": "VIDEO_AND_AUDIO",
+      "summary": "Adversarial review found the prior CRITICAL and HIGH defects resolved. The corrected film no longer implies browser-generated finance math, the assumption-edit sequence is readable, and the final cut is differentiated by its evidence-to-decision framing, deterministic mechanics, and explicit human-judgment boundary. Remaining findings are non-blocking proof and pacing refinements.",
+      "findings": [
+        {
+          "severity": "MEDIUM",
+          "timestamp_seconds": 31.0,
+          "finding": "The lineage claim is more detailed than the visible drawer state proves.",
+          "evidence": "The drawer is open for approximately six seconds, but its formula, operand, and source sections remain collapsed while the narration describes those fields as available.",
+          "recommended_change": "In a later cut, expand one lineage section and hold it long enough to show the formula, operands, and retained source directly."
+        },
+        {
+          "severity": "MEDIUM",
+          "timestamp_seconds": 66.08,
+          "finding": "The Helios edit sequence is now legible but still looks deliberately scripted.",
+          "evidence": "Growth changes from 48% to 30%, the loss ceiling changes from 10% to 8%, and the post-recalculation HOLD result appears after multi-second holds; this resolves the prior sub-second pacing defect but retains an automated demonstration feel.",
+          "recommended_change": "For a future practitioner cut, add a visible cursor or focus treatment and one short caption explaining that the calculation selects retained deterministic cases."
+        },
+        {
+          "severity": "LOW",
+          "timestamp_seconds": 17.6,
+          "finding": "The packet export is referenced but not opened in the film.",
+          "evidence": "The Open underwriting packet control is visible, while the attached PDF rather than the film supplies proof of the exported material's quality.",
+          "recommended_change": "Preview the first packet page for two seconds in a future cut."
+        },
+        {
+          "severity": "LOW",
+          "timestamp_seconds": 71.65,
+          "finding": "The unchanged 20% loss frequency may surprise viewers after the working-case edits.",
+          "evidence": "The return outputs change after the edits, but the loss frequency remains fixed because it is the explicitly disclosed catastrophe prior rather than a continuously regenerated empirical forecast.",
+          "recommended_change": "Keep the disclosed boundary and consider adding a short inline explanation beside the retained loss frequency."
+        }
+      ],
+      "limitations": [
+        "The provider wrapper ended with a retryable cancellation after emitting substantive review findings; this normalized record preserves that status rather than representing a clean provider completion.",
+        "The critique is editorial and adversarial, not a PE or VC practitioner usability study or financial validation.",
+        "All companies, data, policies, and decisions shown are synthetic."
+      ],
+      "provider_execution_status": "FAILED_RETRYABLE_AFTER_SUBSTANTIVE_REVIEW_OUTPUT",
+      "normalization_note": "Codex normalized the substantive Grok findings emitted before the provider wrapper was cancelled; no finding severity or conclusion was upgraded."
+    }
+  ],
+  "limitations": [
+    "Independent model reviews are advisory editorial checks, not financial validation or practitioner acceptance.",
+    "The Grok provider wrapper ended with a retryable cancellation after substantive findings were emitted; the retained Grok record is a faithful Codex normalization and discloses that status."
+  ]
+}

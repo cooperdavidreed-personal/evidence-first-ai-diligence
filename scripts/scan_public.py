@@ -74,31 +74,62 @@ def reviewed_binary_allowlist(root: Path) -> set[str]:
 
 
 def reviewed_demo_allowlist(root: Path) -> set[str]:
-    """Allow only a manifest-bound portfolio demo binary."""
+    """Allow only manifest-bound portfolio demo binaries."""
 
     manifest_path = root / "demo" / "release" / "manifest.json"
-    if not manifest_path.exists():
-        return set()
-    if manifest_path.is_symlink() or not manifest_path.is_file():
-        raise ValueError("demo_manifest_missing_or_symlink")
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    manifest_body = dict(manifest)
-    manifest_digest = manifest_body.pop("manifest_sha256", None)
-    if manifest_digest != hashlib.sha256(canonical_json(manifest_body)).hexdigest():
-        raise ValueError("demo_manifest_digest_mismatch")
-    if (
-        manifest.get("schema_version") != "underwriting.demo-manifest/v2"
-        or manifest.get("status") != "RENDERED_LOCAL_FOUNDER_REVIEW_PENDING"
-        or manifest.get("video") != "underwriting-intelligence-lab-demo.mp4"
-    ):
-        raise ValueError("demo_manifest_state_invalid")
-    relative = Path("demo/release") / manifest["video"]
-    video = root / relative
-    if video.is_symlink() or not video.is_file():
-        raise ValueError("demo_video_missing_or_symlink")
-    if hashlib.sha256(video.read_bytes()).hexdigest() != manifest.get("sha256"):
-        raise ValueError("demo_video_digest_mismatch")
-    return {relative.as_posix()}
+    reviewed: set[str] = set()
+    if manifest_path.exists():
+        if manifest_path.is_symlink() or not manifest_path.is_file():
+            raise ValueError("demo_manifest_missing_or_symlink")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest_body = dict(manifest)
+        manifest_digest = manifest_body.pop("manifest_sha256", None)
+        if manifest_digest != hashlib.sha256(canonical_json(manifest_body)).hexdigest():
+            raise ValueError("demo_manifest_digest_mismatch")
+        if (
+            manifest.get("schema_version") != "underwriting.demo-manifest/v2"
+            or manifest.get("status") != "RENDERED_LOCAL_FOUNDER_REVIEW_PENDING"
+            or manifest.get("video") != "underwriting-intelligence-lab-demo.mp4"
+        ):
+            raise ValueError("demo_manifest_state_invalid")
+        relative = Path("demo/release") / manifest["video"]
+        video = root / relative
+        if video.is_symlink() or not video.is_file():
+            raise ValueError("demo_video_missing_or_symlink")
+        if hashlib.sha256(video.read_bytes()).hexdigest() != manifest.get("sha256"):
+            raise ValueError("demo_video_digest_mismatch")
+        reviewed.add(relative.as_posix())
+
+    release_fix_manifest_path = root / "demo" / "release-fix" / "manifest.json"
+    if release_fix_manifest_path.exists():
+        if release_fix_manifest_path.is_symlink() or not release_fix_manifest_path.is_file():
+            raise ValueError("release_fix_manifest_missing_or_symlink")
+        manifest = json.loads(release_fix_manifest_path.read_text(encoding="utf-8"))
+        manifest_body = dict(manifest)
+        manifest_digest = manifest_body.pop("manifest_sha256", None)
+        if manifest_digest != hashlib.sha256(canonical_json(manifest_body)).hexdigest():
+            raise ValueError("release_fix_manifest_digest_mismatch")
+        if (
+            manifest.get("schema_version") != "underwriting.demo-manifest/v3"
+            or manifest.get("status") != "RENDERED_PENDING_INDEPENDENT_REVIEW"
+            or manifest.get("video") != "underwriting-lab-demo-1080p.mp4"
+        ):
+            raise ValueError("release_fix_manifest_state_invalid")
+        records = (
+            (manifest["video"], manifest.get("sha256")),
+            (manifest.get("thumbnail", {}).get("file"), manifest.get("thumbnail", {}).get("sha256")),
+        )
+        for filename, expected_sha256 in records:
+            if not isinstance(filename, str) or not isinstance(expected_sha256, str):
+                raise ValueError("release_fix_binary_record_invalid")
+            relative = Path("demo/release-fix") / filename
+            binary = root / relative
+            if binary.is_symlink() or not binary.is_file():
+                raise ValueError("release_fix_binary_missing_or_symlink")
+            if hashlib.sha256(binary.read_bytes()).hexdigest() != expected_sha256:
+                raise ValueError("release_fix_binary_digest_mismatch")
+            reviewed.add(relative.as_posix())
+    return reviewed
 
 
 def validate_source_room(root: Path, case_id: str, relative_root: str) -> set[str]:

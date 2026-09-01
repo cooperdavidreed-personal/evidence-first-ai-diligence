@@ -1,0 +1,45 @@
+{
+  "schema_version": "underwriting.demo-review/v1",
+  "reviewer": "CHATGPT",
+  "source_commit": "a0ae46c11d3faf4d2885e19c54583c285f8cd69f",
+  "video_sha256": "fd3b692b9b5eccb0ae353eda0c9a7d3b5c8e80b4756b46fc4ee7900bdc06d38c",
+  "media_review_mode": "VIDEO_PLUS_TRANSCRIPT",
+  "verdict": "PASS",
+  "summary": "The corrected 86-second demonstration now makes a disciplined and accurate product claim. The prior overstatement is resolved: the narration says that retained deterministic cases update transaction outputs and returns, and that the decision record preserves each change and its bound result, which matches the visible Helios workflow. Pacing is also improved: scenes have enough time to establish the investment question, PE reprice mechanics, lineage, export surface, VC HOLD rationale, editable assumptions, and human-approval boundary, while narration ends around 81.6 seconds and leaves a deliberate final visual hold. The work communicates a credible evidence-to-decision system, the two rendered underwriting packets remain legible and substantive, and no unresolved CRITICAL or HIGH defect was found.",
+  "findings": [
+    {
+      "severity": "MEDIUM",
+      "timestamp_seconds": 42,
+      "finding": "The packet export remains asserted more strongly than it is visually demonstrated.",
+      "evidence": "The film focuses the Open underwriting packet control and the attached three-page packets are genuine, coherent artifacts, but the video never opens or previews a rendered packet page.",
+      "recommended_change": "In a future cut, briefly open the packet or show a two-second recommendation-page preview so the export quality is proven inside the film rather than only by the attached deliverables."
+    },
+    {
+      "severity": "LOW",
+      "timestamp_seconds": 63,
+      "finding": "The Helios working-case controls are functionally clear but visually less polished than the surrounding finance-native interface.",
+      "evidence": "The numeric inputs and Recalculate working case button retain a relatively plain browser-control treatment alongside otherwise carefully composed typography, grids, decision ribbons, and memo surfaces.",
+      "recommended_change": "Apply the established control styling and focus treatment while preserving keyboard behavior and visible input affordances."
+    },
+    {
+      "severity": "LOW",
+      "timestamp_seconds": 42,
+      "finding": "The underwriting packets are professionally readable but their final-page density could be improved.",
+      "evidence": "Both packets render cleanly without clipping or overlap, yet page three uses only the upper portion of the sheet and leaves substantial unused space after the final analytical sections.",
+      "recommended_change": "On a later editorial pass, rebalance page breaks or add a compact decision-owner checklist to make the final page feel more intentionally composed."
+    },
+    {
+      "severity": "LOW",
+      "timestamp_seconds": 0,
+      "finding": "The storyboard retains a pre-render status even though the bound manifest and capture receipt prove that rendering completed.",
+      "evidence": "storyboard.json says SOURCE_TEMPLATE_READY_RENDER_NOT_RUN, while manifest.json records RENDERED_PENDING_INDEPENDENT_REVIEW and binds the final video hash, source commit, frames, audio, PDFs, and capture receipt.",
+      "recommended_change": "Rename the storyboard status to a durable source-template state or update it during rendering so release metadata does not appear internally contradictory."
+    }
+  ],
+  "limitations": [
+    "Audio was assessed through the final transcript, caption timing, stream metadata, and silence timing rather than direct listening, so voice tone, pronunciation, and subjective mix quality were not independently judged.",
+    "The review inspected all 12 final frames, sampled the full 86-second visual sequence at three-second intervals, and rendered every page of both underwriting packets; it was not an observed PE or VC practitioner usability session.",
+    "All company information and investment conclusions are fictional and synthetic, so this review does not establish real-world investment accuracy, firm adoption, confidential-data readiness, or investment performance.",
+    "The letter-size PDFs were visually inspected as rendered files but were not tested on physical printers or across multiple third-party PDF applications."
+  ]
+}
