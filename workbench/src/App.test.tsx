@@ -25,12 +25,23 @@ describe("Underwriting Desk investor workspace", () => {
     expect(screen.queryByText(/Evidence → economics → action/)).not.toBeInTheDocument();
   });
 
+  it("opens an ordinary browser-local package intake", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", {name: "New deal"}));
+    expect(screen.getByRole("heading", {name: "Growth SaaS Quick Package"})).toBeInTheDocument();
+    expect(screen.getByText(/bytes stay in this browser tab/)).toBeInTheDocument();
+    expect(screen.getByTestId("deal-package-input")).toHaveAttribute("multiple");
+    expect(screen.getByRole("button", {name: "Validate and analyze"})).toBeDisabled();
+    expect(screen.getByText(/No file or file content is persisted, uploaded, or sent/)).toBeInTheDocument();
+  });
+
   it("opens a retained case with exactly five in-deal destinations", async () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getAllByRole("button", {name: /Open deal/})[0]);
     await screen.findByRole("heading", {name: "AtlasGrid Systems"});
-    const desktopNavigation = document.querySelector(".sidebar nav")!;
+    const desktopNavigation = document.querySelector<HTMLElement>(".sidebar nav")!;
     expect(within(desktopNavigation).getAllByRole("button")).toHaveLength(dealViews.length);
     for (const label of ["Overview", "Financials", "Diligence", "Documents", "IC Memo"]) {
       expect(within(desktopNavigation).getByRole("button", {name: label})).toBeInTheDocument();

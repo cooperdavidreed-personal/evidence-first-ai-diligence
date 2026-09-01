@@ -1,5 +1,7 @@
 import {useMemo, useState} from "react";
 import {caseCatalog, isCaseId, loadCase, type CaseId} from "./case-data";
+import {DealIntake, LocalDealShell} from "./local-deal";
+import type {IntakeResult} from "./intake";
 import type {CaseData} from "./types";
 
 export const dealViews = ["overview", "financials", "diligence", "documents", "memo"] as const;
@@ -40,16 +42,17 @@ function statusLabel(status: string) {
 }
 function plainObserved(value: string) { return value.replace(/\s*\(MC SE[^)]*\)/i, ""); }
 
-function DealList({onOpen}: {onOpen: (caseId: CaseId) => void}) {
+function DealList({onOpen, onNew, localDeal, onOpenLocal}: {onOpen: (caseId: CaseId) => void; onNew: () => void; localDeal: IntakeResult | null; onOpenLocal: () => void}) {
   return (
     <main className="deals-page" id="main-content">
       <div className="page-heading">
         <div><p className="eyebrow">Private markets</p><h1>Deals</h1><p>Review a retained case or create a browser-local deal from the supported package.</p></div>
-        <button className="primary-button" type="button" data-testid="new-deal-button">New deal</button>
+        <button className="primary-button" type="button" data-testid="new-deal-button" onClick={onNew}>New deal</button>
       </div>
       <section aria-labelledby="active-deals-heading">
-        <div className="section-heading"><h2 id="active-deals-heading">Active reviews</h2><span>{caseCatalog.length} illustrative cases</span></div>
+        <div className="section-heading"><h2 id="active-deals-heading">Active reviews</h2><span>{caseCatalog.length + (localDeal ? 1 : 0)} deals</span></div>
         <div className="deal-grid">
+          {localDeal ? <article className="deal-card"><div className="deal-card-topline"><span className="quiet-chip">Browser local</span><span>Growth SaaS</span></div><h3>{localDeal.deal?.company}</h3><p>{localDeal.posture} · refresh clears this deal.</p><button type="button" className="text-button" onClick={onOpenLocal}>Open deal <span aria-hidden="true">→</span></button></article> : null}
           {caseCatalog.map((item) => (
             <article className="deal-card" key={item.caseId}>
               <div className="deal-card-topline"><span className="quiet-chip">Illustrative data</span><span>{item.caseType}</span></div>
@@ -151,13 +154,18 @@ export default function App({initialCase, initialRoute}: {initialCase: CaseData;
   const [caseData, setCaseData] = useState(initialCase);
   const [view, setView] = useState<RouteView>(initialRoute.view);
   const [loading, setLoading] = useState(false);
+  const [intakeOpen, setIntakeOpen] = useState(false);
+  const [localDeal, setLocalDeal] = useState<IntakeResult | null>(null);
+  const [activeLocal, setActiveLocal] = useState(false);
   function navigate(next: DealView) { window.history.pushState(null, "", routePath(caseData.caseId, next)); setView(next); window.scrollTo(0, 0); }
   async function chooseDeal(caseId: CaseId) {
     setLoading(true);
-    try { const next = await loadCase(caseId); setCaseData(next); const destination = view === "deals" ? "overview" : view; window.history.pushState(null, "", routePath(caseId, destination)); setView(destination); }
+    try { const next = await loadCase(caseId); setCaseData(next); setActiveLocal(false); const destination = view === "deals" ? "overview" : view; window.history.pushState(null, "", routePath(caseId, destination)); setView(destination); }
     finally { setLoading(false); }
   }
   if (loading) return <div className="loading-state" role="status">Opening deal…</div>;
-  if (view === "deals") return <DealList onOpen={chooseDeal} />;
+  if (intakeOpen) return <DealIntake onCancel={() => setIntakeOpen(false)} onComplete={(result) => {setLocalDeal(result); setIntakeOpen(false); setActiveLocal(true); setView("overview"); window.history.pushState(null, "", "#/v3/local/overview");}} />;
+  if (view === "deals") return <DealList onOpen={chooseDeal} onNew={() => setIntakeOpen(true)} localDeal={localDeal} onOpenLocal={() => {setActiveLocal(true); setView("overview"); window.history.pushState(null, "", "#/v3/local/overview");}} />;
+  if (activeLocal && localDeal) return <LocalDealShell result={localDeal} view={view} onNavigate={(next) => {setView(next); window.history.pushState(null, "", `#/v3/local/${next}`); window.scrollTo(0, 0);}} onDeals={() => {setActiveLocal(false); setView("deals"); window.history.pushState(null, "", "/");}} />;
   return <DealShell caseData={caseData} view={view} onNavigate={navigate} onChooseDeal={chooseDeal} onDeals={() => {window.history.pushState(null, "", "/"); setView("deals");}} />;
 }
