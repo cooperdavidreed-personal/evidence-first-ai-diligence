@@ -5,13 +5,7 @@
     {
       "view": "Overview",
       "critical_or_serious_count": 0,
-      "violations": [
-        {
-          "id": "landmark-unique",
-          "impact": "moderate",
-          "nodes": 1
-        }
-      ],
+      "violations": [],
       "root_client_width": 1440,
       "root_scroll_width": 1440,
       "minimum_visible_text_px": 12
@@ -35,13 +29,7 @@
     {
       "view": "Documents",
       "critical_or_serious_count": 0,
-      "violations": [
-        {
-          "id": "landmark-unique",
-          "impact": "moderate",
-          "nodes": 1
-        }
-      ],
+      "violations": [],
       "root_client_width": 1440,
       "root_scroll_width": 1440,
       "minimum_visible_text_px": 12
