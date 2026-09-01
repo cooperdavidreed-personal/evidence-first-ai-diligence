@@ -1,875 +1,163 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import {compareDecimalStrings, registeredMetric} from "./data-contract";
+import {useMemo, useState} from "react";
 import {caseCatalog, isCaseId, loadCase, type CaseId} from "./case-data";
-import {ChartRegistryCaption} from "./chart-registry";
-import { PESnapshotTerms, PEUnderwritingRoom, PEValueCreation } from "./pe";
-import { VCRiskAssumptionLab, VCSnapshotTerms, VCUnderwritingRoom, VCValueCreation } from "./vc";
-import { ThesisGraphView } from "./thesis-graph";
-import {ValuePlanDetails} from "./value-plan";
-import {DecisionWorkspace} from "./decision-workspace";
-import type { Analysis, CaseData, Lineage, Metric } from "./types";
-const views = ["Landing", "Overview", "Thesis", "Financials & Returns", "Risks & Diligence", "Value Creation", "Memo", "Explore the deal", "Sources", "Methodology", "Audit details"] as const;
-type View = (typeof views)[number];
-const primaryViews: View[] = ["Overview", "Financials & Returns", "Risks & Diligence", "Memo"];
-const utilityViews: View[] = ["Thesis", "Value Creation", "Explore the deal", "Sources", "Methodology", "Audit details"];
-const primaryLabel: Partial<Record<View, string>> = {"Financials & Returns": "Financials", "Risks & Diligence": "Risks"};
-type RouteControls = {scenario?: string | null; compare?: string | null; driver?: string | null; cell?: string | null; section?: string | null};
-export type WorkbenchRoute = {caseId: CaseId; view: View; metricId: string | null; controls: RouteControls};
-const viewSlugs: Record<View, string> = {"Landing": "start", "Overview": "overview", "Thesis": "thesis", "Financials & Returns": "financials", "Risks & Diligence": "risks", "Value Creation": "value-creation", "Memo": "memo", "Explore the deal": "explore", "Sources": "sources", "Methodology": "methodology", "Audit details": "audit"};
-const slugViews = Object.fromEntries(Object.entries(viewSlugs).map(([view, slug]) => [slug, view])) as Record<string, View>;
-const legacyViews: Record<string, View> = {snapshot: "Overview", evidence: "Thesis", econometrics: "Methodology", underwriting: "Financials & Returns"};
+import type {CaseData} from "./types";
 
-export function parseRoute(): WorkbenchRoute {
-  const fallback = caseCatalog[0].caseId;
-  if (typeof window === "undefined") return {caseId: fallback, view: "Landing", metricId: null, controls: {}};
-  const [path, query = ""] = window.location.hash.replace(/^#/, "").split("?");
-  const match = path.match(/^\/v2\/([^/]+)\/([^/]+)$/);
-  const routeCase = match && isCaseId(match[1]) ? match[1] : fallback;
-  const routeView = match ? (slugViews[match[2]] ?? legacyViews[match[2]] ?? "Overview") : "Landing";
-  const params = new URLSearchParams(query);
-  return {caseId: routeCase, view: routeView, metricId: params.get("metric"), controls: {scenario: params.get("scenario"), compare: params.get("compare"), driver: params.get("driver"), cell: params.get("cell"), section: params.get("section")}};
-}
+export const dealViews = ["overview", "financials", "diligence", "documents", "memo"] as const;
+export type DealView = (typeof dealViews)[number];
+export type RouteView = DealView | "deals";
+export interface RouteState { caseId: CaseId; view: RouteView }
 
-function makeRoute(caseId: string, view: View, metricId?: string | null, controls: RouteControls = {}) {
-  const params = new URLSearchParams();
-  if (metricId) params.set("metric", metricId);
-  if (controls.scenario) params.set("scenario", controls.scenario);
-  if (controls.compare) params.set("compare", controls.compare);
-  if (controls.driver) params.set("driver", controls.driver);
-  if (controls.cell) params.set("cell", controls.cell);
-  if (controls.section) params.set("section", controls.section);
-  return `#/v2/${caseId}/${viewSlugs[view]}${params.size ? `?${params}` : ""}`;
-}
-
-type ReaderBrief = {
-  posture: string;
-  postureSummary: string;
-  driver: {title: string; evidence: string; consequence: string; metricId: string};
-  lossCase: {title: string; evidence: string; consequence: string};
-  blocker: {title: string; owner: string; consequence: string};
-  runway?: {title: string; evidence: string; consequence: string};
+const viewLabels: Record<DealView, string> = {
+  overview: "Overview",
+  financials: "Financials",
+  diligence: "Diligence",
+  documents: "Documents",
+  memo: "IC Memo",
+};
+const legacyViews: Record<string, DealView> = {
+  risks: "diligence", thesis: "overview", "value-creation": "financials",
+  explore: "documents", sources: "documents", methodology: "diligence",
+  audit: "documents", underwriting: "financials",
 };
 
-const asPercent = (value: string) => `${(Number(value) * 100).toFixed(1)}%`;
-const asMultiple = (value: string) => `${Number(value).toFixed(1)}x`;
-const asMoney = (cents: number) => `$${(cents / 100_000_000).toLocaleString(undefined, {maximumFractionDigits: 1})}M`;
-const displayDate = (value: string) => new Intl.DateTimeFormat("en-US", {year: "numeric", month: "long", day: "numeric", timeZone: "UTC"}).format(new Date(value));
-const registeredDisplay = (caseData: CaseData, metricId: string) => {
-  const metric = caseData.metricRegistry.find((item) => item.metric_id === metricId);
-  if (!metric) throw new Error(`reader_metric_unregistered:${metricId}`);
-  return metric.display_value;
-};
-
-function buildReaderBrief(caseData: CaseData): ReaderBrief | null {
-  const request = (id: string) => caseData.thesis.requests.find((item) => typeof item !== "string" && item.request_id === id);
-  const summary = (id: string) => caseData.summaryMetrics.find((item) => item.metric_id === id);
-  if (caseData.caseId === "atlasgrid" && caseData.peEngine) {
-    const ebitda = summary("ag-ebitda-metric")!;
-    const concentration = summary("ag-conc-metric")!;
-    const gate = request("AG-D04")!;
-    return {
-      posture: caseData.decision.decision,
-      postureSummary: `${caseData.decision.issue_summary.counts.advancement_blockers} issues block advancement. Investment committee approval has not been granted.`,
-      driver: {
-        title: "Definitions reduce earnings and concentration quality",
-        evidence: `${ebitda.label} is ${ebitda.value} (${ebitda.detail}); ${concentration.label.toLowerCase()} is ${concentration.value} (${concentration.detail}).`,
-        consequence: `The ${asMoney(caseData.peEngine.ask.engine_inputs.transaction.entry_enterprise_value_cents as number)} seller ask produces ${registeredDisplay(caseData, "atlasgrid-ASK-gross-irr")} gross XIRR and misses the 22% hurdle; the selected ${asMoney(caseData.peEngine.selected.engine_inputs.transaction.entry_enterprise_value_cents as number)} structure produces ${registeredDisplay(caseData, "atlasgrid-SELECTED-gross-irr")}.`,
-        metricId: ebitda.metric_id,
-      },
-      lossCase: {
-        title: "Churn plus multiple compression breaks the return case",
-        evidence: `The modeled downside exits at ${caseData.peEngine.downside.engine_inputs.transaction.exit_multiple as string}x under weaker retention and operating performance.`,
-        consequence: `Gross XIRR falls to ${registeredDisplay(caseData, "atlasgrid-DOWNSIDE-gross-irr")} and gross MOIC to ${registeredDisplay(caseData, "atlasgrid-DOWNSIDE-gross-moic")}—a hurdle failure, not a capital-loss case. Separate seeded paths show ${registeredDisplay(caseData, "atlasgrid-ag-11-probability_below_1x")} probability below 1.0x.`,
-      },
-      blocker: {
-        title: gate.request,
-        owner: `${gate.owner} · ${gate.materiality} · ${gate.due_state.replaceAll("_", " ").toLowerCase()}`,
-        consequence: gate.decision_consequence,
-      },
-    };
-  }
-  if (caseData.caseId === "helios" && caseData.vcEngine) {
-    const nrr = summary("hx-nrr-metric")!;
-    const margin = summary("hx-margin-metric")!;
-    const currentRunway = summary("hx-runway-metric")!;
-    const pipeline = caseData.analyses.find((item) => item.analysis_id === "HX-04")!;
-    const inflatedOpportunities = pipeline.outputs.find((item) => item.name === "inflated_opportunities")?.value ?? "not reported";
-    const weightedInflation = pipeline.outputs.find((item) => item.name === "weighted_pipeline_inflation")?.value ?? "not reported";
-    const fundedRunway = caseData.decision.metric_pairs?.find((item) => item.metric_id === "helios-hx-03-post_close_runway_floor");
-    const unitCostGate = request("HX-D03")!;
-    const pipelineGate = request("HX-D01")!;
-    const termsGate = request("HX-D04")!;
-    const firstClose = caseData.vcEngine.base.financing_events.find((item) => item.event_type === "PRIMARY");
-    const milestoneTranche = caseData.vcEngine.milestone.financing_events.find((item) => item.event_type === "MILESTONE" && item.status === "FUNDED");
-    return {
-      posture: caseData.decision.decision.replaceAll("_", " "),
-      postureSummary: `${caseData.decision.issue_summary.counts.advancement_blockers} issues block advancement. The milestone structure is a path to reconsideration, not current funding approval.`,
-      driver: {
-        title: "Retention and margin support a milestone structure—not immediate funding",
-        evidence: `${nrr.label} is ${nrr.value} (${nrr.detail}); ${margin.label.toLowerCase()} is ${margin.value}. Stage history flags ${inflatedOpportunities} inflated opportunities / $${weightedInflation}M weighted inflation.`,
-        consequence: `${asMoney(firstClose?.new_money_cents ?? 0)} is the proposed initial close and ${asMoney(milestoneTranche?.new_money_cents ?? 0)} funds only after the milestone tests and human approval; the funded case produces ${registeredDisplay(caseData, "helios-MILESTONE-gross-xirr")} gross XIRR and ${registeredDisplay(caseData, "helios-MILESTONE-gross-moic")} gross MOIC.`,
-        metricId: nrr.metric_id,
-      },
-      lossCase: {
-        title: "Down-round dilution and weaker exit economics compress the outcome",
-        evidence: "The retained downside reruns financing events, dilution, cash, preferences, and dated investor cash flows.",
-        consequence: `Gross XIRR falls to ${registeredDisplay(caseData, "helios-DOWNSIDE-gross-xirr")} and gross MOIC to ${registeredDisplay(caseData, "helios-DOWNSIDE-gross-moic")}, below the declared 30% / 3.0x hurdles—not below invested capital. Separate seeded paths show ${registeredDisplay(caseData, "helios-hx-09-probability_below_1x")} probability below 1.0x.`,
-      },
-      blocker: {
-        title: "Pipeline, unit costs, and executed terms",
-        owner: `${pipelineGate.owner} · ${unitCostGate.owner} · ${termsGate.owner}`,
-        consequence: "Withhold the $15M tranche until pipeline history and provider unit costs reconcile; do not fund the $25M first close until ownership and every waterfall scenario reconcile to executed terms.",
-      },
-      runway: {
-        title: "Runway uses three different bases",
-        evidence: `${currentRunway.value} is current pre-close runway. ${fundedRunway?.observed ?? "Funded runway not available"} is the post-close funded modeled floor, right-censored at the projection ceiling.`,
-        consequence: `If contingent financing does not fund, the retained shortfall case first exhausts cash in month ${caseData.vcEngine.financing_shortfall.first_cash_exhaustion_month_without_contingent_financing}.`,
-      },
-    };
-  }
-  return null;
+export function parseRoute(): RouteState {
+  const parts = window.location.hash.replace(/^#\//, "").split("/");
+  const caseId = parts[1] ?? "";
+  if (parts.length < 3 || !isCaseId(caseId)) return {caseId: "atlasgrid", view: "deals"};
+  const requested = parts[2] ?? "overview";
+  const view = dealViews.includes(requested as DealView) ? requested as DealView : legacyViews[requested] ?? "overview";
+  return {caseId, view};
 }
 
-const displayClass = (value: string) => value.toLowerCase().replaceAll("_", " ");
-const originLabel = (value: string) => ({
-  ACCOUNTING_IDENTITY: "Calculated",
-  DESCRIPTIVE: "Observed · synthetic",
-  SCENARIO: "Scenario",
-  PREDICTIVE_ASSOCIATION: "Observed association",
-  CAUSAL_SYNTHETIC_ONLY: "Synthetic experiment",
-  NOT_IDENTIFIED: "Not identified",
-}[value] ?? "Underwriting assumption");
-const statusLabel = (value: string) => ({CLEAR: "Not triggered", OPEN: "Open", TRIGGERED: "Triggered"}[value] ?? displayClass(value));
+function routePath(caseId: string, view: DealView) { return `#/v3/${caseId}/${view}`; }
+function friendlyFileName(path: string) {
+  const name = path.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? path;
+  return name.replaceAll("_", " ").replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+function statusLabel(status: string) {
+  const labels: Record<string, string> = {CLEARS: "Clears", MISSES: "Misses", FAILED: "Failed", OPEN: "Open"};
+  return labels[status] ?? status.toLowerCase().replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
+}
+function plainObserved(value: string) { return value.replace(/\s*\(MC SE[^)]*\)/i, ""); }
 
-const outputDisplay = (value: string, unit: string) => {
-  const labels: Record<string, string> = {
-    percentage_points: "pp",
-    percentage_points_per_price_point: "pp / price pp",
-    price_percentage_points: "price pp",
-    log_points: "log points",
-    modeled_months_funded_minimum: "modeled months minimum",
-  };
-  if (unit === "percent") return `${value}%`;
-  if (unit === "multiple") return `${value}x`;
-  if (unit === "months") return `${value} mo`;
-  if (unit === "million_usd") return `$${value}M`;
-  if (unit === "cents") return `$${(Number(value) / 100_000_000).toLocaleString(undefined, {maximumFractionDigits: 2})}M`;
-  if (unit === "modeled_months_funded_minimum") return `≥${value} modeled months`;
-  if (unit === "log_points") return `${value} log points · ${((Math.exp(Number(value)) - 1) * 100).toFixed(1)}% multiplicative`;
-  return labels[unit] ? `${value} ${labels[unit]}` : `${value} ${unit.replaceAll("_", " ")}`;
-};
-
-function EvidenceDrawer({caseData, metric, onClose}: {caseData: CaseData; metric: Metric; onClose: () => void}) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (dialog && typeof dialog.showModal === "function") dialog.showModal();
-    else dialog?.setAttribute("open", "");
-    return () => {
-      if (dialog && typeof dialog.close === "function") dialog.close();
-      else dialog?.removeAttribute("open");
-    };
-  }, []);
-  const nodes = metric.lineage.map((id) => caseData.lineage.find((item) => item.node_id === id)).filter(Boolean) as Lineage[];
-  const registered = metric.registry ?? caseData.metricRegistry.find((item) => item.metric_id === metric.metric_id);
-  const formula = registered?.formula_id ? caseData.formulaRegistry.find((item) => item.formula_id === registered.formula_id) : undefined;
-  const isInvestmentMetric = registered ? caseData.renderManifest.investment_metric_ids.includes(registered.metric_id) : false;
-  const operands = formula?.operand_ids.map((id) => caseData.metricRegistry.find((item) => item.metric_id === id)).filter(Boolean) ?? [];
-  const locators = registered?.source_locator_ids.map((id) => caseData.sourceLocators.find((item) => item.locator_id === id)).filter(Boolean) ?? [];
-  const downstream = [...new Set(nodes.map((node) => node.downstream).filter(Boolean))];
-  const readableLabels: Record<string, string> = {
-    kind: "Source record",
-    json_values: "Matched source values",
-    property: "Source field",
-    class_id: "Security class",
-    event_id: "Financing event",
-    holder_id: "Holder",
-    issued_shares_after: "Issued shares after financing",
-    issued_shares_before: "Issued shares before financing",
-    new_shares: "New shares issued",
-    cash_at_cutoff_cents: "Cash at the analysis cutoff",
-    new_money_cents: "New capital",
-  };
-  const readableLabel = (value: string) => readableLabels[value] ?? value.replaceAll("_", " ").replace(/^./, (character) => character.toUpperCase());
-  const readablePointer = (value: string) => value
-    .split("/")
-    .filter(Boolean)
-    .map((part) => /^\d+$/.test(part) ? `record ${Number(part) + 1}` : readableLabel(part).toLowerCase())
-    .join(" → ");
-  const readableValue = (value: unknown, key = ""): string => {
-    if (value === null || value === undefined) return "Not reported";
-    if (typeof value === "number" && key.endsWith("_cents")) return asMoney(value);
-    if ((typeof value === "number" || (typeof value === "string" && /^-?\d+(\.\d+)?$/.test(value)))
-      && /(rate|margin|ownership|discount)$/.test(key) && Math.abs(Number(value)) <= 1) return `${(Number(value) * 100).toFixed(1)}%`;
-    if (typeof value === "string" && key === "property" && value.startsWith("/")) return readablePointer(value);
-    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value).replaceAll("_", " ");
-    if (Array.isArray(value)) return value.map((item) => readableValue(item, key)).join(" · ");
-    return Object.entries(value as Record<string, unknown>).map(([nestedKey, item]) => `${readableLabel(nestedKey)}: ${readableValue(item, nestedKey)}`).join(" · ");
-  };
-  const businessDownstream = metric.metric_id === "helios-MILESTONE-event-series-c-close-new-money"
-    ? "Funds the initial operating runway and establishes first-close Series C ownership; it does not authorize the conditional tranche."
-    : metric.metric_id === "helios-MILESTONE-event-series-c-tranche-new-money"
-      ? "Adds runway, shares, and Series C preference only after every retained milestone test clears."
-      : downstream.join(" ") || registered?.downstream_ids.join(", ") || "No downstream investment use is declared; treat as context only.";
+function DealList({onOpen}: {onOpen: (caseId: CaseId) => void}) {
   return (
-    <dialog ref={dialogRef} className="drawer" aria-labelledby="drawer-title" onCancel={onClose}>
-      <div className="drawer-head">
-        <div>
-          <p className="kicker">Number lineage</p>
-          <h2 id="drawer-title">{metric.label}</h2>
-        </div>
-        <button className="icon-button" onClick={onClose} aria-label="Close lineage">×</button>
+    <main className="deals-page" id="main-content">
+      <div className="page-heading">
+        <div><p className="eyebrow">Private markets</p><h1>Deals</h1><p>Review a retained case or create a browser-local deal from the supported package.</p></div>
+        <button className="primary-button" type="button" data-testid="new-deal-button">New deal</button>
       </div>
-      <section className="lineage-summary" data-layer="summary" aria-label="Business meaning">
-        <div className="lineage-value"><p className="drawer-value">{metric.value}</p><p className="method-tag">{displayClass(metric.classification)}</p></div>
-        <p className="drawer-detail">{metric.detail}</p>
-        <dl>
-          <div><dt>Definition and period</dt><dd>{registered?.label ?? metric.label}{registered ? ` · ${registered.period}` : ""}</dd></div>
-          <div><dt>What it changes</dt><dd>{businessDownstream}</dd></div>
-          <div><dt>Evidence class</dt><dd>{displayClass(registered?.classification ?? metric.classification)}{registered ? ` · ${registered.state.toLowerCase()}` : ""}</dd></div>
-        </dl>
-      </section>
-      <details className="lineage-layer" data-layer="calculation">
-        <summary><span>02</span><strong>Calculation and decision chain</strong><small>Formula, operands, transformations, and downstream use</small></summary>
-        <div className="lineage-layer-body">
-          {formula ? <section className="formula-inspection"><span>Calculation</span><strong>{formula.operation.replaceAll("_", " ")}</strong><ol>{operands.map((item) => <li key={item!.metric_id}><span>{item!.label}</span><strong>{item!.display_value}</strong><small>{item!.period} · {displayClass(item!.classification)}</small></li>)}</ol></section> : <p className="layer-empty">{isInvestmentMetric ? "CALCULATION CONTRACT ERROR — this investment output cannot render without formula operands." : "Direct observation or declared assumption; the source evidence and period are shown below."}</p>}
-          <ol className="lineage-flow">{nodes.map((node) => {const analysis = caseData.analyses.find((item) => item.analysis_id === node.analysis_id); return <li key={node.node_id}><span>Source field</span><strong>{node.label}</strong><small>{node.field}</small><span>Transformation</span><strong>{node.transformation}</strong><small>{analysis?.method}</small><span>Decision use</span><strong>{node.downstream}</strong></li>;})}</ol>
-        </div>
-      </details>
-      <details className="lineage-layer" data-layer="evidence">
-        <summary><span>03</span><strong>Readable source evidence</strong><small>{locators.length} granular retained {locators.length === 1 ? "locator" : "locators"}</small></summary>
-        <div className="lineage-layer-body locator-inspection">{locators.length ? locators.map((item) => <article key={item!.locator_id}><div><strong>{item!.artifact_path}</strong><small>{item!.period} · retained synthetic selection</small></div><dl className="excerpt-grid">{Object.entries(item!.retained_excerpt).map(([key, value]) => <div key={key}><dt>{readableLabel(key)}</dt><dd>{readableValue(value, key)}</dd></div>)}</dl><a href={item!.published_path} target="_blank" rel="noreferrer">Open complete committed synthetic source ↗</a></article>) : <p className="layer-empty">No granular locator is registered for this value.</p>}</div>
-      </details>
-      <details className="lineage-layer audit-layer" data-layer="audit">
-        <summary><span>04</span><strong>Audit metadata</strong><small>Raw values, machine identifiers, selectors, and receipts</small></summary>
-        <div className="lineage-layer-body">
-          {registered && <dl className="method-grid registry-detail"><div><dt>Raw value / quantum</dt><dd>{registered.value} · {registered.quantum} {registered.unit}</dd></div><div><dt>Metric ID</dt><dd><code>{registered.metric_id}</code></dd></div><div><dt>Governing receipt</dt><dd><code>{registered.governing_receipt_sha256}</code></dd></div><div><dt>Downstream IDs</dt><dd>{registered.downstream_ids.join(", ") || "None"}</dd></div></dl>}
-          {formula && <p className="receipt-line">Formula <code>{formula.formula_id}</code> · <code>{formula.formula_sha256}</code></p>}
-          {locators.map((item) => <article className="raw-locator" key={item!.locator_id}><code>{item!.locator_kind}: {JSON.stringify(item!.selector)}</code><pre>{JSON.stringify(item!.retained_excerpt, null, 2)}</pre><code>artifact {item!.artifact_sha256}</code><code>selection {item!.selection_sha256}</code></article>)}
-          <p className="receipt-line">Case analysis receipt <code>{caseData.analysis_sha256}</code></p>
-        </div>
-      </details>
-    </dialog>
-  );
-}
-
-function Distribution({caseData, openMetric}: {caseData: CaseData; openMetric?: (metric: Metric, trigger: HTMLElement) => void}) {
-  const distributionMetrics = caseData.returnsDistribution.moic.map((_, index) => registeredMetric(caseData, caseData.caseId === "helios" ? `helios-distribution-moic-${index}` : `${caseData.caseId}-distribution-${index}`));
-  const values = distributionMetrics.map((item) => Number(item.value));
-  const maximum = Math.max(...values, 1);
-  return (
-    <figure className="distribution" aria-label="Return distribution">
-      <figcaption>Conditional return distribution <span>Scenario inputs, not a forecast</span></figcaption>
-      {caseData.vcEngine?.distribution.template_weights ? <p className="distribution-priors" aria-label="Scenario state prior weights">State priors · {Object.entries(caseData.vcEngine.distribution.template_weights).map(([key, value]) => `${key.replaceAll("_", " ").toLowerCase()} ${(Number(value) * 100).toFixed(0)}%`).join(" · ")}</p> : null}
-      {values.map((value, index) => (
-        <div className="distribution-row" key={caseData.returnsDistribution.labels[index]}>
-          <span>{caseData.returnsDistribution.labels[index]}</span>
-          <div className="bar-track"><div className="bar" style={{width: `${Math.max(3, (value / maximum) * 100)}%`}} /></div>
-          {openMetric ? <button className="distribution-value" data-metric-id={distributionMetrics[index].metric_id} aria-label={`Inspect lineage for ${caseData.returnsDistribution.labels[index]} conditional MOIC`} onClick={(event) => openMetric({metric_id: distributionMetrics[index].metric_id, label: `${caseData.returnsDistribution.labels[index]} conditional MOIC`, value: distributionMetrics[index].display_value, detail: "Seeded scenario output, not a forecast", classification: "SCENARIO", lineage: [caseData.distributionLineage], registry: distributionMetrics[index]}, event.currentTarget)}>{distributionMetrics[index].display_value} ↗</button> : <strong>{distributionMetrics[index].display_value}</strong>}
-        </div>
-      ))}
-    </figure>
-  );
-}
-
-function HurdleLedger({caseData, openMetric}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
-  const pairs = caseData.decision.metric_pairs ?? [];
-  if (!pairs.length) return null;
-  const displayPairs = pairs.map((pair) => ({...pair, observed: registeredDisplay(caseData, pair.metric_id)}));
-  const displayPairName = (pair: typeof displayPairs[number]) => pair.metric_id.includes("-ASK-") ? `Seller-ask ${pair.metric}` : pair.metric_id.includes("MAX_BID_DOWNSIDE") ? `Max-bid downside ${pair.metric}` : pair.metric;
-  const metricFor = (pair: NonNullable<CaseData["decision"]["metric_pairs"]>[number]): Metric => {
-    const registry = caseData.metricRegistry.find((item) => item.metric_id === pair.metric_id);
-    const analysisIds = new Set(registry?.source_locator_ids
-      .map((id) => caseData.sourceLocators.find((item) => item.locator_id === id)?.analysis_id)
-      .filter(Boolean));
-    return {
-      metric_id: pair.metric_id,
-      label: pair.metric,
-      value: pair.observed,
-      detail: `Observed ${pair.observed} versus the predeclared ${pair.threshold} threshold. The quantitative test does not grant investment approval.`,
-      classification: registry?.classification ?? "SCENARIO",
-      lineage: caseData.lineage.filter((item) => analysisIds.has(item.analysis_id)).map((item) => item.node_id),
-      registry,
-    };
-  };
-  return <section className="hurdle-ledger" aria-labelledby="hurdle-ledger-title">
-    <div className="hurdle-ledger-head"><div><p className="kicker">Predeclared decision tests</p><h2 id="hurdle-ledger-title">The numbers can clear while the deal remains on hold</h2></div><p>Each threshold is compared with the retained scenario. Clearance does not resolve diligence, authorize a tranche, or substitute for investment committee approval.</p></div>
-    <div className="hurdle-ledger-rows">{displayPairs.map((pair) => {const metric = metricFor(pair); return <button key={pair.metric_id} data-metric-id={pair.metric_id} onClick={(event) => openMetric(metric, event.currentTarget)} aria-label={`Inspect decision test for ${displayPairName(pair)}`}><span>{displayPairName(pair)}</span><strong>{pair.observed}</strong><small>{pair.designation === "BINDING" ? "Required" : "Context"} · Test {pair.threshold}</small><em data-status={pair.status}>{pair.status === "CLEARS" ? "Clears" : "Misses"}</em><b>View source ↗</b></button>;})}</div>
-    {caseData.peEngine ? <aside className="solver-floor"><strong>Maximum-bid downside floor</strong><span>At least 5% gross IRR · 1.25x gross MOIC · $3M liquidity · no payment default · no covenant breach. Mathematical maximum: {asMoney(caseData.peEngine.maximum_bid_cents)}. The recommended cap remains $210M while diligence is open.</span></aside> : null}
-    {caseData.decision.failure_consequences?.length ? <footer><strong>If any required test or gate fails</strong><span>{caseData.decision.failure_consequences.join(" · ")}</span></footer> : null}
-  </section>;
-}
-
-function ConditionLedger({caseData}: {caseData: CaseData}) {
-  const issues = caseData.decision.issue_summary.issues.filter((item) => item.blocks_advancement);
-  return <section className="condition-ledger" aria-labelledby="condition-ledger-title">
-    <div><p className="kicker">Advancement blockers</p><h2 id="condition-ledger-title">{issues.length} issues prevent the next committee step</h2><p>Every issue has one owner, stage, and decision consequence.</p></div>
-    <ol>{issues.map((item) => <li key={item.issue_id}><span>{item.title}<small>{item.owner} · {item.stage.replaceAll("_", " ").toLowerCase()}</small></span><strong data-status={item.state}>{item.state === "FAILED" ? "Failed hurdle" : "Open requirement"}</strong></li>)}</ol>
-    <footer><span>Approval</span><strong>Requires investment committee approval</strong></footer>
-  </section>;
-}
-
-function Snapshot({caseData, openMetric, onNavigate}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void; onNavigate: (view: View, section?: string) => void}) {
-  const falsifiers = caseData.falsifierStates ?? caseData.thesis.falsifiers.map((label) => ({label, status: "OPEN" as const, observed: "Not evaluated"}));
-  const readerBrief = buildReaderBrief(caseData);
-  const driverMetric = readerBrief ? caseData.summaryMetrics.find((metric) => metric.metric_id === readerBrief.driver.metricId) : undefined;
-  return (
-    <div className="view-stack">
-      <section className={`decision-strip ${caseData.vcEngine ? "vc-decision-strip" : ""}`} aria-labelledby="decision-title">
-        <div className="decision-call">
-          <p className="kicker">Analytical posture · not approved</p>
-          <h2 id="decision-title">{readerBrief?.posture ?? caseData.decision.decision.replaceAll("_", " ")}</h2>
-          <p>{readerBrief?.postureSummary ?? caseData.decision.attribution}</p>
-          <small className="decision-attribution">Illustrative analysis prepared for committee challenge</small>
-        </div>
-        <div className="decision-rationale">
-          <div className="authority-head"><p className="kicker">Advancement gate</p><strong>Blocked</strong></div>
-          <div className="authority-grid" aria-label="Authority and workflow state">
-            <div><span>Current decision</span><strong>{caseData.decision.decision.replaceAll("_", " ")}</strong><small>{caseData.decision.rationale}</small></div>
-            <div><span>Open work</span><strong>{caseData.decision.issue_summary.counts.advancement_blockers} blocking issues</strong><small>Owners and stages are listed under Risks</small></div>
-            <div><span>Approval</span><strong>Not granted</strong><small>Requires investment committee approval</small></div>
-          </div>
-          {caseData.decision.as_of && <p className="decision-cutoff" data-cutoff-iso={caseData.decision.as_of}>Decision cutoff {displayDate(caseData.decision.as_of)}</p>}
-        </div>
-        <div className="snapshot-term-row">
-          {caseData.peEngine && <PESnapshotTerms caseData={caseData} openMetric={openMetric} />}
-          {caseData.vcEngine && <VCSnapshotTerms caseData={caseData} openMetric={openMetric} />}
-        </div>
-      </section>
-      {readerBrief && <section className="first-read" aria-labelledby="first-read-title">
-        <div className="first-read-heading"><p className="kicker">60-second IC read</p><h2 id="first-read-title">Why this is the current call</h2></div>
-        <div className={`first-read-grid ${readerBrief.runway ? "four-up" : ""}`}>
-          <article className="driver-card"><span>01 · Decisive evidence</span><h3>{readerBrief.driver.title}</h3><p>{readerBrief.driver.evidence}</p><strong>{readerBrief.driver.consequence}</strong>{driverMetric && <button onClick={(event) => openMetric(driverMetric, event.currentTarget)}>Inspect decisive evidence ↗</button>}</article>
-          <article className="loss-card"><span>02 · How the deal misses its hurdle</span><h3>{readerBrief.lossCase.title}</h3><p>{readerBrief.lossCase.evidence}</p><strong>{readerBrief.lossCase.consequence}</strong></article>
-          <article className="blocker-card"><span>03 · Blocking gate</span><h3>{readerBrief.blocker.title}</h3><p>{readerBrief.blocker.owner}</p><strong>{readerBrief.blocker.consequence}</strong><button onClick={() => onNavigate("Risks & Diligence", "diligence")}>Open diligence register →</button></article>
-          {readerBrief.runway && <article className="runway-card"><span>04 · Timing basis</span><h3>{readerBrief.runway.title}</h3><p>{readerBrief.runway.evidence}</p><strong>{readerBrief.runway.consequence}</strong><button onClick={() => onNavigate("Financials & Returns", "cash")}>Open cash schedule →</button></article>}
-        </div>
-      </section>}
-      <ConditionLedger caseData={caseData} />
-      <HurdleLedger caseData={caseData} openMetric={openMetric} />
-      <section aria-labelledby="metrics-title">
-        <div className="section-heading"><p className="kicker">Decision economics</p><h2 id="metrics-title">What must be true</h2></div>
-        <div className="metric-ledger">
-          {caseData.summaryMetrics.map((metric, index) => (
-            <button key={metric.metric_id} className="metric-row" onClick={(event) => openMetric(metric, event.currentTarget)} aria-label={`Inspect lineage for ${metric.label}`}>
-              <span className="metric-index">0{index + 1}</span>
-              <span className="metric-label">{metric.label}<small>{originLabel(metric.classification)}</small></span>
-              <strong>{metric.value}</strong>
-              <span className="metric-detail">{metric.detail}</span>
-              <span className="inspect">Inspect ↗</span>
-            </button>
+      <section aria-labelledby="active-deals-heading">
+        <div className="section-heading"><h2 id="active-deals-heading">Active reviews</h2><span>{caseCatalog.length} illustrative cases</span></div>
+        <div className="deal-grid">
+          {caseCatalog.map((item) => (
+            <article className="deal-card" key={item.caseId}>
+              <div className="deal-card-topline"><span className="quiet-chip">Illustrative data</span><span>{item.caseType}</span></div>
+              <h3>{item.company}</h3><p>{item.investmentQuestion}</p>
+              <button type="button" className="text-button" onClick={() => onOpen(item.caseId)}>Open deal <span aria-hidden="true">→</span></button>
+            </article>
           ))}
         </div>
       </section>
-      <section className="two-column thesis-preview">
-        <article><p className="kicker">Thesis</p><h2>{caseData.thesis.statement}</h2></article>
-        <article className="counter"><p className="kicker">Counterthesis</p><p>{caseData.thesis.counterthesis}</p></article>
+      <section className="intake-empty-state" aria-labelledby="supported-package-heading">
+        <div><p className="eyebrow">Supported intake</p><h2 id="supported-package-heading">Growth SaaS Quick Package</h2></div>
+        <p>Four declared files. Browser-local validation. No arbitrary data-room claim.</p>
       </section>
-      <section className="snapshot-criteria"><article><p className="kicker">Decisive drivers</p><ul>{caseData.thesis.drivers.map((item) => <li key={item}>{item}</li>)}</ul></article><article><p className="kicker">Falsifiers</p><ul className="falsifier-list">{falsifiers.map((item) => <li key={item.label}><span>{item.label}<small>{item.observed}</small></span><strong data-status={item.status}>{statusLabel(item.status)}</strong></li>)}</ul></article></section>
-      <ChartRegistryCaption caseData={caseData} location="IC Snapshot" />
-      <Distribution caseData={caseData} openMetric={openMetric} />
+    </main>
+  );
+}
+
+function DecisionTests({caseData}: {caseData: CaseData}) {
+  const tests = caseData.decision.metric_pairs ?? [];
+  return (
+    <section className="panel" aria-labelledby="decision-tests-heading">
+      <div className="section-heading"><div><p className="eyebrow">Declared policy</p><h2 id="decision-tests-heading">Decision tests</h2></div><span>{tests.filter((test) => test.status === "MISSES").length} misses</span></div>
+      <div className="table-wrap"><table><thead><tr><th>Test</th><th>Observed</th><th>Required</th><th>Result</th></tr></thead><tbody>
+        {tests.map((test, index) => <tr key={`${test.metric}-${index}`}><td>{test.metric.replace("Gross XIRR", "Annualized gross return")}</td><td>{plainObserved(test.observed)}</td><td>{test.threshold}</td><td><span className={`status status-${test.status.toLowerCase()}`}>{statusLabel(test.status)}</span></td></tr>)}
+      </tbody></table></div>
+      {caseData.caseId === "helios" ? <details className="method-disclosure"><summary>View simulation precision</summary><p>The modeled loss share is 20.0%. Its simulation-noise estimate is ±1.26 percentage points. This is a declared synthetic stress result, not a forecast.</p></details> : null}
+    </section>
+  );
+}
+
+function Overview({caseData}: {caseData: CaseData}) {
+  const blocker = caseData.decision.issue_summary.issues.find((issue) => issue.blocks_advancement);
+  const decisive = caseData.summaryMetrics[0];
+  return (
+    <div className="view-stack">
+      <section className="decision-panel" aria-labelledby="decision-heading">
+        <div className="decision-copy"><p className="eyebrow">Analytical posture</p><h2 id="decision-heading">{caseData.decision.decision}</h2><p>{caseData.decision.rationale}</p></div>
+        <div className="approval-state"><span>IC approval</span><strong>Not requested</strong><span>{caseData.decision.open_conditions} open conditions</span></div>
+      </section>
+      <section className="first-read-grid" aria-label="First read">
+        <article><p className="eyebrow">Decisive evidence</p><h3>{decisive?.value ?? "—"}</h3><p><strong>{decisive?.label}</strong> · {decisive?.detail}</p></article>
+        <article><p className="eyebrow">What breaks the case</p><h3>{blocker?.title ?? "No blocking issue"}</h3><p>{blocker?.consequence ?? "No declared blocker."}</p></article>
+        <article><p className="eyebrow">Next action</p><h3>{caseData.decision.path_to_yes[0] ?? "Complete diligence"}</h3><p>{caseData.decision.conditions[0]}</p></article>
+      </section>
+      <DecisionTests caseData={caseData} />
+      <section className="panel terms-panel" aria-labelledby="terms-heading"><div><p className="eyebrow">Structure</p><h2 id="terms-heading">Terms under review</h2></div><ul>{(caseData.decision.terms ?? []).map((term) => <li key={term}>{term}</li>)}</ul></section>
+      <details className="panel disclosure-panel"><summary>Company in one minute</summary><dl className="description-grid"><div><dt>Product</dt><dd>{caseData.dealContext.product}</dd></div><div><dt>Customer</dt><dd>{caseData.dealContext.customer}</dd></div><div><dt>Market</dt><dd>{caseData.dealContext.market}</dd></div><div><dt>Go to market</dt><dd>{caseData.dealContext.go_to_market}</dd></div></dl></details>
     </div>
   );
 }
 
-type DealRoomKind = "ALL" | "SOURCE" | "FINDING" | "ANALYSIS" | "REQUEST";
-type DealRoomItem = {id: string; kind: Exclude<DealRoomKind, "ALL">; title: string; detail: string; meta: string; href?: string; metric?: Metric; targetView?: View; targetSection?: string};
+function Financials({caseData}: {caseData: CaseData}) {
+  return (
+    <div className="view-stack">
+      <section className="metric-grid" aria-label="Key financial measures">{caseData.summaryMetrics.map((metric) => <article className="metric-card" key={metric.metric_id} data-metric-id={metric.metric_id}><span>{metric.label}</span><strong>{metric.value}</strong><p>{metric.detail}</p></article>)}</section>
+      <section className="panel" aria-labelledby="scenario-heading"><div className="section-heading"><div><p className="eyebrow">Deterministic mechanics</p><h2 id="scenario-heading">Scenario comparison</h2></div></div><div className="table-wrap"><table><thead><tr><th>Scenario</th><th>Structure</th><th>Annualized gross return</th><th>Gross multiple</th><th>Financing note</th></tr></thead><tbody>{caseData.scenarios.map((scenario) => <tr key={scenario.id}><td>{scenario.label}</td><td>{scenario.entry_ev}</td><td>{scenario.gross_irr}</td><td>{scenario.moic}</td><td>{scenario.covenant}</td></tr>)}</tbody></table></div></section>
+      <section className="panel" aria-labelledby="assumptions-heading"><div className="section-heading"><div><p className="eyebrow">Boundary</p><h2 id="assumptions-heading">What the numbers can support</h2></div></div><p>Accounting uses retained integer-cent records. Scenario returns apply declared financing and exit assumptions. They are analytical outputs, not forecasts or approvals.</p><details className="method-disclosure"><summary>View calculation boundary</summary><p>The retained Python engine remains canonical for the full evidence packet, debt, dilution, preferences, stress paths, and lineage.</p></details></section>
+    </div>
+  );
+}
 
-const evidenceCategory = (artifactId: string) => {
-  if (["CIM", "MEMORANDUM", "forecast", "pipeline", "financing-plan", "team-diligence"].includes(artifactId)) return "Management representation · synthetic";
-  if (["market-assumptions", "venture-scenarios", "debt-terms"].includes(artifactId)) return "Declared assumption / proposed term · synthetic";
-  return "Verified against retained source · synthetic";
-};
+function Diligence({caseData}: {caseData: CaseData}) {
+  const issues = caseData.decision.issue_summary.issues;
+  return (
+    <div className="view-stack">
+      <section className="panel" aria-labelledby="issues-heading"><div className="section-heading"><div><p className="eyebrow">Worklist</p><h2 id="issues-heading">{issues.filter((issue) => issue.blocks_advancement).length} issues block the next step</h2></div><span>Human-owned</span></div><div className="issue-list">{issues.map((issue) => <article key={issue.issue_id}><div><span className={`status status-${issue.state.toLowerCase()}`}>{statusLabel(issue.state)}</span><span>{issue.materiality.toLowerCase()}</span></div><h3>{issue.title}</h3><p>{issue.consequence}</p><footer><span>Owner</span><strong>{issue.owner}</strong></footer></article>)}</div></section>
+      {caseData.caseId === "helios" ? (
+        <section className="panel evidence-result" aria-labelledby="optimizer-heading"><div className="section-heading"><div><p className="eyebrow">Evidence test</p><h2 id="optimizer-heading">Optimizer test reduced unit compute cost</h2></div><span>Zero base-case credit</span></div><p className="result-lead">Customers randomly given the optimizer used about <strong>8.7% less compute per workload</strong> than customers without it.</p><dl className="result-context"><div><dt>Population</dt><dd>120 synthetic customers across the declared test window.</dd></div><div><dt>Decision use</dt><dd>Candidate savings rate for the value plan; no base-case credit until replicated against production provider invoices.</dd></div><div><dt>Limitation</dt><dd>A planted effect in illustrative data. It says nothing about real customers or future margin.</dd></div></dl><details className="method-disclosure"><summary>View method</summary><p>Estimated change: −0.0911 log points; 95% interval −0.1187 to −0.0634; baseline-adjusted precision companion −0.0915.</p></details></section>
+      ) : (
+        <section className="panel evidence-result" aria-labelledby="renewal-heading"><div className="section-heading"><div><p className="eyebrow">Evidence test</p><h2 id="renewal-heading">Higher renewal offers reduced renewal</h2></div><span>Downside evidence</span></div><p className="result-lead">Accounts randomly offered the higher renewal price renewed <strong>6.7 percentage points less often</strong> than the comparison group.</p><dl className="result-context"><div><dt>Population</dt><dd>800 illustrative renewal-eligible accounts.</dd></div><div><dt>Decision use</dt><dd>No pricing upside credit in the selected structure.</dd></div><div><dt>Limitation</dt><dd>A planted effect in synthetic data, not evidence about a real company.</dd></div></dl></section>
+      )}
+      <section className="panel proposal-tray" aria-labelledby="proposal-heading"><div className="section-heading"><div><p className="eyebrow">Review tray</p><h2 id="proposal-heading">Model proposals</h2></div><span>0 proposed</span></div><p>Model review is unavailable. Deterministic analysis and the diligence worklist remain fully functional.</p></section>
+    </div>
+  );
+}
 
-function DealRoomIndex({caseData, openMetric, onNavigate}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void; onNavigate: (view: View, section: string) => void}) {
+function Documents({caseData}: {caseData: CaseData}) {
   const [query, setQuery] = useState("");
-  const [kind, setKind] = useState<DealRoomKind>("ALL");
-  const items = useMemo<DealRoomItem[]>(() => {
-    const sources = caseData.artifacts.map((artifact) => ({id: `source-${artifact.artifact_id}`, kind: "SOURCE" as const, title: artifact.path, detail: `${artifact.schema} · ${artifact.rows.toLocaleString()} retained rows`, meta: `${evidenceCategory(artifact.artifact_id)} · content addressed`, href: caseData.sourceLocators.find((item) => item.artifact_id === artifact.artifact_id)?.published_path}));
-    const findings = caseData.summaryMetrics.map((metric) => ({id: `finding-${metric.metric_id}`, kind: "FINDING" as const, title: metric.label, detail: `${metric.value} · ${metric.detail}`, meta: `${displayClass(metric.classification)} · decision-facing`, metric}));
-    const analyses = caseData.analyses.map((analysis) => ({id: `analysis-${analysis.analysis_id}`, kind: "ANALYSIS" as const, title: `${analysis.analysis_id} · ${analysis.question}`, detail: analysis.method, meta: `${displayClass(analysis.classification)} · ${analysis.state} · ${analysis.cutoff}`, targetView: "Methodology" as View, targetSection: `analysis-${analysis.analysis_id}`}));
-    const requests = caseData.thesis.requests.map((item) => ({id: `request-${item.request_id}`, kind: "REQUEST" as const, title: `${item.request_id} · ${item.request}`, detail: item.decision_consequence, meta: `${item.owner} · ${item.materiality} · ${item.due_state.replaceAll("_", " ")}`, targetView: "Risks & Diligence" as View, targetSection: `request-${item.request_id}`}));
-    return [...sources, ...findings, ...analyses, ...requests];
-  }, [caseData]);
-  const filtered = items.filter((item) => {
-    if (kind !== "ALL" && item.kind !== kind) return false;
-    const haystack = `${item.kind} ${item.title} ${item.detail} ${item.meta}`.toLowerCase();
-    return haystack.includes(query.trim().toLowerCase());
-  });
-  return <section className="deal-room" aria-labelledby="deal-room-title">
-    <div className="deal-room-head"><div><p className="kicker">Navigable deal room</p><h2 id="deal-room-title">Find the fact, owner, analysis, or open gate</h2><p>Search the retained synthetic room by business meaning. Machine receipts stay one layer deeper.</p></div><dl><div><dt>Sources</dt><dd>{caseData.artifacts.length}</dd></div><div><dt>Analyses</dt><dd>{caseData.analyses.length}</dd></div><div><dt>Open requests</dt><dd>{caseData.thesis.requests.length}</dd></div></dl></div>
-    <div className="deal-room-controls"><label><span>Search room</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Try covenant, pipeline, margin, owner…" /></label><div className="deal-room-filters" aria-label="Filter deal room by record type">{(["ALL", "SOURCE", "FINDING", "ANALYSIS", "REQUEST"] as DealRoomKind[]).map((item) => <button key={item} aria-pressed={kind === item} onClick={() => setKind(item)}>{item.toLowerCase()}</button>)}</div></div>
-    <p className="deal-room-count" role="status">{filtered.length} of {items.length} records</p>
-    <div className="deal-room-results" aria-label="Deal room search results">{filtered.map((item) => <article key={item.id} data-kind={item.kind}><div><span>{item.kind}</span><small>{item.meta}</small></div><h3>{item.title}</h3><p>{item.detail}</p>{item.metric ? <button onClick={(event) => openMetric(item.metric!, event.currentTarget)}>Inspect finding evidence ↗</button> : item.href ? <a href={item.href} target="_blank" rel="noreferrer">Open complete source ↗</a> : item.targetView && item.targetSection ? <button onClick={() => onNavigate(item.targetView!, item.targetSection!)}>Open {item.kind.toLowerCase()} ↗</button> : null}</article>)}</div>
-  </section>;
-}
-
-function ThesisEvidence({caseData, openMetric, onNavigate}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void; onNavigate: (view: View, section: string) => void}) {
-  const falsifiers = caseData.falsifierStates ?? caseData.thesis.falsifiers.map((label) => ({label, status: "OPEN" as const, observed: "Not evaluated"}));
-  const diligenceRequests = caseData.thesis.requests.map((item, index) => typeof item === "string" ? {request_id: `${caseData.caseId}-legacy-${index}`, request: item, owner: "Not assigned", due_state: "OPEN", materiality: "HIGH" as const, decision_consequence: "Retain HOLD until adjudicated."} : item);
+  const artifacts = useMemo(() => caseData.artifacts.filter((artifact) => friendlyFileName(artifact.path).toLowerCase().includes(query.toLowerCase())), [caseData, query]);
   return (
-    <div className="view-stack">
-      <section className="thesis-header"><p className="kicker">Falsifiable thesis</p><h2>{caseData.thesis.statement}</h2><p>{caseData.thesis.counterthesis}</p></section>
-      <DealRoomIndex caseData={caseData} openMetric={openMetric} onNavigate={onNavigate} />
-      <section className="thesis-grid">
-        <article><h3>Value drivers</h3><ol>{caseData.thesis.drivers.map((item) => <li key={item}>{item}</li>)}</ol></article>
-        <article className="falsifiers"><h3>Kill criteria</h3><ol className="falsifier-list">{falsifiers.map((item) => <li key={item.label}><span>{item.label}<small>{item.observed}</small></span><strong data-status={item.status}>{item.status}</strong></li>)}</ol></article>
-        <article><h3>Next diligence requests</h3><ol>{diligenceRequests.map((item) => <li key={item.request_id}>{item.request}</li>)}</ol></article>
-      </section>
-      <section id="diligence" aria-labelledby="diligence-title"><div className="section-heading"><p className="kicker">Open-gate register</p><h2 id="diligence-title" tabIndex={-1}>Diligence requests and decision consequences</h2></div><div className="diligence-register">{diligenceRequests.map((item) => <article id={`request-${item.request_id}`} tabIndex={-1} key={item.request_id} data-materiality={item.materiality}><div><span>{item.request_id}</span><strong>{item.materiality}</strong></div><h3>{item.request}</h3><dl><div><dt>Owner</dt><dd>{item.owner}</dd></div><div><dt>Due state</dt><dd>{item.due_state.replaceAll("_", " ")}</dd></div><div><dt>If unresolved</dt><dd>{item.decision_consequence}</dd></div></dl></article>)}</div></section>
-      <section aria-labelledby="team-title"><div className="section-heading"><p className="kicker">Role-specific judgment · synthetic room only</p><h2 id="team-title">Team capability, gaps, and required capacity</h2></div><div className="team-assessment"><article><h3>Observable strengths</h3><ul>{caseData.teamAssessment.strengths.map((item) => <li key={item}>{item}</li>)}</ul></article><article><h3>Unproven capabilities</h3><ul>{caseData.teamAssessment.unproven.map((item) => <li key={item}>{item}</li>)}</ul></article><article><h3>Key-person risk</h3><p>{caseData.teamAssessment.key_person_risk}</p></article><article><h3>Required hires / capacity</h3><ul>{caseData.teamAssessment.required_hires.map((item) => <li key={item}>{item}</li>)}</ul></article></div></section>
-      <section aria-labelledby="graph-title"><div className="section-heading"><p className="kicker">Decision dependency map</p><h2 id="graph-title">Evidence → estimate → judgment → action</h2></div><ChartRegistryCaption caseData={caseData} location="Thesis & Evidence" /><ThesisGraphView graph={caseData.thesisGraph} /><p className="graph-receipt">{caseData.thesisGraph.nodes.length} nodes · {caseData.thesisGraph.edges.length} typed relationships · complete branching register retained</p></section>
-      {caseData.evidenceMappings && <section aria-labelledby="mapping-title"><div className="section-heading"><p className="kicker">Evidence-to-economics discipline</p><h2 id="mapping-title">What receives model credit—and what does not</h2></div><div className="table-wrap" tabIndex={0}><table><thead><tr><th>Evidence</th><th>Observed</th><th>Mapped target</th><th>Credit class</th><th>Model credit</th><th>Decision response</th></tr></thead><tbody>{caseData.evidenceMappings.map((item) => <tr key={item.mapping_id}><td>{item.source_analysis_id}</td><td>{item.observed_value}</td><td>{item.target_assumption_or_condition}</td><td>{displayClass(item.credit_classification)}</td><td>{item.model_credit}</td><td>{item.decision_response}</td></tr>)}</tbody></table></div></section>}
-      <section aria-labelledby="evidence-title">
-        <div className="section-heading"><p className="kicker">Content-addressed room</p><h2 id="evidence-title">Evidence register</h2></div>
-        <div className="table-wrap" tabIndex={0} aria-label="Scrollable evidence register"><table><thead><tr><th>Artifact</th><th>Contract</th><th>Rows</th><th>Use</th></tr></thead><tbody>
-          {caseData.artifacts.map((artifact) => <tr key={artifact.artifact_id}><td>{artifact.path}</td><td>{artifact.schema}</td><td>{artifact.rows.toLocaleString()}</td><td>Retained synthetic source</td></tr>)}
-        </tbody></table></div>
-      </section>
-    </div>
+    <div className="view-stack"><section className="panel" aria-labelledby="package-heading"><div className="section-heading"><div><p className="eyebrow">Retained package</p><h2 id="package-heading">Document register</h2></div><span>{caseData.artifacts.length} recognized</span></div><label className="search-field"><span>Search documents</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Try customers or financing" /></label><div className="document-list">{artifacts.map((artifact) => <article key={artifact.artifact_id}><div><h3>{friendlyFileName(artifact.path)}</h3><p>{artifact.rows.toLocaleString()} retained rows</p></div><span className="status status-clears">Recognized</span><details className="technical-record"><summary>Reproduction detail</summary><dl><div><dt>Source path</dt><dd><code>{artifact.path}</code></dd></div><div><dt>Format contract</dt><dd><code>{artifact.schema}</code></dd></div><div><dt>File digest</dt><dd><code>{artifact.sha256}</code></dd></div></dl></details></article>)}</div></section><aside className="local-data-note"><strong>Illustrative records only.</strong> The public slice contains no confidential deal data and makes no enterprise-security claim.</aside></div>
   );
 }
 
-function analysisOutputMetric(caseData: CaseData, analysis: Analysis, output: Analysis["outputs"][number]): Metric {
-  const metricId = `${caseData.caseId}-${analysis.analysis_id.toLowerCase()}-${output.name}`;
-  const registry = caseData.metricRegistry.find((item) => item.metric_id === metricId);
-  return {metric_id: metricId, label: `${analysis.analysis_id} · ${output.name.replaceAll("_", " ")}`, value: outputDisplay(output.value, output.unit), detail: `${analysis.question} Population: ${analysis.population}.`, classification: registry?.classification ?? analysis.classification, lineage: caseData.lineage.filter((item) => item.analysis_id === analysis.analysis_id && item.output_names.includes(output.name)).map((item) => item.node_id), registry};
-}
-
-function analysisCredit(caseData: CaseData, analysis: Analysis) {
-  const mapping = caseData.evidenceMappings?.find((item) => item.source_analysis_id === analysis.analysis_id);
-  if (mapping) {
-    const label = {
-      BASE_CASE: "BASE-CASE CREDIT · BOUNDED",
-      VALUE_CREATION_BRIDGE: "VALUE-CREATION BRIDGE ONLY",
-      SCENARIO_ONLY: "SCENARIO ONLY",
-      ZERO: "ZERO CREDIT",
-    }[mapping.credit_tier];
-    return {label, target: mapping.target_assumption_or_condition, consequence: `${mapping.model_credit}. ${mapping.decision_response}.`};
-  }
-  return {label: "UNBOUND — HOLD", target: "No engine-authored treatment", consequence: "The interface cannot infer investment treatment. Keep the analysis out of the investment model until the engine supplies a mapping."};
-}
-
-function AnalysisDetail({caseData, analysis, openMetric}: {caseData: CaseData; analysis: Analysis; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
-  const credit = analysisCredit(caseData, analysis);
+function Memo({caseData}: {caseData: CaseData}) {
+  const blocker = caseData.decision.issue_summary.issues.find((issue) => issue.blocks_advancement);
   return (
-    <article className="analysis-detail" id={`analysis-${analysis.analysis_id}`} tabIndex={-1}>
-      <div className="analysis-title"><div><p className="kicker">{analysis.analysis_id}</p><h3>{analysis.question}</h3></div><span className={`state ${analysis.state.toLowerCase()}`}>{analysis.state}</span></div>
-      <dl className="method-grid"><div><dt>Estimand / outputs</dt><dd className="analysis-output-list">{analysis.outputs.length ? analysis.outputs.map((output) => {const metric = analysisOutputMetric(caseData, analysis, output); return <button key={output.name} data-metric-id={metric.metric_id} onClick={(event) => openMetric(metric, event.currentTarget)} aria-label={`Inspect lineage for ${metric.label}`}><span>{output.name.replaceAll("_", " ")}</span><strong>{metric.value}</strong><small>Inspect ↗</small></button>;}) : "No estimate — abstention retained"}</dd></div><div><dt>Method</dt><dd>{analysis.method}</dd></div><div><dt>Population</dt><dd>{analysis.population}</dd></div><div><dt>Classification / cutoff</dt><dd>{displayClass(analysis.classification)} · {analysis.cutoff}</dd></div></dl>
-      <section className="analysis-credit" data-credit={credit.label.replaceAll(" ", "_")}><div><span>Investment model treatment</span><strong>{credit.label}</strong></div><dl><div><dt>Affected assumption / condition</dt><dd>{credit.target}</dd></div><div><dt>Economic or decision consequence</dt><dd>{credit.consequence}</dd></div></dl></section>
-      <div className="diagnostics"><h4>Diagnostics</h4>{analysis.diagnostics.map((diagnostic) => <div key={diagnostic.name}><span>{diagnostic.name.replaceAll("_", " ")}</span><strong>{diagnostic.value}</strong><em data-status={diagnostic.status}>{diagnostic.status}</em></div>)}</div>
-      <p className="assumption">{analysis.assumptions.join(" ")}</p>
-    </article>
+    <div className="memo-page"><section className="memo-sheet" aria-labelledby="memo-heading"><header><div><span>Investment committee draft</span><h2 id="memo-heading">{caseData.company}</h2><p>{caseData.dealContext.investment_question}</p></div><span className="quiet-chip">Illustrative data</span></header><article><span className="source-tag">Engine</span><h3>Recommendation and why</h3><p>{caseData.decision.rationale}</p></article><article><span className="source-tag">Engine</span><h3>Economics</h3><p>{caseData.summaryMetrics.slice(0, 3).map((metric) => `${metric.label}: ${metric.value}`).join(" · ")}.</p></article><article><span className="source-tag">Engine</span><h3>Downside</h3><p>{blocker?.consequence ?? "No declared blocking issue."}</p></article><article><span className="source-tag">Analyst</span><h3>Conditions and path to reconsideration</h3><ul>{caseData.decision.path_to_yes.map((item) => <li key={item}>{item}</li>)}</ul></article><footer>Draft only · Requires investment committee approval · Illustrative data, not investment advice</footer></section><div className="memo-actions"><button className="primary-button" type="button" onClick={() => window.print()}>Print IC memo</button><p>Model-proposed language is never inserted without human acceptance.</p></div></div>
   );
 }
 
-function EconometricLab({caseData, openMetric, section}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void; section?: string | null}) {
-  const identified = caseData.analyses.filter((item) => item.classification === "CAUSAL_SYNTHETIC_ONLY");
-  const associative = caseData.analyses.filter((item) => item.classification === "PREDICTIVE_ASSOCIATION" || item.classification === "NOT_IDENTIFIED");
-  const [mode, setMode] = useState<"identified" | "naive" | "all">("identified");
-  useEffect(() => {if (section?.startsWith("analysis-")) setMode("all");}, [section, caseData.caseId]);
-  const visible = mode === "identified" ? identified : mode === "naive" ? associative : caseData.analyses;
-  const paired = caseData.caseId === "atlasgrid"
-    ? {naive: "Observational offer-scale association", naiveAnalysis: "AG-06", naiveOutput: "implied_offer_scale_association", adjusted: "Randomized offer ITT", adjustedAnalysis: "AG-07", adjustedOutput: "renewal_itt", unit: "percentage points · same offer scale", naiveNote: "selection exposed", adjustedNote: "design-aligned comparison"}
-    : {naive: "Precommitted unadjusted randomized ITT", naiveAnalysis: "HX-06", naiveOutput: "optimizer_ate", adjusted: "Baseline-adjusted precision companion", adjustedAnalysis: "HX-06", adjustedOutput: "optimizer_baseline_adjusted_companion", unit: "log points · same randomized population", naiveNote: "approximately the log change in unit cost; primary recovery and economic mapping", adjustedNote: "companion only; receives no separate credit"};
-  const pairMetric = (analysisId: string, outputName: string) => {const analysis = caseData.analyses.find((item) => item.analysis_id === analysisId); const output = analysis?.outputs.find((item) => item.name === outputName); return analysis && output ? analysisOutputMetric(caseData, analysis, output) : null;};
-  const naiveMetric = pairMetric(paired.naiveAnalysis, paired.naiveOutput);
-  const adjustedMetric = pairMetric(paired.adjustedAnalysis, paired.adjustedOutput);
+function DealShell({caseData, view, onNavigate, onChooseDeal, onDeals}: {caseData: CaseData; view: DealView; onNavigate: (view: DealView) => void; onChooseDeal: (caseId: CaseId) => void; onDeals: () => void}) {
   return (
-    <div className="view-stack">
-      <section className="econ-intro"><div><p className="kicker">Identification before inference</p><h2>What the design can—and cannot—establish</h2></div><div className="segmented" aria-label="Analysis comparison"><button aria-pressed={mode === "naive"} onClick={() => setMode("naive")}>Association / abstention</button><button aria-pressed={mode === "identified"} onClick={() => setMode("identified")}>Identified synthetic effect</button><button aria-pressed={mode === "all"} onClick={() => setMode("all")}>All analyses</button></div></section>
-      <aside className="epistemic-note"><strong>Synthetic causal boundary</strong><span>Identified effects recover a planted assignment mechanism. They are not real-company causal claims.</span></aside>
-      <section className="paired-estimate" aria-label="Naive versus adjusted comparison"><article><span>{paired.naive}</span>{naiveMetric ? <button data-metric-id={naiveMetric.metric_id} onClick={(event) => openMetric(naiveMetric, event.currentTarget)} aria-label={`Inspect lineage for ${paired.naive}`}><strong>{naiveMetric.value}</strong><em>Inspect ↗</em></button> : <strong>n/a</strong>}<small>{paired.unit} · {paired.naiveNote}</small></article><div aria-hidden="true">→</div><article><span>{paired.adjusted}</span>{adjustedMetric ? <button data-metric-id={adjustedMetric.metric_id} onClick={(event) => openMetric(adjustedMetric, event.currentTarget)} aria-label={`Inspect lineage for ${paired.adjusted}`}><strong>{adjustedMetric.value}</strong><em>Inspect ↗</em></button> : <strong>n/a</strong>}<small>{paired.unit} · {paired.adjustedNote}</small></article></section>
-      <section className="analysis-list">{visible.length ? visible.map((analysis) => <AnalysisDetail key={analysis.analysis_id} caseData={caseData} analysis={analysis} openMetric={openMetric} />) : <p>No analysis in this class.</p>}</section>
-      <section className="classification-key"><h3>Method classes</h3>{["ACCOUNTING_IDENTITY", "DESCRIPTIVE", "PREDICTIVE_ASSOCIATION", "CAUSAL_SYNTHETIC_ONLY", "SCENARIO", "NOT_IDENTIFIED"].map((item) => <span key={item}>{displayClass(item)}</span>)}</section>
-    </div>
+    <div className="product-shell"><aside className="sidebar"><button type="button" className="wordmark" onClick={onDeals} aria-label="Underwriting Desk deals"><span>UD</span><strong>Underwriting Desk</strong></button><nav aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}>{viewLabels[item]}</button>)}</nav><div className="sidebar-foot"><span className="quiet-chip">Illustrative data</span><p>Methods and lineage remain available on request.</p></div></aside><div className="shell-main"><header className="deal-topbar"><button type="button" className="mobile-wordmark" onClick={onDeals}>Underwriting Desk</button><label><span>Deal</span><select aria-label="Deal" value={caseData.caseId} onChange={(event) => onChooseDeal(event.target.value as CaseId)}>{caseCatalog.map((item) => <option value={item.caseId} key={item.caseId}>{item.company}</option>)}</select></label><div className="topbar-meta"><span>{caseData.caseType}</span><span>{caseData.decision.as_of ?? caseData.temporalScan.cutoff.slice(0, 10)}</span></div></header><nav className="mobile-nav" aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}>{viewLabels[item]}</button>)}</nav><main id="main-content" className="deal-main"><header className="deal-heading"><div><p className="eyebrow">{viewLabels[view]}</p><h1>{caseData.company}</h1><p>{caseData.dealContext.company_one_liner}</p></div><p className="ic-question"><span>IC question</span>{caseData.dealContext.investment_question}</p></header>{view === "overview" ? <Overview caseData={caseData} /> : null}{view === "financials" ? <Financials caseData={caseData} /> : null}{view === "diligence" ? <Diligence caseData={caseData} /> : null}{view === "documents" ? <Documents caseData={caseData} /> : null}{view === "memo" ? <Memo caseData={caseData} /> : null}</main></div></div>
   );
 }
 
-function LegacyUnderwritingRoom({caseData, openMetric}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
-  const [scenarioId, setScenarioId] = useState(caseData.scenarios[0].id);
-  useEffect(() => {setScenarioId(caseData.scenarios[0].id);}, [caseData]);
-  const scenario = caseData.scenarios.find((item) => item.id === scenarioId) ?? caseData.scenarios[0];
-  const scenarioMetric = (item: CaseData["scenarios"][number], field: "entry_ev" | "gross_irr" | "moic" | "covenant", label: string): Metric => ({
-    metric_id: `${caseData.caseId}-${item.id}-${field}`,
-    label: `${item.label} ${label}`,
-    value: item[field],
-    detail: field === "covenant"
-      ? `Receipt-linked qualitative constraint label for the named ${item.label} scenario.`
-      : `Receipt-bound ${label.toLowerCase()} for the named ${item.label} scenario.`,
-    classification: "SCENARIO",
-    lineage: item.lineage?.length ? item.lineage : [caseData.distributionLineage],
-  });
-  return (
-    <div className="view-stack">
-      <section className="underwriting-head"><div><p className="kicker">Scenario book</p><h2>Price, structure, and downside</h2></div><div className="scenario-tabs">{caseData.scenarios.map((item) => <button key={item.id} aria-pressed={item.id === scenarioId} onClick={() => setScenarioId(item.id)}>{item.label}</button>)}</div></section>
-      <section className="scenario-focus">
-        <button onClick={(event) => openMetric(scenarioMetric(scenario, "entry_ev", "entry value"), event.currentTarget)} aria-label={`Inspect lineage for ${scenario.label} entry value`}><span>Entry</span><strong>{scenario.entry_ev}</strong><small>Inspect ↗</small></button>
-        <button onClick={(event) => openMetric(scenarioMetric(scenario, "gross_irr", "gross IRR"), event.currentTarget)} aria-label={`Inspect lineage for ${scenario.label} gross IRR`}><span>Gross IRR</span><strong>{scenario.gross_irr}</strong><small>Inspect ↗</small></button>
-        <button onClick={(event) => openMetric(scenarioMetric(scenario, "moic", "MOIC"), event.currentTarget)} aria-label={`Inspect lineage for ${scenario.label} MOIC`}><span>MOIC</span><strong>{scenario.moic}</strong><small>Inspect ↗</small></button>
-        <button onClick={(event) => openMetric(scenarioMetric(scenario, "covenant", "binding constraint"), event.currentTarget)} aria-label={`Inspect lineage for ${scenario.label} binding constraint`}><span>Constraint</span><strong>{scenario.covenant}</strong><small>Inspect ↗</small></button>
-      </section>
-      <aside className="epistemic-note"><strong>VC sensitivity pending v2 engine</strong><span>No display-only approximation is permitted. Helios controls appear only after financing, ownership, and waterfall cells are fully recomputed and receipt-bound.</span></aside>
-      <Distribution caseData={caseData} openMetric={openMetric} />
-      <section className="table-wrap" tabIndex={0} aria-label="Scrollable scenario table"><table><caption>Named scenarios and binding constraints · select any value for lineage</caption><thead><tr><th>Case</th><th>Entry</th><th>Gross IRR</th><th>MOIC</th><th>Constraint</th></tr></thead><tbody>{caseData.scenarios.map((item) => <tr key={item.id}><th scope="row">{item.label}</th><td><button className="table-lineage" aria-label={`Inspect lineage for ${item.label} entry value`} onClick={(event) => openMetric(scenarioMetric(item, "entry_ev", "entry value"), event.currentTarget)}>{item.entry_ev} ↗</button></td><td><button className="table-lineage" aria-label={`Inspect lineage for ${item.label} gross IRR`} onClick={(event) => openMetric(scenarioMetric(item, "gross_irr", "gross IRR"), event.currentTarget)}>{item.gross_irr} ↗</button></td><td><button className="table-lineage" aria-label={`Inspect lineage for ${item.label} MOIC`} onClick={(event) => openMetric(scenarioMetric(item, "moic", "MOIC"), event.currentTarget)}>{item.moic} ↗</button></td><td><button className="table-lineage" aria-label={`Inspect lineage for ${item.label} binding constraint`} onClick={(event) => openMetric(scenarioMetric(item, "covenant", "binding constraint"), event.currentTarget)}>{item.covenant} ↗</button></td></tr>)}</tbody></table></section>
-    </div>
-  );
-}
-
-function UnderwritingRoom({caseData, openMetric, routeState, onRouteState}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void; routeState: RouteControls; onRouteState: (state: RouteControls) => void}) {
-  if (caseData.peEngine) return <PEUnderwritingRoom caseData={caseData} openMetric={openMetric} routeState={routeState} onRouteState={onRouteState} />;
-  if (caseData.vcEngine) return <VCUnderwritingRoom caseData={caseData} openMetric={openMetric} routeState={routeState} onRouteState={onRouteState} />;
-  return <LegacyUnderwritingRoom caseData={caseData} openMetric={openMetric} />;
-}
-
-function ValueCreation({caseData, openMetric}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
-  if (caseData.valueCreationBridge) return <PEValueCreation caseData={caseData} openMetric={openMetric} />;
-  if (caseData.vcEngine) return <VCValueCreation caseData={caseData} openMetric={openMetric} />;
-  return (
-    <div className="view-stack">
-      <section className="value-head"><p className="kicker">Underwriting to ownership</p><h2>Every initiative earns its place in the value bridge</h2><p>Baselines come from the frozen room. Targets are illustrative human assumptions with named owners, milestones, and failure modes.</p></section>
-      <ValuePlanDetails caseData={caseData} openMetric={openMetric} />
-      <section aria-labelledby="cadence-title"><div className="section-heading"><p className="kicker">Pre-close to board control</p><h2 id="cadence-title">Ownership cadence</h2></div><div className="ownership-cadence">{caseData.ownershipCadence.map((item) => <article key={item.phase}><span>{item.phase}</span><small>{item.timing}</small><h3>{item.milestone}</h3><dl><div><dt>Owner</dt><dd>{item.owner}</dd></div><div><dt>Board KPI</dt><dd>{item.kpi}</dd></div><div><dt>Stop rule</dt><dd>{item.stop_rule}</dd></div></dl></article>)}</div></section>
-    </div>
-  );
-}
-
-function investmentQuestion(caseData: CaseData) {
-  return caseData.dealContext.investment_question;
-}
-
-function Landing({onOpen}: {onOpen: (caseId: CaseId) => void}) {
-  return <div className="landing-page">
-    <section className="landing-hero" aria-labelledby="landing-title">
-      <p className="kicker">Underwriting Intelligence Lab</p>
-      <h1 id="landing-title">Turn a crowded data room into a decision an investment committee can challenge.</h1>
-      <p>Two synthetic deals connect source evidence, operating analysis, return mechanics, downside cases, and action—without asking a model to approve an investment.</p>
-      <button className="primary-action" onClick={() => onOpen("atlasgrid")}>Review a sample deal <span>→</span></button>
-      <small>Synthetic cases · local analysis · no runtime model or investment authority</small>
-    </section>
-    <section className="landing-cases" aria-labelledby="sample-cases-title">
-      <div className="section-heading"><p className="kicker">Choose a workflow</p><h2 id="sample-cases-title">Start with the investment question</h2></div>
-      <div className="case-card-grid">
-        {caseCatalog.map((item) => <button key={item.caseId} onClick={() => onOpen(item.caseId)}><span>{item.caseType === "PE / Growth Equity" ? "Private equity · vertical SaaS" : "Growth equity · AI infrastructure"}</span><strong>{item.company}</strong><p>{item.investmentQuestion}</p><em>Open {item.caseId === "atlasgrid" ? "buyout" : "growth"} underwriting →</em></button>)}
-      </div>
-    </section>
-    <section className="workflow-preview" aria-label="Underwriting workflow"><span>01 Evidence</span><b>→</b><span>02 Economics</span><b>→</b><span>03 Downside</span><b>→</b><span>04 Decision</span><b>→</b><span>05 Ownership plan</span></section>
-  </div>;
-}
-
-function DealContext({caseData}: {caseData: CaseData}) {
-  const context = caseData.dealContext;
-  return <section className="deal-context" aria-labelledby="deal-context-title">
-    <div className="deal-context-lead"><p className="kicker">Company in one minute</p><h2 id="deal-context-title">{context.company_one_liner}</h2><p>{context.product}</p></div>
-    <dl>
-      <div><dt>Customer</dt><dd>{context.customer}</dd></div>
-      <div><dt>Market</dt><dd>{context.market}</dd></div>
-      <div><dt>Go to market</dt><dd>{context.go_to_market}</dd></div>
-      <div><dt>Team</dt><dd>{context.team}</dd></div>
-      <div><dt>Competition</dt><dd>{context.competition.join(" · ")}</dd></div>
-      <div><dt>Process</dt><dd>{context.process}</dd></div>
-    </dl>
-  </section>;
-}
-
-type CanonicalCell = {cell_id: string; assumption_label: string; gross_xirr: string; gross_moic: string};
-
-type DecisionMetricPair = NonNullable<CaseData["decision"]["metric_pairs"]>[number];
-const thresholdClears = (observed: string, pair: DecisionMetricPair) => {
-  const comparison = compareDecimalStrings(observed, pair.threshold_value);
-  if (pair.operator === ">=") return comparison >= 0;
-  if (pair.operator === "<=") return comparison <= 0;
-  if (pair.operator === ">") return comparison > 0;
-  if (pair.operator === "<") return comparison < 0;
-  return comparison === 0;
-};
-
-function AssumptionLab({caseData, routeState, onRouteState}: {caseData: CaseData; routeState: RouteControls; onRouteState: (state: RouteControls) => void}) {
-  const axis = caseData.peEngine ? "entry_enterprise_value_cents" : caseData.vcEngine!.sensitivities.default_axis;
-  const cells: CanonicalCell[] = caseData.peEngine
-    ? caseData.peEngine.sensitivities.one_way.filter((item) => item.axis === "entry_enterprise_value_cents")
-    : caseData.vcEngine!.sensitivities.cells.filter((item) => item.axis === caseData.vcEngine!.sensitivities.default_axis);
-  const defaultCellId = caseData.peEngine ? cells[Math.floor(cells.length / 2)]?.cell_id : caseData.vcEngine!.sensitivities.default_cell_id;
-  const selected = cells.find((item) => item.cell_id === routeState.cell) ?? cells.find((item) => item.cell_id === defaultCellId) ?? cells[0];
-  if (!selected) return null;
-  const irrMetricId = caseData.peEngine ? "atlasgrid-SELECTED-gross-irr" : "helios-MILESTONE-gross-xirr";
-  const moicMetricId = caseData.peEngine ? "atlasgrid-SELECTED-gross-moic" : "helios-MILESTONE-gross-moic";
-  const irrPair = caseData.decision.metric_pairs?.find((item) => item.metric_id === irrMetricId);
-  const moicPair = caseData.decision.metric_pairs?.find((item) => item.metric_id === moicMetricId);
-  if (!irrPair || !moicPair) throw new Error("canonical_assumption_hurdle_missing");
-  const clears = thresholdClears(selected.gross_xirr, irrPair) && thresholdClears(selected.gross_moic, moicPair);
-  const label = caseData.peEngine ? "Entry enterprise value" : "Annual revenue growth";
-  const peCell = caseData.peEngine ? selected as CanonicalCell & {sponsor_cash_flows: Array<{amount_cents: number}>; minimum_covenant_headroom: string; receipt_sha256: string} : null;
-  const vcCell = caseData.vcEngine ? selected as CanonicalCell & {target_ownership: string; minimum_cash_cents: number; pool_exit_treatment: "FULLY_GRANTED_COMMON" | "UNISSUED_CANCELLED"; receipt_sha256: string} : null;
-  const strategyConsequence = peCell
-    ? `Sponsor equity at close ${asMoney(Math.abs(peCell.sponsor_cash_flows[0].amount_cents))} · minimum covenant headroom ${Number(peCell.minimum_covenant_headroom).toFixed(1)}x.`
-    : `Series C ownership ${asPercent(vcCell!.target_ownership)} · minimum modeled cash ${asMoney(vcCell!.minimum_cash_cents)} · option pool ${vcCell!.pool_exit_treatment === "FULLY_GRANTED_COMMON" ? "modeled as fully granted common at exit" : "cancelled before exit"}.`;
-  return <section className="assumption-lab" aria-labelledby="assumption-title">
-    <div><p className="kicker">Test the decisive assumption</p><h2 id="assumption-title">{label}</h2><p>Each choice loads a complete precomputed underwriting case, including financing and return consequences.</p></div>
-    <div className="assumption-options" role="group" aria-label={label}>{cells.map((cell) => <button key={cell.cell_id} aria-pressed={cell.cell_id === selected.cell_id} onClick={() => onRouteState({driver: axis, cell: cell.cell_id})}>{cell.assumption_label}</button>)}</div>
-    <dl className="assumption-result">
-      <div><dt>Gross IRR</dt><dd>{asPercent(selected.gross_xirr)}</dd></div>
-      <div><dt>Gross MOIC</dt><dd>{asMultiple(selected.gross_moic)}</dd></div>
-      <div><dt>Return test</dt><dd data-status={clears ? "CLEARS" : "MISSES"}>{clears ? "Clears" : "Misses"}<small>{irrPair.threshold} IRR · {moicPair.threshold} MOIC</small></dd></div>
-    </dl>
-    <p className="assumption-consequence"><strong>{clears ? "Return hurdle clears." : "Return hurdle fails."}</strong> {caseData.peEngine ? (clears ? `Price alone does not resolve ${caseData.decision.issue_summary.counts.advancement_blockers} blocking issues.` : "Do not advance at this price.") : (clears ? "The binding loss test and open diligence still prevent advancement." : "The return case does not support investment at this exit outcome.")}</p>
-    <p className="assumption-detail">{strategyConsequence} <strong>Decision impact:</strong> {caseData.decision.decision.replaceAll("_", " ")} remains the current call. <span>Technical record available under Evidence.</span></p>
-  </section>;
-}
-
-function EmpiricalTestSpotlight({caseData, openMetric, onNavigate}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void; onNavigate: () => void}) {
-  const analysisId = caseData.caseId === "atlasgrid" ? "AG-07" : "HX-06";
-  const outputName = caseData.caseId === "atlasgrid" ? "renewal_itt" : "optimizer_ate";
-  const analysis = caseData.analyses.find((item) => item.analysis_id === analysisId);
-  const output = analysis?.outputs.find((item) => item.name === outputName);
-  if (!analysis || !output) return null;
-  const metric = analysisOutputMetric(caseData, analysis, output);
-  const interval = analysis.diagnostics.find((item) => item.name === "confidence_interval")?.value;
-  const interpretation = caseData.caseId === "atlasgrid"
-    ? `Within 800 fictional renewal-eligible accounts, randomized higher-price offers reduced renewal by ${Math.abs(Number(output.value)).toFixed(1)} percentage points. The selected case therefore gives pricing upside no credit.`
-    : `Within the fictional randomized optimizer experiment, the estimate is ${outputDisplay(output.value, output.unit)}. It informs a bounded unit-cost bridge; it does not prove real-market adoption or future margin.`;
-  return <section className="empirical-spotlight" aria-labelledby="empirical-spotlight-title">
-    <div><p className="kicker">Assumption test · synthetic experiment</p><h2 id="empirical-spotlight-title">Test the claim before giving it model credit.</h2><p>{analysis.question}</p></div>
-    <button className="empirical-result" onClick={(event) => openMetric(metric, event.currentTarget)}><span>Estimated effect</span><strong>{metric.value}</strong><small>{interval ? `95% interval ${interval}` : analysis.method} · inspect source and calculation ↗</small></button>
-    <div className="empirical-meaning"><strong>Plain-language read</strong><p>{interpretation}</p><small><b>Limitation.</b> This recovers a planted effect in synthetic data under the declared assignment mechanism. It is not a real-company causal estimate and does not grant investment approval.</small><button onClick={onNavigate}>Open full method and diagnostics →</button></div>
-  </section>;
-}
-
-function ThesisView({caseData}: {caseData: CaseData}) {
-  const falsifiers = caseData.falsifierStates ?? caseData.thesis.falsifiers.map((label) => ({label, status: "OPEN" as const, observed: "Not evaluated"}));
-  return <div className="view-stack">
-    <section className="thesis-header"><p className="kicker">Investment thesis</p><h2>{caseData.thesis.statement}</h2><p><strong>Counterthesis.</strong> {caseData.thesis.counterthesis}</p></section>
-    <section className="thesis-grid investor-thesis-grid"><article><h3>What must drive value</h3><ol>{caseData.thesis.drivers.map((item) => <li key={item}>{item}</li>)}</ol></article><article className="falsifiers"><h3>What would break the thesis</h3><ol className="falsifier-list">{falsifiers.map((item) => <li key={item.label}><span>{item.label}<small>{item.observed}</small></span><strong data-status={item.status}>{statusLabel(item.status)}</strong></li>)}</ol></article></section>
-    <section aria-labelledby="thesis-map-title"><div className="section-heading"><p className="kicker">Decision map</p><h2 id="thesis-map-title">How the evidence changes the call</h2></div><ThesisGraphView graph={caseData.thesisGraph} /></section>
-  </div>;
-}
-
-function RisksDiligence({caseData, openMetric, onNavigate}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void; onNavigate: (view: View, section?: string) => void}) {
-  const requests = caseData.decision.issue_summary.issues.filter((item) => item.blocks_advancement);
-  const falsifiers = caseData.falsifierStates ?? caseData.thesis.falsifiers.map((label) => ({label, status: "OPEN" as const, observed: "Not evaluated"}));
-  const openIssueEvidence = (metricId: string, trigger: HTMLElement) => {
-    const registry = caseData.metricRegistry.find((item) => item.metric_id === metricId);
-    if (!registry) throw new Error(`issue_metric_missing:${metricId}`);
-    openMetric({metric_id: registry.metric_id, label: registry.label, value: registry.display_value, detail: `Evidence supporting this diligence issue for ${registry.period}.`, classification: registry.classification, lineage: registry.source_locator_ids.map((item) => item.replace(/^locator-/, "")), registry}, trigger);
-  };
-  return <div className="view-stack">
-    <section className="risk-header"><p className="kicker">Risks & diligence</p><h2>{requests.length} issues prevent the next committee step.</h2><p>Each item below comes from the same decision ledger and retains an owner, stage, and consequence.</p></section>
-    <ConditionLedger caseData={caseData} />
-    <section id="diligence" aria-labelledby="diligence-title"><div className="section-heading"><p className="kicker">Priority worklist</p><h2 id="diligence-title" tabIndex={-1}>Resolve these before the next committee step</h2></div><div className="diligence-register">{requests.map((item) => <article id={`request-${item.issue_id}`} tabIndex={-1} key={item.issue_id} data-materiality={item.materiality}><div><span>{item.issue_id}</span><strong>{item.materiality}</strong></div><h3>{item.title}</h3><dl><div><dt>Owner</dt><dd>{item.owner}</dd></div><div><dt>Stage</dt><dd>{item.stage.replaceAll("_", " ").toLowerCase()}</dd></div><div><dt>Evidence</dt><dd>{item.evidence_state.toLowerCase()}</dd></div><div><dt>If unresolved</dt><dd>{item.consequence}</dd></div></dl><div className="risk-actions"><button onClick={(event) => openIssueEvidence(item.evidence_metric_ids[0], event.currentTarget)}>View evidence →</button><button onClick={() => onNavigate("Financials & Returns", item.consequence_target)}>See economic consequence →</button></div></article>)}</div></section>
-    <section className="two-column"><article><p className="kicker">Kill criteria</p><ul className="falsifier-list">{falsifiers.map((item) => <li key={item.label}><span>{item.label}<small>{item.observed}</small></span><strong data-status={item.status}>{statusLabel(item.status)}</strong></li>)}</ul></article><article><p className="kicker">Management assessment</p><h3>{caseData.teamAssessment.key_person_risk}</h3><p><strong>Unproven:</strong> {caseData.teamAssessment.unproven.join(" ")}</p><p><strong>Required capacity:</strong> {caseData.teamAssessment.required_hires.join(" ")}</p></article></section>
-  </div>;
-}
-
-function SourcesView({caseData, openMetric, onNavigate}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void; onNavigate: (view: View, section: string) => void}) {
-  return <div className="view-stack"><section className="utility-intro"><p className="kicker">Sources</p><h2>Trace the conclusion back to the retained synthetic room.</h2><p>{caseData.dealContext.evidence_boundary}</p></section><section className="evidence-taxonomy" aria-labelledby="evidence-taxonomy-title"><div><p className="kicker">Evidence taxonomy</p><h2 id="evidence-taxonomy-title">Keep facts, representations, assumptions, and judgment separate.</h2></div><dl><div><dt>Verified synthetic record</dt><dd>Matches the retained fictional source file and manifest; not a real-company fact.</dd></div><div><dt>Management representation</dt><dd>Claim or forecast attributed to the fictional deal package; not independently proven.</dd></div><div><dt>Analyst assumption</dt><dd>Declared term or scenario input requiring human review.</dd></div><div><dt>Human observation</dt><dd>Locally stored analyst judgment; never promoted to source evidence.</dd></div><div><dt>Model hypothesis</dt><dd>None in the canonical case state. A future model may propose, but cannot approve, changes.</dd></div></dl></section><DealRoomIndex caseData={caseData} openMetric={openMetric} onNavigate={onNavigate} /></div>;
-}
-
-function MemoView({caseData, onNavigate}: {caseData: CaseData; onNavigate: (view: View) => void}) {
-  const reader = buildReaderBrief(caseData);
-  return <article className="memo-page" aria-labelledby="memo-title">
-    <header><p className="kicker">Illustrative investment committee memo</p><h1 id="memo-title">{caseData.company}</h1><p>{caseData.dealContext.company_one_liner}</p><div className="memo-actions"><a href={`output/pdf/${caseData.caseId}-ic-snapshot-letter.pdf`} target="_blank" rel="noreferrer">Open one-page IC snapshot</a><a href={`output/pdf/${caseData.caseId}-underwriting-packet-letter.pdf`} target="_blank" rel="noreferrer">Open underwriting packet</a><button onClick={() => window.print()}>Print current view</button></div></header>
-    <section className="memo-call"><div><span>Recommendation</span><strong>{caseData.decision.decision.replaceAll("_", " ")}</strong></div><div><span>Approval</span><strong>Requires investment committee approval</strong></div><div><span>Blocking issues</span><strong>{caseData.decision.issue_summary.counts.advancement_blockers}</strong></div></section>
-    <section><h2>IC question</h2><p className="memo-question">{investmentQuestion(caseData)}</p><p>{caseData.decision.rationale}</p></section>
-    <section className="memo-columns"><div><h2>Why</h2><p>{reader?.driver.evidence}</p><p><strong>Consequence:</strong> {reader?.driver.consequence}</p></div><div><h2>Downside</h2><p>{reader?.lossCase.evidence}</p><p><strong>Consequence:</strong> {reader?.lossCase.consequence}</p></div></section>
-    <section><h2>Required next step</h2><p>{reader?.blocker.consequence}</p><button className="text-action" onClick={() => onNavigate("Risks & Diligence")}>Open diligence worklist →</button></section>
-    <details className="memo-technical"><summary>Technical appendix and reproduction details</summary><p>Diagnostics and receipts are intentionally separate from the committee read.</p><a href={`output/pdf/${caseData.caseId}-technical-appendix-letter.pdf`} target="_blank" rel="noreferrer">Open technical appendix</a></details>
-    <footer>{caseData.disclosure} · Analysis cutoff {caseData.decision.as_of ? displayDate(caseData.decision.as_of) : "retained in case record"}</footer>
-  </article>;
-}
-
-function OverviewDecision({caseData}: {caseData: CaseData}) {
-  const isPe = Boolean(caseData.peEngine);
-  const irrMetric = isPe ? "atlasgrid-SELECTED-gross-irr" : "helios-MILESTONE-gross-xirr";
-  const moicMetric = isPe ? "atlasgrid-SELECTED-gross-moic" : "helios-MILESTONE-gross-moic";
-  const terms = caseData.peEngine
-    ? `${asMoney(caseData.peEngine.selected.engine_inputs.transaction.entry_enterprise_value_cents as number)} recommended cap`
-    : "No funding while the canonical loss test or required diligence remains unresolved";
-  return <aside className="overview-decision" aria-label="Current analytical recommendation">
-    <div><span>Current call</span><strong>{caseData.decision.decision.replaceAll("_", " ")}</strong><small>{caseData.decision.issue_summary.counts.advancement_blockers} issues block advancement</small></div>
-    <dl><div><dt>{caseData.peEngine ? "Recommended terms" : "Current funding posture"}</dt><dd>{terms}</dd></div><div><dt>Path-to-yes economics</dt><dd>{registeredDisplay(caseData, irrMetric)} · {registeredDisplay(caseData, moicMetric)}</dd></div></dl>
-  </aside>;
-}
-
-function AuditView({caseData}: {caseData: CaseData}) {
-  return <div className="view-stack"><section className="utility-intro"><p className="kicker">Audit details</p><h2>Technical receipts stay available without crowding the investment case.</h2><p>Use this layer to reproduce the case and verify content identity. These identifiers do not make or approve an investment decision.</p></section><section className="audit-grid"><article><span>Data-room manifest</span><code>{caseData.manifest_sha256}</code></article><article><span>Analysis</span><code>{caseData.analysis_sha256}</code></article><article><span>Decision record</span><code>{caseData.decision.decision_sha256}</code></article><article><span>Thesis graph</span><code>{caseData.thesisGraph.graph_sha256}</code></article></section><section><div className="section-heading"><p className="kicker">Boundary</p><h2>What this candidate proves</h2></div><p>{caseData.dealContext.evidence_boundary}</p><p>No live data room, external URL, investment approval, or real-world performance claim is established.</p></section></div>;
-}
-
-export default function App({initialCase, initialRoute}: {initialCase: CaseData; initialRoute: WorkbenchRoute}) {
-  const [caseId, setCaseId] = useState(initialRoute.caseId);
-  const [view, setView] = useState<View>(initialRoute.view);
-  const [routeMetricId, setRouteMetricId] = useState<string | null>(initialRoute.metricId);
-  const [routeControls, setRouteControls] = useState<RouteControls>(initialRoute.controls);
-  const [drawerMetric, setDrawerMetric] = useState<Metric | null>(null);
-  const [drawerTrigger, setDrawerTrigger] = useState<HTMLElement | null>(null);
-  const [caseLoadState, setCaseLoadState] = useState<"READY" | "LOADING" | "ERROR">("READY");
-  const workspaceRef = useRef<HTMLElement>(null);
-  const initializedRef = useRef(false);
-  const navigationSequence = useRef(0);
-  const caseDataRef = useRef(initialCase);
+export default function App({initialCase, initialRoute}: {initialCase: CaseData; initialRoute: RouteState}) {
   const [caseData, setCaseData] = useState(initialCase);
-  const commitRoute = (route: WorkbenchRoute) => {
-    setCaseId(route.caseId);
-    setView(route.view);
-    setRouteMetricId(route.metricId);
-    setRouteControls(route.controls);
-  };
-  const navigate = (nextCaseId: string, nextView: View, metricId: string | null = null, controls: RouteControls = {}, replace = false) => {
-    if (!isCaseId(nextCaseId)) return;
-    const route: WorkbenchRoute = {caseId: nextCaseId, view: nextView, metricId, controls};
-    const hash = makeRoute(nextCaseId, nextView, metricId, controls);
-    const apply = (nextCase: CaseData) => {
-      if (typeof window !== "undefined" && window.location.hash !== hash) window.history[replace ? "replaceState" : "pushState"](null, "", hash);
-      caseDataRef.current = nextCase;
-      setCaseData(nextCase);
-      commitRoute(route);
-      setCaseLoadState("READY");
-    };
-    const sequence = ++navigationSequence.current;
-    if (nextCaseId === caseDataRef.current.caseId) {
-      apply(caseDataRef.current);
-      return;
-    }
-    setCaseLoadState("LOADING");
-    void loadCase(nextCaseId).then((nextCase) => {
-      if (sequence === navigationSequence.current) apply(nextCase);
-    }).catch(() => {
-      if (sequence === navigationSequence.current) setCaseLoadState("ERROR");
-    });
-  };
-  const openRegisteredMetric = (metric: Metric, trigger: HTMLElement) => {
-    const registry = caseData.metricRegistry.find((item) => item.metric_id === metric.metric_id);
-    setDrawerTrigger(trigger);
-    setDrawerMetric(registry ? {...metric, classification: registry.classification, registry} : metric);
-    navigate(caseData.caseId, view, metric.metric_id, routeControls);
-  };
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const canonicalInitialHash = makeRoute(initialRoute.caseId, initialRoute.view, initialRoute.metricId, initialRoute.controls);
-    if (window.location.hash !== canonicalInitialHash) navigate(initialRoute.caseId, initialRoute.view, initialRoute.metricId, initialRoute.controls, true);
-    const syncFromLocation = () => {
-      const route = parseRoute();
-      const canonicalHash = makeRoute(route.caseId, route.view, route.metricId, route.controls);
-      if (window.location.hash !== canonicalHash) window.history.replaceState(null, "", canonicalHash);
-      const sequence = ++navigationSequence.current;
-      if (route.caseId === caseDataRef.current.caseId) {
-        commitRoute(route);
-        setCaseLoadState("READY");
-        return;
-      }
-      setCaseLoadState("LOADING");
-      void loadCase(route.caseId).then((nextCase) => {
-        if (sequence !== navigationSequence.current) return;
-        caseDataRef.current = nextCase;
-        setCaseData(nextCase);
-        commitRoute(route);
-        setCaseLoadState("READY");
-      }).catch(() => {
-        if (sequence === navigationSequence.current) setCaseLoadState("ERROR");
-      });
-    };
-    window.addEventListener("popstate", syncFromLocation);
-    window.addEventListener("hashchange", syncFromLocation);
-    return () => {window.removeEventListener("popstate", syncFromLocation); window.removeEventListener("hashchange", syncFromLocation);};
-  }, []);
-  useEffect(() => {
-    if (!caseData) return;
-    const normalized: RouteControls = {...routeControls};
-    let changed = false;
-    const remove = (key: keyof RouteControls) => {if (normalized[key]) {delete normalized[key]; changed = true;}};
-    if (view !== "Financials & Returns" && view !== "Overview") {
-      remove("scenario"); remove("compare"); remove("driver"); remove("cell");
-    } else if (caseData.peEngine) {
-      if (normalized.scenario && !["ask", "selected", "downside"].includes(normalized.scenario)) remove("scenario");
-      if (normalized.compare && !["ask", "selected", "downside"].includes(normalized.compare)) remove("compare");
-      const book = caseData.peEngine.sensitivities;
-      if (normalized.driver && !book.axis_order.includes(normalized.driver)) {remove("driver"); remove("cell");}
-      if (normalized.cell) {
-        const validCells = book.one_way.filter((item) => !normalized.driver || item.axis === normalized.driver).map((item) => item.cell_id);
-        if (!validCells.includes(normalized.cell)) remove("cell");
-      }
-    } else if (caseData.vcEngine) {
-      if (normalized.scenario && !["base", "milestone", "downside", "financing_shortfall"].includes(normalized.scenario)) remove("scenario");
-      if (normalized.compare && !["base", "milestone", "downside", "financing_shortfall"].includes(normalized.compare)) remove("compare");
-      const book = caseData.vcEngine.sensitivities;
-      if (normalized.driver && !book.axis_order.includes(normalized.driver as typeof book.axis_order[number])) {remove("driver"); remove("cell");}
-      if (normalized.cell) {
-        const validCells = book.cells.filter((item) => !normalized.driver || item.axis === normalized.driver).map((item) => item.cell_id);
-        if (!validCells.includes(normalized.cell)) remove("cell");
-      }
-    }
-    if (normalized.section) {
-      const validSection = normalized.section === "diligence" && view === "Risks & Diligence"
-        || ["sensitivity", "debt-covenant", "cash", "financing-events"].includes(normalized.section) && view === "Financials & Returns"
-        || normalized.section.startsWith("analysis-") && view === "Methodology" && caseData.analyses.some((item) => `analysis-${item.analysis_id}` === normalized.section)
-        || normalized.section.startsWith("request-") && view === "Risks & Diligence" && caseData.thesis.requests.some((item) => `request-${item.request_id}` === normalized.section);
-      if (!validSection) remove("section");
-    }
-    if (changed) navigate(caseData.caseId, view, routeMetricId, normalized, true);
-  }, [caseData, view, routeControls.scenario, routeControls.compare, routeControls.driver, routeControls.cell, routeControls.section, routeMetricId]);
-  useEffect(() => {
-    if (!caseData || !routeMetricId) {
-      if (!routeMetricId) setDrawerMetric(null);
-      return;
-    }
-    const summary = caseData.summaryMetrics.find((item) => item.metric_id === routeMetricId);
-    const registered = caseData.metricRegistry.find((item) => item.metric_id === routeMetricId);
-    if (!registered && !summary) {
-      navigate(caseData.caseId, view, null, routeControls, true);
-      return;
-    }
-    if (!drawerMetric || drawerMetric.metric_id !== routeMetricId) {
-      setDrawerMetric(summary ?? {metric_id: registered!.metric_id, label: registered!.label, value: registered!.display_value, detail: `Registered ${registered!.period} investment workpaper value.`, classification: registered!.classification, lineage: caseData.lineage.filter((item) => item.output_names.some((name) => registered!.metric_id.includes(name))).map((item) => item.node_id), registry: registered});
-    }
-  }, [caseData, routeMetricId, view]);
-  useEffect(() => {
-    if (!initializedRef.current) {
-      initializedRef.current = true;
-      return;
-    }
-    if (typeof workspaceRef.current?.scrollIntoView === "function") {
-      workspaceRef.current.scrollIntoView({block: "start"});
-    }
-    workspaceRef.current?.focus({preventScroll: true});
-  }, [view, caseId]);
-  useEffect(() => {
-    if (!routeControls.section) return;
-    requestAnimationFrame(() => {
-      const target = document.getElementById(routeControls.section!);
-      const focusTarget = target?.querySelector<HTMLElement>("h1, h2, h3") ?? target;
-      if (typeof target?.scrollIntoView === "function") target.scrollIntoView({block: "start"});
-      focusTarget?.focus({preventScroll: true});
-    });
-  }, [view, caseId, routeControls.section]);
-  return (
-    <div className="app-shell" aria-busy={caseLoadState === "LOADING"}>
-      <a className="skip-link" href="#workspace">Skip to analysis</a>
-      <header className="topbar">
-        <div className="brand"><span className="brand-mark">UIL</span><div><strong>Underwriting Intelligence Lab</strong><small>Evidence → economics → action</small></div></div>
-        <div className="case-switch" aria-label="Select investment case">{caseCatalog.map((item) => <button key={item.caseId} aria-pressed={view !== "Landing" && item.caseId === caseId} disabled={caseLoadState === "LOADING"} onClick={() => navigate(item.caseId, view === "Landing" ? "Overview" : view)}><span>{item.caseType}</span>{item.company}</button>)}</div>
-        <div className="local-state"><span className="status-dot" />Two synthetic cases · offline</div>
-      </header>
-      {caseLoadState === "ERROR" && <p className="case-load-error" role="alert">Case data unavailable. The prior validated case remains open.</p>}
-      {view !== "Landing" && <section className="case-masthead" aria-labelledby="case-title">
-        <div><p className="kicker">{caseData.caseType} · illustrative case</p><h1 id="case-title">{caseData.company}</h1></div>
-        <p className="synthetic-banner">{caseData.disclosure}</p>
-        <p className="mobile-posture"><strong>{caseData.decision.decision.replaceAll("_", " ")}.</strong> {caseData.decision.rationale}</p>
-      </section>}
-      {view !== "Landing" && <><nav className="view-nav" aria-label="Primary investment views">{primaryViews.map((item, index) => <button key={item} aria-current={view === item ? "page" : undefined} onClick={() => navigate(caseId, item)}><span>0{index + 1}</span>{primaryLabel[item] ?? item}</button>)}</nav><details className="evidence-menu" open={utilityViews.includes(view)}><summary>Evidence</summary><nav className="utility-nav" aria-label="Evidence and supporting views">{utilityViews.map((item) => <button key={item} aria-current={view === item ? "page" : undefined} onClick={() => navigate(caseId, item)}>{item}</button>)}</nav></details></>}
-      <main id="workspace" tabIndex={-1} ref={workspaceRef}>
-        {view === "Landing" && <Landing onOpen={(nextCase) => navigate(nextCase, "Overview")} />}
-        {view === "Overview" && <div className="view-stack"><section className="investment-question"><p className="kicker">Investment committee question</p><h2>{investmentQuestion(caseData)}</h2><p>{caseData.decision.rationale}</p><OverviewDecision caseData={caseData} /></section><DealContext caseData={caseData} /><AssumptionLab caseData={caseData} routeState={routeControls} onRouteState={(next) => navigate(caseId, view, null, {...routeControls, ...next})} />{caseData.vcEngine && <VCRiskAssumptionLab caseData={caseData} />}<DecisionWorkspace caseData={caseData} /><EmpiricalTestSpotlight caseData={caseData} openMetric={openRegisteredMetric} onNavigate={() => navigate(caseId, "Methodology", null, {section: `analysis-${caseData.caseId === "atlasgrid" ? "AG-07" : "HX-06"}`})} /><Snapshot caseData={caseData} openMetric={openRegisteredMetric} onNavigate={(nextView, section) => navigate(caseId, nextView, null, {section})} /></div>}
-        {view === "Thesis" && <ThesisView caseData={caseData} />}
-        {view === "Financials & Returns" && <UnderwritingRoom caseData={caseData} openMetric={openRegisteredMetric} routeState={routeControls} onRouteState={(next) => navigate(caseId, view, null, {...routeControls, ...next})} />}
-        {view === "Risks & Diligence" && <RisksDiligence caseData={caseData} openMetric={openRegisteredMetric} onNavigate={(nextView, section) => navigate(caseId, nextView, null, {section})} />}
-        {view === "Value Creation" && (caseData.vcEngine ? <div className="view-stack"><ChartRegistryCaption caseData={caseData} location="Value Creation" /><ValueCreation caseData={caseData} openMetric={openRegisteredMetric} /><ValuePlanDetails caseData={caseData} openMetric={openRegisteredMetric} /></div> : <ValueCreation caseData={caseData} openMetric={openRegisteredMetric} />)}
-        {view === "Memo" && <MemoView caseData={caseData} onNavigate={(nextView) => navigate(caseId, nextView)} />}
-        {view === "Explore the deal" && <DealRoomIndex caseData={caseData} openMetric={openRegisteredMetric} onNavigate={(nextView, section) => navigate(caseId, nextView, null, {section})} />}
-        {view === "Sources" && <SourcesView caseData={caseData} openMetric={openRegisteredMetric} onNavigate={(nextView, section) => navigate(caseId, nextView, null, {section})} />}
-        {view === "Methodology" && <EconometricLab caseData={caseData} openMetric={openRegisteredMetric} section={routeControls.section} />}
-        {view === "Audit details" && <AuditView caseData={caseData} />}
-      </main>
-      <footer><span>Two fictional underwriting cases</span><span>Every important number links to its source</span><span>Not investment advice</span></footer>
-      {drawerMetric && <EvidenceDrawer caseData={caseData} metric={drawerMetric} onClose={() => {navigate(caseId, view, null, routeControls, true); setDrawerMetric(null); requestAnimationFrame(() => drawerTrigger?.focus());}} />}
-    </div>
-  );
+  const [view, setView] = useState<RouteView>(initialRoute.view);
+  const [loading, setLoading] = useState(false);
+  function navigate(next: DealView) { window.history.pushState(null, "", routePath(caseData.caseId, next)); setView(next); window.scrollTo(0, 0); }
+  async function chooseDeal(caseId: CaseId) {
+    setLoading(true);
+    try { const next = await loadCase(caseId); setCaseData(next); const destination = view === "deals" ? "overview" : view; window.history.pushState(null, "", routePath(caseId, destination)); setView(destination); }
+    finally { setLoading(false); }
+  }
+  if (loading) return <div className="loading-state" role="status">Opening deal…</div>;
+  if (view === "deals") return <DealList onOpen={chooseDeal} />;
+  return <DealShell caseData={caseData} view={view} onNavigate={navigate} onChooseDeal={chooseDeal} onDeals={() => {window.history.pushState(null, "", "/"); setView("deals");}} />;
 }
