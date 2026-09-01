@@ -86,6 +86,9 @@ tbody tr:last-child td { border-bottom: 0; }
 .status-ready, .status-recognized { background: var(--green-soft); color: var(--green); }
 .status-incomplete, .status-invalid, .status-missing { background: var(--rust-soft); color: var(--rust); }
 .status-unsupported, .status-excluded { background: #eceff1; color: #505a61; }
+.status-proposed { background: var(--amber-soft); color: var(--amber); }
+.status-accepted { background: var(--green-soft); color: var(--green); }
+.status-rejected { background: #eceff1; color: #505a61; }
 .method-disclosure { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; color: var(--muted); }
 summary { width: fit-content; color: var(--cobalt); font-size: 12px; font-weight: 600; cursor: pointer; }
 .method-disclosure p { max-width: 780px; margin-top: 10px; }
@@ -114,6 +117,25 @@ dd { margin: 5px 0 0; }
 .result-context { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin: 22px 0 0; }
 .result-context div { border-top: 1px solid var(--line); padding-top: 12px; }
 .proposal-tray { background: #f7f6f2; }
+.model-review > p { max-width: 800px; color: var(--muted); }
+.evidence-selector { display: grid; gap: 8px; margin: 18px 0; border: 0; padding: 0; }
+.evidence-selector legend { margin-bottom: 8px; font-size: 12px; font-weight: 600; }
+.evidence-selector label { display: grid; grid-template-columns: 18px 1fr; gap: 10px; align-items: start; border: 1px solid var(--line); border-radius: 6px; padding: 11px; background: white; cursor: pointer; }
+.evidence-selector input { margin-top: 3px; }
+.evidence-selector span { display: grid; }
+.evidence-selector small { margin-top: 2px; color: var(--muted); }
+.secondary-button { border: 1px solid var(--line-dark); border-radius: 6px; padding: 10px 15px; background: white; cursor: pointer; }
+.model-confirmation { margin: 16px 0; border-left: 3px solid var(--amber); padding: 13px 15px; background: var(--amber-soft); }
+.model-confirmation p { margin: 5px 0 12px; }
+.model-confirmation > div { display: flex; gap: 8px; }
+.model-result { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+.proposal-list { display: grid; gap: 10px; margin-top: 18px; }
+.proposal-list article { border: 1px solid var(--line); border-radius: 6px; padding: 15px; background: white; }
+.proposal-list article > div { display: flex; justify-content: space-between; gap: 10px; }
+.proposal-list h3 { margin-top: 12px; }
+.proposal-list small { display: block; margin-top: 10px; color: var(--muted); }
+.proposal-list footer { display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; color: var(--muted); font-size: 12px; }
+.proposal-list footer button { border: 1px solid var(--line-dark); border-radius: 5px; padding: 6px 9px; background: white; color: var(--cobalt); cursor: pointer; }
 .search-field { display: grid; grid-template-columns: 150px minmax(240px, 560px); gap: 14px; align-items: center; margin-bottom: 18px; color: var(--muted); font-size: 12px; }
 .search-field input { border: 1px solid var(--line-dark); border-radius: 5px; padding: 9px 10px; background: white; color: var(--ink); }
 .document-list { display: grid; }

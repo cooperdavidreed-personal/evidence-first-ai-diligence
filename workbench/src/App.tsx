@@ -2,6 +2,7 @@ import {useMemo, useState} from "react";
 import {caseCatalog, isCaseId, loadCase, type CaseId} from "./case-data";
 import {DealIntake, LocalDealShell} from "./local-deal";
 import type {IntakeResult} from "./intake";
+import {ModelReviewPanel} from "./model-review-panel";
 import type {CaseData} from "./types";
 
 export const dealViews = ["overview", "financials", "diligence", "documents", "memo"] as const;
@@ -124,7 +125,7 @@ function Diligence({caseData}: {caseData: CaseData}) {
       ) : (
         <section className="panel evidence-result" aria-labelledby="renewal-heading"><div className="section-heading"><div><p className="eyebrow">Evidence test</p><h2 id="renewal-heading">Higher renewal offers reduced renewal</h2></div><span>Downside evidence</span></div><p className="result-lead">Accounts randomly offered the higher renewal price renewed <strong>6.7 percentage points less often</strong> than the comparison group.</p><dl className="result-context"><div><dt>Population</dt><dd>800 illustrative renewal-eligible accounts.</dd></div><div><dt>Decision use</dt><dd>No pricing upside credit in the selected structure.</dd></div><div><dt>Limitation</dt><dd>A planted effect in synthetic data, not evidence about a real company.</dd></div></dl></section>
       )}
-      <section className="panel proposal-tray" aria-labelledby="proposal-heading"><div className="section-heading"><div><p className="eyebrow">Review tray</p><h2 id="proposal-heading">Model proposals</h2></div><span>0 proposed</span></div><p>Model review is unavailable. Deterministic analysis and the diligence worklist remain fully functional.</p></section>
+      <ModelReviewPanel evidence={caseData.summaryMetrics.map((metric) => ({id: metric.metric_id, title: metric.label, displayValue: metric.value, summary: metric.detail}))} />
     </div>
   );
 }

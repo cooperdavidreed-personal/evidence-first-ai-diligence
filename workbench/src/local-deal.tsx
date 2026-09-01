@@ -1,6 +1,7 @@
 import {useState} from "react";
 import {dealViews, type DealView} from "./App";
 import {processDealPackage, type IntakeResult, type QuickAnalysis} from "./intake";
+import {ModelReviewPanel} from "./model-review-panel";
 
 const labels: Record<DealView, string> = {overview: "Overview", financials: "Financials", diligence: "Diligence", documents: "Documents", memo: "IC Memo"};
 function money(cents: number) { return new Intl.NumberFormat("en-US", {style: "currency", currency: "USD", maximumFractionDigits: 1, notation: "compact"}).format(cents / 100); }
@@ -75,7 +76,7 @@ function LocalFinancials({result}: {result: IntakeResult}) {
 
 function LocalDiligence({result}: {result: IntakeResult}) {
   const analysis = result.analysis!; const misses = analysis.tests.filter((test) => test.status === "MISSES");
-  return <div className="view-stack"><section className="panel"><div className="section-heading"><div><p className="eyebrow">Package worklist</p><h2>{misses.length ? `${misses.length} declared tests need attention` : "No declared threshold miss"}</h2></div><span>Quick Package</span></div>{misses.length ? <div className="issue-list">{misses.map((test) => <article key={test.label}><div><span className="status status-misses">Misses</span><span>blocking</span></div><h3>{test.label}</h3><p>{test.observed}; required {test.required.toLowerCase()}.</p><footer><span>Owner</span><strong>{result.deal!.analystOwner}</strong></footer></article>)}</div> : <p>All three declared thresholds clear. Document quality, customer contracts, revenue recognition, and financing terms still require full diligence.</p>}</section><section className="panel proposal-tray"><div className="section-heading"><div><p className="eyebrow">Review tray</p><h2>Model proposals</h2></div><span>0 proposed</span></div><p>Model review is unavailable. Deterministic package analysis remains functional.</p></section></div>;
+  return <div className="view-stack"><section className="panel"><div className="section-heading"><div><p className="eyebrow">Package worklist</p><h2>{misses.length ? `${misses.length} declared tests need attention` : "No declared threshold miss"}</h2></div><span>Quick Package</span></div>{misses.length ? <div className="issue-list">{misses.map((test) => <article key={test.label}><div><span className="status status-misses">Misses</span><span>blocking</span></div><h3>{test.label}</h3><p>{test.observed}; required {test.required.toLowerCase()}.</p><footer><span>Owner</span><strong>{result.deal!.analystOwner}</strong></footer></article>)}</div> : <p>All three declared thresholds clear. Document quality, customer contracts, revenue recognition, and financing terms still require full diligence.</p>}</section><ModelReviewPanel evidence={analysis.metrics.map((metric) => ({id: metric.id, title: metric.label, displayValue: metric.display, summary: metric.meaning}))} /></div>;
 }
 
 function LocalDocuments({result}: {result: IntakeResult}) {
