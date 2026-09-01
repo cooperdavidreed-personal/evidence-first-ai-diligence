@@ -1,0 +1,24 @@
+{
+  "schema_version": "underwriting.demo-review-protocol/v1",
+  "output_schema": "review.schema.json",
+  "required_reviewers": ["CLAUDE", "CHATGPT", "GROK"],
+  "required_inputs": [
+    "exact source commit",
+    "video SHA-256",
+    "final MP4",
+    "captions and transcript",
+    "final storyboard",
+    "9 review frames",
+    "six current underwriting PDFs",
+    "canonical public product URL"
+  ],
+  "review_lanes": {
+    "CLAUDE": "financial accuracy, IC judgment, assumption discipline, and claim boundaries",
+    "CHATGPT": "audience comprehension, product story, presentation, and career signal",
+    "GROK": "adversarial skepticism, analyst-toy risk, differentiation, and pacing"
+  },
+  "finding_severities": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+  "required_finding_fields": ["severity", "timestamp_seconds", "finding", "evidence", "recommended_change"],
+  "accepted_verdict": "PASS",
+  "blocking_rule": "Any unresolved CRITICAL or HIGH finding forces QUALITY_SHORT."
+}

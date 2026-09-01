@@ -1,5 +1,9 @@
 {
   "schema_version": "underwriting.demo-storyboard/v3",
+  "status": "SOURCE_TEMPLATE_READY_RENDER_NOT_RUN",
+  "capture": "REAL_PUBLIC_WORKBENCH_INTERACTIONS",
+  "resolution": "1920x1080",
+  "fps": 30,
   "target_duration_seconds": 84,
   "allowed_duration_seconds": [75, 90],
   "required_test_ids": [
