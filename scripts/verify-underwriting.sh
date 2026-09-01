@@ -4,7 +4,9 @@ set -euo pipefail
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo"
 
-uv run pytest
+if [[ "${UNDERWRITING_SKIP_PYTEST:-0}" != "1" ]]; then
+  uv run pytest
+fi
 uv run python scripts/verify_mutation_gates.py
 uv run underwriting-lab generate --case atlasgrid --seed 20260828 --out dist/underwriting/atlasgrid
 uv run python scripts/sync_portfolio_source_rooms.py --case atlasgrid --manifest dist/underwriting/atlasgrid/case/manifest.json

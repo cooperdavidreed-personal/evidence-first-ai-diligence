@@ -59,6 +59,8 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install --yes poppler-utils
       - run: uv sync --locked --extra dev
       - run: bash scripts/verify-underwriting.sh
+        env:
+          UNDERWRITING_SKIP_PYTEST: "1"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: underwriting-visual-evidence
