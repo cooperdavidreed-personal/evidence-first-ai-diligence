@@ -12,6 +12,8 @@ Status: `PRODUCT CANDIDATE VERIFIED LOCALLY — FOUNDER REVIEW PENDING`
 
 The only changes from the full-suite parent to the product candidate are workbench disclosure/test/evidence bytes and provider documentation; Python/kernel, lockfile, retained-case, and source-room bytes are unchanged. Deployment evidence is recorded separately after that gate completes.
 
+GitHub Actions run `33530085943` at candidate parent `a1e7dec88e62b4dca9bdcbf492bfc68e4e98d553` completed `SUCCESS`: all 9 jobs passed, including the Python 3.11–3.13 Ubuntu/macOS matrix, workbench, security contract, and toolkit contract.
+
 ## Product evidence
 
 - Product root: **Deals**.

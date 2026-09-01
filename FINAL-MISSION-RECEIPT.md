@@ -2,7 +2,7 @@
 
 Mission: `underwriting-product-vertical-slice-20260901`
 
-Recorded: `2026-09-01T15:44:50Z`
+Recorded: `2026-09-01T16:37:34Z`
 
 Overall terminal state: `BLOCKED_AUTHORITY`
 
@@ -15,6 +15,7 @@ The strongest feasible candidate is implemented, independently reviewed by Claud
 - Exact base: `5795f00fe7466991605dfba95b7d0d3b90cde5bd`
 - Owned isolated branch: `codex/underwriting-product-vertical-slice`
 - Exact product candidate: `89798f013d1f15ceba7d16ccc2acf0a4f669a0cc`
+- Exact CI-tested candidate parent: `a1e7dec88e62b4dca9bdcbf492bfc68e4e98d553`
 - Independently reviewed hardening predecessor: `57d74c13331f1fc82bdb99bc0ca0d73fa68e80f0`
 - Remote: `origin` at `https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence.git`
 - Remote branch contains the exact product candidate `89798f013d1f15ceba7d16ccc2acf0a4f669a0cc`: `VERIFIED`
@@ -81,7 +82,7 @@ Only providers whose mission state was `READY` were invoked. Every Claude Code a
 - Claude post-repair final review at the exact product candidate: `PRODUCED`; repository writes 0; `CRITICAL_DEFECTS: NONE`; verdict `NO_UNRESOLVED_CRITICAL_DEFECT`; stdout SHA-256 `cb6861e35dacdcfd21cd91d8ad6b01bf14380f404181acb274b4b168642ccb57`.
 - Claude post-handoff hardening review at `57d74c13331f1fc82bdb99bc0ca0d73fa68e80f0`: `PRODUCED`; repository writes 0; `CRITICAL_OR_HIGH_FINDINGS: NONE`; verdict `NO_UNRESOLVED_CRITICAL_OR_HIGH_FINDING`; stdout SHA-256 `d8390c2590837cbf96026c98d304abb1d85e153c9d2716a5825e6643d5191c1f`. Its sign-neutrality and notification-side-effect lower findings were repaired in exact product commit `2f1ead6f08ff5ecc9c112a3eb8db674ef2042524` and covered by the final integrated gate.
 
-GitHub run `33524773690` exposed a slower-runner-only unit-test timing dependency in retained-case loading: the test DOM was torn down while the real lazy payload was still resolving. Commit `8633bd0519e3a477a2b2a4a490d795e4b0581d32` injects a deterministic loader at the unit boundary, retains real lazy loading in production and Playwright, and adds a fail-closed user recovery state. Run `33528822350` then proved that repair in CI (`40/40` frontend, `6/6` MCP, build/chunks and `18/18` applicable browser flows passed) before exposing three pre-existing moderate `landmark-unique` findings in the retained desktop accessibility evidence. Exact product commit `89798f013d1f15ceba7d16ccc2acf0a4f669a0cc` removes the unnecessary complementary landmarks and regenerates all three records with zero Axe violations. The newest exact-head GitHub run remains pending; no hosted CI pass is claimed yet.
+GitHub run `33524773690` exposed a slower-runner-only unit-test timing dependency in retained-case loading: the test DOM was torn down while the real lazy payload was still resolving. Commit `8633bd0519e3a477a2b2a4a490d795e4b0581d32` injects a deterministic loader at the unit boundary, retains real lazy loading in production and Playwright, and adds a fail-closed user recovery state. Run `33528822350` then proved that repair in CI (`40/40` frontend, `6/6` MCP, build/chunks and `18/18` applicable browser flows passed) before exposing three pre-existing moderate `landmark-unique` findings in the retained desktop accessibility evidence. Exact product commit `89798f013d1f15ceba7d16ccc2acf0a4f669a0cc` removes the unnecessary complementary landmarks and regenerates all three records with zero Axe violations. Final GitHub run `33530085943` at `a1e7dec88e62b4dca9bdcbf492bfc68e4e98d553` completed `SUCCESS`: all 9 jobs passed, including Python 3.11, 3.12, and 3.13 on Ubuntu and macOS, the workbench, security contract, and toolkit contract.
 
 Provider envelopes included list-price-equivalent usage metadata. That metadata is not evidence of a separately billed marginal charge. No API-key route or paid fallback was used, and separately authorized marginal spend was `$0`.
 

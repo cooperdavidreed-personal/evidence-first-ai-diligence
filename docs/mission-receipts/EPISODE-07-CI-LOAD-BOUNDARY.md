@@ -2,7 +2,7 @@
 
 Recorded: `2026-09-01T15:57:00Z`
 
-State: `VERIFYING`
+State: `VERIFIED`
 
 ## Trigger
 
@@ -39,7 +39,7 @@ Complete exact-source non-Python gate:
 - PDFs: `6/6 PASS`.
 - Visual manifest and public scan: `PASS`.
 
-Python/kernel bytes remain unchanged from the complete `182/182 PASS` run. The newest exact-head GitHub verification run is pending, so this episode remains `VERIFYING` rather than claiming hosted CI acceptance.
+Python/kernel bytes remain unchanged from the complete `182/182 PASS` run. Final GitHub run `33530085943` at candidate parent `a1e7dec88e62b4dca9bdcbf492bfc68e4e98d553` completed `SUCCESS`: all 9 jobs passed, including Python 3.11, 3.12, and 3.13 on Ubuntu and macOS, the workbench, security contract, and toolkit contract.
 
 ## Remaining boundary
 
