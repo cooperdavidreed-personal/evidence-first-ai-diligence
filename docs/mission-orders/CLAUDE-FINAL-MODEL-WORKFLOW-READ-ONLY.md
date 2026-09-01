@@ -3,7 +3,7 @@
 Provider: `claude`
 Mode: `READ_ONLY`
 Mission: `underwriting-product-vertical-slice-20260901`
-Exact candidate: `TO_BE_COMMITTED`
+Exact candidate: resolve the full checked-out `HEAD` with Git immediately before review; do not accept a supplied shorthand.
 
 ## Absolute constraints
 
@@ -40,4 +40,3 @@ Return exactly:
 6. `CLAIM_DISCIPLINE:` `PASS` or `FAIL` with evidence
 7. `FINDINGS:` severity-ranked, with exact paths; use `NONE` if no actionable finding
 8. `VERDICT:` exactly `PORTFOLIO_CANDIDATE_READY` or `QUALITY_SHORT`
-

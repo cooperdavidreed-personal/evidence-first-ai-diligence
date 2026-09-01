@@ -4,6 +4,8 @@ Recorded: `2026-09-01T17:45:00Z`
 
 State: `VERIFIED_LOCAL`
 
+Implementation commit: `2688e065491f16142ce08238e2a75dca7bb80373`
+
 ## Product question
 
 Why should an investment professional use the Underwriting Desk instead of performing the entire underwriting process inside a general-purpose model workspace?
@@ -51,4 +53,3 @@ Two preceding attempts failed only because the host volume exhausted free space 
 - The in-product adapter proves an endpoint contract, not provider inference quality or production connectivity.
 - Hosted remote MCP, authentication, tenant isolation, confidential-data handling, durable collaboration, and firm adoption remain `NOT_IMPLEMENTED`.
 - Investment judgment, approval, and suitability remain human responsibilities.
-
