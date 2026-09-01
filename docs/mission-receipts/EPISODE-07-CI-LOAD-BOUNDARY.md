@@ -10,12 +10,15 @@ GitHub verification run `33524773690` failed only in the `underwriting-workbench
 
 ## Product repair
 
-- Exact source commit: `8633bd0519e3a477a2b2a4a490d795e4b0581d32`
+- Load-boundary source commit: `8633bd0519e3a477a2b2a4a490d795e4b0581d32`
+- Exact product commit after accessibility repair: `89798f013d1f15ceba7d16ccc2acf0a4f669a0cc`
 - Writer: Codex only
 - Production retains the validated dynamic case loader and lazy case chunks.
 - The app accepts a typed case-loader boundary so unit tests use an immediate deterministic fixture rather than depending on runner speed.
 - A rejected case load now renders `Deal unavailable`, states that no data, assumption, or decision changed, and offers an ordinary return-to-Deals action.
 - The new rejection test proves that fail-closed recovery path.
+- GitHub run `33528822350` proved the timing repair in CI, then exposed three pre-existing moderate `landmark-unique` findings in the retained desktop records. Informational callouts no longer create duplicate complementary landmarks; the refreshed records contain zero Axe violations.
+- Workflow commit `41ce875e1bcb49e6df74926d6911962e35d8b193` adds branch-scoped concurrency so future pushes cancel stale verification runs.
 
 ## Deterministic acceptance
 
@@ -36,7 +39,7 @@ Complete exact-source non-Python gate:
 - PDFs: `6/6 PASS`.
 - Visual manifest and public scan: `PASS`.
 
-Python/kernel bytes remain unchanged from the complete `182/182 PASS` run. The exact-source GitHub verification run is queued, so this episode remains `VERIFYING` rather than claiming hosted CI acceptance.
+Python/kernel bytes remain unchanged from the complete `182/182 PASS` run. The newest exact-head GitHub verification run is pending, so this episode remains `VERIFYING` rather than claiming hosted CI acceptance.
 
 ## Remaining boundary
 

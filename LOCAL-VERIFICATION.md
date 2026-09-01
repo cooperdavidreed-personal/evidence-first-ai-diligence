@@ -3,7 +3,7 @@
 Status: `PRODUCT CANDIDATE VERIFIED LOCALLY — FOUNDER REVIEW PENDING`
 
 - Exact mission base: `5795f00fe7466991605dfba95b7d0d3b90cde5bd`
-- Product candidate commit: `8633bd0519e3a477a2b2a4a490d795e4b0581d32`
+- Product candidate commit: `89798f013d1f15ceba7d16ccc2acf0a4f669a0cc`
 - Branch: `codex/underwriting-product-vertical-slice`
 - Environment: macOS, Python 3.12.13, Node 26.3.0, Chromium
 - Complete kernel command at parent `8b3eeb81aee7d8042ebfb38a6c43ced103518321`: `bash scripts/verify-underwriting.sh`
@@ -29,7 +29,7 @@ The only changes from the full-suite parent to the product candidate are workben
 - Frontend/data/intake/model: `40/40 PASS` across five files.
 - MCP surface/boundary: `6/6 PASS`.
 - Production TypeScript/Vite build: `PASS`.
-- Lazy case chunks: `PASS`; shell gzip `82,996` bytes, AtlasGrid payload gzip `718,257` bytes, Helios payload gzip `607,795` bytes.
+- Lazy case chunks: `PASS`; shell gzip `82,997` bytes, AtlasGrid payload gzip `718,257` bytes, Helios payload gzip `607,795` bytes.
 - Browser: `18 passed, 6 skipped / 24 discovered`; all six skips are desktop-only print tests under the mobile project.
 - Visual regression: `40/40` PNG candidates `PASS` on the reference macOS platform.
 - Accessibility records: `8/8 PASS`; no tested default surface had a critical or serious Axe finding or root overflow.
