@@ -22,8 +22,13 @@ export function LineageDrawer({caseData, metric, onClose}: {caseData: CaseData; 
   const [showCalculation, setShowCalculation] = useState(false);
   useEffect(() => {
     const dialog = ref.current;
-    dialog?.showModal?.();
-    return () => dialog?.close?.();
+    if (!dialog) return;
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+    return () => {
+      if (typeof dialog.close === "function") dialog.close();
+      else dialog.removeAttribute("open");
+    };
   }, []);
   const registered = metric.registry ?? caseData.metricRegistry.find((item) => item.metric_id === metric.metric_id);
   const formula = registered?.formula_id ? caseData.formulaRegistry.find((item) => item.formula_id === registered.formula_id) : undefined;

@@ -20,7 +20,7 @@ Models may contribute only evidence-linked observations, diligence requests, cha
 |---|---|---|---|
 | Claude Code or Codex via local MCP | `AVAILABLE_LOCALLY` | Seven read tools, three proposal tools, optional local JSONL handoff, browser import, named human review, accepted memo output | Retained illustrative cases only; the browser cannot verify client installation |
 | In-product hosted adapter | `IMPLEMENTED — PUBLIC PROOF PENDING` | Same-origin `/api/challenge` receives only a user-confirmed synthetic evidence subset, validates its digest, requests structured cited output, and returns proposals for named human disposition | Exact deployed-provider execution, rate policy, and spend ceiling must be recorded in the unified release receipt before this becomes a public verified claim |
-| Claude.ai, ChatGPT, or Grok via remote MCP | `NOT_IMPLEMENTED` | The connection center explains the required hosted architecture | Requires hosted HTTPS transport, authentication, tenant isolation, and provider/workspace permissions |
+| Claude.ai, ChatGPT, or Grok via remote MCP | `NOT_IMPLEMENTED` | Kept out of the default product journey and documented as a future architecture | Requires hosted HTTPS transport, authentication, tenant isolation, and provider/workspace permissions |
 
 The browser never asks for a Claude, OpenAI, or xAI API key. Provider credentials and budget controls belong in the server runtime. A consumer subscription is not treated as an API credential.
 

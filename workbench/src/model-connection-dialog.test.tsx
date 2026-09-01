@@ -18,6 +18,7 @@ describe("model connection wizard", () => {
     expect(screen.getByRole("heading", {name: "One deal record. Replaceable models."})).toBeInTheDocument();
     expect(screen.getByText("Validated source package and lineage")).toBeInTheDocument();
     expect(screen.getByText("Countertheses and missing diligence")).toBeInTheDocument();
+    await user.click(screen.getByRole("radio", {name: /Advanced local MCP/}));
     await user.click(screen.getByRole("button", {name: "Continue"}));
     expect(screen.getByRole("radio", {name: /Claude Code/})).toBeChecked();
     await user.click(screen.getByRole("button", {name: "Continue"}));
@@ -29,28 +30,17 @@ describe("model connection wizard", () => {
     expect(onApply).toHaveBeenCalledWith(expect.objectContaining({channel: "LOCAL_MCP", client: "claude-code", state: "SETUP_PREPARED"}));
   });
 
-  it("does not claim that ChatGPT can reach the local stdio server", async () => {
-    const user = userEvent.setup(); const onApply = vi.fn();
-    render(<ModelConnectionDialog current={null} onClose={vi.fn()} onApply={onApply} />);
-    await user.click(screen.getByRole("button", {name: "Continue"}));
-    await user.click(screen.getByRole("radio", {name: /ChatGPT/}));
-    await user.click(screen.getByRole("button", {name: "Continue"}));
-    expect(screen.getByRole("heading", {name: "A hosted connector is required"})).toBeInTheDocument();
-    expect(screen.getByText(/not a remotely reachable authenticated server/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", {name: "Record requirement"}));
-    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({channel: "REMOTE_MCP", client: "chatgpt", state: "HOSTED_SERVER_REQUIRED"}));
-  });
-
-  it("tests the server-side adapter contract before enabling in-desk review", async () => {
-    const user = userEvent.setup(); const onApply = vi.fn();
-    const fetcher = vi.fn(async () => new Response(JSON.stringify({status: "READY", contracts: ["underwriting-evidence-challenge/v1"]}), {status: 200}));
-    render(<ModelConnectionDialog current={null} onClose={vi.fn()} onApply={onApply} fetcher={fetcher} />);
-    await user.click(screen.getByRole("radio", {name: /Inside the Underwriting Desk/}));
+  it("leads with the built-in evidence challenge and does not expose provider-key setup", async () => {
+    const user = userEvent.setup(); const onClose = vi.fn();
+    render(<ModelConnectionDialog current={null} onClose={onClose} onApply={vi.fn()} />);
+    expect(screen.getByRole("radio", {name: /Built-in evidence challenge/})).toBeChecked();
     await user.click(screen.getByRole("button", {name: "Continue"}));
     expect(screen.getByRole("heading", {name: "Keep provider credentials out of the browser"})).toBeInTheDocument();
     await user.click(screen.getByRole("button", {name: "Continue"}));
-    await user.type(screen.getByRole("textbox", {name: "Adapter endpoint"}), "https://models.example.com/review");
-    await user.click(screen.getByRole("button", {name: "Verify adapter contract"}));
-    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({channel: "API_ADAPTER", endpoint: "https://models.example.com/review", state: "CONTRACT_VERIFIED"}));
+    expect(screen.getByRole("heading", {name: "Run a bounded challenge from Diligence"})).toBeInTheDocument();
+    expect(screen.queryByLabelText(/API key/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", {name: "Adapter endpoint"})).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: "Done"}));
+    expect(onClose).toHaveBeenCalledOnce();
   });
 });

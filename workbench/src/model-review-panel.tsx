@@ -23,7 +23,7 @@ export function ModelReviewPanel({evidence, referenceLabels = {}, transport, con
   const runtimeTransport = transport ?? configured;
   const providerLabel = transport
     ? connection?.channel === "API_ADAPTER" ? connection.label : "Test review adapter"
-    : configured ? "Hosted Claude synthetic reviewer" : "No review provider";
+    : configured ? "Server-side review adapter" : "No review provider";
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirming, setConfirming] = useState(false);
   const [running, setRunning] = useState(false);

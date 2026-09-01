@@ -125,10 +125,11 @@ export function persistAdmittedDeal(result: IntakeResult) {
   } catch { return false; }
 }
 
-export function loadAdmittedDeal() {
+export async function loadAdmittedDeal() {
   try {
     const value = window.localStorage?.getItem(LOCAL_DEAL_KEY);
-    return value ? validateAdmittedDeal(JSON.parse(value) as unknown) : null;
+    if (!value) return null;
+    return await replayAdmittedDeal(validateAdmittedDeal(JSON.parse(value) as unknown));
   } catch { return null; }
 }
 

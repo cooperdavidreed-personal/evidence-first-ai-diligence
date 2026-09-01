@@ -54,9 +54,9 @@ The named downside is a deterministic stress case. The conditional distribution 
 | Gross MOIC | 1.1x | 2.7x | 4.8x |
 | Gross IRR | 2.3% | 22.6% | 38.8% |
 
-- Probability below 1.0x MOIC: **7.8%** (Monte Carlo SE **0.85 pp**, 1,000 draws).
-- Probability of a modeled covenant breach: **0.3%** (Monte Carlo SE **0.17 pp**, 1,000 draws).
-- Probability of modeled payment default: **0.0%** (Monte Carlo SE **0.00 pp**, 1,000 draws).
+- Probability below 1.0x MOIC: **7.8%** across 1,000 retained scenario paths.
+- Probability of a modeled covenant breach: **0.3%** across 1,000 retained scenario paths.
+- Probability of modeled payment default: **0.0%** across 1,000 retained scenario paths.
 - Named downside floor: **6.2% IRR / 1.3x MOIC**; distributional p10: **2.3% / 1.1x**.
 
 ### Entry value × exit multiple sensitivity

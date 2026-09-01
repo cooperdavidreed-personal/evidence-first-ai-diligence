@@ -163,6 +163,7 @@ def _vc_packet(case: dict[str, Any]) -> dict[str, Any]:
     risk_policy = (
         engine.get("risk_policy") or case.get("riskPolicy") or case.get("risk_policy")
     )
+    desk_policy = engine.get("desk_policy") or case.get("deskPolicy")
     risk_sensitivity = (
         engine.get("risk_sensitivity")
         or case.get("riskSensitivity")
@@ -170,6 +171,8 @@ def _vc_packet(case: dict[str, Any]) -> dict[str, Any]:
     )
     if isinstance(risk_policy, dict):
         body["risk_policy"] = risk_policy
+    if isinstance(desk_policy, dict):
+        body["desk_policy"] = desk_policy
     if isinstance(risk_sensitivity, dict):
         body["risk_sensitivity"] = risk_sensitivity
     body["packet_sha256"] = digest(body)
@@ -193,7 +196,9 @@ def _vc_risk_context(
     packet: dict[str, Any], loss_hurdle: dict[str, Any]
 ) -> dict[str, Any]:
     """Return investor-readable risk context across current and future schemas."""
-    policy = packet.get("risk_policy")
+    policy = packet.get("desk_policy")
+    if not isinstance(policy, dict):
+        policy = packet.get("risk_policy")
     if not isinstance(policy, dict):
         policy = {}
     sensitivity = packet.get("risk_sensitivity")
@@ -202,8 +207,11 @@ def _vc_risk_context(
     threshold = _percent_number(
         next(
             (
-                policy[key]
+                policy.get("thresholds", {}).get("maximum_probability_below_one")
+                if key == "thresholds"
+                else policy[key]
                 for key in (
+                    "thresholds",
                     "maximum_probability_below_one_percent",
                     "maximum_probability_below_one",
                     "loss_probability_threshold_percent",
@@ -222,7 +230,7 @@ def _vc_risk_context(
             for key in ("label", "name", "policy_name", "version")
             if policy.get(key)
         ),
-        "Illustrative analyst-set loss maximum",
+        "Desk-owned draft loss maximum",
     )
     approval = next(
         (
@@ -429,7 +437,7 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
         f"| Gross MOIC | {_multiple(packet['distribution']['moic_quantiles'][0])} | {_multiple(packet['distribution']['moic_quantiles'][1])} | {_multiple(packet['distribution']['moic_quantiles'][2])} |",
         f"| Gross XIRR | {_percent(packet['distribution']['xirr_quantiles'][0])} | {_percent(packet['distribution']['xirr_quantiles'][1])} | {_percent(packet['distribution']['xirr_quantiles'][2])} |",
         "",
-        f"- Probability below 1.0x: **{_percent(packet['distribution']['probability_below_one'])}** (Monte Carlo SE **{packet['distribution']['probability_below_one_monte_carlo_se_pp']} pp**, 1,000 draws).",
+        f"- Probability below 1.0x: **{_percent(packet['distribution']['probability_below_one'])}** across 1,000 retained scenario paths.",
         f"- Sensitivity book: {len(packet['sensitivities']['cells'])} full-engine cells across exit value, exit date, later-round price, and milestone state.",
         *(
             [
@@ -595,9 +603,9 @@ def _memo_markdown(packet: dict[str, Any]) -> str:
         f"| Gross MOIC | {_multiple(distribution['moic_quantiles'][0])} | {_multiple(distribution['moic_quantiles'][1])} | {_multiple(distribution['moic_quantiles'][2])} |",
         f"| Gross IRR | {_percent(distribution['xirr_quantiles'][0])} | {_percent(distribution['xirr_quantiles'][1])} | {_percent(distribution['xirr_quantiles'][2])} |",
         "",
-        f"- Probability below 1.0x MOIC: **{_percent(distribution['probability_below_one'])}** (Monte Carlo SE **{distribution['probability_below_one_monte_carlo_se_pp']} pp**, 1,000 draws).",
-        f"- Probability of a modeled covenant breach: **{_percent(distribution['probability_covenant_breach'])}** (Monte Carlo SE **{distribution['probability_covenant_breach_monte_carlo_se_pp']} pp**, 1,000 draws).",
-        f"- Probability of modeled payment default: **{_percent(distribution['probability_payment_default'])}** (Monte Carlo SE **{distribution['probability_payment_default_monte_carlo_se_pp']} pp**, 1,000 draws).",
+        f"- Probability below 1.0x MOIC: **{_percent(distribution['probability_below_one'])}** across 1,000 retained scenario paths.",
+        f"- Probability of a modeled covenant breach: **{_percent(distribution['probability_covenant_breach'])}** across 1,000 retained scenario paths.",
+        f"- Probability of modeled payment default: **{_percent(distribution['probability_payment_default'])}** across 1,000 retained scenario paths.",
         f"- Named downside floor: **{_percent(downside['gross_xirr'])} IRR / {_multiple(downside['gross_moic'])} MOIC**; distributional p10: **{_percent(distribution['xirr_quantiles'][0])} / {_multiple(distribution['moic_quantiles'][0])}**.",
         "",
         "### Entry value × exit multiple sensitivity",
@@ -887,18 +895,20 @@ def _snapshot_markdown(case: dict[str, Any]) -> str:
             for item in decision["metric_pairs"]
             if item["metric_id"] == "helios-hx-09-probability_below_1x"
         )
-        policy = (
+        package_policy = (
             engine.get("risk_policy")
             or case.get("riskPolicy")
             or case.get("risk_policy")
             or {}
         )
-        packet_like = (
-            {"risk_policy": policy} if isinstance(policy, dict) and policy else {}
-        )
+        desk_policy = engine.get("desk_policy") or case.get("deskPolicy") or {}
+        packet_like = {
+            "risk_policy": package_policy,
+            "desk_policy": desk_policy,
+        }
         risk_context = _vc_risk_context(packet_like, loss_hurdle)
         decision_request = (
-            "HOLD under the selected synthetic prior and analyst-set loss maximum. Do not "
+            "HOLD under the selected synthetic prior and Desk-owned draft loss maximum. Do not "
             "authorize funding while diligence remains unresolved; reopen only after human "
             "IC review of the risk specification and new evidence."
         )
@@ -1062,7 +1072,7 @@ def _snapshot_html(case: dict[str, Any], packet: dict[str, Any]) -> str:
         observed_loss = _percent_number(loss_hurdle["observed_value"], Decimal("20"))
         threshold = Decimal(risk_context["threshold_percent"])
         action = (
-            "HOLD under the selected synthetic prior and analyst-set loss maximum. Do not "
+            "HOLD under the selected synthetic prior and Desk-owned draft loss maximum. Do not "
             "authorize funding while diligence remains unresolved; reopen only after human "
             "IC review of the risk specification and new evidence."
         )
@@ -1097,7 +1107,7 @@ def _snapshot_html(case: dict[str, Any], packet: dict[str, Any]) -> str:
         chart_one = (
             "<div class=visual data-visual='loss-policy' role=img "
             f"aria-label='Modeled probability below 1.0x is {observed_loss:.1f} percent versus a maximum of {threshold:.1f} percent.'>"
-            "<div class=visual-head><div><h2>The analyst-set gate fails</h2>"
+            "<div class=visual-head><div><h2>The Desk-owned draft gate fails</h2>"
             f"<p>{escape(str(risk_context['label']))}; {escape(str(risk_context['approval']))}</p></div>"
             f"<span class=legend>Maximum {threshold:.1f}%</span></div>"
             f"<div class=meter-body><div class=risk-meter><span class=risk-fill style='width:{min(Decimal('100'), observed_loss / meter_max * 100):.2f}%'></span>"
@@ -1213,6 +1223,19 @@ def _technical_appendix_markdown(case: dict[str, Any], packet: dict[str, Any]) -
             f"(ordered-list SHA-256 `{digest(operand_ids)}`)"
         )
 
+    if case["caseId"] == "atlasgrid":
+        distribution = packet["distribution"]
+        sampling_precision = [
+            f"- Probability below 1.0x MOIC: Monte Carlo SE `{distribution['probability_below_one_monte_carlo_se_pp']} pp` (1,000 draws).",
+            f"- Modeled covenant-breach probability: Monte Carlo SE `{distribution['probability_covenant_breach_monte_carlo_se_pp']} pp` (1,000 draws).",
+            f"- Modeled payment-default probability: Monte Carlo SE `{distribution['probability_payment_default_monte_carlo_se_pp']} pp` (1,000 draws).",
+        ]
+    else:
+        distribution = packet["distribution"]
+        sampling_precision = [
+            f"- Probability below 1.0x: Monte Carlo SE `{distribution['probability_below_one_monte_carlo_se_pp']} pp` (1,000 draws).",
+        ]
+
     lines = [
         f"# {case['company']} - technical appendix",
         "",
@@ -1253,6 +1276,12 @@ def _technical_appendix_markdown(case: dict[str, Any], packet: dict[str, Any]) -
             f"| `{item['formula_id']}` | {item['operation']} | `{item['output_metric_id']}` | {operand_summary(item['operand_ids'])} |"
             for item in case["formulaRegistry"]
         ],
+        "",
+        "## Sampling precision",
+        "",
+        "These standard errors describe finite simulation sampling error only. They do not measure investment-model accuracy or real-world forecast uncertainty.",
+        "",
+        *sampling_precision,
         "",
         "## Reproducibility boundary",
         "",

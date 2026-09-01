@@ -281,7 +281,7 @@ export function assertWorkbenchCase(candidate: unknown): asserts candidate is Ca
   if (mappings.length !== analysisIds.size || new Set(mappings.map((item) => String(item.source_analysis_id))).size !== analysisIds.size || mappings.some((item) => !analysisIds.has(String(item.source_analysis_id)) || !["BASE_CASE", "VALUE_CREATION_BRIDGE", "SCENARIO_ONLY", "ZERO"].includes(String(item.credit_tier)))) throw new Error("evidence_mapping_coverage_invalid");
   if (candidate.caseId === "atlasgrid" && mappings.find((item) => item.source_analysis_id === "AG-08")?.credit_tier !== "VALUE_CREATION_BRIDGE") throw new Error("ag08_base_case_credit_forbidden");
   if (candidate.caseId === "helios") {
-    if (!record(candidate.vcEngine) || !record(candidate.vcEngine.sensitivities) || !array(candidate.vcEngine.sensitivities.cells) || !record(candidate.vcEngine.distribution) || !record(candidate.vcEngine.risk_policy) || !record(candidate.vcEngine.risk_sensitivity)) throw new Error("vc_engine_contract_invalid");
+    if (!record(candidate.vcEngine) || !record(candidate.vcEngine.sensitivities) || !array(candidate.vcEngine.sensitivities.cells) || !record(candidate.vcEngine.distribution) || !record(candidate.vcEngine.risk_policy) || !record(candidate.vcEngine.desk_policy) || !record(candidate.vcEngine.risk_sensitivity)) throw new Error("vc_engine_contract_invalid");
     for (const key of ["base", "milestone", "downside", "financing_shortfall"]) {
       const scenario = candidate.vcEngine[key];
       if (!record(scenario) || scenario.pool_exit_treatment !== "FULLY_GRANTED_COMMON") throw new Error("vc_primary_pool_exit_treatment_invalid");
@@ -289,6 +289,7 @@ export function assertWorkbenchCase(candidate: unknown): asserts candidate is Ca
     const sensitivity = candidate.vcEngine.sensitivities;
     const distribution = candidate.vcEngine.distribution;
     const policy = candidate.vcEngine.risk_policy;
+    const deskPolicy = candidate.vcEngine.desk_policy;
     const riskSensitivity = candidate.vcEngine.risk_sensitivity;
     const sensitivityCells = sensitivity.cells as Array<Record<string, unknown>>;
     const expectedAxes = ["annual_revenue_growth", "exit_revenue_multiple", "ordinary_cohort_nrr", "later_round_price", "milestone_state"];
@@ -303,12 +304,13 @@ export function assertWorkbenchCase(candidate: unknown): asserts candidate is Ca
     }
     if (sensitivity.default_cell_id !== baselineCellIds[String(sensitivity.default_axis)]) throw new Error("vc_sensitivity_default_invalid");
     if (policy.schema_version !== "helios.risk-policy/v1" || policy.classification !== "ILLUSTRATIVE_ANALYST_POLICY_NOT_FIRM_POLICY" || policy.approval_status !== "UNREVIEWED" || typeof policy.owner !== "string" || !array(policy.editable_maximum_probability_choices) || !policy.editable_maximum_probability_choices.includes(policy.maximum_probability_below_one)) throw new Error("vc_risk_policy_invalid");
-    const expectedLossStatus = Number(distribution.probability_below_one) <= Number(policy.maximum_probability_below_one) ? "CLEARS" : "MISSES";
+    if (deskPolicy.schema_version !== "underwriting.desk-policy/v1" || deskPolicy.classification !== "DESK_OWNED_DRAFT_POLICY_OUTSIDE_DATA_ROOM" || deskPolicy.status !== "DRAFT" || !record(deskPolicy.thresholds) || !array(deskPolicy.editable_maximum_probability_choices) || !deskPolicy.editable_maximum_probability_choices.includes(deskPolicy.thresholds.maximum_probability_below_one)) throw new Error("vc_desk_policy_invalid");
+    const expectedLossStatus = Number(distribution.probability_below_one) <= Number(deskPolicy.thresholds.maximum_probability_below_one) ? "CLEARS" : "MISSES";
     if (sensitivityCells.some((item) => item.binding_loss_hurdle_status !== expectedLossStatus || item.analytical_posture !== "HOLD")) throw new Error("vc_sensitivity_posture_invalid");
     for (const item of sensitivityCells) {
       if (!record(item.operating_exit_bridge) || !array(item.ending_cash_path_cents) || item.ending_cash_path_cents.length === 0 || item.operating_exit_bridge.cash_at_exit_cents !== item.ending_cash_path_cents[item.ending_cash_path_cents.length - 1]) throw new Error("vc_sensitivity_exit_cash_mismatch");
     }
-    if (riskSensitivity.schema_version !== "underwriting.vc-risk-sensitivity/v1" || !array(riskSensitivity.cells) || riskSensitivity.cells.length < 4 || !array(riskSensitivity.policy_threshold_choices) || riskSensitivity.policy_threshold_choices.join("|") !== policy.editable_maximum_probability_choices.join("|") || riskSensitivity.canonical_policy_threshold !== policy.maximum_probability_below_one) throw new Error("vc_risk_sensitivity_invalid");
+    if (riskSensitivity.schema_version !== "underwriting.vc-risk-sensitivity/v1" || !array(riskSensitivity.cells) || riskSensitivity.cells.length < 4 || !array(riskSensitivity.policy_threshold_choices) || riskSensitivity.policy_threshold_choices.join("|") !== deskPolicy.editable_maximum_probability_choices.join("|") || riskSensitivity.canonical_policy_threshold !== deskPolicy.thresholds.maximum_probability_below_one) throw new Error("vc_risk_sensitivity_invalid");
     const riskCells = riskSensitivity.cells as Array<Record<string, unknown>>;
     const canonical = riskCells.filter((item) => item.is_canonical === true);
     if (canonical.length !== 1 || canonical[0].cell_id !== riskSensitivity.canonical_cell_id || riskSensitivity.default_cell_id !== riskSensitivity.canonical_cell_id || canonical[0].distribution_receipt_sha256 !== distribution.receipt_sha256 || canonical[0].probability_below_one !== distribution.probability_below_one) throw new Error("vc_risk_sensitivity_canonical_invalid");
@@ -322,13 +324,13 @@ export function assertWorkbenchCase(candidate: unknown): asserts candidate is Ca
       const continuousPaths = Number(decomposition.continuous_paths);
       const lossPaths = Number(decomposition.catastrophe_loss_paths) + Number(decomposition.continuous_loss_paths);
       if (catastrophePaths + continuousPaths !== draws || Math.abs(Number(cell.probability_below_one) - lossPaths / draws) > 0.000051) throw new Error("vc_risk_sensitivity_decomposition_invalid");
-      const expectedCellStatus = Number(cell.probability_below_one) <= Number(policy.maximum_probability_below_one) ? "CLEARS" : "MISSES";
+      const expectedCellStatus = Number(cell.probability_below_one) <= Number(deskPolicy.thresholds.maximum_probability_below_one) ? "CLEARS" : "MISSES";
       if (cell.canonical_policy_status !== expectedCellStatus) throw new Error("vc_risk_sensitivity_status_invalid");
     }
     const lossPair = issues.find((item) => item.issue_id === "HX-H01");
     if (!lossPair || !array(candidate.decision.metric_pairs)) throw new Error("vc_risk_policy_decision_missing");
     const decisionPair = (candidate.decision.metric_pairs as Array<Record<string, unknown>>).find((item) => item.metric_id === "helios-hx-09-probability_below_1x");
-    if (!decisionPair || decisionPair.operator !== "<=" || Number(decisionPair.threshold_value) !== Number(policy.maximum_probability_below_one) * 100) throw new Error("vc_risk_policy_decision_mismatch");
+    if (!decisionPair || decisionPair.operator !== "<=" || Number(decisionPair.threshold_value) !== Number(deskPolicy.thresholds.maximum_probability_below_one) * 100) throw new Error("vc_desk_policy_decision_mismatch");
   }
   const locators = new Set(sourceLocators.map((item) => item.locator_id));
   if (sourceLocators.some((item) => item.schema_version !== "underwriting.source-locator/v3" || !item.repository_path.startsWith(`portfolio/${candidate.caseId}/data-room/data/`) || !item.published_path.startsWith(`source-pack/${candidate.caseId}/data/`) || item.published_path.startsWith("/") || !/^[0-9a-f]{64}$/.test(item.selection_sha256) || !/^[0-9a-f]{64}$/.test(item.excerpt_sha256))) throw new Error("source_locator_v3_invalid");

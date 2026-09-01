@@ -29,6 +29,7 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
     assert packet["analysis_sha256"] == case["analysis_sha256"]
     if "vcEngine" in case and "risk_policy" in case["vcEngine"]:
         assert packet["risk_policy"] == case["vcEngine"]["risk_policy"]
+        assert packet["desk_policy"] == case["vcEngine"]["desk_policy"]
         assert packet["risk_sensitivity"] == case["vcEngine"]["risk_sensitivity"]
     assert packet["maximum_bid_cents"] == case["peEngine"]["maximum_bid_cents"]
     for scenario in ("ask", "selected", "downside"):
@@ -92,7 +93,7 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
     assert "Probability of a modeled covenant breach" in markdown
     assert "≈$33-$99M illustrative 50-150% range" in markdown
     assert "Of the standalone value, **$66.2M**" not in markdown
-    assert markdown.count("Monte Carlo SE") >= 3
+    assert "Monte Carlo SE" not in markdown
     assert "Confirm lender EBITDA and covenant definitions" in markdown
     assert "PRE_DEBT_COMMITMENT" not in markdown
     assert "{'request_id'" not in markdown
@@ -108,6 +109,7 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
     assert "SHA-256" not in snapshot
     technical = artifacts["technical_markdown"].read_text(encoding="utf-8")
     assert "## Formula register" in technical
+    assert technical.count("Monte Carlo SE") >= 3
     assert "## Evidence-to-model mappings" in technical
     html = artifacts["packet_html"].read_text(encoding="utf-8")
     assert "@page{size:letter" in html
@@ -211,7 +213,7 @@ def test_helios_ic_packet_reconciles_engine_terms_and_receipts(tmp_path: Path) -
     assert "status Misses" in markdown
     assert "fully granted common at exit" in markdown
     assert "Unissued pool shares receive zero proceeds" not in markdown
-    assert "Monte Carlo SE" in markdown
+    assert "Monte Carlo SE" not in markdown
     assert "gross XIRR" in markdown
     snapshot = artifacts["snapshot_markdown"].read_text(encoding="utf-8")
     assert "## HOLD" in snapshot
@@ -220,12 +222,14 @@ def test_helios_ic_packet_reconciles_engine_terms_and_receipts(tmp_path: Path) -
     assert "SHA-256" not in snapshot
     snapshot_html = artifacts["snapshot_html"].read_text(encoding="utf-8")
     assert snapshot_html.count("data-visual=") == 2
-    assert "The analyst-set gate fails" in snapshot_html
+    assert "The Desk-owned draft gate fails" in snapshot_html
     assert "Conditional upside does not override the failed gate" in snapshot_html
     assert "not approval" in snapshot_html
+    technical = artifacts["technical_markdown"].read_text(encoding="utf-8")
+    assert "Monte Carlo SE" in technical
     if "risk_policy" in case["vcEngine"]:
-        assert "Illustrative analyst-set loss maximum" in snapshot_html
-        assert "UNREVIEWED" in snapshot_html
+        assert "Desk-owned draft loss maximum" in snapshot_html
+        assert "DRAFT" in snapshot_html
     technical = artifacts["technical_markdown"].read_text(encoding="utf-8")
     assert "HX-09" in technical
     assert "## Formula register" in technical

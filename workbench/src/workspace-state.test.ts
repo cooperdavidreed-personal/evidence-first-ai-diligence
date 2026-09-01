@@ -46,6 +46,16 @@ describe("portable deal workspace", () => {
     expect(() => validateWorkspace(state)).toThrow(/accepted model proposal/i);
   });
 
+  it("preserves an accepted proposal when a named analyst later revises memo language", () => {
+    const state = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
+    const requestEvidence = [{id: "AG-01", title: "Retention", displayValue: "99.9%", summary: "Complete cohort retention."}];
+    state.proposals.push({proposalId: "proposal-1", kind: "MEMO_DRAFT", state: "ACCEPTED", title: "Draft downside", body: "Validate renewal evidence.", evidenceRefs: ["AG-01"], requestEvidence, requestDigestSha256: digestChallengePayloadSync(requestEvidence), humanActor: "Avery Chen", reviewedAt: "2026-09-01T01:00:00.000Z"});
+    state.memoSections.push({sectionId: "proposal-1", title: "Draft downside", body: "The analyst narrowed the diligence request.", provenance: "ANALYST_JUDGMENT", sourceProposalId: "proposal-1", sourceProvenance: "HUMAN_ACCEPTED_MODEL_PROPOSAL", sourceBody: "Validate renewal evidence.", updatedBy: "Morgan Lee", updatedAt: "2026-09-01T02:00:00.000Z"});
+    expect(validateWorkspace(state, "atlasgrid", new Set(["AG-01"])).memoSections.at(-1)?.sourceBody).toBe("Validate renewal evidence.");
+    state.memoSections.at(-1)!.sourceBody = "Forged source text.";
+    expect(() => validateWorkspace(state, "atlasgrid", new Set(["AG-01"]))).toThrow(/invalid edited-model provenance/i);
+  });
+
   it("rejects portable proposals and issues with non-canonical evidence references", () => {
     const state = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
     const requestEvidence = [{id: "AG-01", title: "Retention", displayValue: "99.9%", summary: "Complete cohort retention."}];
@@ -91,5 +101,13 @@ describe("portable deal workspace", () => {
     const namedRevision = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
     namedRevision.memoSections[0] = {...namedRevision.memoSections[0], body: "Analyst disagrees with the calculated baseline.", provenance: "ANALYST_JUDGMENT", sourceProvenance: "DETERMINISTIC_ANALYSIS", sourceBody: "Reprice.", updatedBy: "Avery Chen"};
     expect(validateWorkspace(namedRevision, "atlasgrid", new Set(["AG-01"]), undefined, contract).memoSections[0].provenance).toBe("ANALYST_JUDGMENT");
+  });
+
+  it("does not let a quantitative hurdle disappear through a free-text issue resolution", () => {
+    const lockedSeed = {...seed, lockedIssueIds: ["issue-1"]};
+    const contract = createWorkspaceIntegrityContract(lockedSeed);
+    const state = createWorkspace(lockedSeed, "2026-09-01T00:00:00.000Z");
+    state.issues[0] = {...state.issues[0], status: "RESOLVED", resolution: "Waived in the issue log.", resolvedBy: "Avery Chen"};
+    expect(() => validateWorkspace(state, "atlasgrid", new Set(["AG-01"]), undefined, contract)).toThrow(/quantitative hurdle.*cannot be resolved/i);
   });
 });

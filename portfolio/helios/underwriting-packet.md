@@ -112,12 +112,12 @@ Declared scenario-state priors: Base 30.0%; Downside 15.0%; Financing Shortfall 
 | Gross MOIC | 0.0x | 5.1x | 9.9x |
 | Gross XIRR | -100.0% | 36.4% | 61.8% |
 
-- Probability below 1.0x: **20.0%** (Monte Carlo SE **1.26 pp**, 1,000 draws).
+- Probability below 1.0x: **20.0%** across 1,000 retained scenario paths.
 - Sensitivity book: 14 full-engine cells across exit value, exit date, later-round price, and milestone state.
 
 ### Risk policy and decision sensitivity
 
-Illustrative analyst-set loss maximum: maximum probability below 1.0x of 10.0%; state UNREVIEWED.
+Helios growth investment screening profile: maximum probability below 1.0x of 10.0%; state DRAFT.
 6 retained risk-sensitivity cases are available for review.
 
 ## Value creation and board cadence

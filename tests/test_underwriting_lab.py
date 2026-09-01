@@ -250,10 +250,18 @@ def test_helios_contract_gates(generated: dict[str, tuple[Path, dict]]) -> None:
     priors = case["vcEngine"]["distribution"]["priors"]
     assert Decimal(priors["loss_probability_band_low"]) <= probability <= Decimal(priors["loss_probability_band_high"])
     assert pairs["Post-close runway"]["observed"].startswith(">=60")
-    policy = case["vcEngine"]["risk_policy"]
-    assert policy["classification"] == "ILLUSTRATIVE_ANALYST_POLICY_NOT_FIRM_POLICY"
-    assert policy["approval_status"] == "UNREVIEWED"
-    assert Decimal(pairs["Modeled loss probability"]["threshold_value"]) == Decimal(policy["maximum_probability_below_one"]) * 100
+    package_policy = case["vcEngine"]["risk_policy"]
+    assert package_policy["classification"] == "ILLUSTRATIVE_ANALYST_POLICY_NOT_FIRM_POLICY"
+    assert package_policy["approval_status"] == "UNREVIEWED"
+    assert package_policy["owner"] == "Synthetic package author"
+    desk_policy = case["vcEngine"]["desk_policy"]
+    assert desk_policy["classification"] == "DESK_OWNED_DRAFT_POLICY_OUTSIDE_DATA_ROOM"
+    assert desk_policy["status"] == "DRAFT"
+    assert Decimal(pairs["Modeled loss probability"]["threshold_value"]) == Decimal(desk_policy["thresholds"]["maximum_probability_below_one"]) * 100
+    assert Decimal(pairs["Ordinary-cohort NRR"]["threshold_value"]) == Decimal(desk_policy["thresholds"]["ordinary_cohort_nrr"]) * 100
+    assert Decimal(pairs["Milestone · Series C gross XIRR"]["threshold_value"]) == Decimal(desk_policy["thresholds"]["gross_xirr"])
+    assert Decimal(package_policy["operating_hurdles"]["ordinary_cohort_nrr"]) != Decimal(desk_policy["thresholds"]["ordinary_cohort_nrr"])
+    assert Decimal(package_policy["return_hurdles"]["gross_xirr"]) != Decimal(desk_policy["thresholds"]["gross_xirr"])
     risk_book = case["vcEngine"]["risk_sensitivity"]
     assert len(risk_book["cells"]) == 6
     canonical = next(item for item in risk_book["cells"] if item["is_canonical"])

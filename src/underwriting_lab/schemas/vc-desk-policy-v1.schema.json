@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dailyaiagents.dev/schemas/vc-desk-policy-v1.schema.json",
+  "title": "Underwriting Desk Policy v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "profile_id", "classification", "name", "strategy", "owner", "owner_role", "source", "status", "last_reviewed", "thresholds", "editable_maximum_probability_choices", "rationale", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "underwriting.desk-policy/v1"},
+    "profile_id": {"const": "helios-growth-screen-public-demo-v1"},
+    "classification": {"const": "DESK_OWNED_DRAFT_POLICY_OUTSIDE_DATA_ROOM"},
+    "name": {"type": "string", "minLength": 1},
+    "strategy": {"const": "GROWTH_EQUITY"},
+    "owner": {"type": "string", "minLength": 1},
+    "owner_role": {"const": "Policy owner"},
+    "source": {"type": "string", "minLength": 1},
+    "status": {"enum": ["DRAFT", "APPROVED", "REJECTED"]},
+    "last_reviewed": {"type": ["string", "null"]},
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ordinary_cohort_nrr", "gross_margin", "post_close_runway_months", "gross_xirr", "gross_moic", "maximum_probability_below_one"],
+      "properties": {
+        "ordinary_cohort_nrr": {"type": "string"},
+        "gross_margin": {"type": "string"},
+        "post_close_runway_months": {"type": "integer", "minimum": 1},
+        "gross_xirr": {"type": "string"},
+        "gross_moic": {"type": "string"},
+        "maximum_probability_below_one": {"type": "string", "pattern": "^0\\.[0-9]+$"}
+      }
+    },
+    "editable_maximum_probability_choices": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "pattern": "^0\\.[0-9]+$"}},
+    "rationale": {"type": "string", "minLength": 1},
+    "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

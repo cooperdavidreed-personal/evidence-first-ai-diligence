@@ -83,7 +83,7 @@ export function createAdapterTransport(endpointValue: string, fetcher: typeof fe
 }
 
 export function connectionLabel(connection: ConnectionState | null) {
-  if (!connection) return "Connect model";
+  if (!connection) return "Model options";
   if (connection.state === "CONTRACT_VERIFIED") return "Adapter contract verified";
   if (connection.state === "SETUP_PREPARED") return `${connection.label} setup`;
   return "Hosted connector needed";

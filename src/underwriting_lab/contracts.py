@@ -42,7 +42,9 @@ def digest(document: Any) -> str:
 
 
 def quantize(value: float | Decimal, places: str = "0.01") -> str:
-    return format(Decimal(str(value)).quantize(Decimal(places), rounding=ROUND_HALF_EVEN), "f")
+    return format(
+        Decimal(str(value)).quantize(Decimal(places), rounding=ROUND_HALF_EVEN), "f"
+    )
 
 
 def write_json(path: Path, document: Any) -> None:
@@ -67,12 +69,16 @@ def load_underwriting_schema(name: str) -> dict[str, Any]:
 
 def validate_v2_document(document: dict[str, Any], schema_name: str) -> None:
     errors = sorted(
-        Draft202012Validator(load_underwriting_schema(schema_name)).iter_errors(document),
+        Draft202012Validator(load_underwriting_schema(schema_name)).iter_errors(
+            document
+        ),
         key=lambda item: list(item.absolute_path),
     )
     if errors:
         path = "/".join(str(item) for item in errors[0].absolute_path) or "$"
-        raise UnderwritingError(f"v2_schema_invalid:{schema_name}:{path}:{errors[0].message}")
+        raise UnderwritingError(
+            f"v2_schema_invalid:{schema_name}:{path}:{errors[0].message}"
+        )
 
 
 def _validate_hashed_v2_document(document: dict[str, Any], schema_name: str) -> None:
@@ -83,7 +89,9 @@ def _validate_hashed_v2_document(document: dict[str, Any], schema_name: str) -> 
         raise UnderwritingError(f"v2_receipt_digest_mismatch:{schema_name}")
 
 
-def _validate_named_hash(document: dict[str, Any], schema_name: str, field: str) -> None:
+def _validate_named_hash(
+    document: dict[str, Any], schema_name: str, field: str
+) -> None:
     validate_v2_document(document, schema_name)
     body = dict(document)
     expected = body.pop(field, None)
@@ -97,7 +105,13 @@ def _validate_pe_payload(case: dict[str, Any]) -> None:
         return
     if not isinstance(engine.get("maximum_bid_cents"), int):
         raise UnderwritingError("pe_maximum_bid_integer_cents_required")
-    for scenario_id in ("ask", "selected", "downside", "maximum_bid_base", "maximum_bid_downside"):
+    for scenario_id in (
+        "ask",
+        "selected",
+        "downside",
+        "maximum_bid_base",
+        "maximum_bid_downside",
+    ):
         result = engine.get(scenario_id)
         if not isinstance(result, dict):
             raise UnderwritingError(f"pe_scenario_missing:{scenario_id}")
@@ -110,11 +124,16 @@ def _validate_pe_payload(case: dict[str, Any]) -> None:
         _validate_hashed_v2_document(result, "pe-case-result-v2.schema.json")
     distribution = engine["distribution"]
     _validate_hashed_v2_document(distribution, "pe-distribution-v2.schema.json")
-    if distribution["correlation_structure_sha256"] != digest(distribution["correlation_structure"]):
+    if distribution["correlation_structure_sha256"] != digest(
+        distribution["correlation_structure"]
+    ):
         raise UnderwritingError("pe_distribution_correlation_digest_mismatch")
     records = distribution["path_records"]
     result_hashes = distribution["path_receipt_sha256s"]
-    if len(records) != distribution["draws"] or len(result_hashes) != distribution["draws"]:
+    if (
+        len(records) != distribution["draws"]
+        or len(result_hashes) != distribution["draws"]
+    ):
         raise UnderwritingError("pe_distribution_path_count_mismatch")
     for record, result_hash in zip(records, result_hashes, strict=True):
         body = dict(record)
@@ -130,35 +149,51 @@ def _validate_pe_payload(case: dict[str, Any]) -> None:
         ):
             raise UnderwritingError("pe_distribution_total_loss_boundary_mismatch")
     quantile_indices = [
-        int((Decimal(len(records) - 1) * probability).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN))
+        int(
+            (Decimal(len(records) - 1) * probability).quantize(
+                Decimal("1"), rounding=ROUND_HALF_EVEN
+            )
+        )
         for probability in (Decimal("0.10"), Decimal("0.50"), Decimal("0.90"))
     ]
     moics = sorted(Decimal(record["gross_moic"]) for record in records)
     xirrs = sorted(Decimal(record["gross_xirr"]) for record in records)
-    if [format(moics[index], "f") for index in quantile_indices] != distribution["moic_quantiles"]:
+    if [format(moics[index], "f") for index in quantile_indices] != distribution[
+        "moic_quantiles"
+    ]:
         raise UnderwritingError("pe_distribution_moic_quantile_mismatch")
-    if [format(xirrs[index], "f") for index in quantile_indices] != distribution["xirr_quantiles"]:
+    if [format(xirrs[index], "f") for index in quantile_indices] != distribution[
+        "xirr_quantiles"
+    ]:
         raise UnderwritingError("pe_distribution_xirr_quantile_mismatch")
     denominator = Decimal(len(records))
     probabilities = {
-        "probability_below_one": Decimal(sum(value < 1 for value in moics)) / denominator,
-        "probability_covenant_breach": Decimal(sum(record["first_covenant_breach_month"] is not None for record in records)) / denominator,
-        "probability_payment_default": Decimal(sum(bool(record["payment_default"]) for record in records)) / denominator,
+        "probability_below_one": Decimal(sum(value < 1 for value in moics))
+        / denominator,
+        "probability_covenant_breach": Decimal(
+            sum(record["first_covenant_breach_month"] is not None for record in records)
+        )
+        / denominator,
+        "probability_payment_default": Decimal(
+            sum(bool(record["payment_default"]) for record in records)
+        )
+        / denominator,
     }
     for name, value in probabilities.items():
         expected = value.quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN)
         if Decimal(distribution[name]) != expected:
             raise UnderwritingError(f"pe_distribution_probability_mismatch:{name}")
         expected_se_pp = (
-            (expected * (Decimal(1) - expected) / denominator).sqrt()
-            * Decimal(100)
+            (expected * (Decimal(1) - expected) / denominator).sqrt() * Decimal(100)
         ).quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN)
         if Decimal(distribution[f"{name}_monte_carlo_se_pp"]) != expected_se_pp:
             raise UnderwritingError(f"pe_distribution_monte_carlo_se_mismatch:{name}")
     if probabilities["probability_covenant_breach"] <= 0:
         raise UnderwritingError("pe_distribution_covenant_stress_nonbinding")
     prior = distribution["correlation_structure"]
-    if prior.get("classification") != "SYNTHETIC_SCENARIO_NOT_FORECAST" or not prior.get("rationale"):
+    if prior.get(
+        "classification"
+    ) != "SYNTHETIC_SCENARIO_NOT_FORECAST" or not prior.get("rationale"):
         raise UnderwritingError("pe_distribution_prior_boundary_missing")
     if not (
         Decimal(prior["loss_probability_band_low"])
@@ -171,15 +206,11 @@ def _validate_pe_payload(case: dict[str, Any]) -> None:
         raise UnderwritingError("pe_sensitivity_book_missing")
     for cell in sensitivity["one_way"] + sensitivity["entry_exit_matrix"]:
         _validate_hashed_v2_document(cell, "pe-sensitivity-cell-v2.schema.json")
-    _validate_hashed_v2_document(
-        sensitivity, "pe-sensitivity-book-v2.schema.json"
-    )
+    _validate_hashed_v2_document(sensitivity, "pe-sensitivity-book-v2.schema.json")
     bridge = case.get("valueCreationBridge")
     if not isinstance(bridge, dict):
         raise UnderwritingError("pe_value_creation_bridge_missing")
-    _validate_hashed_v2_document(
-        bridge, "pe-value-creation-bridge-v2.schema.json"
-    )
+    _validate_hashed_v2_document(bridge, "pe-value-creation-bridge-v2.schema.json")
     pe_bridge_fields = (
         ("exit_ebitda_cents", "exit_ebitda_delta_cents"),
         ("exit_debt_cents", "exit_debt_delta_cents"),
@@ -192,12 +223,20 @@ def _validate_pe_payload(case: dict[str, Any]) -> None:
             result = Decimal(str(lever[f"result_{absolute_field}"]))
             base = Decimal(str(bridge[f"base_{absolute_field}"]))
             if result - base != Decimal(str(lever[delta_field])):
-                raise UnderwritingError(f"pe_value_creation_absolute_delta_mismatch:{lever['lever_id']}:{delta_field}")
-    if Decimal(bridge["combined_exit_equity_cents"]) - Decimal(bridge["base_exit_equity_cents"]) != Decimal(bridge["combined_exit_equity_delta_cents"]):
+                raise UnderwritingError(
+                    f"pe_value_creation_absolute_delta_mismatch:{lever['lever_id']}:{delta_field}"
+                )
+    if Decimal(bridge["combined_exit_equity_cents"]) - Decimal(
+        bridge["base_exit_equity_cents"]
+    ) != Decimal(bridge["combined_exit_equity_delta_cents"]):
         raise UnderwritingError("pe_value_creation_combined_equity_mismatch")
-    if Decimal(bridge["combined_gross_xirr"]) - Decimal(bridge["base_gross_xirr"]) != Decimal(bridge["combined_gross_xirr_delta"]):
+    if Decimal(bridge["combined_gross_xirr"]) - Decimal(
+        bridge["base_gross_xirr"]
+    ) != Decimal(bridge["combined_gross_xirr_delta"]):
         raise UnderwritingError("pe_value_creation_combined_xirr_mismatch")
-    if Decimal(bridge["combined_gross_moic"]) - Decimal(bridge["base_gross_moic"]) != Decimal(bridge["combined_gross_moic_delta"]):
+    if Decimal(bridge["combined_gross_moic"]) - Decimal(
+        bridge["base_gross_moic"]
+    ) != Decimal(bridge["combined_gross_moic_delta"]):
         raise UnderwritingError("pe_value_creation_combined_moic_mismatch")
 
 
@@ -228,9 +267,11 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
             raise UnderwritingError("vc_primary_pool_exit_treatment_invalid")
         waterfall = result["waterfall"]
         _validate_hashed_v2_document(waterfall, "vc-waterfall-v2.schema.json")
-        if sum(waterfall["class_proceeds_cents"].values()) + waterfall[
-            "common_proceeds_cents"
-        ] != waterfall["exit_value_cents"]:
+        if (
+            sum(waterfall["class_proceeds_cents"].values())
+            + waterfall["common_proceeds_cents"]
+            != waterfall["exit_value_cents"]
+        ):
             raise UnderwritingError("vc_waterfall_conservation_failed")
         funded_target = 0
         engine_inputs = result["engine_inputs"]
@@ -245,9 +286,10 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
             ).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN)
         )
         enterprise_value = int(
-            (Decimal(terminal_revenue) * Decimal(exit_bridge["exit_revenue_multiple"])).quantize(
-                Decimal("1"), rounding=ROUND_HALF_EVEN
-            )
+            (
+                Decimal(terminal_revenue)
+                * Decimal(exit_bridge["exit_revenue_multiple"])
+            ).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN)
         )
         equity_value = enterprise_value - int(exit_bridge["net_debt_cents"])
         exit_cash = int(result["cash_by_month"][-1]["ending_cash_cents"])
@@ -275,11 +317,15 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
             event_sha256 = event_body.pop("event_sha256")
             if event_sha256 != digest(event_body):
                 raise UnderwritingError("vc_event_digest_mismatch")
-            if event["status"] == "FUNDED" and event["holder_id"] == "series-c-investor":
+            if (
+                event["status"] == "FUNDED"
+                and event["holder_id"] == "series-c-investor"
+            ):
                 funded_target += event["new_money_cents"]
-            if event["issued_shares_before"] != issued_shares or event[
-                "unissued_pool_before"
-            ] != unissued_pool:
+            if (
+                event["issued_shares_before"] != issued_shares
+                or event["unissued_pool_before"] != unissued_pool
+            ):
                 raise UnderwritingError("vc_event_opening_capitalization_mismatch")
             if event["status"] == "NOT_FUNDED":
                 if any(
@@ -307,9 +353,10 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
                 ) + int(event["new_money_cents"])
             issued_shares += int(event["new_shares"])
             unissued_pool += int(event["pool_top_up_shares"])
-            if event["issued_shares_after"] != issued_shares or event[
-                "unissued_pool_after"
-            ] != unissued_pool:
+            if (
+                event["issued_shares_after"] != issued_shares
+                or event["unissued_pool_after"] != unissued_pool
+            ):
                 raise UnderwritingError("vc_event_closing_capitalization_mismatch")
             if event["fully_diluted_after"] != issued_shares + unissued_pool:
                 raise UnderwritingError("vc_event_fully_diluted_mismatch")
@@ -329,9 +376,10 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         if int(result["unissued_pool_shares"]) != unissued_pool:
             raise UnderwritingError("vc_pool_share_rollforward_failed")
         for preference in result["preferences"]:
-            if int(preference["invested_cents"]) != preference_invested[
-                preference["class_id"]
-            ]:
+            if (
+                int(preference["invested_cents"])
+                != preference_invested[preference["class_id"]]
+            ):
                 raise UnderwritingError("vc_preference_rollforward_failed")
         target_holder = next(
             holder
@@ -345,11 +393,12 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         if Decimal(result["target_ownership"]) != expected_ownership:
             raise UnderwritingError("vc_target_ownership_reconciliation_failed")
         target_flows = result["target_cash_flows"]
-        if -sum(min(0, int(flow["amount_cents"])) for flow in target_flows) != result[
-            "target_invested_cents"
-        ] or sum(max(0, int(flow["amount_cents"])) for flow in target_flows) != result[
-            "target_proceeds_cents"
-        ]:
+        if (
+            -sum(min(0, int(flow["amount_cents"])) for flow in target_flows)
+            != result["target_invested_cents"]
+            or sum(max(0, int(flow["amount_cents"])) for flow in target_flows)
+            != result["target_proceeds_cents"]
+        ):
             raise UnderwritingError("vc_target_cash_flow_reconciliation_failed")
         expected_moic = (
             Decimal(result["target_proceeds_cents"])
@@ -372,7 +421,10 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         if Decimal(result["gross_xirr"]) != expected_xirr:
             raise UnderwritingError("vc_target_xirr_reconciliation_failed")
         for row in result["cash_by_month"]:
-            if previous_ending is not None and row["beginning_cash_cents"] != previous_ending:
+            if (
+                previous_ending is not None
+                and row["beginning_cash_cents"] != previous_ending
+            ):
                 raise UnderwritingError("vc_cash_opening_mismatch")
             expected_ending = (
                 row["beginning_cash_cents"]
@@ -403,12 +455,20 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         or not priors.get("owner")
     ):
         raise UnderwritingError("vc_distribution_priors_governance_invalid")
-    if distribution["base_result_receipt_sha256"] != engine["milestone"]["receipt_sha256"]:
+    if (
+        distribution["base_result_receipt_sha256"]
+        != engine["milestone"]["receipt_sha256"]
+    ):
         raise UnderwritingError("vc_distribution_base_binding_mismatch")
     template_weights = {
         key: Decimal(value) for key, value in distribution["template_weights"].items()
     }
-    if set(template_weights) != {"MILESTONE", "BASE", "DOWNSIDE", "FINANCING_SHORTFALL"}:
+    if set(template_weights) != {
+        "MILESTONE",
+        "BASE",
+        "DOWNSIDE",
+        "FINANCING_SHORTFALL",
+    }:
         raise UnderwritingError("vc_distribution_weight_keys_invalid")
     if any(value <= 0 for value in template_weights.values()):
         raise UnderwritingError("vc_distribution_weight_nonpositive")
@@ -427,18 +487,38 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         raise UnderwritingError("vc_risk_policy_missing")
     _validate_hashed_v2_document(risk_policy, "vc-risk-policy-v1.schema.json")
     policy_threshold = Decimal(risk_policy["maximum_probability_below_one"])
-    policy_choices = [Decimal(value) for value in risk_policy["editable_maximum_probability_choices"]]
-    if not Decimal("0") <= policy_threshold <= Decimal("1") or policy_threshold not in policy_choices:
+    policy_choices = [
+        Decimal(value) for value in risk_policy["editable_maximum_probability_choices"]
+    ]
+    if (
+        not Decimal("0") <= policy_threshold <= Decimal("1")
+        or policy_threshold not in policy_choices
+    ):
         raise UnderwritingError("vc_risk_policy_threshold_invalid")
     if any(value < 0 or value > 1 for value in policy_choices):
         raise UnderwritingError("vc_risk_policy_choices_invalid")
+    desk_policy = engine.get("desk_policy")
+    if not isinstance(desk_policy, dict):
+        raise UnderwritingError("vc_desk_policy_missing")
+    _validate_hashed_v2_document(desk_policy, "vc-desk-policy-v1.schema.json")
+    desk_threshold = Decimal(desk_policy["thresholds"]["maximum_probability_below_one"])
+    desk_choices = [
+        Decimal(value) for value in desk_policy["editable_maximum_probability_choices"]
+    ]
+    if (
+        not Decimal("0") <= desk_threshold <= Decimal("1")
+        or desk_threshold not in desk_choices
+    ):
+        raise UnderwritingError("vc_desk_policy_threshold_invalid")
     risk_sensitivity = engine.get("risk_sensitivity")
     if not isinstance(risk_sensitivity, dict):
         raise UnderwritingError("vc_risk_sensitivity_missing")
     _validate_hashed_v2_document(risk_sensitivity, "vc-risk-sensitivity-v1.schema.json")
-    if Decimal(risk_sensitivity["canonical_policy_threshold"]) != policy_threshold:
+    if Decimal(risk_sensitivity["canonical_policy_threshold"]) != desk_threshold:
         raise UnderwritingError("vc_risk_sensitivity_policy_binding_mismatch")
-    if [Decimal(value) for value in risk_sensitivity["policy_threshold_choices"]] != policy_choices:
+    if [
+        Decimal(value) for value in risk_sensitivity["policy_threshold_choices"]
+    ] != desk_choices:
         raise UnderwritingError("vc_risk_sensitivity_policy_choices_mismatch")
     risk_cells = risk_sensitivity["cells"]
     if len({cell["cell_id"] for cell in risk_cells}) != len(risk_cells):
@@ -452,9 +532,13 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         or risk_sensitivity["default_cell_id"] != risk_sensitivity["canonical_cell_id"]
         or Decimal(canonical_risk_cell["catastrophe_probability"])
         != Decimal(priors["catastrophe_probability"])
-        or {key: Decimal(value) for key, value in canonical_risk_cell["template_weights"].items()}
+        or {
+            key: Decimal(value)
+            for key, value in canonical_risk_cell["template_weights"].items()
+        }
         != template_weights
-        or canonical_risk_cell["distribution_receipt_sha256"] != distribution["receipt_sha256"]
+        or canonical_risk_cell["distribution_receipt_sha256"]
+        != distribution["receipt_sha256"]
         or Decimal(canonical_risk_cell["probability_below_one"])
         != Decimal(distribution["probability_below_one"])
     ):
@@ -464,18 +548,37 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         expected = body.pop("receipt_sha256")
         if expected != digest(body):
             raise UnderwritingError("vc_risk_sensitivity_cell_digest_mismatch")
-        weights = {key: Decimal(value) for key, value in cell["template_weights"].items()}
-        if set(weights) != set(template_weights) or any(value <= 0 for value in weights.values()) or sum(weights.values(), Decimal("0")) != Decimal("1"):
+        weights = {
+            key: Decimal(value) for key, value in cell["template_weights"].items()
+        }
+        if (
+            set(weights) != set(template_weights)
+            or any(value <= 0 for value in weights.values())
+            or sum(weights.values(), Decimal("0")) != Decimal("1")
+        ):
             raise UnderwritingError("vc_risk_sensitivity_weights_invalid")
         decomposition = cell["loss_decomposition"]
-        if decomposition["catastrophe_paths"] + decomposition["continuous_paths"] != cell["draws"]:
+        if (
+            decomposition["catastrophe_paths"] + decomposition["continuous_paths"]
+            != cell["draws"]
+        ):
             raise UnderwritingError("vc_risk_sensitivity_path_decomposition_mismatch")
-        loss_count = decomposition["catastrophe_loss_paths"] + decomposition["continuous_loss_paths"]
-        expected_probability = (Decimal(loss_count) / Decimal(cell["draws"])).quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN)
+        loss_count = (
+            decomposition["catastrophe_loss_paths"]
+            + decomposition["continuous_loss_paths"]
+        )
+        expected_probability = (Decimal(loss_count) / Decimal(cell["draws"])).quantize(
+            Decimal("0.0001"), rounding=ROUND_HALF_EVEN
+        )
         if Decimal(cell["probability_below_one"]) != expected_probability:
             raise UnderwritingError("vc_risk_sensitivity_loss_decomposition_mismatch")
-        expected_status = "CLEARS" if expected_probability <= policy_threshold else "MISSES"
-        if cell["canonical_policy_status"] != expected_status or cell["analytical_posture"] != "HOLD":
+        expected_status = (
+            "CLEARS" if expected_probability <= policy_threshold else "MISSES"
+        )
+        if (
+            cell["canonical_policy_status"] != expected_status
+            or cell["analytical_posture"] != "HOLD"
+        ):
             raise UnderwritingError("vc_risk_sensitivity_posture_invalid")
     sensitivity = engine["sensitivities"]
     sensitivity_body = dict(sensitivity)
@@ -498,9 +601,13 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         expected = body.pop("receipt_sha256")
         if expected != digest(body):
             raise UnderwritingError("vc_sensitivity_cell_digest_mismatch")
-    if {cell["axis"] for cell in sensitivity["cells"]} != set(sensitivity["axis_order"]):
+    if {cell["axis"] for cell in sensitivity["cells"]} != set(
+        sensitivity["axis_order"]
+    ):
         raise UnderwritingError("vc_sensitivity_axis_missing")
-    if [item["axis"] for item in sensitivity.get("axis_definitions", [])] != expected_axes:
+    if [
+        item["axis"] for item in sensitivity.get("axis_definitions", [])
+    ] != expected_axes:
         raise UnderwritingError("vc_sensitivity_axis_definitions_invalid")
     baseline_cell_ids = sensitivity.get("baseline_cell_ids", {})
     if set(baseline_cell_ids) != set(expected_axes):
@@ -512,7 +619,10 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
             raise UnderwritingError(f"vc_sensitivity_baseline_invalid:{axis}")
     if sensitivity.get("default_axis") not in expected_axes:
         raise UnderwritingError("vc_sensitivity_default_axis_invalid")
-    if sensitivity.get("default_cell_id") != baseline_cell_ids[sensitivity["default_axis"]]:
+    if (
+        sensitivity.get("default_cell_id")
+        != baseline_cell_ids[sensitivity["default_axis"]]
+    ):
         raise UnderwritingError("vc_sensitivity_default_cell_invalid")
     for cell in sensitivity["cells"]:
         bridge = cell.get("operating_exit_bridge")
@@ -539,16 +649,32 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
             != enterprise_value + int(bridge["cash_at_exit_cents"])
         ):
             raise UnderwritingError("vc_sensitivity_operating_bridge_mismatch")
-        expected_loss_status = "CLEARS" if Decimal(distribution["probability_below_one"]) <= policy_threshold else "MISSES"
-        if cell.get("binding_loss_hurdle_status") != expected_loss_status or cell.get("analytical_posture") != "HOLD":
+        expected_loss_status = (
+            "CLEARS"
+            if Decimal(distribution["probability_below_one"]) <= policy_threshold
+            else "MISSES"
+        )
+        if (
+            cell.get("binding_loss_hurdle_status") != expected_loss_status
+            or cell.get("analytical_posture") != "HOLD"
+        ):
             raise UnderwritingError("vc_sensitivity_binding_posture_invalid")
     quantile_indices = [
-        int((Decimal(len(records) - 1) * probability).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN))
+        int(
+            (Decimal(len(records) - 1) * probability).quantize(
+                Decimal("1"), rounding=ROUND_HALF_EVEN
+            )
+        )
         for probability in (Decimal("0.10"), Decimal("0.50"), Decimal("0.90"))
     ]
-    for field, output in (("gross_moic", "moic_quantiles"), ("gross_xirr", "xirr_quantiles")):
+    for field, output in (
+        ("gross_moic", "moic_quantiles"),
+        ("gross_xirr", "xirr_quantiles"),
+    ):
         values = sorted(Decimal(record[field]) for record in records)
-        if [format(values[index], "f") for index in quantile_indices] != distribution[output]:
+        if [format(values[index], "f") for index in quantile_indices] != distribution[
+            output
+        ]:
             raise UnderwritingError(f"vc_distribution_quantile_mismatch:{field}")
     below_one = (
         Decimal(sum(Decimal(record["gross_moic"]) < 1 for record in records))
@@ -566,7 +692,10 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         (below_one * (Decimal(1) - below_one) / Decimal(len(records))).sqrt()
         * Decimal(100)
     ).quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN)
-    if Decimal(distribution["probability_below_one_monte_carlo_se_pp"]) != expected_se_pp:
+    if (
+        Decimal(distribution["probability_below_one_monte_carlo_se_pp"])
+        != expected_se_pp
+    ):
         raise UnderwritingError("vc_distribution_monte_carlo_se_mismatch")
     bridge = case.get("vcValueCreationBridge")
     if not isinstance(bridge, dict):
@@ -581,26 +710,50 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         if expected != digest(body):
             raise UnderwritingError("vc_value_creation_lever_digest_mismatch")
         for result_field, base_field, delta_field in (
-            ("result_minimum_cash_cents", "base_minimum_cash_cents", "minimum_cash_delta_cents"),
-            ("result_target_proceeds_cents", "base_target_proceeds_cents", "target_proceeds_delta_cents"),
+            (
+                "result_minimum_cash_cents",
+                "base_minimum_cash_cents",
+                "minimum_cash_delta_cents",
+            ),
+            (
+                "result_target_proceeds_cents",
+                "base_target_proceeds_cents",
+                "target_proceeds_delta_cents",
+            ),
             ("result_gross_xirr", "base_gross_xirr", "gross_xirr_delta"),
             ("result_gross_moic", "base_gross_moic", "gross_moic_delta"),
         ):
-            if Decimal(str(lever[result_field])) - Decimal(str(bridge[base_field])) != Decimal(str(lever[delta_field])):
-                raise UnderwritingError(f"vc_value_creation_absolute_delta_mismatch:{lever['lever_id']}:{delta_field}")
+            if Decimal(str(lever[result_field])) - Decimal(
+                str(bridge[base_field])
+            ) != Decimal(str(lever[delta_field])):
+                raise UnderwritingError(
+                    f"vc_value_creation_absolute_delta_mismatch:{lever['lever_id']}:{delta_field}"
+                )
     if bridge["combined_target_proceeds_delta_cents"] != (
         bridge["sum_standalone_target_proceeds_delta_cents"]
         + bridge["interaction_residual_cents"]
     ):
         raise UnderwritingError("vc_value_creation_interaction_mismatch")
     for result_field, base_field, delta_field in (
-        ("combined_result_minimum_cash_cents", "base_minimum_cash_cents", "combined_minimum_cash_delta_cents"),
-        ("combined_result_target_proceeds_cents", "base_target_proceeds_cents", "combined_target_proceeds_delta_cents"),
+        (
+            "combined_result_minimum_cash_cents",
+            "base_minimum_cash_cents",
+            "combined_minimum_cash_delta_cents",
+        ),
+        (
+            "combined_result_target_proceeds_cents",
+            "base_target_proceeds_cents",
+            "combined_target_proceeds_delta_cents",
+        ),
         ("combined_result_gross_xirr", "base_gross_xirr", "combined_gross_xirr_delta"),
         ("combined_result_gross_moic", "base_gross_moic", "combined_gross_moic_delta"),
     ):
-        if Decimal(str(bridge[result_field])) - Decimal(str(bridge[base_field])) != Decimal(str(bridge[delta_field])):
-            raise UnderwritingError(f"vc_value_creation_combined_absolute_delta_mismatch:{delta_field}")
+        if Decimal(str(bridge[result_field])) - Decimal(
+            str(bridge[base_field])
+        ) != Decimal(str(bridge[delta_field])):
+            raise UnderwritingError(
+                f"vc_value_creation_combined_absolute_delta_mismatch:{delta_field}"
+            )
 
 
 def _validate_metric_semantic_binding(case: dict[str, Any]) -> None:
@@ -630,7 +783,11 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             raise UnderwritingError("source_locator_duplicate")
         locators[locator_id] = locator
         artifact = artifacts.get(locator["artifact_id"])
-        if artifact is None or artifact["path"] != locator["artifact_path"] or artifact["sha256"] != locator["artifact_sha256"]:
+        if (
+            artifact is None
+            or artifact["path"] != locator["artifact_path"]
+            or artifact["sha256"] != locator["artifact_sha256"]
+        ):
             raise UnderwritingError("source_locator_artifact_mismatch")
         if locator["analysis_id"] not in analyses:
             raise UnderwritingError("source_locator_analysis_orphan")
@@ -669,7 +826,11 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
         metrics[metric_id] = metric
         if not set(metric["source_locator_ids"]).issubset(locators):
             raise UnderwritingError("metric_source_locator_orphan")
-        if not metric["source_locator_ids"] and not metric["operand_ids"] and not metric["assumption_ids"]:
+        if (
+            not metric["source_locator_ids"]
+            and not metric["operand_ids"]
+            and not metric["assumption_ids"]
+        ):
             raise UnderwritingError("metric_provenance_missing")
 
     for receipt in case["analyses"]:
@@ -681,7 +842,9 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             if metric is None:
                 raise UnderwritingError(f"analysis_output_metric_missing:{metric_id}")
             if metric["value"] != output["value"]:
-                raise UnderwritingError(f"analysis_output_metric_value_mismatch:{metric_id}")
+                raise UnderwritingError(
+                    f"analysis_output_metric_value_mismatch:{metric_id}"
+                )
             if metric["governing_receipt_sha256"] != receipt["receipt_sha256"]:
                 raise UnderwritingError(f"analysis_output_receipt_mismatch:{metric_id}")
             expected_locator_ids = {
@@ -706,13 +869,17 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             )
             metric = metrics.get(metric_id)
             if metric is None:
-                raise UnderwritingError(f"pe_sponsor_cash_flow_metric_missing:{metric_id}")
+                raise UnderwritingError(
+                    f"pe_sponsor_cash_flow_metric_missing:{metric_id}"
+                )
             if (
                 Decimal(metric["value"]) != Decimal(flow["amount_cents"])
                 or metric["period"] != flow["date"]
                 or metric["governing_receipt_sha256"] != selected_receipt
             ):
-                raise UnderwritingError(f"pe_sponsor_cash_flow_metric_mismatch:{metric_id}")
+                raise UnderwritingError(
+                    f"pe_sponsor_cash_flow_metric_mismatch:{metric_id}"
+                )
 
     vc_engine = case.get("vcEngine")
     if vc_engine is not None:
@@ -722,16 +889,24 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             metric_id = f"{case['caseId']}-MILESTONE-target-cash-flow-{index:02d}"
             metric = metrics.get(metric_id)
             if metric is None:
-                raise UnderwritingError(f"vc_target_cash_flow_metric_missing:{metric_id}")
+                raise UnderwritingError(
+                    f"vc_target_cash_flow_metric_missing:{metric_id}"
+                )
             if (
                 Decimal(metric["value"]) != Decimal(flow["amount_cents"])
                 or metric["period"] != flow["date"]
                 or metric["governing_receipt_sha256"] != milestone_receipt
             ):
-                raise UnderwritingError(f"vc_target_cash_flow_metric_mismatch:{metric_id}")
+                raise UnderwritingError(
+                    f"vc_target_cash_flow_metric_mismatch:{metric_id}"
+                )
         milestone_metric_values = {
-            f"{case['caseId']}-MILESTONE-target-invested": milestone["target_invested_cents"],
-            f"{case['caseId']}-MILESTONE-target-proceeds": milestone["target_proceeds_cents"],
+            f"{case['caseId']}-MILESTONE-target-invested": milestone[
+                "target_invested_cents"
+            ],
+            f"{case['caseId']}-MILESTONE-target-proceeds": milestone[
+                "target_proceeds_cents"
+            ],
             f"{case['caseId']}-MILESTONE-gross-xirr": milestone["gross_xirr"],
             f"{case['caseId']}-MILESTONE-gross-moic": milestone["gross_moic"],
         }
@@ -746,17 +921,20 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
                 raise UnderwritingError(f"vc_milestone_metric_mismatch:{metric_id}")
         for event in milestone["financing_events"]:
             metric_id = (
-                f"{case['caseId']}-MILESTONE-event-"
-                f"{event['event_id']}-new-money"
+                f"{case['caseId']}-MILESTONE-event-{event['event_id']}-new-money"
             )
             metric = metrics.get(metric_id)
             if metric is None:
-                raise UnderwritingError(f"vc_financing_event_metric_missing:{metric_id}")
+                raise UnderwritingError(
+                    f"vc_financing_event_metric_missing:{metric_id}"
+                )
             if (
                 Decimal(metric["value"]) != Decimal(event["new_money_cents"])
                 or metric["governing_receipt_sha256"] != milestone_receipt
             ):
-                raise UnderwritingError(f"vc_financing_event_metric_mismatch:{metric_id}")
+                raise UnderwritingError(
+                    f"vc_financing_event_metric_mismatch:{metric_id}"
+                )
 
     comparison_operators = {
         ">=": lambda observed, threshold: observed >= threshold,
@@ -830,13 +1008,34 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             raise UnderwritingError("decision_metric_display_mismatch")
 
     if case.get("vcEngine"):
+        desk_thresholds = case["vcEngine"]["desk_policy"]["thresholds"]
+        expected_desk_thresholds = {
+            "helios-hx-02-ordinary_nrr": Decimal(desk_thresholds["ordinary_cohort_nrr"])
+            * Decimal(100),
+            "helios-hx-01-gross_margin": Decimal(desk_thresholds["gross_margin"])
+            * Decimal(100),
+            "helios-hx-03-post_close_runway_floor": Decimal(
+                desk_thresholds["post_close_runway_months"]
+            ),
+            "helios-MILESTONE-gross-xirr": Decimal(desk_thresholds["gross_xirr"]),
+            "helios-MILESTONE-gross-moic": Decimal(desk_thresholds["gross_moic"]),
+            "helios-hx-09-probability_below_1x": Decimal(
+                desk_thresholds["maximum_probability_below_one"]
+            )
+            * Decimal(100),
+        }
+        for metric_id, expected_threshold in expected_desk_thresholds.items():
+            pair = pairs_by_id.get(metric_id)
+            if not pair or Decimal(pair["threshold_value"]) != expected_threshold:
+                raise UnderwritingError("vc_desk_policy_decision_pair_mismatch")
         loss_pair = pairs_by_id.get("helios-hx-09-probability_below_1x")
         if not loss_pair:
             raise UnderwritingError("vc_risk_policy_decision_pair_missing")
-        expected_loss_threshold_percent = (
-            Decimal(case["vcEngine"]["risk_policy"]["maximum_probability_below_one"])
-            * Decimal(100)
-        )
+        expected_loss_threshold_percent = Decimal(
+            case["vcEngine"]["desk_policy"]["thresholds"][
+                "maximum_probability_below_one"
+            ]
+        ) * Decimal(100)
         if (
             loss_pair["operator"] != "<="
             or Decimal(loss_pair["threshold_value"]) != expected_loss_threshold_percent
@@ -844,15 +1043,24 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             raise UnderwritingError("vc_risk_policy_decision_pair_mismatch")
 
     return_hurdles = [
-        pair for pair in pairs_by_id.values()
+        pair
+        for pair in pairs_by_id.values()
         if pair["designation"] == "BINDING"
         and ("gross-irr" in pair["metric_id"] or "gross-moic" in pair["metric_id"])
     ]
     if return_hurdles and (case.get("peEngine") or case.get("vcEngine")):
-        downside = case["peEngine"]["downside"] if case.get("peEngine") else case["vcEngine"]["downside"]
+        downside = (
+            case["peEngine"]["downside"]
+            if case.get("peEngine")
+            else case["vcEngine"]["downside"]
+        )
         if all(
             comparison_operators[pair["operator"]](
-                Decimal(downside["gross_xirr"] if "gross-irr" in pair["metric_id"] else downside["gross_moic"]),
+                Decimal(
+                    downside["gross_xirr"]
+                    if "gross-irr" in pair["metric_id"]
+                    else downside["gross_moic"]
+                ),
                 Decimal(pair["threshold_value"]),
             )
             for pair in return_hurdles
@@ -872,17 +1080,31 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             raise UnderwritingError("decision_condition_metric_orphan")
         if condition["designation"] == "INFORMATIONAL":
             if condition["state"] != "INFORMATIONAL":
-                raise UnderwritingError("decision_condition_information_designation_mismatch")
-            if any(pairs_by_id[metric_id]["designation"] != "INFORMATIONAL" for metric_id in metric_ids):
-                raise UnderwritingError("decision_condition_hurdle_designation_mismatch")
+                raise UnderwritingError(
+                    "decision_condition_information_designation_mismatch"
+                )
+            if any(
+                pairs_by_id[metric_id]["designation"] != "INFORMATIONAL"
+                for metric_id in metric_ids
+            ):
+                raise UnderwritingError(
+                    "decision_condition_hurdle_designation_mismatch"
+                )
             continue
-        if any(pairs_by_id[metric_id]["designation"] != "BINDING" for metric_id in metric_ids):
+        if any(
+            pairs_by_id[metric_id]["designation"] != "BINDING"
+            for metric_id in metric_ids
+        ):
             raise UnderwritingError("decision_condition_hurdle_designation_mismatch")
         if condition["state"] == "CLEARS_QUANTITATIVELY":
-            if not metric_ids or any(pairs_by_id[metric_id]["status"] != "CLEARS" for metric_id in metric_ids):
+            if not metric_ids or any(
+                pairs_by_id[metric_id]["status"] != "CLEARS" for metric_id in metric_ids
+            ):
                 raise UnderwritingError("decision_condition_false_clear")
         elif condition["state"] == "MISSES_HURDLE":
-            if not metric_ids or all(pairs_by_id[metric_id]["status"] == "CLEARS" for metric_id in metric_ids):
+            if not metric_ids or all(
+                pairs_by_id[metric_id]["status"] == "CLEARS" for metric_id in metric_ids
+            ):
                 raise UnderwritingError("decision_condition_false_miss")
             open_conditions += 1
         elif condition["state"] == "OPEN_DILIGENCE":
@@ -893,36 +1115,67 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             raise UnderwritingError("decision_condition_state_invalid")
     if case["decision"]["open_conditions"] != open_conditions:
         raise UnderwritingError("decision_open_condition_count_mismatch")
-    if any(
-        condition["designation"] == "BINDING" and condition["state"] == "MISSES_HURDLE"
-        for condition in condition_states
-    ) and case["decision"]["decision"] != "HOLD":
+    if (
+        any(
+            condition["designation"] == "BINDING"
+            and condition["state"] == "MISSES_HURDLE"
+            for condition in condition_states
+        )
+        and case["decision"]["decision"] != "HOLD"
+    ):
         raise UnderwritingError("binding_hurdle_miss_requires_hold")
 
     issue_summary = case["decision"].get("issue_summary")
-    if not isinstance(issue_summary, dict) or issue_summary.get("schema_version") != "underwriting.issue-summary/v1":
+    if (
+        not isinstance(issue_summary, dict)
+        or issue_summary.get("schema_version") != "underwriting.issue-summary/v1"
+    ):
         raise UnderwritingError("decision_issue_summary_missing")
     issues = issue_summary.get("issues")
     buckets = issue_summary.get("buckets")
     counts = issue_summary.get("counts")
-    if not isinstance(issues, list) or not isinstance(buckets, dict) or not isinstance(counts, dict):
+    if (
+        not isinstance(issues, list)
+        or not isinstance(buckets, dict)
+        or not isinstance(counts, dict)
+    ):
         raise UnderwritingError("decision_issue_summary_invalid")
     issue_ids = [item.get("issue_id") for item in issues if isinstance(item, dict)]
     if len(issue_ids) != len(issues) or len(issue_ids) != len(set(issue_ids)):
         raise UnderwritingError("decision_issue_duplicate")
     expected_buckets = {
-        "failed_quantitative_hurdles": [item["issue_id"] for item in issues if item["kind"] == "QUANTITATIVE_HURDLE" and item["state"] == "FAILED"],
-        "advancement_blockers": [item["issue_id"] for item in issues if item["blocks_advancement"]],
-        "pre_ic_requirements": [item["issue_id"] for item in issues if item["stage"] == "PRE_IC"],
-        "pre_signing_requirements": [item["issue_id"] for item in issues if item["stage"] == "PRE_SIGNING"],
-        "pre_debt_commitment_requirements": [item["issue_id"] for item in issues if item["stage"] == "PRE_DEBT_COMMITMENT"],
-        "nonblocking_diligence": [item["issue_id"] for item in issues if not item["blocks_advancement"]],
+        "failed_quantitative_hurdles": [
+            item["issue_id"]
+            for item in issues
+            if item["kind"] == "QUANTITATIVE_HURDLE" and item["state"] == "FAILED"
+        ],
+        "advancement_blockers": [
+            item["issue_id"] for item in issues if item["blocks_advancement"]
+        ],
+        "pre_ic_requirements": [
+            item["issue_id"] for item in issues if item["stage"] == "PRE_IC"
+        ],
+        "pre_signing_requirements": [
+            item["issue_id"] for item in issues if item["stage"] == "PRE_SIGNING"
+        ],
+        "pre_debt_commitment_requirements": [
+            item["issue_id"]
+            for item in issues
+            if item["stage"] == "PRE_DEBT_COMMITMENT"
+        ],
+        "nonblocking_diligence": [
+            item["issue_id"] for item in issues if not item["blocks_advancement"]
+        ],
     }
     if buckets != expected_buckets:
         raise UnderwritingError("decision_issue_bucket_mismatch")
     if counts != {key: len(value) for key, value in expected_buckets.items()}:
         raise UnderwritingError("decision_issue_count_mismatch")
-    if any(linked not in condition_ids for item in issues for linked in item["linked_condition_ids"]):
+    if any(
+        linked not in condition_ids
+        for item in issues
+        for linked in item["linked_condition_ids"]
+    ):
         raise UnderwritingError("decision_issue_condition_orphan")
 
     mappings_by_analysis: dict[str, dict[str, Any]] = {}
@@ -934,7 +1187,12 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
         analysis_id = mapping["source_analysis_id"]
         if analysis_id in mappings_by_analysis:
             raise UnderwritingError("evidence_mapping_duplicate")
-        if mapping.get("credit_tier") not in {"BASE_CASE", "VALUE_CREATION_BRIDGE", "SCENARIO_ONLY", "ZERO"}:
+        if mapping.get("credit_tier") not in {
+            "BASE_CASE",
+            "VALUE_CREATION_BRIDGE",
+            "SCENARIO_ONLY",
+            "ZERO",
+        }:
             raise UnderwritingError("evidence_mapping_credit_tier_invalid")
         mappings_by_analysis[analysis_id] = mapping
     analysis_ids = {item["analysis_id"] for item in case["analyses"]}
@@ -943,45 +1201,69 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
     for issue in issues:
         if issue["evidence_state"] not in {"PRESENT", "PARTIAL", "ABSENT"}:
             raise UnderwritingError("decision_issue_evidence_state_invalid")
-        if not issue["analysis_ids"] or not set(issue["analysis_ids"]).issubset(analysis_ids):
+        if not issue["analysis_ids"] or not set(issue["analysis_ids"]).issubset(
+            analysis_ids
+        ):
             raise UnderwritingError("decision_issue_analysis_orphan")
-        if not issue["evidence_metric_ids"] or not set(issue["evidence_metric_ids"]).issubset(metrics):
+        if not issue["evidence_metric_ids"] or not set(
+            issue["evidence_metric_ids"]
+        ).issubset(metrics):
             raise UnderwritingError("decision_issue_metric_orphan")
         if issue["evidence_state"] == "PRESENT" and not issue["evidence_metric_ids"]:
             raise UnderwritingError("decision_issue_present_without_evidence")
-    if case["caseId"] == "atlasgrid" and mappings_by_analysis["AG-08"]["credit_tier"] != "VALUE_CREATION_BRIDGE":
+    if (
+        case["caseId"] == "atlasgrid"
+        and mappings_by_analysis["AG-08"]["credit_tier"] != "VALUE_CREATION_BRIDGE"
+    ):
         raise UnderwritingError("ag08_base_case_credit_forbidden")
 
     formulas: dict[str, dict[str, Any]] = {}
     for formula in case["formulaRegistry"]:
-        _validate_named_hash(formula, "formula-registry-entry-v2.schema.json", "formula_sha256")
+        _validate_named_hash(
+            formula, "formula-registry-entry-v2.schema.json", "formula_sha256"
+        )
         formula_id = formula["formula_id"]
         if formula_id in formulas:
             raise UnderwritingError("formula_registry_duplicate")
         formulas[formula_id] = formula
-        if formula["output_metric_id"] not in metrics or not set(formula["operand_ids"]).issubset(metrics):
+        if formula["output_metric_id"] not in metrics or not set(
+            formula["operand_ids"]
+        ).issubset(metrics):
             raise UnderwritingError("formula_metric_orphan")
         output = metrics[formula["output_metric_id"]]
-        if output["formula_id"] != formula_id or output["operand_ids"] != formula["operand_ids"]:
+        if (
+            output["formula_id"] != formula_id
+            or output["operand_ids"] != formula["operand_ids"]
+        ):
             raise UnderwritingError("formula_output_binding_mismatch")
         if output["unit"] != formula["output_unit"]:
             raise UnderwritingError("formula_output_unit_mismatch")
         operation = formula["operation"]
         operand_units = [metrics[item]["unit"] for item in formula["operand_ids"]]
         same_unit_operations = {
-            "ADD", "SUBTRACT", "MIN", "MAX", "SUM", "SUM_POSITIVE", "ABS_SUM_NEGATIVE"
+            "ADD",
+            "SUBTRACT",
+            "MIN",
+            "MAX",
+            "SUM",
+            "SUM_POSITIVE",
+            "ABS_SUM_NEGATIVE",
         }
         if operation in same_unit_operations:
             units_valid = bool(operand_units) and all(
                 unit == output["unit"] for unit in operand_units
             )
         elif operation == "MULTIPLY":
-            units_valid = output["unit"] == "cents" and operand_units == ["cents", "multiple"]
+            units_valid = output["unit"] == "cents" and operand_units == [
+                "cents",
+                "multiple",
+            ]
         elif operation == "DIVIDE":
             units_valid = (
                 output["unit"] == "multiple" and operand_units == ["cents", "cents"]
             ) or (
-                output["unit"] == "decimal_rate" and operand_units == ["shares", "shares"]
+                output["unit"] == "decimal_rate"
+                and operand_units == ["shares", "shares"]
             )
         elif operation == "DATED_XIRR":
             units_valid = output["unit"] == "decimal_rate" and all(
@@ -1043,7 +1325,9 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             }[operation]
             draw_count, observed_index, *path_values = values
             if draw_count != len(path_values) or draw_count < 1:
-                raise UnderwritingError(f"formula_quantile_path_count_mismatch:{formula_id}")
+                raise UnderwritingError(
+                    f"formula_quantile_path_count_mismatch:{formula_id}"
+                )
             index = int(
                 ((draw_count - Decimal(1)) * probability).quantize(
                     Decimal("1"), rounding=ROUND_HALF_EVEN
@@ -1054,8 +1338,14 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             expected = sorted(path_values)[index]
         elif operation == "PROBABILITY_BELOW_ONE_PERCENT":
             if not values:
-                raise UnderwritingError(f"formula_probability_operands_empty:{formula_id}")
-            expected = Decimal(sum(value < 1 for value in values)) / Decimal(len(values)) * Decimal(100)
+                raise UnderwritingError(
+                    f"formula_probability_operands_empty:{formula_id}"
+                )
+            expected = (
+                Decimal(sum(value < 1 for value in values))
+                / Decimal(len(values))
+                * Decimal(100)
+            )
         else:
             expected = max(values)
         expected = expected.quantize(
@@ -1076,14 +1366,18 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
                 tolerance = Decimal("0.5")
             elif display == "<$1; immaterial" and abs(raw_value) < Decimal(100):
                 observed_display = raw_value
-            elif display in {"<$0.1M", "-<$0.1M"} and abs(raw_value) < Decimal(10_000_000):
+            elif display in {"<$0.1M", "-<$0.1M"} and abs(raw_value) < Decimal(
+                10_000_000
+            ):
                 observed_display = raw_value
             elif money_match:
                 decimals = len((money_match.group(2).split(".") + [""])[1])
                 observed_display = Decimal(money_match.group(2)) * Decimal(100_000_000)
                 if money_match.group(1):
                     observed_display = -observed_display
-                tolerance = Decimal(100_000_000) / (Decimal(2) * (Decimal(10) ** decimals))
+                tolerance = Decimal(100_000_000) / (
+                    Decimal(2) * (Decimal(10) ** decimals)
+                )
             else:
                 raise UnderwritingError(f"metric_display_invalid:{output['metric_id']}")
         elif unit in {"decimal_rate", "percent"}:
@@ -1101,8 +1395,13 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             decimals = len((multiple_match.group(1).split(".") + [""])[1])
             observed_display = Decimal(multiple_match.group(1))
             tolerance = Decimal(1) / (Decimal(2) * (Decimal(10) ** decimals))
-        if observed_display is not None and abs(observed_display - raw_value) > tolerance:
-            raise UnderwritingError(f"metric_display_value_mismatch:{output['metric_id']}")
+        if (
+            observed_display is not None
+            and abs(observed_display - raw_value) > tolerance
+        ):
+            raise UnderwritingError(
+                f"metric_display_value_mismatch:{output['metric_id']}"
+            )
 
     # Formula self-consistency alone is insufficient: a coherent attacker can
     # alter an engine-linked registry leaf, recompute every downstream formula,
@@ -1116,7 +1415,9 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
     for summary in case["summaryMetrics"]:
         metric = metrics.get(summary["metric_id"])
         if metric is None or metric["display_value"] != summary["value"]:
-            raise UnderwritingError(f"summary_metric_display_mismatch:{summary['metric_id']}")
+            raise UnderwritingError(
+                f"summary_metric_display_mismatch:{summary['metric_id']}"
+            )
     distribution_prefix = (
         f"{case['caseId']}-distribution-"
         if case.get("peEngine") is not None
@@ -1124,7 +1425,9 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
     )
     for index, visible_value in enumerate(case["returnsDistribution"]["moic"]):
         metric = metrics.get(f"{distribution_prefix}{index}")
-        if metric is None or Decimal(metric["display_value"].removesuffix("x")) != Decimal(str(visible_value)):
+        if metric is None or Decimal(
+            metric["display_value"].removesuffix("x")
+        ) != Decimal(str(visible_value)):
             raise UnderwritingError("returns_distribution_metric_mismatch")
 
     render_ids = case["renderManifest"]["metric_ids"]
@@ -1262,8 +1565,13 @@ def validate_workbench_case(case: dict[str, Any]) -> None:
     if is_v2:
         validate_v2_document(case, "workbench-case-v2.schema.json")
         _validate_editorial_contract(case)
-        _validate_hashed_v2_document(case["temporalScan"], "temporal-scan-v1.schema.json")
-        if case["temporalScan"]["cutoff"] != CUTOFF or case["decision"].get("as_of") != CUTOFF:
+        _validate_hashed_v2_document(
+            case["temporalScan"], "temporal-scan-v1.schema.json"
+        )
+        if (
+            case["temporalScan"]["cutoff"] != CUTOFF
+            or case["decision"].get("as_of") != CUTOFF
+        ):
             raise UnderwritingError("temporal_cutoff_mismatch")
         if any(receipt["cutoff"] != CUTOFF for receipt in case["analyses"]):
             raise UnderwritingError("analysis_cutoff_mismatch")
@@ -1275,7 +1583,9 @@ def validate_workbench_case(case: dict[str, Any]) -> None:
         raise UnderwritingError("analysis_digest_mismatch")
     artifacts = {item["artifact_id"]: item for item in case["artifacts"]}
     analyses = {item["analysis_id"]: item for item in case["analyses"]}
-    if len(artifacts) != len(case["artifacts"]) or len(analyses) != len(case["analyses"]):
+    if len(artifacts) != len(case["artifacts"]) or len(analyses) != len(
+        case["analyses"]
+    ):
         raise UnderwritingError("workbench_identifier_duplicate")
     decision = dict(case["decision"])
     decision_digest = decision.pop("decision_sha256", None)
@@ -1302,7 +1612,10 @@ def validate_workbench_case(case: dict[str, Any]) -> None:
     graph_nodes = {node["node_id"] for node in case["thesisGraph"]["nodes"]}
     if len(graph_nodes) != len(case["thesisGraph"]["nodes"]):
         raise UnderwritingError("thesis_graph_node_duplicate")
-    if any(edge["from"] not in graph_nodes or edge["to"] not in graph_nodes for edge in case["thesisGraph"]["edges"]):
+    if any(
+        edge["from"] not in graph_nodes or edge["to"] not in graph_nodes
+        for edge in case["thesisGraph"]["edges"]
+    ):
         raise UnderwritingError("thesis_graph_edge_orphan")
     graph_adjacency: dict[str, set[str]] = {node_id: set() for node_id in graph_nodes}
     for edge in case["thesisGraph"]["edges"]:
@@ -1332,7 +1645,9 @@ def validate_workbench_case(case: dict[str, Any]) -> None:
         receipt = analyses[item["analysis_id"]]
         input_ids = {source["artifact_id"] for source in receipt["inputs"]}
         output_names = {output["name"] for output in receipt["outputs"]}
-        if item["artifact_id"] not in input_ids or not set(item["output_names"]).issubset(output_names):
+        if item["artifact_id"] not in input_ids or not set(
+            item["output_names"]
+        ).issubset(output_names):
             raise UnderwritingError("lineage_operand_unbound")
         if not item["transformation"] or not item["downstream"]:
             raise UnderwritingError("lineage_explanation_missing")
@@ -1340,7 +1655,9 @@ def validate_workbench_case(case: dict[str, Any]) -> None:
         if not metric["lineage"] or not set(metric["lineage"]).issubset(lineage):
             raise UnderwritingError("headline_lineage_invalid")
     for scenario_item in case["scenarioBook"]["scenarios"]:
-        if not scenario_item["lineage"] or not set(scenario_item["lineage"]).issubset(lineage):
+        if not scenario_item["lineage"] or not set(scenario_item["lineage"]).issubset(
+            lineage
+        ):
             raise UnderwritingError("scenario_lineage_invalid")
     if case["distributionLineage"] not in lineage:
         raise UnderwritingError("distribution_lineage_invalid")

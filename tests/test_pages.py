@@ -141,6 +141,29 @@ def test_pages_refuse_stale_destination(tmp_path: Path) -> None:
         build(repo, destination, workbench)
 
 
+def test_pages_can_redirect_stale_root_to_the_canonical_https_product(tmp_path: Path) -> None:
+    repo = _candidate_repo(tmp_path)
+    workbench = tmp_path / "built-workbench"
+    workbench.mkdir()
+    (workbench / "index.html").write_text("<h1>Old experience</h1>")
+    destination = tmp_path / "pages"
+    build(repo, destination, workbench, canonical_url="https://desk.example/")
+    redirect = (destination / "index.html").read_text()
+    assert "Old experience" not in redirect
+    assert "https://desk.example/" in redirect
+    assert "Underwriting Desk has moved" in redirect
+
+
+@pytest.mark.parametrize("unsafe", ["http://desk.example/", "javascript:alert(1)", "https://user:pass@desk.example/"])
+def test_pages_reject_unsafe_canonical_redirects(tmp_path: Path, unsafe: str) -> None:
+    repo = _candidate_repo(tmp_path)
+    workbench = tmp_path / "built-workbench"
+    workbench.mkdir()
+    (workbench / "index.html").write_text("candidate")
+    with pytest.raises(ValueError, match="absolute HTTPS"):
+        build(repo, tmp_path / "pages", workbench, canonical_url=unsafe)
+
+
 def test_pages_reject_unsafe_visual_manifest_path(tmp_path: Path) -> None:
     repo = _candidate_repo(tmp_path)
     manifest_path = repo / "verification/visual-evidence.json"

@@ -9,6 +9,7 @@ import {
   loadAdmittedDeal,
   localCaseId,
   localWorkspaceSeed,
+  persistAdmittedDeal,
   serializeAdmittedDealBundle,
   validateAdmittedDeal,
   validateAdmittedDealBundle,
@@ -53,7 +54,7 @@ describe("portable admitted deal state", () => {
     expect(bundle.admittedDeal.analysis?.ordinaryNrr.toFixed(3)).toBe("0.836");
     expect(bundle.workspace.caseId).toMatch(/^local-northstar-metrics-[a-f0-9]{12}$/);
     installAdmittedDealBundle(bundle);
-    expect(loadAdmittedDeal()?.deal?.company).toBe("Northstar Metrics");
+    expect((await loadAdmittedDeal())?.deal?.company).toBe("Northstar Metrics");
     expect(loadWorkspace(caseId, workspace).issues[0].owner).toBeTruthy();
   });
 
@@ -80,6 +81,15 @@ describe("portable admitted deal state", () => {
     const raw = JSON.parse(serializeAdmittedDealBundle(result, workspace));
     raw.admittedDeal.analysis.grossMoic = 99;
     await expect(validateAdmittedDealBundle(JSON.stringify(raw))).rejects.toThrow(/calculations do not match/i);
+  });
+
+  it("replays browser-local admitted economics before restoring the deal", async () => {
+    const result = await admittedNorthstar();
+    persistAdmittedDeal(result);
+    const stored = JSON.parse(window.localStorage.getItem("underwriting-desk.admitted-deal.v1")!);
+    stored.analysis.grossMoic = 99;
+    window.localStorage.setItem("underwriting-desk.admitted-deal.v1", JSON.stringify(stored));
+    await expect(loadAdmittedDeal()).resolves.toBeNull();
   });
 
   it("rejects portable deletion or rewriting of canonical diligence and analysis", async () => {

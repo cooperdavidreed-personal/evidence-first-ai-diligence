@@ -72,7 +72,7 @@ function DealList({onOpen, onNew, onConnect, connection, localDeal, onOpenLocal,
   return <main className="deals-page" id="main-content">
     <header className="deals-header"><div><div className="brand-lockup"><span>U</span><strong>Underwriting Desk</strong></div><p>Evidence-linked underwriting where deterministic finance, policy and human judgment remain separate.</p></div><div><ModelConnectionButton connection={connection} onClick={onConnect} /><label className="file-button">Import deal<input type="file" accept="application/json,.json" onChange={(event) => onImportLocal(event.target.files?.[0])} /></label><button className="primary-button" type="button" data-testid="new-deal-button" onClick={onNew}>New deal</button></div></header>
     {importNotice ? <p className="import-notice" role="status">{importNotice}</p> : null}
-    <section className="deal-index" aria-labelledby="active-deals-heading"><div className="section-heading"><div><p className="eyebrow">Current pipeline</p><h1 id="active-deals-heading">Deals</h1></div><span>{caseCatalog.length + (localDeal ? 1 : 0)} active reviews</span></div><div className="deal-table" aria-label="Active deal reviews"><div className="deal-table-head" aria-hidden="true"><span>Company</span><span>Strategy</span><span>Owner</span><span>Stage</span><span>Posture</span><span>Blockers</span><span>Last activity</span><span>Next action</span></div>{localDeal ? <button type="button" className="deal-row" aria-label={`Open ${localDeal.deal?.company} — screening; ${localDeal.analysis?.tests.filter((test) => test.blocksAdvancement).length ?? "unknown"} blockers`} onClick={onOpenLocal}><span><strong>{localDeal.deal?.company}</strong><small>Supported Quick Package</small></span><span>Growth</span><span>{localDeal.deal?.analystOwner}</span><span>Screening</span><span className="posture posture-screening">Screening</span><span>{localDeal.analysis?.tests.filter((test) => test.blocksAdvancement).length ?? "—"}</span><span>Today</span><span>{localDeal.posture}</span></button> : null}{caseCatalog.map(dealButton)}</div></section>
+    <section className="deal-index" aria-labelledby="active-deals-heading"><div className="section-heading"><div><p className="eyebrow">Current pipeline</p><h1 id="active-deals-heading">Deals</h1></div><span>{caseCatalog.length + (localDeal ? 1 : 0)} active reviews</span></div><div className="deal-table" aria-label="Active deal reviews"><div className="deal-table-head" aria-hidden="true"><span>Company</span><span>Strategy</span><span>Owner</span><span>Stage</span><span>Posture</span><span>Blockers</span><span>Case date</span><span>Next action</span></div>{localDeal ? <button type="button" className="deal-row" aria-label={`Open ${localDeal.deal?.company} — screening; ${localDeal.analysis?.tests.filter((test) => test.blocksAdvancement).length ?? "unknown"} blockers`} onClick={onOpenLocal}><span><strong>{localDeal.deal?.company}</strong><small>Supported Quick Package</small></span><span>Growth</span><span>{localDeal.deal?.analystOwner}</span><span>Screening</span><span className="posture posture-screening">Screening</span><span>{localDeal.analysis?.tests.filter((test) => test.blocksAdvancement).length ?? "—"}</span><span>{formatHumanDate(`${localDeal.deal?.cutoff}T12:00:00Z`)}</span><span>{localDeal.posture}</span></button> : null}{caseCatalog.map(dealButton)}</div></section>
     <section className="intake-callout"><div><p className="eyebrow">Test with your own package</p><h2>Growth SaaS Quick Package</h2><p>Upload four declared files. Validation and calculations stay in the browser. Uploaded thresholds never become fund policy.</p></div><button className="secondary-button" type="button" onClick={onNew}>Open intake</button></section>
     <footer className="public-boundary">Public demonstration with fictional companies and synthetic records. Not investment advice. Do not upload confidential information.</footer>
   </main>;
@@ -101,7 +101,7 @@ function assumptionsFor(caseData: CaseData): AssumptionDefinition[] {
 function workspaceSeed(caseData: CaseData): WorkspaceSeed {
   const issues = caseData.decision.issue_summary.issues.map((issue) => ({id: issue.issue_id, title: issue.title, description: issue.consequence, owner: issue.owner, priority: issue.materiality, status: issue.state === "CLEARED" ? "RESOLVED" as const : "OPEN" as const, dueDate: null, decisionImpact: issue.consequence, evidenceRefs: [...issue.evidence_metric_ids, ...issue.analysis_ids], resolution: issue.state === "CLEARED" ? "Cleared in the retained canonical case." : null}));
   const blocker = caseData.decision.issue_summary.issues.find((issue) => issue.blocks_advancement);
-  return {caseId: caseData.caseId, issues, memoSections: [
+  return {caseId: caseData.caseId, issues, lockedIssueIds: caseData.decision.issue_summary.issues.filter((issue) => issue.kind === "QUANTITATIVE_HURDLE").map((issue) => issue.issue_id), memoSections: [
     {sectionId: "recommendation", title: "Recommendation and rationale", body: caseData.decision.rationale, provenance: "DETERMINISTIC_ANALYSIS", updatedBy: "Financial model"},
     {sectionId: "economics", title: "Economics", body: caseData.summaryMetrics.slice(0, 4).map((metric) => `${metric.label}: ${metric.value}`).join(" · "), provenance: "DETERMINISTIC_ANALYSIS", updatedBy: "Financial model"},
     {sectionId: "downside", title: "Downside and what must be true", body: [blocker?.consequence ?? "No declared blocking issue.", ...caseData.decision.path_to_yes].map(sentence).join(" "), provenance: "ANALYST_JUDGMENT", updatedBy: "Deal team"},
@@ -139,17 +139,19 @@ function EconometricTest({caseData, openMetric}: {caseData: CaseData; openMetric
   const analysisId = caseData.caseId === "helios" ? "HX-06" : "AG-07";
   const analysis = caseData.analyses.find((item) => item.analysis_id === analysisId)!;
   const primaryOutput = analysis.outputs[0];
-  const registry = caseData.metricRegistry.find((metric) => metric.metric_id.includes(analysisId) && metric.display_value);
+  const registry = caseData.metricRegistry.find((metric) => metric.metric_id.startsWith(`${caseData.caseId}-${analysisId.toLowerCase()}-`) && metric.display_value);
   const estimate = Number(primaryOutput?.value ?? 0);
-  const effect = Math.expm1(estimate);
+  const effect = primaryOutput?.unit === "log_points" ? Math.expm1(estimate) : estimate / 100;
   const measuredDirection = Math.abs(effect) < 0.00005 ? "neutral" : effect < 0 ? "negative" : "positive";
   const decisionSignal = measuredDirection === "neutral" ? "neutral" : caseData.caseId === "helios" ? measuredDirection === "negative" ? "favorable" : "adverse" : measuredDirection === "negative" ? "adverse" : "favorable";
   const heliosHeading = measuredDirection === "negative" ? "Optimizer test reduced unit compute cost" : measuredDirection === "positive" ? "Optimizer test increased unit compute cost" : "Optimizer test did not change unit compute cost";
   const heliosFinding = measuredDirection === "negative" ? `${Math.abs(effect * 100).toFixed(1)}% less compute per workload in the planted randomized test.` : measuredDirection === "positive" ? `${Math.abs(effect * 100).toFixed(1)}% more compute per workload in the planted randomized test.` : "The planted randomized test found no measurable difference in compute per workload.";
-  const finding = caseData.caseId === "helios" ? heliosFinding : "The synthetic randomized pricing test reduced renewal at the higher offer.";
+  const atlasHeading = measuredDirection === "negative" ? "Higher renewal pricing reduced conversion" : measuredDirection === "positive" ? "Higher renewal pricing increased conversion" : "Higher renewal pricing did not change conversion";
+  const atlasFinding = measuredDirection === "negative" ? `${Math.abs(estimate).toFixed(1)} percentage points lower renewal conversion at the higher offer in the planted randomized test.` : measuredDirection === "positive" ? `${Math.abs(estimate).toFixed(1)} percentage points higher renewal conversion at the higher offer in the planted randomized test.` : "The planted randomized pricing test found no measurable difference in renewal conversion.";
+  const finding = caseData.caseId === "helios" ? heliosFinding : atlasFinding;
   const consequence = caseData.caseId === "helios" ? "No base-case savings credit until the result replicates against production provider invoices." : "No pricing upside credit in the selected buyout structure.";
-  const metric = registry ? {metric_id: registry.metric_id, label: registry.label, value: registry.display_value, detail: finding, classification: registry.classification, lineage: registry.source_locator_ids, registry} as Metric : caseData.summaryMetrics[0];
-  return <section className="workspace-card empirical-test" aria-labelledby="empirical-test-heading"><div className="section-heading"><div><p className="eyebrow">Assumption test</p><h2 id="empirical-test-heading">{caseData.caseId === "helios" ? heliosHeading : "Higher renewal pricing reduced conversion"}</h2></div><span>{decisionSignal === "favorable" ? "Supports the assumption" : decisionSignal === "adverse" ? "Adverse signal" : "No measured effect"}</span></div><div className="empirical-summary"><article><span>What it found</span><p>{finding}</p></article><article><span>How it changes underwriting</span><p>{consequence}</p></article><article><span>What it does not establish</span><p>A planted effect in fictional records does not establish a real-company effect, forecast or investment outcome.</p></article></div><button type="button" className="secondary-button" onClick={(event) => openMetric(metric, event.currentTarget)}>Inspect evidence and calculation</button><details><summary>Method and uncertainty</summary><dl><div><dt>Business question</dt><dd>{analysis.question}</dd></div><div><dt>Population</dt><dd>{analysis.population}</dd></div><div><dt>Method</dt><dd>{analysis.method}</dd></div><div><dt>Primary output</dt><dd>{primaryOutput ? `${primaryOutput.value} ${primaryOutput.unit.replaceAll("_", " ")}` : "No estimate"}</dd></div><div><dt>Diagnostics</dt><dd>{analysis.diagnostics.map((item) => `${item.name.replaceAll("_", " ")}: ${item.value}`).join(" · ")}</dd></div></dl></details></section>;
+  const metric = registry ? {metric_id: registry.metric_id, label: caseData.caseId === "helios" ? "Optimizer test effect" : "Renewal-pricing test effect", value: registry.display_value, detail: finding, classification: registry.classification, lineage: registry.source_locator_ids, registry} as Metric : caseData.summaryMetrics[0];
+  return <section className="workspace-card empirical-test" aria-labelledby="empirical-test-heading"><div className="section-heading"><div><p className="eyebrow">Assumption test</p><h2 id="empirical-test-heading">{caseData.caseId === "helios" ? heliosHeading : atlasHeading}</h2></div><span>{decisionSignal === "favorable" ? "Supports the assumption" : decisionSignal === "adverse" ? "Adverse signal" : "No measured effect"}</span></div><div className="empirical-summary"><article><span>What it found</span><p>{finding}</p></article><article><span>How it changes underwriting</span><p>{consequence}</p></article><article><span>What it does not establish</span><p>A planted effect in fictional records does not establish a real-company effect, forecast or investment outcome.</p></article></div><button type="button" className="secondary-button" onClick={(event) => openMetric(metric, event.currentTarget)}>Inspect evidence and calculation</button><details><summary>Method and uncertainty</summary><dl><div><dt>Business question</dt><dd>{analysis.question}</dd></div><div><dt>Population</dt><dd>{analysis.population}</dd></div><div><dt>Method</dt><dd>{analysis.method}</dd></div><div><dt>Primary output</dt><dd>{primaryOutput ? `${primaryOutput.value} ${primaryOutput.unit.replaceAll("_", " ")}` : "No estimate"}</dd></div><div><dt>Diagnostics</dt><dd>{analysis.diagnostics.map((item) => `${item.name.replaceAll("_", " ")}: ${item.value}`).join(" · ")}</dd></div></dl></details></section>;
 }
 
 function DecisionRail({caseData, view, state}: {caseData: CaseData; view: DealView; state: ReturnType<typeof useDealWorkspace>["state"]}) {
@@ -174,7 +176,7 @@ function Diligence({caseData, state, update, modelTransport, connection, openMet
   const profile = caseData.caseId === "helios" ? HELIOS_SCREEN_POLICY : ATLAS_SCREEN_POLICY;
   const tabs = [{id: "issues", label: `Issues · ${state.issues.filter((issue) => issue.status !== "RESOLVED").length}`}, {id: "assumptions", label: "Assumptions"}, {id: "policy", label: "Policy"}, {id: "test", label: "Assumption test"}, {id: "model", label: "Model review"}] as const;
   const content = section === "issues"
-    ? <DiligenceWorklist state={state} update={update} />
+    ? <DiligenceWorklist state={state} update={update} lockedIssueIds={new Set(workspaceSeed(caseData).lockedIssueIds ?? [])} />
     : section === "assumptions"
       ? <AssumptionRegistry assumptions={assumptionsFor(caseData)} state={state} update={update} />
       : section === "policy"
@@ -222,14 +224,14 @@ function DealShell({caseData, view, onNavigate, onChooseDeal, onDeals, onConnect
 
 export default function App({initialCase, initialRoute, loadCaseFn = loadCase}: {initialCase: CaseData; initialRoute: RouteState; loadCaseFn?: (caseId: CaseId) => Promise<CaseData>}) {
   const [caseData, setCaseData] = useState(initialCase);
-  const [localDeal, setLocalDeal] = useState<IntakeResult | null>(() => loadAdmittedDeal());
-  const missingInitialLocal = useRef(initialRoute.caseId === "local" && !localDeal).current;
-  const [view, setView] = useState<RouteView>(missingInitialLocal ? "deals" : initialRoute.view);
-  const [loading, setLoading] = useState(false);
+  const initialLocalRoute = useRef(initialRoute.caseId === "local").current;
+  const [localDeal, setLocalDeal] = useState<IntakeResult | null>(null);
+  const [view, setView] = useState<RouteView>(initialRoute.view);
+  const [loading, setLoading] = useState(initialLocalRoute);
   const [loadError, setLoadError] = useState(false);
   const [intakeOpen, setIntakeOpen] = useState(false);
-  const [activeLocal, setActiveLocal] = useState(initialRoute.caseId === "local" && Boolean(localDeal));
-  const [importNotice, setImportNotice] = useState(missingInitialLocal ? "The local deal is unavailable in this browser. Import its portable deal file or run intake again." : "");
+  const [activeLocal, setActiveLocal] = useState(false);
+  const [importNotice, setImportNotice] = useState("");
   const [localPersistenceNotice, setLocalPersistenceNotice] = useState("");
   const [connection, setConnection] = useState<ConnectionState | null>(null);
   const [connectionOpen, setConnectionOpen] = useState(false);
@@ -251,18 +253,42 @@ export default function App({initialCase, initialRoute, loadCaseFn = loadCase}: 
     finally { if (sequence === requestSequence.current) setLoading(false); }
   }, [caseData, loadCaseFn]);
   useEffect(() => {
+    let cancelled = false;
+    void loadAdmittedDeal().then((restored) => {
+      if (cancelled) return;
+      setLocalDeal(restored);
+      if (!initialLocalRoute) return;
+      if (restored) {
+        setActiveLocal(true);
+        setView(initialRoute.view);
+        window.scrollTo(0, 0);
+      } else {
+        setImportNotice("The local deal failed source replay or is unavailable in this browser. Import its portable deal file or run intake again.");
+        setActiveLocal(false);
+        setView("deals");
+        window.history.replaceState(null, "", "#/");
+        window.scrollTo(0, 0);
+      }
+    }).finally(() => {if (!cancelled && initialLocalRoute) setLoading(false);});
+    return () => {cancelled = true;};
+  }, [initialLocalRoute, initialRoute.view]);
+  useEffect(() => {
     const sync = () => {
       const route = parseRoute();
       if (route.view === "deals") {setActiveLocal(false); setView("deals"); window.scrollTo(0, 0); return;}
-      if (route.caseId === "local") {const restored = loadAdmittedDeal(); if (restored) {setLocalDeal(restored); setActiveLocal(true); setView(route.view); window.scrollTo(0, 0);} else {setImportNotice("The local deal is unavailable in this browser. Import its portable deal file or run intake again."); returnToDeals();} return;}
+      if (route.caseId === "local") {
+        setLoading(true);
+        void loadAdmittedDeal().then((restored) => {
+          if (restored) {setLocalDeal(restored); setActiveLocal(true); setView(route.view); window.scrollTo(0, 0);}
+          else {setImportNotice("The local deal failed source replay or is unavailable in this browser. Import its portable deal file or run intake again."); setActiveLocal(false); setView("deals"); window.history.replaceState(null, "", "#/"); window.scrollTo(0, 0);}
+        }).finally(() => setLoading(false));
+        return;
+      }
       void openRetainedDeal(route.caseId, route.view, "replace");
     };
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
   }, [openRetainedDeal]);
-  useEffect(() => {
-    if (missingInitialLocal) window.history.replaceState(null, "", "#/");
-  }, [missingInitialLocal]);
   useEffect(() => {
     if (!routeFocusReady.current) { routeFocusReady.current = true; return; }
     const frame = window.requestAnimationFrame(() => {

@@ -4,7 +4,9 @@ import argparse
 import hashlib
 import json
 import shutil
+from html import escape
 from pathlib import Path
+from urllib.parse import urlparse
 
 from ic_evidence_lab.canonical import canonical_json
 try:
@@ -42,6 +44,7 @@ def build(
     workbench_dist: Path,
     *,
     include_demo: bool = False,
+    canonical_url: str | None = None,
 ) -> None:
     index = workbench_dist / "index.html"
     if not index.is_file():
@@ -59,6 +62,19 @@ def build(
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
         staged.append((target, "v2-workbench"))
+    if canonical_url is not None:
+        parsed = urlparse(canonical_url)
+        if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
+            raise ValueError("canonical redirect URL must be an absolute HTTPS URL")
+        safe_url = escape(canonical_url, quote=True)
+        redirect = (
+            "<!doctype html><html lang=en><head><meta charset=utf-8>"
+            "<meta name=viewport content='width=device-width,initial-scale=1'>"
+            f"<meta http-equiv=refresh content='0;url={safe_url}'>"
+            f"<link rel=canonical href='{safe_url}'><title>Underwriting Desk</title></head>"
+            f"<body><main><h1>Underwriting Desk has moved</h1><p><a href='{safe_url}'>Open the canonical application</a>.</p></main></body></html>"
+        )
+        (destination / "index.html").write_text(redirect, encoding="utf-8")
     (destination / ".nojekyll").write_text("", encoding="utf-8")
     staged.append((destination / ".nojekyll", "pages-control"))
 
@@ -174,6 +190,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", default="dist/pages")
     parser.add_argument("--workbench-dist", default="workbench/dist")
+    parser.add_argument(
+        "--canonical-url",
+        default="https://underwriting-desk-delta.vercel.app/",
+        help="Replace the Pages root with a safe redirect while retaining release artifacts.",
+    )
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
     destination = Path(args.out)
@@ -182,7 +203,13 @@ def main() -> int:
     workbench_dist = Path(args.workbench_dist)
     if not workbench_dist.is_absolute():
         workbench_dist = repo / workbench_dist
-    build(repo, destination, workbench_dist, include_demo=True)
+    build(
+        repo,
+        destination,
+        workbench_dist,
+        include_demo=True,
+        canonical_url=args.canonical_url,
+    )
     print(json.dumps({"status": "PRODUCED", "path": str(destination)}, sort_keys=True))
     return 0
 

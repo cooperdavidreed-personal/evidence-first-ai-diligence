@@ -120,7 +120,8 @@ table, .overview-metrics strong, .finance-kpi strong, .canonical-comparison stro
 
 .finance-workspace { min-width: 0; display: grid; gap: 18px; margin-top: 24px; }
 .finance-section { min-width: 0; }
-.scenario-command { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 28px; align-items: end; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+.scenario-command { display: grid; grid-template-columns: minmax(270px,.75fr) minmax(0,1.65fr); gap: 28px; align-items: end; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+.scenario-command > div:first-child p:last-child { max-width: 42ch; }
 .scenario-controls { display: flex; flex-wrap: wrap; gap: 2px; }
 .scenario-controls button { min-height: 36px; border: 0; border-bottom: 2px solid transparent; padding: 7px 11px; background: transparent; color: var(--muted); cursor: pointer; }
 .scenario-controls button[aria-pressed="true"] { border-bottom-color: var(--cobalt); color: var(--ink); font-weight: 700; }
@@ -137,6 +138,10 @@ table, .overview-metrics strong, .finance-kpi strong, .canonical-comparison stro
 .bridge-equation span, .sensitivity-outcome span, .risk-result span, .preview-summary span { display: block; color: var(--muted); font-size: 12px; }
 .bridge-equation strong, .sensitivity-outcome strong, .risk-result strong, .preview-summary strong { display: block; margin-top: 4px; font-variant-numeric: tabular-nums; }
 .cash-chart, .tape-chart { overflow-x: auto; }
+.financing-events { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1px; margin-top: 12px; border: 1px solid var(--line); background: var(--line); }
+.financing-events article { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 10px; align-items: baseline; padding: 10px 12px; background: var(--surface); }
+.financing-events article span, .financing-events article small { color: var(--muted); font-size: 12px; }
+.financing-events article strong { text-transform: capitalize; }
 .sensitivity-controls, .risk-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-bottom: 14px; }
 .sensitivity-controls label, .risk-controls label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; }
 .sensitivity-controls select, .risk-controls select, .risk-controls input { min-height: 36px; border: 1px solid var(--line-dark); border-radius: 2px; padding: 6px 9px; background: white; }
@@ -253,11 +258,11 @@ table, .overview-metrics strong, .finance-kpi strong, .canonical-comparison stro
 @media (max-width: 1120px) {
   .workspace-layout { grid-template-columns: 1fr; }
   .decision-rail { position: static; grid-row: 1; min-height: auto; max-height: none; border-left: 0; border-bottom: 1px solid var(--line); padding: 18px 26px; }
+  .deal-main { grid-row: 2; }
   .decision-rail dl { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
   .decision-rail dl > div { display: block; border-bottom: 0; }
   .decision-rail dd { max-width: none; margin-top: 4px; text-align: left; }
   .decision-rail section { display: inline-block; width: 49%; vertical-align: top; padding-right: 20px; }
-  .decision-rail, .deal-main { grid-row: auto; }
   .documents-workspace, .memo-workspace, .split-finance, .scenario-command { grid-template-columns: 1fr; }
   .memo-actions { position: static; }
   .overview-metrics { grid-template-columns: repeat(3,minmax(0,1fr)); }
@@ -303,6 +308,7 @@ table, .overview-metrics strong, .finance-kpi strong, .canonical-comparison stro
   .worklist-row > summary { grid-template-columns: 1fr auto; gap: 6px; padding: 10px 0; }
   .worklist-row > summary > span:nth-child(n+3) { display: none; }
   .canonical-comparison, .bridge-equation, .sensitivity-outcome, .risk-result, .preview-summary { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .financing-events { grid-template-columns: 1fr; }
   .canonical-comparison article + article { border-left: 0; border-top: 1px solid var(--line); }
   .document-register .source-list { max-height: 360px; }
   .memo-editor { padding: 22px 18px; }
@@ -617,8 +623,9 @@ code { overflow-wrap: anywhere; font-family: "SFMono-Regular", Consolas, monospa
   .deal-topbar label { margin-left: auto; }
   .deal-topbar label > span, .topbar-meta { display: none; }
   .deal-topbar select { width: min(48vw, 220px); min-width: 0; padding: 7px; }
-  .deal-topbar .connection-button { width: 34px; justify-content: center; overflow: hidden; padding: 9px 12px; color: transparent; }
-  .deal-topbar .connection-dot { flex: 0 0 auto; }
+  .deal-topbar .connection-button { width: auto; justify-content: center; overflow: visible; padding: 7px 9px; color: var(--cobalt); font-size: 11px; }
+  .deal-topbar .connection-dot, .deal-topbar .connection-label { display: none; }
+  .deal-topbar .connection-button::after { content: "Models"; }
   .mobile-nav { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); overflow: visible; border-bottom: 1px solid var(--line); padding: 0 6px; background: var(--paper); }
   .mobile-nav button { min-width: 0; min-height: 42px; border: 0; border-bottom: 2px solid transparent; padding: 7px 2px; background: transparent; color: var(--muted); font-size: 11px; line-height: 1.15; white-space: normal; }
   .mobile-nav button.active { border-bottom-color: var(--cobalt); color: var(--ink); font-weight: 600; }

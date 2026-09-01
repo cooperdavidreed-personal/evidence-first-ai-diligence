@@ -33,8 +33,8 @@ describe("Underwriting Desk investor workspace", () => {
   it("fails closed when a direct local-deal route has no admitted deal", async () => {
     window.history.replaceState(null, "", "/#/v3/local/financials");
     render(<App />);
-    expect(screen.getByRole("heading", {name: "Deals"})).toBeInTheDocument();
-    expect(screen.getByText(/local deal is unavailable in this browser/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", {name: "Deals"})).toBeInTheDocument();
+    expect(screen.getByText(/local deal .*unavailable in this browser/i)).toBeInTheDocument();
     expect(screen.queryByRole("heading", {name: "AtlasGrid Systems"})).not.toBeInTheDocument();
     await waitFor(() => expect(window.location.hash).toBe("#/"));
   });
@@ -51,8 +51,8 @@ describe("Underwriting Desk investor workspace", () => {
   it("opens a model connection center that explains the Desk-model boundary", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", {name: "Connect model"}));
-    expect(screen.getByRole("dialog", {name: "Use your model without giving it the books"})).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: "Model options"}));
+    expect(screen.getByRole("dialog", {name: "Governed review, without handing over the case"})).toBeInTheDocument();
     expect(screen.getByRole("heading", {name: "One deal record. Replaceable models."})).toBeInTheDocument();
     expect(screen.getByText(/No provider keys are collected/)).toBeInTheDocument();
   });
@@ -111,6 +111,18 @@ describe("Underwriting Desk investor workspace", () => {
     expect(screen.getByText("How it changes underwriting")).toBeInTheDocument();
     expect(screen.getByText("What it does not establish")).toBeInTheDocument();
     expect(screen.getByText("Method and uncertainty").closest("details")).not.toHaveAttribute("open");
+    await user.click(screen.getByRole("button", {name: "Inspect evidence and calculation"}));
+    expect(screen.getByRole("dialog", {name: "Optimizer test effect"})).toBeInTheDocument();
+  });
+
+  it("opens the pricing-test lineage rather than an unrelated return metric", async () => {
+    window.history.replaceState(null, "", "/#/v3/atlasgrid/diligence");
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", {name: "Assumption test"}));
+    expect(screen.getByText(/6.7 percentage points lower renewal conversion/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: "Inspect evidence and calculation"}));
+    expect(screen.getByRole("dialog", {name: "Renewal-pricing test effect"})).toBeInTheDocument();
   });
 
   it("fails closed with a readable boundary when retained analysis is incomplete", async () => {

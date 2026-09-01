@@ -79,22 +79,21 @@ test("Deals is a calm product root with no critical accessibility or overflow fi
 
 test("model connection center separates governed MCP from in-desk inference", async ({page}, testInfo: TestInfo) => {
   await page.goto("/", {waitUntil: "networkidle"});
-  await page.getByRole("button", {name: "Connect model"}).click();
-  await expect(page.getByRole("dialog", {name: "Use your model without giving it the books"})).toBeVisible();
+  await page.getByRole("button", {name: "Model options"}).click();
+  await expect(page.getByRole("dialog", {name: "Governed review, without handing over the case"})).toBeVisible();
   await expect(page.getByRole("heading", {name: "One deal record. Replaceable models."})).toBeVisible();
   await expect(page.getByText("Validated source package and lineage")).toBeVisible();
   await expect(page.getByText("Countertheses and missing diligence")).toBeVisible();
   let scan = await accessibilitySnapshot(page);
   await captureVisualEvidence(page, `${testInfo.project.name}-model-connection-approach.png`, true);
   await page.getByRole("button", {name: "Continue"}).click();
-  await page.getByRole("radio", {name: /ChatGPT/}).click();
+  await expect(page.getByRole("heading", {name: "Keep provider credentials out of the browser"})).toBeVisible();
   await page.getByRole("button", {name: "Continue"}).click();
-  await expect(page.getByRole("heading", {name: "A hosted connector is required"})).toBeVisible();
-  await expect(page.getByText(/not a remotely reachable authenticated server/)).toBeVisible();
+  await expect(page.getByRole("heading", {name: "Run a bounded challenge from Diligence"})).toBeVisible();
   await expect(page.getByText(/No provider keys are collected/)).toBeVisible();
   scan = await accessibilitySnapshot(page);
-  await captureVisualEvidence(page, `${testInfo.project.name}-model-connection-hosted-boundary.png`, true);
-  writeAccessibilityEvidence(`${testInfo.project.name}-model-connection.json`, {boundary: "Connection-wizard route evidence only; no live provider, remote MCP, credential, or comprehensive WCAG claim.", project: testInfo.project.name, scans: [{view: "Hosted connector boundary", ...scan}], viewport: page.viewportSize()});
+  await captureVisualEvidence(page, `${testInfo.project.name}-model-connection-governed-review.png`, true);
+  writeAccessibilityEvidence(`${testInfo.project.name}-model-connection.json`, {boundary: "Connection-wizard route evidence only; hosted inference is verified separately, and no remote MCP, credential, or comprehensive WCAG claim is made here.", project: testInfo.project.name, scans: [{view: "Governed review boundary", ...scan}], viewport: page.viewportSize()});
 });
 
 test("bounded hosted model proposal requires evidence confirmation and named human acceptance", async ({page}, testInfo: TestInfo) => {
@@ -233,7 +232,7 @@ test("mobile controls expose every diligence tab, heatmap edge, and source-cell 
   }
   await page.locator(".mobile-workspace-selector select").selectOption("model");
   await expect(page.getByRole("heading", {name: "Challenge selected evidence"})).toBeVisible();
-  await expect(page.getByText(/Hosted Claude synthetic reviewer/)).toBeVisible();
+  await expect(page.getByText(/Server-side review adapter/)).toBeVisible();
   await page.getByRole("combobox", {name: "Deal"}).selectOption("atlasgrid");
   await expect(page.getByRole("heading", {name: "AtlasGrid Systems"})).toBeVisible();
   await (await visibleDealNavigation(page)).getByRole("button", {name: "Financials"}).click();

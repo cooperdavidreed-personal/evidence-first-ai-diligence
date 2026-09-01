@@ -88,6 +88,7 @@ export interface WorkspaceSeed {
   issues: Array<Omit<DiligenceIssueState, "createdAt" | "updatedAt" | "resolvedBy">>;
   memoSections: Array<Omit<MemoSectionState, "updatedAt">>;
   scenarioValues?: Record<string, string>;
+  lockedIssueIds?: string[];
 }
 
 export interface WorkspaceScenarioContract {
@@ -98,6 +99,7 @@ export interface WorkspaceIntegrityContract {
   requiredIssues: Array<Pick<DiligenceIssueState, "id" | "title" | "description" | "decisionImpact" | "evidenceRefs">>;
   requiredMemoSections: Array<Pick<MemoSectionState, "sectionId" | "title" | "body" | "provenance" | "updatedBy">>;
   policyOverrideRoles: Record<string, string>;
+  lockedIssueIds: string[];
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -157,6 +159,7 @@ export function createWorkspaceIntegrityContract(seed: WorkspaceSeed, policyOver
     requiredIssues: seed.issues.map(({id, title, description, decisionImpact, evidenceRefs}) => ({id, title, description, decisionImpact, evidenceRefs: [...evidenceRefs]})),
     requiredMemoSections: seed.memoSections.map(({sectionId, title, body, provenance, updatedBy}) => ({sectionId, title, body, provenance, updatedBy})),
     policyOverrideRoles: {...policyOverrideRoles},
+    lockedIssueIds: [...(seed.lockedIssueIds ?? [])],
   };
 }
 
@@ -215,6 +218,10 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
       const actual = issueById.get(required.id);
       if (!actual) throw new Error(`Canonical diligence issue ${required.id} cannot be deleted`);
       if (actual.title !== required.title || actual.description !== required.description || actual.decisionImpact !== required.decisionImpact || JSON.stringify(actual.evidenceRefs) !== JSON.stringify(required.evidenceRefs)) throw new Error(`Canonical diligence issue ${required.id} has immutable source fields`);
+    }
+    for (const issueId of integrityContract.lockedIssueIds) {
+      const actual = issueById.get(issueId);
+      if (!actual || actual.status === "RESOLVED" || actual.resolution || actual.resolvedBy) throw new Error(`Quantitative hurdle ${issueId} cannot be resolved through the diligence issue log`);
     }
   }
   if (!Array.isArray(raw.proposals) || raw.proposals.length > MAX_ITEMS) throw new Error("Workspace proposals are invalid");
@@ -283,7 +290,12 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
     if (section.provenance === "HUMAN_ACCEPTED_MODEL_PROPOSAL") {
       if (!section.sourceProposalId || proposalById.get(section.sourceProposalId)?.state !== "ACCEPTED") throw new Error(`Memo section ${section.sectionId} does not reference an accepted model proposal`);
       proposalMemoRefs.push(section.sourceProposalId);
-    } else if (section.sourceProposalId) throw new Error(`Memo section ${section.sectionId} has model provenance without an accepted-model classification`);
+    } else if (section.sourceProposalId) {
+      const sourceProposal = proposalById.get(section.sourceProposalId);
+      const validHumanRevision = section.provenance === "ANALYST_JUDGMENT" && section.sourceProvenance === "HUMAN_ACCEPTED_MODEL_PROPOSAL" && section.sourceBody === sourceProposal?.body && sourceProposal?.state === "ACCEPTED";
+      if (!validHumanRevision) throw new Error(`Memo section ${section.sectionId} has invalid edited-model provenance`);
+      proposalMemoRefs.push(section.sourceProposalId);
+    }
   }
   assertUnique(proposalMemoRefs, "Memo source proposal");
   if (!record(raw.scenarioValues) || Object.keys(raw.scenarioValues).length > 64 || Object.values(raw.scenarioValues).some((item) => typeof item !== "string" || item.length > 120)) throw new Error("Workspace scenario values are invalid");
