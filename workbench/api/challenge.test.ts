@@ -1,7 +1,7 @@
 // @vitest-environment node
 import {createHash} from "node:crypto";
 import {describe, expect, it} from "vitest";
-import {admitRateWindow, validateBrowserBoundary, validateChallengeOutput, validateChallengeRequest} from "./challenge";
+import handler, {admitRateWindow, validateBrowserBoundary, validateChallengeOutput, validateChallengeRequest} from "./challenge";
 
 const evidence = [{id: "metric-runway", title: "Runway", displayValue: "19.1 months", summary: "Cash divided by average signed net burn."}];
 function request(overrides: Record<string, unknown> = {}) {
@@ -38,5 +38,13 @@ describe("hosted synthetic evidence challenge boundary", () => {
     expect(() => validateBrowserBoundary(new Request("https://desk.example/api/challenge", {method: "POST", headers: {origin: "https://other.example"}}))).toThrow(/same-origin/i);
     for (let index = 0; index < 5; index += 1) expect(admitRateWindow("test-rate-identity", index)).toBe(true);
     expect(admitRateWindow("test-rate-identity", 5)).toBe(false);
+  });
+
+  it("rejects an oversized streamed body when content-length is absent", async () => {
+    const oversized = new Request("https://desk.example/api/challenge", {method: "POST", headers: {origin: "https://desk.example", "sec-fetch-site": "same-origin", "x-forwarded-for": "203.0.113.99"}, body: JSON.stringify({padding: "x".repeat(12_100)})});
+    expect(oversized.headers.has("content-length")).toBe(false);
+    const response = await handler.fetch(oversized);
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toEqual({error: "Request too large"});
   });
 });

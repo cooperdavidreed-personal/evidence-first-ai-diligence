@@ -46,6 +46,8 @@ export function localWorkspaceSeed(result: IntakeResult): WorkspaceSeed {
   const {deal, analysis} = result;
   return {
     caseId: localCaseId(result),
+    lockedIssueIds: analysis.tests.filter((test) => test.blocksAdvancement).map((test) => test.gateId),
+    canonicalEvidence: analysis.metrics.map((metric) => ({id: metric.id, title: metric.label, displayValue: metric.display, summary: metric.meaning})),
     scenarioValues: {localGrowth: String(deal.annualRevenueGrowth), localExitMultiple: String(deal.exitRevenueMultiple)},
     issues: analysis.tests.filter((test) => test.blocksAdvancement).map((test) => ({
       id: test.gateId,
@@ -56,7 +58,16 @@ export function localWorkspaceSeed(result: IntakeResult): WorkspaceSeed {
       status: "OPEN" as const,
       dueDate: null,
       decisionImpact: test.explanation,
-      evidenceRefs: analysis.metrics.filter((metric) => metric.label.toLowerCase().includes(test.label.split(" ")[0].toLowerCase())).map((metric) => metric.id),
+      evidenceRefs: ({
+        "retention-nrr": ["ordinary-nrr"],
+        "gross-margin-quality": ["gross-margin"],
+        "burn-runway-quality": ["runway"],
+        "customer-concentration": [],
+        "cohort-completeness": ["ordinary-nrr"],
+        "financing-ownership": ["ownership"],
+        "data-sufficiency": ["ltm-revenue", "gross-margin", "ordinary-nrr"],
+        "assumption-provenance": ["gross-moic", "annualized-return"],
+      } as Record<string, string[]>)[test.gateId] ?? [],
       resolution: null,
     })),
     memoSections: [

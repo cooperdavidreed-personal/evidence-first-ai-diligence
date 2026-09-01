@@ -36,7 +36,7 @@ export function formatHumanDate(value: string | null | undefined) {
   if (!value) return "Not reviewed";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-US", {month: "short", day: "numeric", year: "numeric"}).format(date);
+  return new Intl.DateTimeFormat("en-US", {month: "short", day: "numeric", year: "numeric", timeZone: "UTC"}).format(date);
 }
 
 export function useDealWorkspace(seed: WorkspaceSeed, allowedEvidenceRefs: ReadonlySet<string>, scenarioContract: WorkspaceScenarioContract, policyOverrideRoles: Record<string, string> = EMPTY_POLICY_OVERRIDE_ROLES) {
@@ -51,7 +51,10 @@ export function useDealWorkspace(seed: WorkspaceSeed, allowedEvidenceRefs: Reado
   }, [allowedEvidenceRefs, scenarioContract, integrityContract, state]);
 
   const update: WorkspaceUpdate = (patch) => {
-    setState((current) => touchWorkspace(current, typeof patch === "function" ? patch(current) : patch));
+    setState((current) => {
+      const next = touchWorkspace(current, typeof patch === "function" ? patch(current) : patch);
+      return validateWorkspace(next, seed.caseId, allowedEvidenceRefs, scenarioContract, integrityContract);
+    });
   };
   const replace = (next: DealWorkspaceState) => {
     setState(validateWorkspace(next, seed.caseId, allowedEvidenceRefs, scenarioContract, integrityContract));

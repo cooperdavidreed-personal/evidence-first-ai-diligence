@@ -52,6 +52,7 @@ export interface QuickSourcePreview {
   title: string;
   period: string;
   excerpt: Array<{label: string; value: string}>;
+  rows?: Array<{dataRow: number; cells: Array<{label: string; value: string}>}>;
 }
 export interface QuickDecisionTest {
   gateId: string;
@@ -97,8 +98,8 @@ export interface IntakeResult {
 
 interface ManifestEntry { name: string; role: string; required: true; bytes: number; sha256: string }
 interface Manifest { package_version: string; files: ManifestEntry[] }
-interface MonthlyRow { period: string; revenueCents: number; costOfRevenueCents: number; operatingExpenseCents: number }
-interface CustomerRow { customerId: string; period: string; arrCents: number }
+interface MonthlyRow { sourceRow: number; period: string; revenueCents: number; costOfRevenueCents: number; operatingExpenseCents: number }
+interface CustomerRow { sourceRow: number; customerId: string; period: string; arrCents: number }
 
 function record(value: unknown): value is Record<string, unknown> { return Boolean(value) && typeof value === "object" && !Array.isArray(value); }
 function basename(file: File) {
@@ -218,11 +219,11 @@ function parseMonthly(raw: string, cutoff: string) {
   });
   const seen = new Set<string>(); let excluded = 0;
   const rows: MonthlyRow[] = [];
-  for (const row of parsed.rows) {
+  for (const [index, row] of parsed.rows.entries()) {
     const period = periodCell(row[indexes.period]);
     if (seen.has(period)) throw new Error(`Monthly financials contain duplicate period ${period}`);
     seen.add(period);
-    const candidate = {period, revenueCents: centsCell(row[indexes.revenue_cents], "revenue_cents"), costOfRevenueCents: centsCell(row[indexes.cost_of_revenue_cents], "cost_of_revenue_cents"), operatingExpenseCents: centsCell(row[indexes.operating_expense_cents], "operating_expense_cents")};
+    const candidate = {sourceRow: index + 2, period, revenueCents: centsCell(row[indexes.revenue_cents], "revenue_cents"), costOfRevenueCents: centsCell(row[indexes.cost_of_revenue_cents], "cost_of_revenue_cents"), operatingExpenseCents: centsCell(row[indexes.operating_expense_cents], "operating_expense_cents")};
     if (period > cutoff.slice(0, 7)) excluded += 1; else rows.push(candidate);
   }
   rows.sort((left, right) => left.period.localeCompare(right.period));
@@ -239,12 +240,12 @@ function parseCustomers(raw: string, cutoff: string) {
   });
   const seen = new Set<string>(); let excluded = 0;
   const rows: CustomerRow[] = [];
-  for (const row of parsed.rows) {
+  for (const [index, row] of parsed.rows.entries()) {
     const customerId = row[indexes.customer_id]?.trim(); if (!customerId) throw new Error("customer_id cannot be blank");
     const period = periodCell(row[indexes.period]); const key = `${customerId}\u0000${period}`;
     if (seen.has(key)) throw new Error(`Customer ARR contains a duplicate customer-period row for ${customerId} in ${period}`);
     seen.add(key);
-    const candidate = {customerId, period, arrCents: centsCell(row[indexes.arr_cents], "arr_cents")};
+    const candidate = {sourceRow: index + 2, customerId, period, arrCents: centsCell(row[indexes.arr_cents], "arr_cents")};
     if (period > cutoff.slice(0, 7)) excluded += 1; else rows.push(candidate);
   }
   if (new Set(rows.map((row) => row.period)).size < 2) throw new Error("Customer ARR requires at least two eligible periods");
@@ -301,13 +302,15 @@ function analyze(deal: DealInput, monthly: MonthlyRow[], customers: CustomerRow[
     const clears = threshold.operator === ">=" ? comparison : !comparison || compareDecimalStrings(observed.toFixed(12), threshold.value.toFixed(12)) === 0;
     return {gateId, label: threshold.label, observed: observedDisplay, required: threshold.displayValue, state: clears ? "CLEARS" : "CONCERN", blocksAdvancement: !clears, owner: threshold.owner, source: threshold.source, policyStatus: threshold.status, lastReviewed: threshold.lastReviewed, explanation};
   };
-  const runwayObserved = runwayMonths ?? Number.POSITIVE_INFINITY;
+  const runwayTest: QuickDecisionTest = runwayMonths === null
+    ? {gateId: "runway-numeric", label: runwayPolicy.label, observed: "Cash generative", required: runwayPolicy.displayValue, state: "CLEARS", blocksAdvancement: false, owner: runwayPolicy.owner, source: runwayPolicy.source, policyStatus: runwayPolicy.status, lastReviewed: runwayPolicy.lastReviewed, explanation: "The latest three uploaded periods are cash generative, so the minimum-runway screen clears without using an infinite numeric placeholder; committed costs and financing timing remain unverified."}
+    : thresholdGate("runway-numeric", runwayPolicy, runwayMonths, `${runwayMonths.toFixed(1)} months`, "Recent runway meets the numeric screen; committed costs and financing timing remain unverified.");
   const tests: QuickDecisionTest[] = [
     thresholdGate("returns-moic", moicPolicy, grossMoic, `${grossMoic.toFixed(2)}x`, "The deterministic scenario clears the illustrative Desk-owned multiple screen, but the scenario assumptions remain unapproved."),
     thresholdGate("returns-annualized", returnPolicy, annualizedGrossReturn, percent(annualizedGrossReturn), "The deterministic scenario clears the illustrative Desk-owned return screen, but the scenario assumptions remain unapproved."),
     thresholdGate("retention-nrr", nrrPolicy, ordinaryNrr, percent(ordinaryNrr), "Ordinary-cohort retention is below the Desk-owned screen and requires a documented policy-owner override or further diligence."),
     thresholdGate("margin-numeric", marginPolicy, grossMargin, percent(grossMargin), "Reported gross margin meets the numeric screen; cost classification and customer-success burden remain unverified."),
-    thresholdGate("runway-numeric", runwayPolicy, runwayObserved, runwayMonths === null ? "Cash generative" : `${runwayMonths.toFixed(1)} months`, "Recent runway meets the numeric screen; committed costs and financing timing remain unverified."),
+    runwayTest,
     {gateId: "burn-runway-quality", label: "Burn and runway quality", observed: "Three-month signed net burn", required: "Committed-cost and financing review", state: "UNREVIEWED", blocksAdvancement: true, owner: policyProfile.owner, source: policyProfile.source, policyStatus: policyProfile.status, lastReviewed: policyProfile.lastReviewed, explanation: "The numeric runway screen does not establish committed costs, working-capital needs, financing timing, or burn durability."},
     {gateId: "gross-margin-quality", label: "Gross-margin quality", observed: "Cost classification not tested", required: "Verified delivery-cost completeness", state: "UNREVIEWED", blocksAdvancement: true, owner: policyProfile.owner, source: policyProfile.source, policyStatus: policyProfile.status, lastReviewed: policyProfile.lastReviewed, explanation: "The Quick Package cannot establish whether credits, support, implementation, or customer-success costs are fully burdened."},
     {gateId: "customer-concentration", label: "Customer concentration", observed: "Parent mapping not supplied", required: "Parent-level concentration review", state: "BLOCKED", blocksAdvancement: true, owner: policyProfile.owner, source: policyProfile.source, policyStatus: policyProfile.status, lastReviewed: policyProfile.lastReviewed, explanation: "Customer-level rows cannot establish parent concentration without an entity hierarchy."},
@@ -339,8 +342,8 @@ function analyze(deal: DealInput, monthly: MonthlyRow[], customers: CustomerRow[
   ];
   const sourcePreviews: QuickSourcePreview[] = [
     {sourceFile: "deal.json", classification: "MANAGEMENT_REPRESENTATION", title: "Proposed financing and scenario", period: deal.cutoff, excerpt: [{label: "New investment", value: money(deal.investmentCents)}, {label: "Pre-money value", value: money(deal.preMoneyCents)}, {label: "Annual growth assumption", value: percent(deal.annualRevenueGrowth)}, {label: "Exit revenue multiple", value: `${deal.exitRevenueMultiple.toFixed(1)}x`}, {label: "Package-requested hurdle", value: `${deal.packageRequestedThresholds.minimumGrossMoic.toFixed(1)}x — not fund policy`}]},
-    {sourceFile: "monthly_financials.csv", classification: "SOURCE_FACT", title: "Latest twelve monthly rows", period: `${ltm[0].period} to ${ltm.at(-1)!.period}`, excerpt: [{label: "Rows", value: String(ltm.length)}, {label: "Revenue total", value: money(ltmRevenueCents)}, {label: "Cost of revenue", value: money(ltmCostCents)}, {label: "Latest month revenue", value: money(ltm.at(-1)!.revenueCents)}, {label: "Recent signed net burn", value: money(recentNetBurnCents)}]},
-    {sourceFile: "customer_arr.csv", classification: "SOURCE_FACT", title: "Opening-customer retention cohort", period: `${basePeriod} to ${latestPeriod}`, excerpt: [{label: "Opening customers", value: String(base.size)}, {label: "Opening ARR", value: money(baseArr)}, {label: "Ending ARR for opening IDs", value: money(endingArr)}, {label: "Elapsed interval", value: `${cohortElapsedMonths} months`}, {label: "Ordinary-cohort NRR", value: percent(ordinaryNrr)}]},
+    {sourceFile: "monthly_financials.csv", classification: "SOURCE_FACT", title: "Latest twelve monthly rows", period: `${ltm[0].period} to ${ltm.at(-1)!.period}`, excerpt: [{label: "Rows", value: String(ltm.length)}, {label: "Revenue total", value: money(ltmRevenueCents)}, {label: "Cost of revenue", value: money(ltmCostCents)}, {label: "Latest month revenue", value: money(ltm.at(-1)!.revenueCents)}, {label: "Recent signed net burn", value: money(recentNetBurnCents)}], rows: ltm.map((row) => ({dataRow: row.sourceRow, cells: [{label: "Period", value: row.period}, {label: "Revenue", value: money(row.revenueCents)}, {label: "Cost of revenue", value: money(row.costOfRevenueCents)}, {label: "Operating expense", value: money(row.operatingExpenseCents)}]}))},
+    {sourceFile: "customer_arr.csv", classification: "SOURCE_FACT", title: "Opening-customer retention cohort", period: `${basePeriod} to ${latestPeriod}`, excerpt: [{label: "Opening customers", value: String(base.size)}, {label: "Opening ARR", value: money(baseArr)}, {label: "Ending ARR for opening IDs", value: money(endingArr)}, {label: "Elapsed interval", value: `${cohortElapsedMonths} months`}, {label: "Ordinary-cohort NRR", value: percent(ordinaryNrr)}], rows: customers.filter((row) => (row.period === basePeriod && row.arrCents > 0) || (row.period === latestPeriod && base.has(row.customerId))).map((row) => ({dataRow: row.sourceRow, cells: [{label: "Customer", value: row.customerId}, {label: "Period", value: row.period}, {label: "ARR", value: money(row.arrCents)}]}))},
     {sourceFile: "deal.json", classification: "ANALYST_ASSUMPTION", title: "Return assumptions awaiting review", period: `Five-year working case`, excerpt: [{label: "Revenue growth", value: percent(deal.annualRevenueGrowth)}, {label: "Exit multiple", value: `${deal.exitRevenueMultiple.toFixed(1)}x`}, {label: "Status", value: "Unreviewed"}]},
   ];
   return {ltmRevenueCents, grossMargin, ordinaryNrr, cohortElapsedMonths, recentNetBurnCents, runwayMonths, postMoneyOwnership, terminalRevenueCents, exitEquityCents, grossMoic, annualizedGrossReturn, metrics, tests, policyProfile, sourcePreviews};

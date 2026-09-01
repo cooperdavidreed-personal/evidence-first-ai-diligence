@@ -197,7 +197,7 @@ test("portable state rejects a fabricated accepted-proposal citation", async ({p
   raw.proposals.push({proposalId: "proposal-tampered", kind: "MEMO_DRAFT", state: "ACCEPTED", title: "Draft conclusion", body: "Fabricated evidence claim.", evidenceRefs: ["fabricated-metric"], requestEvidence, requestDigestSha256, humanActor: "Avery Chen", reviewedAt: "2026-09-01T12:00:00.000Z"});
   raw.memoSections.push({sectionId: "proposal-tampered", title: "Draft conclusion", body: "Fabricated evidence claim.", provenance: "HUMAN_ACCEPTED_MODEL_PROPOSAL", sourceProposalId: "proposal-tampered", updatedBy: "Avery Chen", updatedAt: "2026-09-01T12:00:00.000Z"});
   await page.locator('.workspace-transfer input[type="file"]').setInputFiles({name: "tampered-workspace.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(raw))});
-  await expect(page.getByRole("status")).toContainText("non-canonical evidence reference");
+  await expect(page.getByRole("status")).toContainText("canonical registry");
   await expect(page.getByText("Fabricated evidence claim.")).toHaveCount(0);
 });
 

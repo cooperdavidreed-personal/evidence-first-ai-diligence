@@ -89,6 +89,7 @@ export interface WorkspaceSeed {
   memoSections: Array<Omit<MemoSectionState, "updatedAt">>;
   scenarioValues?: Record<string, string>;
   lockedIssueIds?: string[];
+  canonicalEvidence?: SelectedEvidence[];
 }
 
 export interface WorkspaceScenarioContract {
@@ -100,6 +101,7 @@ export interface WorkspaceIntegrityContract {
   requiredMemoSections: Array<Pick<MemoSectionState, "sectionId" | "title" | "body" | "provenance" | "updatedBy">>;
   policyOverrideRoles: Record<string, string>;
   lockedIssueIds: string[];
+  canonicalEvidence: Record<string, SelectedEvidence>;
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -160,6 +162,7 @@ export function createWorkspaceIntegrityContract(seed: WorkspaceSeed, policyOver
     requiredMemoSections: seed.memoSections.map(({sectionId, title, body, provenance, updatedBy}) => ({sectionId, title, body, provenance, updatedBy})),
     policyOverrideRoles: {...policyOverrideRoles},
     lockedIssueIds: [...(seed.lockedIssueIds ?? [])],
+    canonicalEvidence: Object.fromEntries((seed.canonicalEvidence ?? []).map((item) => [item.id, {...item}])),
   };
 }
 
@@ -240,6 +243,12 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
     });
     try { validateSelectedEvidence(requestEvidence); }
     catch { throw new Error(`proposals[${index}] selected-evidence request envelope is invalid`); }
+    if (integrityContract && Object.keys(integrityContract.canonicalEvidence).length) {
+      for (const selected of requestEvidence) {
+        const canonical = integrityContract.canonicalEvidence[selected.id];
+        if (!canonical || JSON.stringify(selected) !== JSON.stringify(canonical)) throw new Error(`proposals[${index}] selected-evidence content does not match the canonical registry`);
+      }
+    }
     if (digestChallengePayloadSync(requestEvidence) !== requestDigestSha256) throw new Error(`proposals[${index}] selected-evidence request digest does not match its envelope`);
     const requestedIds = new Set(requestEvidence.map((candidate) => candidate.id));
     const evidenceRefs = stringArray(item.evidenceRefs, `proposals[${index}].evidenceRefs`, 20);
@@ -288,8 +297,10 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
   const proposalMemoRefs: string[] = [];
   for (const section of memoSections) {
     if (section.provenance === "HUMAN_ACCEPTED_MODEL_PROPOSAL") {
-      if (!section.sourceProposalId || proposalById.get(section.sourceProposalId)?.state !== "ACCEPTED") throw new Error(`Memo section ${section.sectionId} does not reference an accepted model proposal`);
-      proposalMemoRefs.push(section.sourceProposalId);
+      const sourceProposal = section.sourceProposalId ? proposalById.get(section.sourceProposalId) : undefined;
+      if (!sourceProposal || sourceProposal.state !== "ACCEPTED") throw new Error(`Memo section ${section.sectionId} does not reference an accepted model proposal`);
+      if (section.body !== sourceProposal.body || section.sourceProvenance !== undefined || section.sourceBody !== undefined) throw new Error(`Memo section ${section.sectionId} does not preserve its accepted proposal text`);
+      proposalMemoRefs.push(sourceProposal.proposalId);
     } else if (section.sourceProposalId) {
       const sourceProposal = proposalById.get(section.sourceProposalId);
       const validHumanRevision = section.provenance === "ANALYST_JUDGMENT" && section.sourceProvenance === "HUMAN_ACCEPTED_MODEL_PROPOSAL" && section.sourceBody === sourceProposal?.body && sourceProposal?.state === "ACCEPTED";

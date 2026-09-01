@@ -101,6 +101,13 @@ table, .overview-metrics strong, .finance-kpi strong, .canonical-comparison stro
 .decision-brief dd { margin-top: 3px; }
 .overview-metrics, .finance-kpi-grid { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); border: 1px solid var(--line); background: var(--surface); }
 .finance-kpi-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.decision-screen { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); border: 1px solid var(--line-dark); background: var(--surface); }
+.decision-screen article { min-width: 0; padding: 14px 16px; border-right: 1px solid var(--line); }
+.decision-screen article:last-child { border-right: 0; }
+.decision-screen span, .decision-screen small { display: block; color: var(--muted); font-size: 12px; }
+.decision-screen strong { display: block; margin: 5px 0; color: var(--ink); font-size: 18px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.decision-screen article[data-state="misses"] { box-shadow: inset 0 3px 0 var(--rust); }
+.decision-screen article[data-state="clears"] { box-shadow: inset 0 3px 0 var(--green); }
 .overview-metrics > button, .finance-kpi { min-width: 0; border: 0; border-right: 1px solid var(--line); border-radius: 0; padding: 16px; background: var(--surface); text-align: left; }
 .overview-metrics > button:last-child, .finance-kpi:last-child { border-right: 0; }
 .overview-metrics > button:hover { background: #f4f7f9; }
@@ -257,8 +264,8 @@ table, .overview-metrics strong, .finance-kpi strong, .canonical-comparison stro
 
 @media (max-width: 1120px) {
   .workspace-layout { grid-template-columns: 1fr; }
-  .decision-rail { position: static; grid-row: 1; min-height: auto; max-height: none; border-left: 0; border-bottom: 1px solid var(--line); padding: 18px 26px; }
-  .deal-main { grid-row: 2; }
+  .decision-rail { position: static; grid-row: 2; min-height: auto; max-height: none; border-top: 1px solid var(--line); border-left: 0; padding: 18px 26px; }
+  .deal-main { grid-row: 1; }
   .decision-rail dl { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
   .decision-rail dl > div { display: block; border-bottom: 0; }
   .decision-rail dd { max-width: none; margin-top: 4px; text-align: left; }
@@ -301,6 +308,9 @@ table, .overview-metrics strong, .finance-kpi strong, .canonical-comparison stro
   .decision-brief > div { padding-right: 0; }
   .decision-brief dl { border-left: 0; border-top: 1px solid var(--line); padding: 16px 0 0; }
   .overview-metrics, .finance-kpi-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .decision-screen { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .decision-screen article:nth-child(2) { border-right: 0; }
+  .decision-screen article:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
   .driver-grid, .what-must-be-true > div:last-child, .empirical-summary, .issue-controls, .reviewer-fields, .resolution-form, .issue-create-form, .observation-form, .registry-table article, .excerpt-list dl, .evidence-excerpts dl { grid-template-columns: 1fr; }
   .driver-grid > article, .empirical-summary article { border-right: 0; border-bottom: 1px solid var(--line); }
   .driver-grid > article:last-child, .empirical-summary article:last-child { border-bottom: 0; }

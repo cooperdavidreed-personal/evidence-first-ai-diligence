@@ -75,6 +75,21 @@ describe("Growth SaaS Quick Package", () => {
     expect(result.processedLocally).toBe(true);
   });
 
+  it("admits a cash-generative package without inventing an infinite runway", async () => {
+    const cashGenerativeMonthly = monthly.split("\n").map((line, index) => {
+      if (index === 0) return line;
+      const cells = line.split(",");
+      cells[3] = String(Number(cells[1]) - Number(cells[2]) - 1_000_000);
+      return cells.join(",");
+    }).join("\n");
+    const result = await processDealPackage(await packageFiles({monthly: cashGenerativeMonthly}));
+    expect(result.packageState).toBe("READY");
+    expect(result.analysis?.recentNetBurnCents).toBe(-1_000_000);
+    expect(result.analysis?.runwayMonths).toBeNull();
+    expect(result.analysis?.tests.find((test) => test.gateId === "runway-numeric")).toMatchObject({observed: "Cash generative", state: "CLEARS", blocksAdvancement: false});
+    expect(result.errors).toEqual([]);
+  });
+
   it("fails closed when a required file is missing and exposes no returns", async () => {
     const files = await packageFiles();
     const result = await processDealPackage(files.filter((file) => file.name !== "customer_arr.csv"));

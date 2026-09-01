@@ -46,6 +46,9 @@ describe("Underwriting Desk investor workspace", () => {
     expect(screen.getByText(/Public demonstration with fictional companies/)).toBeInTheDocument();
     expect(screen.getByRole("heading", {name: "Growth SaaS Quick Package"})).toBeInTheDocument();
     expect(screen.queryByText(/Evidence → economics → action/)).not.toBeInTheDocument();
+    expect(screen.getByText("Decision workspaces")).toBeInTheDocument();
+    expect(screen.getByText("Open issues")).toBeInTheDocument();
+    expect(screen.getByText("Last activity")).toBeInTheDocument();
   });
 
   it("opens a model connection center that explains the Desk-model boundary", async () => {
@@ -187,6 +190,9 @@ describe("Underwriting Desk investor workspace", () => {
     await user.selectOptions(screen.getByRole("combobox", {name: "Deal"}), "helios");
     await waitFor(() => expect(screen.getByRole("heading", {name: "Helios Compute Control"})).toBeInTheDocument());
     expect(screen.getAllByText("HOLD", {exact: true}).length).toBeGreaterThan(0);
+    expect(screen.getByText("Maintain HOLD while the binding screen and open diligence remain unresolved.")).toBeInTheDocument();
+    expect(screen.getByText("Path to reconsideration")).toBeInTheDocument();
+    expect(screen.queryByText(/Working recommendation/)).not.toBeInTheDocument();
     expect(screen.getByText("IC decision pending")).toBeInTheDocument();
     expect(window.location.hash).toBe("#/v3/helios/overview");
   });

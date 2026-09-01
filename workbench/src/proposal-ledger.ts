@@ -1,3 +1,4 @@
+import {canonicalEvidenceItem} from "./canonical-evidence";
 import {digestChallengePayloadSync, digestTextSync, type ModelProposal, type ProposalKind, type SelectedEvidence} from "./model-workflow";
 import type {CaseData} from "./types";
 
@@ -6,14 +7,7 @@ function record(value: unknown): value is Record<string, unknown> { return Boole
 function text(value: unknown, max: number) { return typeof value === "string" && value.trim().length > 0 && value.length <= max ? value.trim() : null; }
 
 function requestEvidence(caseData: CaseData, refs: string[]): SelectedEvidence[] {
-  return refs.map((id) => {
-    const metric = caseData.metricRegistry.find((item) => item.metric_id === id);
-    if (metric) return {id, title: metric.label, displayValue: metric.display_value, summary: `${metric.period}; ${metric.classification.toLowerCase().replaceAll("_", " ")}.`};
-    const analysis = caseData.analyses.find((item) => item.analysis_id === id);
-    if (analysis) return {id, title: analysis.question, displayValue: analysis.state, summary: `${analysis.population}; ${analysis.classification.toLowerCase().replaceAll("_", " ")}.`};
-    const artifact = caseData.artifacts.find((item) => item.artifact_id === id)!;
-    return {id, title: artifact.path.split("/").at(-1) ?? artifact.path, displayValue: `${artifact.rows.toLocaleString()} rows`, summary: `Retained public synthetic source; schema ${artifact.schema}.`};
-  });
+  return refs.map((id) => canonicalEvidenceItem(caseData, id)).filter((item): item is SelectedEvidence => item !== null);
 }
 
 export function importProposalLedger(source: string, caseData: CaseData): ImportResult {

@@ -115,7 +115,21 @@ export function underwritingCaseDataPlugin(): Plugin {
       if (!virtualIds.has(sourceId)) return null;
       const cases = readCases();
       if (sourceId === INDEX_ID) {
-        const catalog = cases.map(({caseId, company, caseType, dealContext}) => ({caseId, company, caseType, investmentQuestion: dealContext!.investment_question}));
+        const catalog = cases.map(({caseId, company, caseType, dealContext, decision}) => {
+          const blockers = decision.issue_summary.issues.filter((issue: {blocks_advancement: boolean}) => issue.blocks_advancement);
+          return {
+            caseId,
+            company,
+            caseType,
+            investmentQuestion: dealContext!.investment_question,
+            owner: caseId === "atlasgrid" ? "Buyout team" : "Growth team",
+            stage: decision.decision === "HOLD" ? "Diligence" : "Pre-IC",
+            posture: decision.decision,
+            blockerCount: blockers.length,
+            primaryBlocker: blockers[0]?.title ?? "No unresolved canonical issue",
+            asOf: decision.as_of,
+          };
+        });
         return `export default ${JSON.stringify(catalog)};`;
       }
       const caseId = sourceId.replace("virtual:underwriting-case-", "");

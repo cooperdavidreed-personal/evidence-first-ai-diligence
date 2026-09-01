@@ -14,7 +14,7 @@ import {
   validateAdmittedDeal,
   validateAdmittedDealBundle,
 } from "./local-deal-state";
-import {createWorkspace, loadWorkspace} from "./workspace-state";
+import {createWorkspace, createWorkspaceIntegrityContract, loadWorkspace, validateWorkspace} from "./workspace-state";
 
 const TestFile = NodeFile as unknown as typeof File;
 const packageRoot = resolve(process.cwd(), "public/sample-package");
@@ -113,6 +113,28 @@ describe("portable admitted deal state", () => {
     expect(() => serializeAdmittedDealBundle(result, workspace)).toThrow(/requires the Policy owner role/i);
     workspace.policyOverrides[0] = {...workspace.policyOverrides[0], actorRole: "Policy owner", gateId: "data-sufficiency"};
     expect(() => serializeAdmittedDealBundle(result, workspace)).toThrow(/not eligible/i);
+  });
+
+  it("locks every blocking Northstar screening issue against free-text resolution", async () => {
+    const result = await admittedNorthstar();
+    const seed = localWorkspaceSeed(result);
+    expect(seed.lockedIssueIds).toEqual(result.analysis!.tests.filter((test) => test.blocksAdvancement).map((test) => test.gateId));
+    const workspace = createWorkspace(seed, "2026-09-01T12:00:00.000Z");
+    const retention = workspace.issues.find((issue) => issue.id === "retention-nrr")!;
+    retention.status = "RESOLVED";
+    retention.resolution = "Analyst says it is acceptable.";
+    retention.resolvedBy = "Analyst";
+    expect(() => validateWorkspace(workspace, localCaseId(result), new Set(result.analysis!.metrics.map((item) => item.id)), {fields: {localGrowth: {kind: "NUMBER", min: -.99, max: 5}, localExitMultiple: {kind: "NUMBER", min: .01, max: 100}}}, createWorkspaceIntegrityContract(seed, {"retention-nrr": "Policy owner"}))).toThrow(/cannot be resolved through the diligence issue log/i);
+  });
+
+  it("retains exact admitted rows for Northstar source inspection", async () => {
+    const result = await admittedNorthstar();
+    const monthly = result.analysis!.sourcePreviews.find((preview) => preview.sourceFile === "monthly_financials.csv")!;
+    const cohort = result.analysis!.sourcePreviews.find((preview) => preview.sourceFile === "customer_arr.csv")!;
+    expect(monthly.rows).toHaveLength(12);
+    expect(monthly.rows?.[0]).toMatchObject({dataRow: expect.any(Number), cells: expect.arrayContaining([{label: "Period", value: expect.any(String)}])});
+    expect(cohort.rows?.length).toBeGreaterThan(1);
+    expect(cohort.rows?.[0].cells.map((cell) => cell.label)).toEqual(["Customer", "Period", "ARR"]);
   });
 
   it("rejects retained-case or fabricated evidence references in a local portable deal", async () => {

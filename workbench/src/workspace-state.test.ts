@@ -6,6 +6,7 @@ const seed = {
   caseId: "atlasgrid",
   issues: [{id: "issue-1", title: "Validate churn", description: "Reconcile parent cohorts.", owner: "Commercial diligence", priority: "HIGH" as const, status: "OPEN" as const, dueDate: null, decisionImpact: "Changes leverage capacity.", evidenceRefs: ["AG-01"], resolution: null}],
   memoSections: [{sectionId: "recommendation", title: "Recommendation", body: "Reprice.", provenance: "DETERMINISTIC_ANALYSIS" as const, updatedBy: "Financial model"}],
+  canonicalEvidence: [{id: "AG-01", title: "Retention", displayValue: "99.9%", summary: "Complete cohort retention."}],
 };
 
 describe("portable deal workspace", () => {
@@ -44,6 +45,21 @@ describe("portable deal workspace", () => {
     const state = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
     state.memoSections.push({sectionId: "proposal-orphan", title: "Counterthesis", body: "Validate churn definitions.", provenance: "HUMAN_ACCEPTED_MODEL_PROPOSAL", sourceProposalId: "missing-proposal", updatedBy: "Avery Chen", updatedAt: "2026-09-01T01:00:00.000Z"});
     expect(() => validateWorkspace(state)).toThrow(/accepted model proposal/i);
+  });
+
+  it("requires a newly accepted model memo section to preserve the accepted proposal text", () => {
+    const state = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
+    const requestEvidence = seed.canonicalEvidence;
+    state.proposals.push({proposalId: "proposal-1", kind: "MEMO_DRAFT", state: "ACCEPTED", title: "Draft downside", body: "Validate renewal evidence.", evidenceRefs: ["AG-01"], requestEvidence, requestDigestSha256: digestChallengePayloadSync(requestEvidence), humanActor: "Avery Chen", reviewedAt: "2026-09-01T01:00:00.000Z"});
+    state.memoSections.push({sectionId: "proposal-1", title: "Draft downside", body: "A different model-authored conclusion.", provenance: "HUMAN_ACCEPTED_MODEL_PROPOSAL", sourceProposalId: "proposal-1", updatedBy: "Avery Chen", updatedAt: "2026-09-01T01:00:00.000Z"});
+    expect(() => validateWorkspace(state, "atlasgrid", new Set(["AG-01"]))).toThrow(/does not preserve its accepted proposal text/i);
+  });
+
+  it("rejects digest-consistent evidence metadata that differs from the canonical registry", () => {
+    const state = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
+    const requestEvidence = [{...seed.canonicalEvidence[0], title: "Misleading substituted title"}];
+    state.proposals.push({proposalId: "proposal-1", kind: "CHALLENGE", state: "PROPOSED", title: "Challenge retention", body: "Reconcile the cohort denominator.", evidenceRefs: ["AG-01"], requestEvidence, requestDigestSha256: digestChallengePayloadSync(requestEvidence)});
+    expect(() => validateWorkspace(state, "atlasgrid", new Set(["AG-01"]), undefined, createWorkspaceIntegrityContract(seed))).toThrow(/does not match the canonical registry/i);
   });
 
   it("preserves an accepted proposal when a named analyst later revises memo language", () => {

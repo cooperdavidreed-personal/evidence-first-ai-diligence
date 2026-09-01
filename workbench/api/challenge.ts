@@ -79,7 +79,9 @@ export default {
     try {
       const identity = validateBrowserBoundary(request);
       if (!admitRateWindow(identity)) return Response.json({error: "Review limit reached; try again later"}, {status: 429, headers: {"cache-control": "no-store", "retry-after": "600"}});
-      const parsed = validateChallengeRequest(await request.json());
+      const rawBody = await request.text();
+      if (new TextEncoder().encode(rawBody).byteLength > 12_000) return Response.json({error: "Request too large"}, {status: 413, headers: {"cache-control": "no-store"}});
+      const parsed = validateChallengeRequest(JSON.parse(rawBody));
       const modelFamily = "anthropic/claude-sonnet-5";
       const {output} = await generateText({model: modelFamily, output: Output.object({schema: outputSchema}), prompt: promptFor(parsed), maxOutputTokens: 1500, providerOptions: {gateway: {user: `public-synthetic-${parsed.request_digest_sha256.slice(0, 16)}`, tags: ["feature:evidence-challenge", "scope:public-synthetic"]}}});
       const validated = validateChallengeOutput(output, new Set(parsed.evidence.map((item) => item.id)));
