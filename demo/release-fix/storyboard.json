@@ -76,7 +76,7 @@
       "end": 45,
       "route": "#/v2/atlasgrid/memo",
       "proof": "The partner-grade packet export is reachable from the decision memo.",
-      "narration": "The partner packet carries the same recommendation, downside, decision conditions, ownership plan, and appendix into an exportable committee artifact."
+      "narration": "The partner packet carries the same recommendation, downside, decision conditions, and ownership plan into an exportable committee artifact, with a separate technical appendix."
     },
     {
       "id": "helios-decision",
@@ -91,8 +91,8 @@
       "start": 59,
       "end": 77,
       "route": "#/v2/helios/overview",
-      "proof": "A working-case change tightens the loss ceiling and recomputes deterministic ownership, runway, preference, and return outputs without changing human authority.",
-      "narration": "Assumptions and policy thresholds are editable in a working scenario, visibly classified, and never changed by a model. Alter growth, exit multiple, or the loss ceiling; the transaction engine recomputes ownership, runway, preferences, and returns, while the decision record preserves what changed and why."
+      "proof": "A working-case change tightens the loss ceiling and selects a retained deterministic transaction case without changing canonical data or human authority.",
+      "narration": "Assumptions and policy thresholds are editable in a working scenario, visibly classified, and never changed by a model. Alter growth or the loss ceiling; retained deterministic cases update transaction outputs and returns, while the decision record preserves each change and its bound result."
     },
     {
       "id": "decision-close",

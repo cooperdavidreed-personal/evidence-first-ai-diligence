@@ -279,6 +279,12 @@ def main() -> int:
     shutil.copy2(tts_receipt_source, tts_receipt_copy)
     for name in ("captions.srt", "captions.vtt", "transcript.txt", "storyboard.json"):
         shutil.copy2(source / name, out / name)
+    rendered_storyboard_path = out / "storyboard.json"
+    rendered_storyboard = json.loads(rendered_storyboard_path.read_text(encoding="utf-8"))
+    rendered_storyboard["status"] = "RENDERED_SOURCE_BOUND"
+    rendered_storyboard_path.write_text(
+        json.dumps(rendered_storyboard, indent=2) + "\n", encoding="utf-8"
+    )
 
     video = out / VIDEO_NAME
     run(

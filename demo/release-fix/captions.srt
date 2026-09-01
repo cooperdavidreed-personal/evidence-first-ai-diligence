@@ -46,12 +46,12 @@ operands, and retained synthetic source.
 10
 00:00:37,000 --> 00:00:41,000
 The partner packet carries the same recommendation,
-downside, decision conditions,
+downside, decision conditions, and ownership plan
 
 11
 00:00:41,000 --> 00:00:45,000
-ownership plan, and appendix
-into an exportable committee artifact.
+into an exportable committee artifact,
+with a separate technical appendix.
 
 12
 00:00:45,000 --> 00:00:51,000
@@ -76,17 +76,17 @@ in a working scenario, visibly classified,
 16
 00:01:05,000 --> 00:01:09,000
 and never changed by a model.
-Alter growth, exit multiple, or the loss ceiling;
+Alter growth or the loss ceiling;
 
 17
 00:01:09,000 --> 00:01:13,000
-the transaction engine recomputes
-ownership, runway, preferences, and returns,
+retained deterministic cases update
+transaction outputs and returns,
 
 18
 00:01:13,000 --> 00:01:17,000
 while the decision record preserves
-what changed and why.
+each change and its bound result.
 
 19
 00:01:17,000 --> 00:01:21,000

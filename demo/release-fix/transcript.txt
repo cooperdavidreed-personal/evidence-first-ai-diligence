@@ -6,10 +6,10 @@ The seller’s $240 million ask misses the declared return hurdle. Changing the 
 
 Open any important number to see its meaning, formula, operands, and retained synthetic source.
 
-The partner packet carries the same recommendation, downside, decision conditions, ownership plan, and appendix into an exportable committee artifact.
+The partner packet carries the same recommendation, downside, decision conditions, and ownership plan into an exportable committee artifact, with a separate technical appendix.
 
 Helios applies the same discipline to venture financing. Point returns are attractive, yet the current call remains HOLD because the synthetic prior produces a 20 percent loss frequency, above the analyst-set 10 percent maximum.
 
-Assumptions and policy thresholds are editable in a working scenario, visibly classified, and never changed by a model. Alter growth, exit multiple, or the loss ceiling; the transaction engine recomputes ownership, runway, preferences, and returns, while the decision record preserves what changed and why.
+Assumptions and policy thresholds are editable in a working scenario, visibly classified, and never changed by a model. Alter growth or the loss ceiling; retained deterministic cases update transaction outputs and returns, while the decision record preserves each change and its bound result.
 
 The result is not an AI answer. It is a reviewable underwriting system: evidence, economics, downside, judgment, and action—with synthetic limitations stated throughout.

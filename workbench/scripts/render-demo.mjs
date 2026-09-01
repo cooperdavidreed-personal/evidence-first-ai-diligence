@@ -171,11 +171,14 @@ try {
   const controlsRegion = await requireTestId("helios-working-assumptions");
   await center(controlsRegion);
   await shot(8, "helios-assumptions-before", heliosControls.id);
+  await until(heliosControls.start + 7);
   const growth = await requireTestId("helios-assumption-growth");
   await growth.fill("30");
   await shot(9, "helios-growth-edited", heliosControls.id);
+  await until(heliosControls.start + 10);
   const lossMaximum = await requireTestId("helios-policy-loss-maximum");
   await lossMaximum.fill("8");
+  await until(heliosControls.start + 12);
   await (await requireTestId("helios-recalculate-working-case")).click();
   const workingStatus = await requireTestId("helios-working-case-status");
   await assertVisibleText("HOLD", heliosControls.id);
