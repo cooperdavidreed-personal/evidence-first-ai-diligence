@@ -11,7 +11,7 @@ Status: `PRODUCT CANDIDATE VERIFIED LOCALLY — FOUNDER REVIEW PENDING`
 - Exact post-review non-Python command: `UNDERWRITING_SKIP_PYTEST=1 bash scripts/verify-underwriting.sh`
 - Complete run date: `2026-09-01`
 
-The current candidate adds the model connection center, local proposal ledger, browser import, named human disposition, memo insertion, and independent-review repairs. Python/kernel, lockfile, retained-case, and source-room bytes are unchanged. Deployment evidence is recorded separately after that gate completes.
+The current candidate adds the model connection center, local proposal ledger, browser import, named human disposition, memo insertion, and independent-review repairs. Python/kernel, lockfile, retained-case, and source-room bytes are unchanged. The subsequent public deployment evidence is recorded in [`docs/mission-receipts/EPISODE-09-VERCEL-DEPLOYMENT.md`](docs/mission-receipts/EPISODE-09-VERCEL-DEPLOYMENT.md).
 
 GitHub Actions run `33530085943` at candidate parent `a1e7dec88e62b4dca9bdcbf492bfc68e4e98d553` completed `SUCCESS`: all 9 jobs passed, including the Python 3.11–3.13 Ubuntu/macOS matrix, workbench, security contract, and toolkit contract.
 
@@ -50,4 +50,4 @@ The verifier regenerated both retained source rooms, analyses, estimator-coverag
 - Real-company accuracy, arbitrary data-room support, investment performance, confidential-data readiness, enterprise security, or autonomous investment judgment: `NOT CLAIMED`.
 - Runtime provider inference: `NOT RUN` because no runtime endpoint/credential is configured; deterministic workflows and the local MCP ledger handoff remain available.
 - Independent Claude model-workflow review at `4c6fe115db9a9fd6a3d57fca073addf3bc87ec1d`: `PORTFOLIO_CANDIDATE_READY`, zero writes, no critical or high finding. All four actionable low findings were repaired in `85f379ddbb329354421076f6ae5569058a7c8133`. Final Grok verdict remains `HELD_PROVIDER` under the exhausted order ceiling.
-- Remote push, Vercel deployment, and deployed ordinary-user verification: recorded separately and not implied by this local receipt.
+- Remote push, Vercel deployment, and deployed ordinary-user verification: completed after this local gate and recorded separately; they are not implied by the local counts above.

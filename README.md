@@ -4,9 +4,11 @@
 
 The product combines a governed Python analytical kernel with a static React application. Two retained synthetic cases demonstrate full buyout and growth underwriting; a third deal can be created through ordinary file controls using the supported **Growth SaaS Quick Package v1**.
 
-> **Status: LOCAL PRODUCT CANDIDATE — VERCEL `BLOCKED_AUTHORITY`; FOUNDER REVIEW PENDING**
+> **Status: PUBLIC PORTFOLIO CANDIDATE — FOUNDER REVIEW PENDING**
 >
 > All retained companies and records are fictional. Outputs are illustrative and are not investment advice, approval, real-company diligence, investment-performance evidence, or an arbitrary-data-room claim. Uploaded package bytes remain in memory in the browser tab and refresh clears the deal.
+
+Public demonstration: [underwriting-desk-delta.vercel.app](https://underwriting-desk-delta.vercel.app/)
 
 ## Product workflow
 
@@ -78,7 +80,7 @@ See the [model connection contract](docs/MODEL-CONNECTION-CONTRACT.md), frozen [
 - Synthetic econometric recovery is not a real-company causal claim, investment forecast, or backtest.
 - Browser-local operation is not encrypted persistence, multi-user access, confidential-data readiness, or enterprise security.
 - Runtime inference, observed practitioner testing, and real-data-room support remain `NOT RUN`.
-- The branch is pushed, but no current Vercel deployment or hosted ordinary-user verification exists. The available CLI was logged out and the existing browser session required account access; no login or account repair was attempted.
+- The verified static bundle is publicly deployed on Vercel and passed a hosted ordinary-browser smoke test across Deals, AtlasGrid overview and diligence, the model connection wizard, and the Helios IC memo. This direct artifact deployment is not connected to Git and does not establish continuous deployment, runtime inference, persistence, authentication, or production observability.
 
 The exact local verification, provider-review, push, and deployment disposition is recorded in [FINAL-MISSION-RECEIPT.md](FINAL-MISSION-RECEIPT.md).
 

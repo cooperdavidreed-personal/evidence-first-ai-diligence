@@ -2,28 +2,29 @@
 
 Mission: `underwriting-product-vertical-slice-20260901`
 
-Recorded: `2026-09-01T16:37:34Z`
+Recorded: `2026-09-01T18:01:05Z`
 
-Overall terminal state: `BLOCKED_AUTHORITY`
+Overall terminal state: `PORTFOLIO_PRODUCT_CANDIDATE_READY_FOR_FOUNDER_REVIEW`
 
 Secondary provider state: `HELD_PROVIDER`
 
-The strongest feasible candidate is implemented, independently reviewed by Claude Code, locally verified, committed, and pushed. It is not represented as deployed or as the requested portfolio-ready terminal state. Current Vercel deployment is blocked by account authority, and Grok Build did not return the required final verdict within the two bounded final-review attempts.
+The strongest feasible candidate is implemented, independently reviewed by Claude Code, locally verified, committed, pushed, publicly deployed, and smoke-tested through the hosted ordinary-browser workflow. Grok Build did not return the requested final advisory verdict within its bounded review ceiling, so that provider remains `HELD_PROVIDER`; this does not convert the public candidate into a production, enterprise-security, practitioner-usability, or real-company claim.
 
 ## Immutable release identity
 
 - Exact base: `5795f00fe7466991605dfba95b7d0d3b90cde5bd`
 - Owned isolated branch: `codex/underwriting-product-vertical-slice`
-- Exact product candidate: `89798f013d1f15ceba7d16ccc2acf0a4f669a0cc`
+- Exact product candidate: `85f379ddbb329354421076f6ae5569058a7c8133`
 - Exact CI-tested candidate parent: `a1e7dec88e62b4dca9bdcbf492bfc68e4e98d553`
 - Independently reviewed hardening predecessor: `57d74c13331f1fc82bdb99bc0ca0d73fa68e80f0`
 - Remote: `origin` at `https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence.git`
-- Remote branch contains the exact product candidate `89798f013d1f15ceba7d16ccc2acf0a4f669a0cc`: `VERIFIED`
+- Remote branch at deployment preparation: `3af58b495ec536cd7ce7b177221b69ff57d53f3e`
+- Remote branch contains the exact product candidate `85f379ddbb329354421076f6ae5569058a7c8133`: `VERIFIED`
 - Merge: `NOT RUN`
 - Filesystem writer: Codex only
 - Source lanes listed in the mission register: preserved; no writes were made to them
 
-The final receipt commit is documentation-only and may advance the branch tip beyond the exact product candidate above. Product-test identity remains `89798f013d1f15ceba7d16ccc2acf0a4f669a0cc`.
+The final receipt commit is documentation-only and may advance the branch tip beyond the exact product candidate above. Product-test identity remains `85f379ddbb329354421076f6ae5569058a7c8133`.
 
 ## Part disposition
 
@@ -33,7 +34,7 @@ The final receipt commit is documentation-only and may advance the branch tip be
 | investor-experience | `VERIFIED` | Five-destination Deals shell, progressive technical disclosure, desktop/mobile browser proof, zero critical or serious Axe findings on all retained automated scans, and no root overflow. This is not WCAG certification or practitioner testing. |
 | deal-intake | `VERIFIED` | Ordinary multi-file UI journey, browser-local bytes, declared manifest roles/digests/byte counts, explicit fail-closed states, governed deterministic outputs, and no conclusion for an incomplete package. |
 | model-and-mcp | `VERIFIED` | Structured evidence challenge and draft proposals cannot mutate finance, assumptions, thresholds, package state, decision, or approval. MCP has seven reads and three in-memory proposal tools only. Runtime inference is `HELD_PROVIDER` when no endpoint is configured. |
-| verification-and-release | `BLOCKED_AUTHORITY` | Local suites and Claude final review passed and the branch was pushed. Grok final verdict is `HELD_PROVIDER`; Vercel deployment and deployed ordinary-user verification are `NOT RUN`. |
+| verification-and-release | `VERIFIED` | Local suites and Claude final review passed, the branch was pushed, and the exact built artifact was deployed and smoke-tested publicly. Grok final verdict remains `HELD_PROVIDER`, and Git-backed continuous deployment is not configured. |
 
 ## Exact local verification
 
@@ -47,10 +48,10 @@ Full Python/kernel verification ran at repaired parent `8b3eeb81aee7d8042ebfb38a
 
 The exact product candidate differs from that parent only in workbench disclosure/test/evidence and provider-documentation bytes. Python/kernel, lockfile, retained-case, and source-room bytes are unchanged. The exact product-candidate non-Python pipeline then produced:
 
-- Frontend/data/intake/model: `40/40 PASS`.
-- MCP: `6/6 PASS`.
-- TypeScript/Vite production build and lazy-chunk budgets: `PASS` — shell gzip 82,997 bytes; AtlasGrid payload gzip 718,257 bytes; Helios payload gzip 607,795 bytes.
-- Browser: `18 passed`, `6 intentional mobile-project skips`, `24 discovered`; every active test passed.
+- Frontend/data/intake/model/connection: `54/54 PASS`.
+- MCP: `9/9 PASS`.
+- TypeScript/Vite production build and lazy-chunk budgets: `PASS` — shell gzip 89,305 bytes; AtlasGrid payload gzip 718,257 bytes; Helios payload gzip 607,795 bytes.
+- Browser: `22 passed`, `6 intentional mobile-project skips`, `28 discovered`; every active test passed.
 - Pixel regression: `40/40 PASS`.
 - Accessibility evidence: `8/8 PASS`; zero critical or serious Axe findings and no root overflow on the retained routes. This is automated evidence, not comprehensive WCAG evidence.
 - Normalized PDFs: `6/6 PASS`, 35 pages, tagged and normalized.
@@ -88,17 +89,19 @@ Provider envelopes included list-price-equivalent usage metadata. That metadata 
 
 ## Deployment disposition
 
-- `npx --yes vercel@latest whoami` used the official ephemeral CLI and reported `Logged out`.
-- The existing Chrome Vercel page was `https://vercel.com/login?next=%2Fdaily-ai-agents` and displayed the access screen.
-- No login, account-setting repair, project creation, unowned temporary deployment, or deployment mutation was attempted.
-- Browser writes performed: 0.
-- Current Vercel deployment: `NOT RUN`.
-- Deployed ordinary-user workflow verification: `NOT RUN`.
-- Deployment terminal state: `BLOCKED_AUTHORITY`.
+- Public URL: `https://underwriting-desk-delta.vercel.app/`.
+- Vercel project: `underwriting-desk` under `cooperdavidreed-personal`.
+- Deployment ID: `dpl_4uE7h1pEe5XBXKh11QqNNFpS5ERw`.
+- Deployment method: authenticated Vercel Drop to Deploy; 39 static files, 23,151,718 bytes.
+- Uploaded archive SHA-256: `5e11aac7c352e45de85bbf134aef9cdee35e076232d753d7b3c12b18b2947f7f`.
+- Public HTTP verification: root returned `200` with `text/html`; the hashed JavaScript application asset returned `200` with `application/javascript`.
+- Hosted browser verification: Deals, AtlasGrid overview, AtlasGrid diligence, model connection steps 1–2, and Helios IC memo loaded successfully; no captured browser warning or error was present.
+- Authentication wall: none observed on the public application URL.
+- Deployment terminal state: `VERIFIED`.
+- Boundary: direct static artifact upload only. Git integration, automatic redeployment, server-side model inference, runtime logs, and managed production observability are not established.
 
 ## Remaining limitations and founder-review items
 
-- A current Vercel account session and deployment destination must be made available before Codex can deploy and verify the ordinary hosted workflow.
 - Grok did not supply the required final adversarial verdict; this cannot be counted as a pass.
 - The public slice intentionally has no runtime model endpoint or credential. Live inference is `NOT RUN`; deterministic workflows remain functional.
 - Intake supports only Growth SaaS Quick Package v1 through multi-file selection. ZIP extraction and arbitrary data-room ingestion are not implemented or claimed.
@@ -114,7 +117,7 @@ Provider envelopes included list-price-equivalent usage metadata. That metadata 
 - Paid fallback: 0
 - Public package publication: 0
 - Merge: 0
-- Login/account repair: 0
+- Login/account repair: user completed Vercel 2FA; Codex dismissed the completed security dialog and performed the explicitly authorized deployment.
 - Founder handoff: canonical preview and linter `PASS`; delivery `NOT RUN`
 - 24-hour campaign: `DEFERRED`, not run
 - Seven-day campaign: `DEFERRED`, not run
@@ -122,6 +125,6 @@ Provider envelopes included list-price-equivalent usage metadata. That metadata 
 
 ## Literal verdict
 
-`BLOCKED_AUTHORITY`
+`PORTFOLIO_PRODUCT_CANDIDATE_READY_FOR_FOUNDER_REVIEW`
 
-The requested `PORTFOLIO_PRODUCT_CANDIDATE_READY_FOR_FOUNDER_REVIEW` state is not claimed because current Vercel deployment and deployed workflow verification are absent, and Grok's required final review is held. The local product candidate is ready for founder inspection, but release completion requires a Vercel authority decision.
+The portfolio candidate is public and ready for founder review. It remains deliberately narrower than a production private-markets platform: Grok's final advisory review is held, observed practitioner testing and real-company validation are not run, model inference is not hosted, supported intake is constrained, data is browser-local, and Git-backed continuous deployment is not configured.
