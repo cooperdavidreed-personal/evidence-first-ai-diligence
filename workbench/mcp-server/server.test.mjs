@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {existsSync, mkdtempSync, readFileSync, rmSync} from "node:fs";
+import {existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import test from "node:test";
@@ -60,7 +60,18 @@ test("proposal ledger is opt-in and binds successful proposals to retained diges
     const cases = JSON.parse(readFileSync(canonicalCasePath, "utf8")); const deal = cases.cases.find((item) => item.caseId === "atlasgrid");
     assert.equal(lines.length, 3);
     for (const item of lines) { assert.equal(item.status, "PROPOSED"); assert.equal(item.approval_state, "PROPOSED"); assert.equal(item.deal_id, "atlasgrid"); assert.equal(item.manifest_sha256, deal.manifest_sha256); assert.equal(item.analysis_sha256, deal.analysis_sha256); }
+    assert.equal(statSync(ledger).mode & 0o777, 0o600);
     assert.equal(digest(), before);
+  } finally { rmSync(temp, {recursive: true, force: true}); }
+});
+
+test("proposal ledger tightens a pre-existing file to operator-only permissions", async () => {
+  const temp = mkdtempSync(join(tmpdir(), "underwriting-ledger-mode-")); const ledger = join(temp, "proposals.jsonl");
+  try {
+    writeFileSync(ledger, "", {mode: 0o644});
+    const handlers = createToolHandlers({proposalLedgerPath: ledger});
+    await handlers.callTool("propose_observation", {deal_id: "atlasgrid", text: "Reconcile pricing.", evidence_refs: ["atlasgrid-SELECTED-gross-irr"]});
+    assert.equal(statSync(ledger).mode & 0o777, 0o600);
   } finally { rmSync(temp, {recursive: true, force: true}); }
 });
 

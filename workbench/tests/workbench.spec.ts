@@ -106,6 +106,8 @@ test("local MCP proposal reaches named human review and the IC memo without pers
     await (await visibleDealNavigation(page)).getByRole("button", {name: "IC Memo"}).click();
     await expect(page.getByText("Model proposed · accepted by Avery Chen")).toBeVisible();
     await expect(page.getByText(/Reconcile the downside covenant bridge/)).toBeVisible();
+    await expect(page.getByText("Evidence: Gross IRR")).toBeVisible();
+    await expect(page.getByText(/atlasgrid-SELECTED-gross-irr/)).toHaveCount(0);
     await expect(page.getByRole("heading", {name: "Model proposal disposition"})).toBeVisible();
     const scan = await accessibilitySnapshot(page);
     await captureVisualEvidence(page, `${testInfo.project.name}-mcp-human-review-memo.png`, true);

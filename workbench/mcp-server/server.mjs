@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import {appendFileSync, readFileSync} from "node:fs";
+import {closeSync, constants, fchmodSync, openSync, readFileSync, writeFileSync} from "node:fs";
 import {randomUUID} from "node:crypto";
 import {fileURLToPath} from "node:url";
 import {dirname, resolve} from "node:path";
@@ -42,7 +42,11 @@ export function createToolHandlers({proposalLedgerPath} = {}) {
   const data = loadData(); const proposals = [];
   function proposed(kind, deal, payload, refs) {
     const proposal = {proposal_id: randomUUID(), status: "PROPOSED", approval_state: "PROPOSED", kind, deal_id: deal.caseId, manifest_sha256: deal.manifest_sha256, analysis_sha256: deal.analysis_sha256, evidence_refs: validateRefs(deal, refs), ...payload};
-    if (proposalLedgerPath) appendFileSync(proposalLedgerPath, `${JSON.stringify(proposal)}\n`, {encoding: "utf8", mode: 0o600});
+    if (proposalLedgerPath) {
+      const descriptor = openSync(proposalLedgerPath, constants.O_WRONLY | constants.O_CREAT | constants.O_APPEND | constants.O_NOFOLLOW, 0o600);
+      try { fchmodSync(descriptor, 0o600); writeFileSync(descriptor, `${JSON.stringify(proposal)}\n`, {encoding: "utf8"}); }
+      finally { closeSync(descriptor); }
+    }
     proposals.push(proposal); return proposal;
   }
   async function callTool(name, args = {}) {

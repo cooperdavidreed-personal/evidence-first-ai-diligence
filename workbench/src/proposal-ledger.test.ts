@@ -14,7 +14,7 @@ describe("MCP proposal ledger import", () => {
   it("imports a matching proposal as PROPOSED regardless of incoming state", () => {
     const result = importProposalLedger(line(), atlasgrid);
     expect(result.dropped).toBe(0);
-    expect(result.proposals).toEqual([expect.objectContaining({proposalId: "proposal-1", kind: "MEMO_DRAFT", state: "PROPOSED", title: "Draft Downside", evidenceRefs: [canonicalRef]})]);
+    expect(result.proposals).toEqual([expect.objectContaining({proposalId: "ledger:proposal-1", kind: "MEMO_DRAFT", state: "PROPOSED", title: "Draft Downside", evidenceRefs: [canonicalRef]})]);
   });
 
   it("rejects deal, digest, and evidence mismatches", () => {

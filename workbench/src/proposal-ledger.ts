@@ -24,7 +24,7 @@ export function importProposalLedger(source: string, caseData: CaseData): Import
     else if (item.kind === "MEMO_SECTION") { kind = "MEMO_DRAFT"; const section = text(item.section, 100); title = section ? `Draft ${section}` : null; body = text(item.draft_text, 2400); extras.memoSection = section ?? undefined; }
     else { reasons.push(`Line ${index + 1}: unsupported proposal kind`); continue; }
     if (!title || !body) { reasons.push(`Line ${index + 1}: proposal text is invalid`); continue; }
-    proposals.push({proposalId, kind, state: "PROPOSED", title, body, evidenceRefs, ...extras}); ids.add(proposalId);
+    proposals.push({proposalId: `ledger:${proposalId}`, kind, state: "PROPOSED", title, body, evidenceRefs, ...extras}); ids.add(proposalId);
   }
   return {proposals, dropped: reasons.length, reasons};
 }

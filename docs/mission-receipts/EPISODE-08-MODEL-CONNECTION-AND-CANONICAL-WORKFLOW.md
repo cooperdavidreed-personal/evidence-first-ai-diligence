@@ -17,7 +17,7 @@ The answer is implemented as an ordinary workflow, not a marketing claim: the De
 1. A three-step connection center distinguishes local MCP, hosted remote MCP, and an operator-controlled in-product adapter.
 2. Claude Code and Codex receive copyable commands for the included local stdio MCP server.
 3. ChatGPT, Claude.ai, and Grok are honestly marked as requiring a hosted authenticated MCP service; the public build does not claim that service exists.
-4. The local server can append validated proposals to an opt-in mode-`0600` JSONL ledger bound to the deal, manifest digest, analysis digest, and canonical evidence references.
+4. The local server can append validated proposals to an opt-in JSONL ledger bound to the deal, manifest digest, analysis digest, and canonical evidence references. The server creates the file with mode `0600` and tightens an existing file to that mode before writing.
 5. A retained deal imports that local ledger, rejects malformed or mismatched entries, and forces every admitted item back to `PROPOSED`.
 6. A named human accepts or rejects each proposal. Only accepted memo drafts enter the IC memo, and their disposition remains visible.
 7. Browser-local deal intake and model-proposal state remain session-only and clear on reload. No provider key is collected in the browser.
