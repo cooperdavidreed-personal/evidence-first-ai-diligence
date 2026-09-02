@@ -14,7 +14,7 @@ function request(overrides: Record<string, unknown> = {}) {
 
 describe("hosted synthetic evidence challenge boundary", () => {
   it("pins the public reviewer to the verified AI Gateway model slug", () => {
-    expect(HOSTED_MODEL_FAMILY).toBe("anthropic/claude-fable-5.1");
+    expect(HOSTED_MODEL_FAMILY).toBe("openai/gpt-5.4-mini");
   });
 
   it("admits a bounded, digest-bound selected-evidence request", () => {

@@ -17,7 +17,10 @@ const outputSchema = jsonSchema<{
 }, required: ["challenges", "gaps", "memo_drafts"]});
 const RATE_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT = 5;
-export const HOSTED_MODEL_FAMILY = "anthropic/claude-fable-5.1";
+// This public synthetic-only demonstration intentionally uses a model that is
+// eligible for Vercel AI Gateway's bounded free-credit tier. Model output is
+// still advisory, schema-constrained, evidence-linked, and human-dispositioned.
+export const HOSTED_MODEL_FAMILY = "openai/gpt-5.4-mini";
 const requestWindows = new Map<string, number[]>();
 
 function boundedString(value: unknown, max: number) {return typeof value === "string" && value.trim().length > 0 && value.length <= max ? value.trim() : null;}
