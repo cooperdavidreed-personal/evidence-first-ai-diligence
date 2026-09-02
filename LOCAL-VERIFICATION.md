@@ -1,53 +1,50 @@
 # Local verification receipt
 
-Status: `PRODUCT CANDIDATE VERIFIED LOCALLY — FOUNDER REVIEW PENDING`
+Status: `UNIFIED PRODUCT SOURCE VERIFIED — EXTERNAL RELEASE GATES REMAIN`
 
-- Exact mission base: `5795f00fe7466991605dfba95b7d0d3b90cde5bd`
-- Product candidate commit: `85f379ddbb329354421076f6ae5569058a7c8133`
-- Branch: `codex/underwriting-product-vertical-slice`
+- Product and demo-source commit: `a7795db151811382d209e288ef006bcbf2363bb8`
+- Branch: `codex/underwriting-unified-release`
+- Base merge: `5c273bb` (PR 16 into `main`)
 - Environment: macOS, Python 3.12.13, Node 26.3.0, Chromium
-- Complete kernel command at parent `8b3eeb81aee7d8042ebfb38a6c43ced103518321`: `bash scripts/verify-underwriting.sh`
-- Exact complete command: `bash scripts/verify-underwriting.sh`
-- Exact post-review non-Python command: `UNDERWRITING_SKIP_PYTEST=1 bash scripts/verify-underwriting.sh`
-- Complete run date: `2026-09-01`
+- Complete command: `bash scripts/verify-underwriting.sh`
+- Completed: `2026-09-01` America/Chicago / `2026-09-02` UTC
 
-The current candidate adds the model connection center, local proposal ledger, browser import, named human disposition, memo insertion, and independent-review repairs. Python/kernel, lockfile, retained-case, and source-room bytes are unchanged. The subsequent public deployment evidence is recorded in [`docs/mission-receipts/EPISODE-09-VERCEL-DEPLOYMENT.md`](docs/mission-receipts/EPISODE-09-VERCEL-DEPLOYMENT.md).
+## Exact complete gate
 
-GitHub Actions run `33530085943` at candidate parent `a1e7dec88e62b4dca9bdcbf492bfc68e4e98d553` completed `SUCCESS`: all 9 jobs passed, including the Python 3.11–3.13 Ubuntu/macOS matrix, workbench, security contract, and toolkit contract.
+- Python/kernel: `188/188 PASS` in `661.09s`.
+- Mutation gates: `PASS` — 16 declared, 13 dynamic, 1 static; whole-program score `NOT_CLAIMED`.
+- AtlasGrid deterministic room: `PASS` — 11 files, 9,987,885 bytes.
+- Helios deterministic room: `PASS` — 15 files, 823,353 bytes.
+- Frontend, intake, persistence, policy, hosted-adapter, and data contracts: `98/98 PASS`.
+- Local MCP boundary: `9/9 PASS`; read and proposal-only surface preserved.
+- TypeScript/Vite build and lazy chunks: `PASS` — shell gzip 116,554 bytes; AtlasGrid payload 203,232 bytes; Helios payload 162,906 bytes.
+- Browser: `38 passed`, `8 intentional skips`, `46 discovered`; all active desktop and mobile journeys passed.
+- Mobile route regression: `PASS`; a scrolled Deals page opens the selected deal at the top.
+- Visual regression: `40/40 PASS` on the declared macOS reference platform.
+- Accessibility evidence: `8/8 PASS`; no retained critical or serious automated Axe finding and no root overflow. This is not comprehensive WCAG certification.
+- PDF contract: `6/6 PASS`, 36 pages total, tagged and metadata-normalized.
+- Visual manifest: `PASS`.
+- Public artifact, secret, and private-path scan: `PASS` over 412 candidate files.
+- Dependency and security contracts: `PASS`; no known package vulnerability reported by the configured checks.
 
-## Product evidence
+## Decision-integrity proof
 
-- Product root: **Deals**.
-- In-deal destinations: **Overview**, **Financials**, **Diligence**, **Documents**, and **IC Memo** — exactly five.
-- Ordinary UI intake: supported four-file package → explicit validation ledger → deterministic analysis → decision review.
-- Incomplete input: `NO CALL — PACKAGE INCOMPLETE`, named missing file, no return conclusion.
-- Uploaded bytes: in-memory only in the public slice; no observed external request in the tested flow; refresh clears the deal.
-- Model workflow: selected-evidence challenge, citation validation, optional local proposal-ledger handoff, named human review, accepted memo output, and honest unavailable states for unimplemented hosted paths.
-- MCP: seven reads and three proposal tools; forbidden canonical mutation tools absent; local ledger writes are opt-in, digest-bound, evidence-validated, and mode `0600`.
+- The complete Northstar sample reproduces $15.9M LTM revenue, 70.0% gross margin, 83.6% ordinary-cohort NRR, 33.3% post-money ownership, 3.23x gross MOIC, and 26.5% annualized gross return.
+- Its uploaded thresholds do not become fund policy. The 83.6% NRR result breaches the separate 95% Desk policy and the posture remains `SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED`.
+- Missing or modified required files suppress returns and produce `NO CALL — PACKAGE INCOMPLETE`.
+- Canonical cases remain separate from unapproved what-if scenarios, analyst assumptions, fund policy, model proposals, and named human decisions.
+- Human notes, issue workflow, assumption review, source previews, memo editing, portable state, and proposal disposition all passed ordinary browser journeys.
 
-## Complete local gate
+## Hosted and public state
 
-- Python/kernel repository suite: `182/182 PASS` in `724.25s`.
-- Mutation gates: `16` declared, `13` dynamic, `1` static; `PASS`; whole-program score explicitly `NOT_CLAIMED`.
-- Frontend/data/intake/model/connection: `54/54 PASS` across eight files.
-- MCP surface/boundary: `9/9 PASS`.
-- Production TypeScript/Vite build: `PASS`.
-- Lazy case chunks: `PASS`; shell gzip `89,305` bytes, AtlasGrid payload gzip `718,257` bytes, Helios payload gzip `607,795` bytes.
-- Browser: `22 passed, 6 skipped / 28 discovered`; all six skips are desktop-only print tests under the mobile project.
-- Visual regression: `40/40` PNG candidates `PASS` on the reference macOS platform.
-- Accessibility records: `8/8 PASS`; no tested default surface had a critical or serious Axe finding or root overflow.
-- PDF contract: `6/6 PASS`, `35` pages total, all six tagged and metadata-normalized.
-- Visual manifest: `PASS`; `36` product PNGs, `8` accessibility JSON records, and `10` print artifacts; manifest digest `d6e151fb150fe58a18bcd09999d8c24836f975c1e277a255da2efcbba7f63df2`.
+- Canonical URL: `https://underwriting-desk-delta.vercel.app/`.
+- Current production deployment: `dpl_32Y12VM5aGWJTT76cLqzBY4X1546`; root and bundled assets return `200`.
+- Managed Vercel firewall: `rule_synthetic_model_challenge_rate_limit_SOKNGR`, live at five `/api/challenge` requests per IP per 600 seconds.
+- The public server validates the exact evidence digest and fails closed, but Vercel AI Gateway currently returns an account-credit error. A valid payment method is required to unlock the included free credits before live Claude Fable 5.1 inference can be accepted.
+- Git-backed Vercel deployment remains blocked until the official Vercel GitHub App is installed for the single repository. A manual deployment is not counted as final Git-backed release proof.
 
-## Preserved analytical boundary
+## Not established
 
-The verifier regenerated both retained source rooms, analyses, estimator-coverage records, memo/packet/appendix sets, and the frozen recovery ledger. The UI, intake, model proposal path, and MCP layer did not weaken the governed finance, econometric, lineage, source-room, mutation, chunk, PDF, or public-artifact gates.
-
-## Not established by this receipt
-
-- Observed PE/VC practitioner usability: `NOT RUN`.
-- Comprehensive WCAG conformance: `NOT CLAIMED`.
-- Real-company accuracy, arbitrary data-room support, investment performance, confidential-data readiness, enterprise security, or autonomous investment judgment: `NOT CLAIMED`.
-- Runtime provider inference: `NOT RUN` because no runtime endpoint/credential is configured; deterministic workflows and the local MCP ledger handoff remain available.
-- Independent Claude model-workflow review at `4c6fe115db9a9fd6a3d57fca073addf3bc87ec1d`: `PORTFOLIO_CANDIDATE_READY`, zero writes, no critical or high finding. All four actionable low findings were repaired in `85f379ddbb329354421076f6ae5569058a7c8133`. Final Grok verdict remains `HELD_PROVIDER` under the exhausted order ceiling.
-- Remote push, Vercel deployment, and deployed ordinary-user verification: completed after this local gate and recorded separately; they are not implied by the local counts above.
+- Observed PE, VC, CFO, or recruiter usability: `NOT RUN`.
+- Real-company accuracy, investment performance, firm adoption, arbitrary data-room support, confidential-data readiness, enterprise security, authentication, or multitenancy: `NOT CLAIMED`.
+- Final ElevenLabs film, three-reviewer film acceptance, GitHub release, exact-main Vercel deployment, and final review email: `NOT YET COMPLETE`.

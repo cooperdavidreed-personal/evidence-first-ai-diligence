@@ -1,16 +1,30 @@
-# Underwriting Desk unified release candidate
+# Underwriting Desk v0.1.0 — practitioner-test candidate
 
-Status: `FINAL ACCEPTANCE AND PUBLIC REBIND IN PROGRESS`
+Status: `PRODUCT SOURCE VERIFIED — FINAL PUBLIC REBIND IN PROGRESS`
 
-This release unifies the prior Underwriting Intelligence Lab and Underwriting Desk work into one product: one repository, five-destination decision workspace, two retained synthetic cases, one supported public intake, partner-facing PDFs, a bounded hosted model proposal flow, a proposal-only local MCP surface, and a single canonical public URL.
+This release unifies the former Underwriting Intelligence Lab and Underwriting Desk into one finance-native decision workspace, one repository, and one canonical URL.
 
-## Release highlights
+## What changed
 
-- Northstar intake no longer self-authorizes through package thresholds. Its reproducible 83.6% ordinary-cohort NRR is a visible blocker and the complete package remains `SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED`.
-- Missing or modified required files fail closed with `NO CALL — PACKAGE INCOMPLETE` and no return conclusion.
-- Canonical cases are separated from editable what-if scenarios, analyst assumptions, and fund policy.
-- Users can add observations, manage diligence issues, review assumptions, inspect exact evidence, process cited model proposals through named human disposition, edit the memo, and export or restore portable state.
-- AtlasGrid and Helios retain deterministic PE and growth-financing mechanics, econometric interpretation, interactive sensitivities, one-page IC snapshots, underwriting packets, and separate technical appendices.
-- The interface uses a compact institutional shell, persistent decision rail, split document preview, plain-language analytical interpretation, and responsive desktop/mobile layouts.
+- Northstar intake can no longer authorize itself through uploaded thresholds. Its reproducible 83.6% ordinary-cohort NRR is a visible policy breach and keeps the complete package at `SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED`.
+- Missing or changed required files fail closed with `NO CALL — PACKAGE INCOMPLETE` and no return conclusion.
+- Source facts, deal terms, analyst assumptions, fund policy, deterministic calculations, model proposals, and named human decisions remain separate.
+- Editable scenarios update returns and decision consequences without overwriting the canonical case.
+- Notes, qualitative observations, issue ownership and resolution, assumption disposition, exact evidence preview, memo editing, local persistence, and portable deal-state export/import work end to end.
+- AtlasGrid and Helios retain deterministic PE and growth mechanics, econometric interpretation, sensitivities, partner-grade PDFs, and separate technical appendices.
+- The hosted adapter sends only a confirmed evidence subset, validates cited output, creates `PROPOSED` language, and requires a named human to accept, reject, or edit it.
+- The interface uses a compact institutional shell, full analytical workspace, persistent decision rail, split source preview, plain-language analytical interpretation, and responsive mobile behavior.
+- The reported mobile scroll-position defect has a dedicated passing browser regression.
 
-The exact commit, test results, hosted endpoint result, demo identity, public deployment, independent reviews, and remaining limitations will be recorded in the unified release receipt. Observed practitioner testing remains `NOT RUN`.
+## Verified locally
+
+Exact product source `a7795db151811382d209e288ef006bcbf2363bb8` passed 188 Python/kernel tests, 98 frontend/API tests, 9 MCP tests, 38 active browser journeys, 40 visual baselines, six normalized PDFs, and the 412-file public/security scan. See [`LOCAL-VERIFICATION.md`](LOCAL-VERIFICATION.md).
+
+## Release gates still open
+
+- Vercel GitHub App installation for this single repository.
+- Vercel AI Gateway payment-method verification and one successful live Claude Fable 5.1 proposal roundtrip.
+- Source-bound 75–90 second ElevenLabs demonstration and independent Claude, ChatGPT, and Grok film reviews.
+- Final demo/PDF publication, GitHub release, exact-main Git deployment, public smoke test, and review email.
+
+Practitioner results remain `NOT RUN`; the repository includes a participant card, moderator protocol, and feedback template without simulated outcomes.
