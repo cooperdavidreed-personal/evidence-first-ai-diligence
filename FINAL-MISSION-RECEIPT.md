@@ -1,5 +1,7 @@
 # Final mission receipt — Underwriting Desk vertical slice
 
+> **SUPERSEDED HISTORICAL RECEIPT.** This document records the narrower 2026-09-01 vertical slice and is not the current release state. Browser-local persistence, a bounded hosted proposal route, the unified Desk interface, and later verification supersede several statements below. Use [`LOCAL-VERIFICATION.md`](LOCAL-VERIFICATION.md), [`RELEASE-NOTES.md`](RELEASE-NOTES.md), and [`docs/UNIFIED-REVIEW-AND-REPAIR-LEDGER.md`](docs/UNIFIED-REVIEW-AND-REPAIR-LEDGER.md) for the current candidate.
+
 Mission: `underwriting-product-vertical-slice-20260901`
 
 Recorded: `2026-09-01T18:01:05Z`

@@ -134,6 +134,15 @@ customer-a,2026-06,96000000`;
     expect(result.analysis?.tests.find((test) => test.gateId === "retention-nrr")?.explanation).toMatch(/cannot clear an annual NRR screen/i);
   });
 
+  it("uses HOLD when a complete package misses deterministic return screens", async () => {
+    const weakReturnDeal = deal.replace('"annual_revenue_growth":"0.25","exit_revenue_multiple":"5.0"', '"annual_revenue_growth":"0.00","exit_revenue_multiple":"1.0"');
+    const result = await processDealPackage(await packageFiles({deal: weakReturnDeal}));
+    expect(result.packageState).toBe("READY");
+    expect(result.posture).toBe("HOLD");
+    expect(result.rationale).toMatch(/deterministic return screens miss/i);
+    expect(result.analysis?.tests.find((test) => test.gateId === "returns-moic")?.state).toBe("CONCERN");
+  });
+
   it("rejects a caller-created policy profile that is not in the Desk registry", async () => {
     await expect(processDealPackage(await packageFiles(), {...GROWTH_SCREEN_POLICY, profileId: "ad-hoc-easy-policy"})).rejects.toThrow(/not admitted by the Desk registry/);
   });

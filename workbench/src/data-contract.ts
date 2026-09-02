@@ -1,4 +1,5 @@
 import type {CaseData, FormulaEntry, TypedMetricRecord, WorkbenchData} from "./types";
+import {HELIOS_SCREEN_POLICY} from "./policy";
 
 const record = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object";
 const array = (value: unknown): value is unknown[] => Array.isArray(value);
@@ -311,6 +312,14 @@ export function assertWorkbenchCase(candidate: unknown): asserts candidate is Ca
     if (sensitivity.default_cell_id !== baselineCellIds[String(sensitivity.default_axis)]) throw new Error("vc_sensitivity_default_invalid");
     if (policy.schema_version !== "helios.risk-policy/v1" || policy.classification !== "ILLUSTRATIVE_ANALYST_POLICY_NOT_FIRM_POLICY" || policy.approval_status !== "UNREVIEWED" || typeof policy.owner !== "string" || !array(policy.editable_maximum_probability_choices) || !policy.editable_maximum_probability_choices.includes(policy.maximum_probability_below_one)) throw new Error("vc_risk_policy_invalid");
     if (deskPolicy.schema_version !== "underwriting.desk-policy/v1" || deskPolicy.classification !== "DESK_OWNED_DRAFT_POLICY_OUTSIDE_DATA_ROOM" || deskPolicy.status !== "DRAFT" || !record(deskPolicy.thresholds) || !array(deskPolicy.editable_maximum_probability_choices) || !deskPolicy.editable_maximum_probability_choices.includes(deskPolicy.thresholds.maximum_probability_below_one)) throw new Error("vc_desk_policy_invalid");
+    if (HELIOS_SCREEN_POLICY.profileId !== deskPolicy.profile_id || HELIOS_SCREEN_POLICY.owner !== deskPolicy.owner || HELIOS_SCREEN_POLICY.ownerRole !== deskPolicy.owner_role || HELIOS_SCREEN_POLICY.status !== deskPolicy.status) throw new Error("vc_browser_policy_identity_mismatch");
+    const browserPolicyBindings: Array<[typeof HELIOS_SCREEN_POLICY.thresholds[number]["metric"], string]> = [
+      ["ordinary_nrr", "ordinary_cohort_nrr"], ["gross_margin", "gross_margin"], ["runway_months", "post_close_runway_months"], ["annualized_return", "gross_xirr"], ["gross_moic", "gross_moic"], ["probability_below_one", "maximum_probability_below_one"],
+    ];
+    for (const [metric, engineKey] of browserPolicyBindings) {
+      const threshold = HELIOS_SCREEN_POLICY.thresholds.find((item) => item.metric === metric);
+      if (!threshold || compareDecimalStrings(String(threshold.value), String(deskPolicy.thresholds[engineKey])) !== 0) throw new Error("vc_browser_policy_threshold_mismatch");
+    }
     const expectedLossStatus = selectedLossPolicyStatus(String(priors.catastrophe_probability), String(deskPolicy.thresholds.maximum_probability_below_one));
     if (sensitivityCells.some((item) => item.binding_loss_hurdle_status !== expectedLossStatus || item.analytical_posture !== "HOLD")) throw new Error("vc_sensitivity_posture_invalid");
     for (const item of sensitivityCells) {

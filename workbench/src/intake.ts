@@ -437,9 +437,14 @@ export async function processDealPackage(input: File[], policyProfile: PolicyPro
     }
     const analysis = analyze(deal, monthly.rows, customers.rows, policyProfile);
     const blockers = analysis.tests.filter((test) => test.blocksAdvancement);
+    const returnScreenMisses = blockers.filter((test) => test.gateId === "returns-moic" || test.gateId === "returns-annualized");
+    const posture: IntakeResult["posture"] = returnScreenMisses.length ? "HOLD" : "SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED";
     for (const status of statuses) if (status.state === "RECOGNIZED") status.state = "READY";
     const sourcePayloads = await Promise.all(REQUIRED_FILES.map(async (name) => ({name, text: await byName.get(name)!.text()})));
-    return {packageState: "READY", posture: "SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED", rationale: `${blockers.length} policy or diligence gates remain unresolved. The package is complete enough for screening, but uploaded thresholds and assumptions cannot authorize advancement.`, files: statuses, errors: [], deal, analysis, sourcePayloads, processedLocally: true};
+    const rationale = returnScreenMisses.length
+      ? `${returnScreenMisses.length} deterministic return screen${returnScreenMisses.length === 1 ? "" : "s"} miss and ${blockers.length} policy or diligence gates remain unresolved. HOLD is a screening posture, not an investment recommendation.`
+      : `${blockers.length} policy or diligence gates remain unresolved. The package is complete enough for screening, but uploaded thresholds and assumptions cannot authorize advancement.`;
+    return {packageState: "READY", posture, rationale, files: statuses, errors: [], deal, analysis, sourcePayloads, processedLocally: true};
   } catch (error) {
     const detail = error instanceof Error ? error.message : "Package analysis failed"; errors.push(detail);
     const target = analysisErrorTarget(detail);

@@ -1,6 +1,7 @@
 import {describe, expect, it} from "vitest";
 import rawData from "./data/cases.json";
 import {assertWorkbenchData, compareDecimalStrings, selectedLossPolicyStatus} from "./data-contract";
+import {HELIOS_SCREEN_POLICY, policyThreshold} from "./policy";
 
 describe("workbench v2 data contract", () => {
   it("validates both exact generated cases and ten browser identities", () => {
@@ -58,7 +59,13 @@ describe("workbench v2 data contract", () => {
     assertWorkbenchData(candidate);
     const helios = candidate.cases.find((item) => item.caseId === "helios")!;
     helios.vcEngine!.desk_policy.thresholds.maximum_probability_below_one = "0.20";
-    expect(() => assertWorkbenchData(candidate)).toThrow(/vc_sensitivity_posture_invalid|vc_risk_sensitivity_invalid|vc_desk_policy_decision_mismatch/);
+    expect(() => assertWorkbenchData(candidate)).toThrow(/vc_browser_policy_threshold_mismatch|vc_sensitivity_posture_invalid|vc_risk_sensitivity_invalid|vc_desk_policy_decision_mismatch/);
+  });
+
+  it("labels and binds the Helios runway screen to post-close modeled runway", () => {
+    const runway = policyThreshold(HELIOS_SCREEN_POLICY, "runway_months");
+    expect(runway).toMatchObject({label: "Post-close modeled runway floor", value: 18, displayValue: "18.0 modeled months"});
+    expect(runway.rationale).toMatch(/separate 17.3-month headline/i);
   });
 
   it("does not let the uploaded Helios package policy grade the decision", () => {

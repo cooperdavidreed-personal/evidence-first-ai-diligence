@@ -195,6 +195,20 @@ test("scenario, observation, issue, assumption, and memo changes persist as huma
   await expect(page.getByText("Original source text")).toBeVisible();
 });
 
+test("decision rail keeps canonical conditions separate from worklist resolutions", async ({page}) => {
+  await page.goto("/#/v3/atlasgrid/diligence", {waitUntil: "networkidle"});
+  const issue = page.locator("details.worklist-row").filter({hasText: "Validate cancellation rights"});
+  await issue.locator("summary").click();
+  await issue.getByRole("textbox", {name: "Resolver"}).fill("Avery Chen");
+  await issue.getByRole("textbox", {name: "Resolution record"}).fill("Signed cancellation schedule reconciled to the modeled live-ARR population.");
+  await issue.getByRole("button", {name: "Resolve issue"}).click();
+  await (await visibleDealNavigation(page)).getByRole("button", {name: "Overview"}).click();
+  const rail = page.getByRole("complementary", {name: "Decision status"});
+  await expect(rail).toContainText("Canonical conditions5");
+  await expect(rail).toContainText("Worklist open4");
+  await expect(rail).toContainText("Validate cancellation rights");
+});
+
 test("Helios policy sensitivity is an unapproved what-if and follows the memo", async ({page}) => {
   await page.goto("/#/v3/helios/financials", {waitUntil: "networkidle"});
   const policy = page.getByLabel("Maximum probability below 1.0x");
