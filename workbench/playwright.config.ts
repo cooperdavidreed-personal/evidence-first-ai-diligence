@@ -11,12 +11,11 @@ export default defineConfig({
   reporter: "line",
   use: {
     baseURL: `http://127.0.0.1:${port}`,
-    channel: "chrome",
     trace: "retain-on-failure",
   },
   projects: [
-    {name: "desktop", use: {viewport: {width: 1440, height: 900}}},
-    {name: "mobile", use: {viewport: {width: 390, height: 844}, deviceScaleFactor: 1, isMobile: true, hasTouch: true}},
+    {name: "desktop-chrome", use: {browserName: "chromium", channel: "chrome", viewport: {width: 1440, height: 900}}},
+    {name: "desktop-webkit", use: {browserName: "webkit", viewport: {width: 1440, height: 900}}},
   ],
   webServer: {
     command: `VITE_MODEL_REVIEW_URL=/api/challenge ./node_modules/.bin/vite --host 127.0.0.1 --port ${port}`,

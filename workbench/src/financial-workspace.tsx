@@ -9,14 +9,31 @@ const money = (cents: number) => new Intl.NumberFormat("en-US", {style: "currenc
 const percent = (value: string | number) => `${(Number(value) * 100).toFixed(1)}%`;
 const multiple = (value: string | number) => `${Number(value).toFixed(2)}x`;
 
-export interface ScenarioMemoSummary {state: "Canonical case" | "Unapproved what-if"; label: string; returnLine: string; detail: string}
+export interface ScenarioMemoSummary {
+  state: "Canonical case" | "Unapproved what-if";
+  label: string;
+  returnLine: string;
+  detail: string;
+  snapshotId: string;
+  sectionBodies: Record<string, string>;
+}
 
-export function scenarioMemoSummary(caseData: CaseData, state: DealWorkspaceState): ScenarioMemoSummary {
+export function scenarioMemoSummary(caseData: CaseData, state: Pick<DealWorkspaceState, "scenarioValues">): ScenarioMemoSummary {
   if (caseData.peEngine) {
     const key = (["ask", "selected", "downside"] as const).includes(state.scenarioValues.peScenario as "ask" | "selected" | "downside") ? state.scenarioValues.peScenario as "ask" | "selected" | "downside" : "selected";
     const labels = {ask: "Seller ask", selected: "Selected terms", downside: "Downside"};
     const result = caseData.peEngine[key];
-    return {state: key === "selected" ? "Canonical case" : "Unapproved what-if", label: labels[key], returnLine: `${percent(result.gross_xirr)} annualized gross return · ${multiple(result.gross_moic)} gross multiple`, detail: `${money(result.debt_schedule.ending_debt_cents)} exit debt. This selected working scenario does not overwrite the canonical case.`};
+    const returnLine = `${percent(result.gross_xirr)} annualized gross return · ${multiple(result.gross_moic)} gross multiple`;
+    const recommendation = key === "ask"
+      ? `REPRICE. Seller ask produces ${returnLine}, below the declared 22.0% annualized-return screen. Do not advance at asking terms.`
+      : key === "downside"
+        ? `REPRICE remains conditional. The retained downside produces ${returnLine}; the committee should not advance without preserving the declared downside protections.`
+        : `REPRICE. Selected terms produce ${returnLine} and clear the declared point-return screen, subject to unresolved diligence and human investment-committee approval.`;
+    return {state: key === "selected" ? "Canonical case" : "Unapproved what-if", label: labels[key], returnLine, detail: `${money(result.debt_schedule.ending_debt_cents)} exit debt. This selected working scenario does not overwrite the canonical case.`, snapshotId: `pe:${key}:${result.receipt_sha256}`, sectionBodies: {
+      recommendation,
+      economics: `${labels[key]}: ${returnLine}. Exit equity value is ${money(result.exit_equity_value_cents)} with ${money(result.debt_schedule.ending_debt_cents)} of exit debt and ${money(result.debt_schedule.minimum_liquidity_cents)} of minimum liquidity.`,
+      downside: `${result.debt_schedule.first_covenant_breach_month ? `A modeled covenant breach begins in month ${result.debt_schedule.first_covenant_breach_month}.` : "No covenant breach is modeled in this retained scenario."} The result remains conditional on retention, margin quality, concentration, debt terms, and unresolved diligence.`,
+    }};
   }
   const keys = ["base", "milestone", "downside", "financing_shortfall"] as const;
   const key = keys.includes(state.scenarioValues.vcScenario as typeof keys[number]) ? state.scenarioValues.vcScenario as typeof keys[number] : "milestone";
@@ -27,7 +44,13 @@ export function scenarioMemoSummary(caseData: CaseData, state: DealWorkspaceStat
   const policyThreshold = engine.risk_sensitivity.policy_threshold_choices.includes(state.scenarioValues.vcLossPolicy) ? state.scenarioValues.vcLossPolicy : engine.risk_sensitivity.canonical_policy_threshold;
   const isCanonical = key === "milestone" && riskCell.cell_id === engine.risk_sensitivity.canonical_cell_id && policyThreshold === engine.risk_sensitivity.canonical_policy_threshold;
   const policyResult = Number(riskCell.catastrophe_probability) <= Number(policyThreshold) ? "clears" : "misses";
-  return {state: isCanonical ? "Canonical case" : "Unapproved what-if", label: labels[key], returnLine: `${percent(result.gross_xirr)} annualized gross return · ${multiple(result.gross_moic)} gross multiple`, detail: `${percent(result.target_ownership)} investor ownership · ${money(result.minimum_cash_cents)} minimum cash · the selected ${percent(riskCell.catastrophe_probability)} catastrophe prior ${policyResult} the ${percent(policyThreshold)} Desk loss ceiling. Every catastrophe path loses in this retained structure; the replay frequency is a generator check, not an independent estimate.`};
+  const returnLine = `${percent(result.gross_xirr)} annualized gross return · ${multiple(result.gross_moic)} gross multiple`;
+  const detail = `${percent(result.target_ownership)} investor ownership · ${money(result.minimum_cash_cents)} minimum cash · the selected ${percent(riskCell.catastrophe_probability)} loss-case probability ${policyResult} the ${percent(policyThreshold)} Desk maximum. Every severe-loss path loses in this retained structure; the replay checks the scenario generator rather than estimating the probability.`;
+  return {state: isCanonical ? "Canonical case" : "Unapproved what-if", label: labels[key], returnLine, detail, snapshotId: `vc:${key}:${result.receipt_sha256}:${riskCell.receipt_sha256}:${policyThreshold}`, sectionBodies: {
+    recommendation: `HOLD under the selected synthetic scenario and unreviewed policy. ${labels[key]} produces ${returnLine}, but the selected ${percent(riskCell.catastrophe_probability)} loss-case probability ${policyResult} the ${percent(policyThreshold)} Desk maximum.`,
+    economics: `${labels[key]}: ${returnLine}, ${percent(result.target_ownership)} investor ownership, and ${money(result.minimum_cash_cents)} minimum cash.`,
+    downside: `The selected loss-case probability is an analyst assumption, not an empirical forecast. Every severe-loss path in this retained structure returns below 1.0x. Reconsideration requires reviewed policy, verified financing terms, ordinary-cohort evidence, and completed diligence.`,
+  }};
 }
 
 function registryMetric(caseData: CaseData, metricId: string, detail: string, label?: string): Metric {

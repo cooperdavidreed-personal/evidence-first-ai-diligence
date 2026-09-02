@@ -2,13 +2,13 @@
 
 Evidence-linked private-markets underwriting where deterministic finance, firm policy, analyst assumptions, model proposals, and human decisions remain separate.
 
-> **Status: PUBLIC PRACTITIONER-TEST CANDIDATE — v0.2.0 VERIFIED**
+> **Status: PUBLIC PRACTITIONER-TEST CANDIDATE — v0.2.1 RELEASE CANDIDATE**
 >
 > Every company, source record, policy, and output in the public demonstration is fictional and synthetic. This project is not investment advice, real-company diligence, investment-performance evidence, confidential-data-ready software, autonomous investment authority, or evidence of firm adoption.
 
 Public application: [underwriting-desk-delta.vercel.app](https://underwriting-desk-delta.vercel.app/)
 
-Release: [v0.2.0](https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence/releases/tag/v0.2.0) · [88-second demonstration](https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence/releases/download/v0.2.0/underwriting-desk-demo-1080p.mp4) · [captions](https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence/releases/download/v0.2.0/underwriting-desk-demo-captions.vtt)
+Prior release: [v0.2.0](https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence/releases/tag/v0.2.0) · [88-second v0.2.0 demonstration](https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence/releases/download/v0.2.0/underwriting-desk-demo-1080p.mp4) · [captions](https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence/releases/download/v0.2.0/underwriting-desk-demo-captions.vtt)
 
 ## What it demonstrates
 
@@ -49,6 +49,7 @@ The application allows a user to:
 - approve or reject material assumptions without rewriting source facts;
 - select an exact evidence subset for a bounded model challenge;
 - process the returned proposal through named human review;
+- admit the included AtlasGrid Version 2 retention revision, rank its changes by decision impact, rerun retained deterministic economics, reopen diligence, mark affected assumptions and memo sections stale, and record a named accept/reject/defer disposition without overwriting Version 1;
 - edit and export an IC memo; and
 - export or restore portable browser-local deal state.
 
@@ -81,7 +82,7 @@ The release candidate includes three distinct artifacts for each retained case:
 
 They are available in [`output/pdf`](output/pdf). Technical identifiers, formulas, and receipts stay in the appendix rather than the partner-facing decision pages.
 
-The final 88-second film opens with AtlasGrid's selected structure versus seller ask, preserves the resulting `REPRICE` consequence, then demonstrates fail-closed Northstar intake, exact evidence inspection, named human judgment, a bounded model proposal, human disposition, and memo output. Its exact MP4 is bound to product-source commit `5faeb1432be54d0b9a9eb3eca9a70014414e359c` and SHA-256 `06d2805e73dc6cc75c433fd2a81eb6b75eff95740e9cc92baf54e815315bcbed`. Claude, ChatGPT, and Grok each returned `PASS` with no critical or high finding; their machine-readable reviews and aggregate findings ship with the release.
+The preserved 88-second v0.2.0 film opens with AtlasGrid's selected structure versus seller ask, preserves the resulting `REPRICE` consequence, then demonstrates fail-closed Northstar intake, exact evidence inspection, named human judgment, a bounded model proposal, human disposition, and memo output. Its exact MP4 is bound to product-source commit `5faeb1432be54d0b9a9eb3eca9a70014414e359c` and SHA-256 `06d2805e73dc6cc75c433fd2a81eb6b75eff95740e9cc92baf54e815315bcbed`. It is historical release evidence, not a demonstration of the v0.2.1 change-control slice. No replacement media is part of this sprint.
 
 ## Run and verify locally
 
@@ -107,7 +108,7 @@ cd workbench
 node mcp-server/server.mjs
 ```
 
-The integrated verifier covers the Python/kernel suite, independent Northstar oracle, mutation gates, deterministic room regeneration, estimator recovery, frontend and model contracts, MCP, TypeScript/Vite, payload budgets, desktop/mobile Playwright journeys, automated accessibility, pixel evidence, PDF contracts, and public-content/security scans.
+The v0.2.1 workbench gate covers frontend and model contracts, MCP, TypeScript/Vite, payload budgets, deterministic scenario/memo consistency, public source availability, state export/import, AtlasGrid Version 1→Version 2 propagation, desktop Chrome/WebKit journeys, automated accessibility, and PDF rendering. Phone-specific rendering and QA are intentionally deferred from this sprint; no mobile-readiness claim is made.
 
 ## Evidence and limits
 

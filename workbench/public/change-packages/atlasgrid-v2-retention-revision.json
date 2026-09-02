@@ -1,0 +1,14 @@
+{
+  "schema_version": "underwriting.change-package/v1",
+  "case_id": "atlasgrid",
+  "from_version": "AtlasGrid V1 approved analysis",
+  "to_version": "AtlasGrid V2 retention revision",
+  "base_analysis_sha256": "79d23dba54bb7f867d67ca78a5f668af1513a72234e9cadb5a552504f9d5445b",
+  "change_id": "ag-retention-revision-v2",
+  "source_path": "data/customer_month.csv",
+  "source_locator": "opening cohort aggregate at 2026-07",
+  "opening_arr_cents": 10000000000,
+  "prior_closing_arr_cents": 9987000000,
+  "revised_closing_arr_cents": 9800000000,
+  "reason": "Late cancellation schedule reclassifies implementation-dependent renewals as churned before the measurement cutoff."
+}

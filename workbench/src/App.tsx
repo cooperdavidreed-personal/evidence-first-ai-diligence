@@ -1,6 +1,7 @@
 import {Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode} from "react";
 import {caseCatalog, isCaseId, loadCase, type CaseId} from "./case-data";
 import {DocumentsWorkspace} from "./documents-workspace";
+import {ChangeControlWorkspace} from "./change-control-workspace";
 import {FinancialWorkspace, scenarioMemoSummary} from "./financial-workspace";
 import {canonicalEvidenceForCase, modelEvidenceForCase} from "./canonical-evidence";
 import {DealIntake, LocalDealShell} from "./local-deal";
@@ -115,11 +116,13 @@ function assumptionsFor(caseData: CaseData): AssumptionDefinition[] {
 function workspaceSeed(caseData: CaseData): WorkspaceSeed {
   const issues = caseData.decision.issue_summary.issues.map((issue) => ({id: issue.issue_id, title: issue.title, description: issue.consequence, owner: issue.owner, priority: issue.materiality, status: issue.state === "CLEARED" ? "RESOLVED" as const : "OPEN" as const, dueDate: null, decisionImpact: issue.consequence, evidenceRefs: [...issue.evidence_metric_ids, ...issue.analysis_ids], resolution: issue.state === "CLEARED" ? "Cleared in the retained canonical case." : null}));
   const blocker = caseData.decision.issue_summary.issues.find((issue) => issue.blocks_advancement);
+  const scenarioValues: Record<string, string> = caseData.peEngine ? {peScenario: "selected", peCompare: "downside", peAxis: caseData.peEngine.sensitivities.axis_order[0], peCell: caseData.peEngine.sensitivities.one_way.filter((item) => item.axis === caseData.peEngine!.sensitivities.axis_order[0])[1]?.cell_id ?? ""} : {vcScenario: "milestone", vcCompare: "downside", vcAxis: caseData.vcEngine!.sensitivities.default_axis, vcCell: caseData.vcEngine!.sensitivities.default_cell_id, vcRiskCell: caseData.vcEngine!.risk_sensitivity.canonical_cell_id, vcLossPolicy: caseData.vcEngine!.risk_sensitivity.canonical_policy_threshold};
+  const memo = scenarioMemoSummary(caseData, {scenarioValues});
   return {caseId: caseData.caseId, issues, lockedIssueIds: caseData.decision.issue_summary.issues.filter((issue) => issue.kind === "QUANTITATIVE_HURDLE").map((issue) => issue.issue_id), canonicalEvidence: canonicalEvidenceForCase(caseData), memoSections: [
-    {sectionId: "recommendation", title: "Recommendation and rationale", body: caseData.decision.rationale, provenance: "DETERMINISTIC_ANALYSIS", updatedBy: "Financial model"},
-    {sectionId: "economics", title: "Economics", body: caseData.summaryMetrics.slice(0, 4).map((metric) => `${metric.label}: ${metric.value}`).join(" · "), provenance: "DETERMINISTIC_ANALYSIS", updatedBy: "Financial model"},
-    {sectionId: "downside", title: "Downside and what must be true", body: [blocker?.consequence ?? "No declared blocking issue.", ...caseData.decision.path_to_yes].map(sentence).join(" "), provenance: "ANALYST_JUDGMENT", updatedBy: "Deal team"},
-  ], scenarioValues: caseData.peEngine ? {peScenario: "selected", peCompare: "downside", peAxis: caseData.peEngine.sensitivities.axis_order[0], peCell: caseData.peEngine.sensitivities.one_way.filter((item) => item.axis === caseData.peEngine!.sensitivities.axis_order[0])[1]?.cell_id ?? ""} : {vcScenario: "milestone", vcCompare: "downside", vcAxis: caseData.vcEngine!.sensitivities.default_axis, vcCell: caseData.vcEngine!.sensitivities.default_cell_id, vcRiskCell: caseData.vcEngine!.risk_sensitivity.canonical_cell_id, vcLossPolicy: caseData.vcEngine!.risk_sensitivity.canonical_policy_threshold}};
+    {sectionId: "recommendation", title: "Recommendation and rationale", body: memo.sectionBodies.recommendation, provenance: "DETERMINISTIC_ANALYSIS", scenarioSnapshotId: memo.snapshotId, updatedBy: "Financial model"},
+    {sectionId: "economics", title: "Economics", body: memo.sectionBodies.economics, provenance: "DETERMINISTIC_ANALYSIS", scenarioSnapshotId: memo.snapshotId, updatedBy: "Financial model"},
+    {sectionId: "downside", title: "Downside and what must be true", body: memo.sectionBodies.downside, provenance: "ANALYST_JUDGMENT", scenarioSnapshotId: memo.snapshotId, updatedBy: "Deal team"},
+  ], scenarioValues};
 }
 
 function scenarioContractFor(caseData: CaseData): WorkspaceScenarioContract {
@@ -146,7 +149,7 @@ function MetricStrip({caseData, openMetric}: {caseData: CaseData; openMetric: (m
 function Overview({caseData, state, update, openMetric}: {caseData: CaseData; state: ReturnType<typeof useDealWorkspace>["state"]; update: ReturnType<typeof useDealWorkspace>["update"]; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
   const blocker = state.issues.find((issue) => issue.status !== "RESOLVED");
   const decisive = caseData.summaryMetrics[0];
-  return <div className="view-stack"><section className="decision-brief"><div><p className="eyebrow">Provisional analytical posture</p><h2>{caseData.decision.decision}</h2><p>{caseData.decision.rationale}</p></div><dl><div><dt>Price or terms</dt><dd>{caseData.decision.terms?.[0] ?? "Terms remain subject to diligence"}</dd></div><div><dt>Primary blocker</dt><dd>{blocker?.title ?? "No unresolved issue"}</dd></div><div><dt>Next committee action</dt><dd>{caseData.decision.path_to_yes[0]}</dd></div></dl></section><MetricStrip caseData={caseData} openMetric={openMetric} /><section className="what-must-be-true"><div><p className="eyebrow">Decision logic</p><h2>What must be true</h2></div><div>{caseData.decision.conditions.slice(0, 4).map((condition, index) => <article key={condition}><span>{String(index + 1).padStart(2, "0")}</span><p>{condition}</p></article>)}</div></section><section className="driver-grid"><article><p className="eyebrow">Decisive evidence</p><h3>{decisive.label}</h3><strong>{decisive.value}</strong><p>{decisive.detail}</p><button type="button" onClick={(event) => openMetric(decisive, event.currentTarget)}>Inspect evidence</button></article><article><p className="eyebrow">Counterthesis</p><h3>Why the current call may be wrong</h3><p>{caseData.thesis.counterthesis}</p></article><article><p className="eyebrow">Downside</p><h3>{blocker?.title}</h3><p>{blocker?.decisionImpact}</p></article></section><ObservationComposer state={state} update={update} /></div>;
+  return <div className="view-stack">{caseData.caseId === "atlasgrid" ? <ChangeControlWorkspace caseData={caseData} state={state} update={update} /> : null}<section className="decision-brief"><div><p className="eyebrow">Provisional analytical posture</p><h2>{caseData.decision.decision}</h2><p>{caseData.decision.rationale}</p></div><dl><div><dt>Price or terms</dt><dd>{caseData.decision.terms?.[0] ?? "Terms remain subject to diligence"}</dd></div><div><dt>Primary blocker</dt><dd>{blocker?.title ?? "No unresolved issue"}</dd></div><div><dt>Next committee action</dt><dd>{caseData.decision.path_to_yes[0]}</dd></div></dl></section><MetricStrip caseData={caseData} openMetric={openMetric} /><section className="what-must-be-true"><div><p className="eyebrow">Decision logic</p><h2>What must be true</h2></div><div>{caseData.decision.conditions.slice(0, 4).map((condition, index) => <article key={condition}><span>{String(index + 1).padStart(2, "0")}</span><p>{condition}</p></article>)}</div></section><section className="driver-grid"><article><p className="eyebrow">Decisive evidence</p><h3>{decisive.label}</h3><strong>{decisive.value}</strong><p>{decisive.detail}</p><button type="button" onClick={(event) => openMetric(decisive, event.currentTarget)}>Inspect evidence</button></article><article><p className="eyebrow">Counterthesis</p><h3>Why the current call may be wrong</h3><p>{caseData.thesis.counterthesis}</p></article><article><p className="eyebrow">Downside</p><h3>{blocker?.title}</h3><p>{blocker?.decisionImpact}</p></article></section><ObservationComposer state={state} update={update} /></div>;
 }
 
 function EconometricTest({caseData, openMetric}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
@@ -198,11 +201,21 @@ function DecisionRail({caseData, view, state}: {caseData: CaseData; view: DealVi
     : (state.scenarioValues.vcScenario ?? "milestone") !== "milestone"
       || (state.scenarioValues.vcRiskCell ?? caseData.vcEngine!.risk_sensitivity.canonical_cell_id) !== caseData.vcEngine!.risk_sensitivity.canonical_cell_id
       || (state.scenarioValues.vcLossPolicy ?? caseData.vcEngine!.risk_sensitivity.canonical_policy_threshold) !== caseData.vcEngine!.risk_sensitivity.canonical_policy_threshold;
+  const change = state.changeControl;
+  const changeDisposition = change?.dispositionEvents.at(-1)?.disposition;
   const isHold = caseData.decision.decision === "HOLD";
-  const requiredAction = isHold
+  const requiredAction = change
+    ? !changeDisposition
+      ? "A named reviewer must accept, reject, or defer the revised evidence."
+      : changeDisposition === "ACCEPTED"
+        ? "Reapprove stale assumptions, complete reopened diligence, and reconcile the IC memo."
+        : changeDisposition === "REJECTED"
+          ? "Preserve Version 1 and document why the revised source was rejected."
+          : "Resolve the deferred evidence question before advancing the analysis."
+    : isHold
     ? "Maintain HOLD while the binding screen and open diligence remain unresolved."
     : caseData.decision.path_to_yes[0];
-  return <aside className="decision-rail" aria-label="Decision status" tabIndex={0}><header><span>Current posture</span><strong>{caseData.decision.decision}</strong><p>Analytical posture · IC decision pending</p></header><dl><div><dt>View</dt><dd>{viewLabels[view]}</dd></div><div><dt>Scenario</dt><dd>{working ? "Unapproved what-if" : "Canonical case"}</dd></div><div><dt>Canonical conditions</dt><dd>{canonicalBlockers.length}</dd></div><div><dt>Worklist open</dt><dd>{unresolved.length}</dd></div><div><dt>Policy state</dt><dd>{policy.status.toLowerCase()} · {policy.lastReviewed ?? "not reviewed"}</dd></div></dl><section><span>Primary decision condition</span><strong>{canonicalPrimary?.title ?? "No canonical blocking condition"}</strong><p>{canonicalPrimary?.consequence ?? "The canonical decision record contains no blocking condition."}</p></section><section><span>{isHold ? "Required next action" : "Next committee action"}</span><strong>{requiredAction}</strong></section>{isHold ? <section><span>Path to reconsideration</span><strong>{caseData.decision.path_to_yes[0]}</strong><p>Illustrative terms only; not authority to fund or advance.</p></section> : null}<footer>IC decision pending</footer></aside>;
+  return <aside className="decision-rail" aria-label="Decision status" tabIndex={0}><header><span>Current posture</span><strong>{change ? "REOPEN DILIGENCE" : caseData.decision.decision}</strong><p>{change ? "Revised evidence changed the selected-case screen" : "Analytical posture · IC decision pending"}</p></header><dl><div><dt>View</dt><dd>{viewLabels[view]}</dd></div><div><dt>Scenario</dt><dd>{change ? `${change.toVersion} · ${changeDisposition?.toLowerCase() ?? "pending"}` : working ? "Unapproved what-if" : "Canonical case"}</dd></div><div><dt>Canonical conditions</dt><dd>{canonicalBlockers.length}</dd></div><div><dt>Worklist open</dt><dd>{unresolved.length}</dd></div><div><dt>Policy state</dt><dd>{policy.status.toLowerCase()} · {policy.lastReviewed ?? "not reviewed"}</dd></div></dl><section><span>Primary decision condition</span><strong>{change?.changeTitle ?? canonicalPrimary?.title ?? "No canonical blocking condition"}</strong><p>{change?.decisionConsequence ?? canonicalPrimary?.consequence ?? "The canonical decision record contains no blocking condition."}</p></section><section><span>{isHold || change ? "Required next action" : "Next committee action"}</span><strong>{requiredAction}</strong></section>{isHold && !change ? <section><span>Path to reconsideration</span><strong>{caseData.decision.path_to_yes[0]}</strong><p>Illustrative terms only; not authority to fund or advance.</p></section> : null}<footer>IC decision pending</footer></aside>;
 }
 
 function Diligence({caseData, state, update, modelTransport, connection, openMetric}: {caseData: CaseData; state: ReturnType<typeof useDealWorkspace>["state"]; update: ReturnType<typeof useDealWorkspace>["update"]; modelTransport?: ModelTransport; connection: ConnectionState | null; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
@@ -214,7 +227,7 @@ function Diligence({caseData, state, update, modelTransport, connection, openMet
   const content = section === "issues"
     ? <DiligenceWorklist state={state} update={update} lockedIssueIds={new Set(workspaceSeed(caseData).lockedIssueIds ?? [])} />
     : section === "assumptions"
-      ? <AssumptionRegistry assumptions={assumptionsFor(caseData)} state={state} update={update} />
+      ? <AssumptionRegistry assumptions={assumptionsFor(caseData)} state={state} update={update} staleAssumptionIds={state.changeControl?.affectedAssumptionIds} staleSince={state.changeControl?.importedAt} />
       : section === "policy"
         ? <PolicyRegistry profile={profile} state={state} update={update} blockingGates={state.issues.filter((issue) => issue.status !== "RESOLVED").map((issue) => ({gateId: issue.id, label: issue.title}))} />
         : section === "test"

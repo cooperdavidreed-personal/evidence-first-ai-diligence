@@ -44,6 +44,7 @@ function compactPercent(value: number) {
 export function localWorkspaceSeed(result: IntakeResult): WorkspaceSeed {
   if (!result.deal || !result.analysis) throw new Error("A complete admitted deal is required to create its workspace contract");
   const {deal, analysis} = result;
+  const snapshotId = `local:${deal.annualRevenueGrowth}:${deal.exitRevenueMultiple}:${analysis.annualizedGrossReturn}:${analysis.grossMoic}`;
   return {
     caseId: localCaseId(result),
     lockedIssueIds: analysis.tests.filter((test) => test.blocksAdvancement).map((test) => test.gateId),
@@ -71,9 +72,9 @@ export function localWorkspaceSeed(result: IntakeResult): WorkspaceSeed {
       resolution: null,
     })),
     memoSections: [
-      {sectionId: "screening", title: "Screening posture and rationale", body: result.rationale, provenance: "DETERMINISTIC_ANALYSIS", updatedBy: "Underwriting Desk"},
-      {sectionId: "economics", title: "Economics", body: `LTM revenue ${compactMoney(analysis.ltmRevenueCents)} · gross margin ${compactPercent(analysis.grossMargin)} · ${analysis.cohortElapsedMonths}-month cohort retention proxy ${compactPercent(analysis.ordinaryNrr)} · gross multiple ${analysis.grossMoic.toFixed(2)}x. The retention ratio is not annual NRR.`, provenance: "DETERMINISTIC_ANALYSIS", updatedBy: "Underwriting Desk"},
-      {sectionId: "diligence", title: "Required diligence", body: "Validate retention interval and cohort quality, cost classification, customer concentration, committed costs, cap table and assumption provenance before any IC advancement.", provenance: "ANALYST_JUDGMENT", updatedBy: "Deal team"},
+      {sectionId: "screening", title: "Screening posture and rationale", body: result.rationale, provenance: "DETERMINISTIC_ANALYSIS", scenarioSnapshotId: snapshotId, updatedBy: "Underwriting Desk"},
+      {sectionId: "economics", title: "Economics", body: `LTM revenue ${compactMoney(analysis.ltmRevenueCents)} · gross margin ${compactPercent(analysis.grossMargin)} · ${analysis.cohortElapsedMonths}-month cohort retention proxy ${compactPercent(analysis.ordinaryNrr)} · gross multiple ${analysis.grossMoic.toFixed(2)}x. The retention ratio is not annual NRR.`, provenance: "DETERMINISTIC_ANALYSIS", scenarioSnapshotId: snapshotId, updatedBy: "Underwriting Desk"},
+      {sectionId: "diligence", title: "Required diligence", body: "Validate retention interval and cohort quality, cost classification, customer concentration, committed costs, cap table and assumption provenance before any IC advancement.", provenance: "ANALYST_JUDGMENT", scenarioSnapshotId: snapshotId, updatedBy: "Deal team"},
     ],
   };
 }
