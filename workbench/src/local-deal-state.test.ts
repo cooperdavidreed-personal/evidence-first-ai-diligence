@@ -164,9 +164,10 @@ describe("portable admitted deal state", () => {
     const monthly = result.analysis!.sourcePreviews.find((preview) => preview.sourceFile === "monthly_financials.csv")!;
     const cohort = result.analysis!.sourcePreviews.find((preview) => preview.sourceFile === "customer_arr.csv")!;
     expect(monthly.rows).toHaveLength(12);
-    expect(monthly.rows?.[0]).toMatchObject({dataRow: expect.any(Number), cells: expect.arrayContaining([{label: "Period", value: expect.any(String)}])});
+    expect(monthly.rows?.[0]).toMatchObject({dataRow: expect.any(Number), cells: expect.arrayContaining([{label: "Period", value: expect.any(String)}, {label: "Revenue", value: expect.stringMatching(/^\$[\d,]+\.\d{2}$/)}])});
     expect(cohort.rows?.length).toBeGreaterThan(1);
     expect(cohort.rows?.[0].cells.map((cell) => cell.label)).toEqual(["Customer", "Period", "ARR"]);
+    expect(cohort.rows?.[0].cells.find((cell) => cell.label === "ARR")?.value).toMatch(/^\$[\d,]+\.\d{2}$/);
   });
 
   it("rejects retained-case or fabricated evidence references in a local portable deal", async () => {
