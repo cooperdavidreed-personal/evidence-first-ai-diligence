@@ -34,6 +34,10 @@ describe("hosted synthetic evidence challenge boundary", () => {
     expect(() => validateChallengeOutput(output, new Set(["metric-runway"]))).toThrow(/evidence reference/);
   });
 
+  it("rejects a provider response without a counterthesis", () => {
+    expect(() => validateChallengeOutput({challenges: [], gaps: [], memo_drafts: []}, new Set(["hx-runway-metric"]))).toThrow(/challenges are invalid/i);
+  });
+
   it("admits only a bounded proposal envelope and preserves evidence ids", () => {
     const output = {challenges: [{claim: "Runway may be overstated", evidence_refs: ["hx-runway-metric"], severity: "HIGH", management_question: "Which costs are committed?"}], gaps: [{title: "Reconcile commitments", why_it_matters: "The runway denominator may omit contracted spend.", proposed_owner: "Finance diligence", evidence_refs: ["hx-runway-metric"]}], memo_drafts: []};
     expect(validateChallengeOutput(output, new Set(["hx-runway-metric"]))).toEqual(output);
