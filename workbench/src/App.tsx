@@ -109,7 +109,6 @@ function assumptionsFor(caseData: CaseData): AssumptionDefinition[] {
     {id: "growth", label: "Annual revenue growth", value: percent(bridge.annual_revenue_growth), owner: "Management representation", basis: "Financing-plan scenario", consequence: "Changes terminal revenue and the operating exit bridge.", status: "UNREVIEWED"},
     {id: "exit-multiple", label: "Exit revenue multiple", value: `${Number(bridge.exit_revenue_multiple).toFixed(1)}x`, owner: "Management representation", basis: "Financing-plan scenario", consequence: "Changes enterprise value and investor proceeds.", status: "UNREVIEWED"},
     {id: "catastrophe-prior", label: "Catastrophe-state prior", value: percent(engine.distribution.priors.catastrophe_probability), owner: engine.distribution.priors.owner, basis: "Synthetic analyst input", consequence: "Directly determines the loss-policy screen in this retained structure; the seeded replay is a generator check, not an independent estimate.", status: engine.distribution.priors.approval_status},
-    {id: "loss-ceiling", label: "Maximum probability below 1.0x", value: percent(HELIOS_SCREEN_POLICY.thresholds.find((item) => item.metric === "probability_below_one")!.value), owner: HELIOS_SCREEN_POLICY.owner, basis: "Desk-owned draft policy", consequence: "Screens the selected catastrophe prior because every catastrophe path loses in this retained structure. A sensitivity edit never rewrites the canonical policy.", status: HELIOS_SCREEN_POLICY.status},
   ];
 }
 

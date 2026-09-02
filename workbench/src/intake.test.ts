@@ -66,7 +66,7 @@ describe("Growth SaaS Quick Package", () => {
     expect(result.analysis?.grossMoic.toFixed(12)).toBe("3.234863281200");
     expect(result.analysis?.annualizedGrossReturn.toFixed(12)).toBe("0.264652439362");
     expect(Object.fromEntries(result.analysis!.metrics.map((metric) => [metric.id, metric.display]))).toMatchObject({"ltm-revenue": "$15.9M", "gross-margin": "70.0%", "ordinary-nrr": "83.6%", runway: "19.1 mo", ownership: "33.3%", "gross-moic": "3.23x", "annualized-return": "26.5%"});
-    expect(result.analysis?.tests.find((test) => test.gateId === "retention-nrr")).toMatchObject({observed: "83.6%", required: "95.0%", state: "CONCERN", blocksAdvancement: true, source: "DESK_DEFAULT_UNREVIEWED"});
+    expect(result.analysis?.tests.find((test) => test.gateId === "retention-nrr")).toMatchObject({observed: "83.6% across 11 months", required: "95.0% across 12 months", state: "BLOCKED", blocksAdvancement: true, source: "DESK_DEFAULT_UNREVIEWED"});
     expect(result.analysis?.tests.find((test) => test.gateId === "cohort-completeness")).toMatchObject({state: "BLOCKED", blocksAdvancement: true});
     expect(result.analysis?.tests.find((test) => test.gateId === "burn-runway-quality")).toMatchObject({state: "UNREVIEWED", blocksAdvancement: true});
     expect(result.analysis?.policyProfile.profileId).toBe(GROWTH_SCREEN_POLICY.profileId);
@@ -107,7 +107,7 @@ describe("Growth SaaS Quick Package", () => {
     expect(result.analysis).not.toBeNull();
     expect(result.deal?.packageRequestedThresholds.minimumGrossMoic).toBe(4);
     expect(result.analysis?.tests.find((test) => test.gateId === "returns-moic")?.required).toBe("3.00x");
-    expect(result.analysis?.tests.find((test) => test.gateId === "retention-nrr")?.state).toBe("CONCERN");
+    expect(result.analysis?.tests.find((test) => test.gateId === "retention-nrr")?.state).toBe("BLOCKED");
     expect(result.rationale).toMatch(/cannot authorize advancement/i);
   });
 
@@ -121,6 +121,17 @@ describe("Growth SaaS Quick Package", () => {
     expect(low.analysis?.tests).toEqual(high.analysis?.tests);
     expect(low.posture).toBe(high.posture);
     expect(low.rationale).toBe(high.rationale);
+  });
+
+  it("never lets a favorable sub-annual retention proxy clear an annual NRR screen", async () => {
+    const shortCohort = `customer_id,period,arr_cents
+customer-a,2026-03,100000000
+customer-a,2026-06,96000000`;
+    const result = await processDealPackage(await packageFiles({customers: shortCohort}));
+    expect(result.packageState).toBe("READY");
+    expect(result.analysis?.ordinaryNrr).toBe(0.96);
+    expect(result.analysis?.tests.find((test) => test.gateId === "retention-nrr")).toMatchObject({observed: "96.0% across 3 months", state: "BLOCKED", blocksAdvancement: true});
+    expect(result.analysis?.tests.find((test) => test.gateId === "retention-nrr")?.explanation).toMatch(/cannot clear an annual NRR screen/i);
   });
 
   it("rejects a caller-created policy profile that is not in the Desk registry", async () => {

@@ -305,10 +305,13 @@ function analyze(deal: DealInput, monthly: MonthlyRow[], customers: CustomerRow[
   const runwayTest: QuickDecisionTest = runwayMonths === null
     ? {gateId: "runway-numeric", label: runwayPolicy.label, observed: "Cash generative", required: runwayPolicy.displayValue, state: "CLEARS", blocksAdvancement: false, owner: runwayPolicy.owner, source: runwayPolicy.source, policyStatus: runwayPolicy.status, lastReviewed: runwayPolicy.lastReviewed, explanation: "The latest three uploaded periods are cash generative, so the minimum-runway screen clears without using an infinite numeric placeholder; committed costs and financing timing remain unverified."}
     : thresholdGate("runway-numeric", runwayPolicy, runwayMonths, `${runwayMonths.toFixed(1)} months`, "Recent runway meets the numeric screen; committed costs and financing timing remain unverified.");
+  const retentionTest: QuickDecisionTest = cohortElapsedMonths === 12
+    ? thresholdGate("retention-nrr", nrrPolicy, ordinaryNrr, percent(ordinaryNrr), "The opening-cohort ratio spans 12 months and is screened against the Desk-owned annual NRR threshold. Segmentation, contracts and parent mapping remain unverified.")
+    : {gateId: "retention-nrr", label: nrrPolicy.label, observed: `${percent(ordinaryNrr)} across ${cohortElapsedMonths} months`, required: `${nrrPolicy.displayValue} across 12 months`, state: "BLOCKED", blocksAdvancement: true, owner: nrrPolicy.owner, source: nrrPolicy.source, policyStatus: nrrPolicy.status, lastReviewed: nrrPolicy.lastReviewed, explanation: `The opening-cohort ratio spans ${cohortElapsedMonths} months, so it cannot clear an annual NRR screen. It remains directional retention evidence only.`};
   const tests: QuickDecisionTest[] = [
     thresholdGate("returns-moic", moicPolicy, grossMoic, `${grossMoic.toFixed(2)}x`, "The deterministic scenario clears the illustrative Desk-owned multiple screen, but the scenario assumptions remain unapproved."),
     thresholdGate("returns-annualized", returnPolicy, annualizedGrossReturn, percent(annualizedGrossReturn), "The deterministic scenario clears the illustrative Desk-owned return screen, but the scenario assumptions remain unapproved."),
-    thresholdGate("retention-nrr", nrrPolicy, ordinaryNrr, percent(ordinaryNrr), `The ${cohortElapsedMonths}-month opening-cohort retention proxy is below the Desk-owned annual NRR screen. It is a directional concern, not a completed annual NRR study.`),
+    retentionTest,
     thresholdGate("margin-numeric", marginPolicy, grossMargin, percent(grossMargin), "Reported gross margin meets the numeric screen; cost classification and customer-success burden remain unverified."),
     runwayTest,
     {gateId: "burn-runway-quality", label: "Burn and runway quality", observed: "Three-month signed net burn", required: "Committed-cost and financing review", state: "UNREVIEWED", blocksAdvancement: true, owner: policyProfile.owner, source: policyProfile.source, policyStatus: policyProfile.status, lastReviewed: policyProfile.lastReviewed, explanation: "The numeric runway screen does not establish committed costs, working-capital needs, financing timing, or burn durability."},
@@ -420,7 +423,7 @@ export async function processDealPackage(input: File[], policyProfile: PolicyPro
   for (const [name, file] of byName) if (!declared.has(name)) {
     const extension = name.split(".").at(-1)?.toLowerCase();
     const isExperiment = name === "experiment.csv";
-    statuses.push({name, role: isExperiment ? "experiment" : "supporting_document", state: isExperiment ? "EXCLUDED" : "UNSUPPORTED", detail: isExperiment ? "Retained as a document only; no causal analysis is run" : ["pdf", "docx", "pptx", "xlsx", "csv", "txt"].includes(extension ?? "") ? "Listed but not parsed by the Quick Package" : "Unsupported file type", bytes: file.size});
+    statuses.push({name, role: isExperiment ? "experiment" : "supporting_document", state: isExperiment ? "EXCLUDED" : "UNSUPPORTED", detail: isExperiment ? "Listed but not retained or analyzed by the Quick Package" : ["pdf", "docx", "pptx", "xlsx", "csv", "txt"].includes(extension ?? "") ? "Listed but not parsed by the Quick Package" : "Unsupported file type", bytes: file.size});
   }
   if (errors.length > 0 || recognized.size !== 3) return incomplete(statuses, errors);
   let deal: DealInput | null = null;

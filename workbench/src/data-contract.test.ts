@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vitest";
 import rawData from "./data/cases.json";
-import {assertWorkbenchData, compareDecimalStrings} from "./data-contract";
+import {assertWorkbenchData, compareDecimalStrings, selectedLossPolicyStatus} from "./data-contract";
 
 describe("workbench v2 data contract", () => {
   it("validates both exact generated cases and ten browser identities", () => {
@@ -37,6 +37,12 @@ describe("workbench v2 data contract", () => {
     expect(compareDecimalStrings("0.3000000000000000001", "0.3")).toBe(1);
     expect(compareDecimalStrings("2.000", "2")).toBe(0);
     expect(compareDecimalStrings("-0.0001", "0")).toBe(-1);
+  });
+
+  it("screens the selected catastrophe prior rather than replay loss frequency", () => {
+    expect(selectedLossPolicyStatus("0.05", "0.10")).toBe("CLEARS");
+    expect(selectedLossPolicyStatus("0.20", "0.10")).toBe("MISSES");
+    expect(selectedLossPolicyStatus("0.1000000000000000001", "0.10")).toBe("MISSES");
   });
 
   it("rejects a non-conservative primary VC pool treatment", () => {

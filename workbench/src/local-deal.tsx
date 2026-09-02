@@ -1,5 +1,6 @@
 import {useMemo, useState} from "react";
 import {dealViews, type DealView} from "./App";
+import {compareDecimalStrings} from "./data-contract";
 import {calculateQuickScenario, processDealPackage, type IntakeResult, type QuickAnalysis} from "./intake";
 import {localCaseId, localScenarioContract, localWorkspaceSeed, serializeAdmittedDealBundle} from "./local-deal-state";
 import {ModelReviewPanel} from "./model-review-panel";
@@ -99,7 +100,10 @@ function LocalFinancials({result, state, update}: {result: IntakeResult; state: 
   const canonical = calculateQuickScenario(analysis, deal, {annualRevenueGrowth: deal.annualRevenueGrowth, exitRevenueMultiple: deal.exitRevenueMultiple});
   const moicPolicy = policyThreshold(analysis.policyProfile, "gross_moic");
   const returnPolicy = policyThreshold(analysis.policyProfile, "annualized_return");
-  const clears = (observed: number, threshold: typeof moicPolicy) => threshold.operator === ">=" ? observed >= threshold.value : observed <= threshold.value;
+  const clears = (observed: number, threshold: typeof moicPolicy) => {
+    const comparison = compareDecimalStrings(observed.toFixed(12), threshold.value.toFixed(12));
+    return threshold.operator === ">=" ? comparison >= 0 : comparison <= 0;
+  };
   const returnsClear = clears(working.grossMoic, moicPolicy) && clears(working.annualizedGrossReturn, returnPolicy);
   const growthSteps = [Math.max(-.99, deal.annualRevenueGrowth - .1), deal.annualRevenueGrowth, Math.min(5, deal.annualRevenueGrowth + .1)];
   const multipleSteps = [Math.max(.01, deal.exitRevenueMultiple - 1), deal.exitRevenueMultiple, Math.min(100, deal.exitRevenueMultiple + 1)];

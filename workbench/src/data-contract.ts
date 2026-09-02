@@ -24,6 +24,10 @@ export function compareDecimalStrings(left: string, right: string): -1 | 0 | 1 {
   return normalizedLeft < normalizedRight ? -1 : normalizedLeft > normalizedRight ? 1 : 0;
 }
 
+export function selectedLossPolicyStatus(catastrophePrior: string, deskCeiling: string): "CLEARS" | "MISSES" {
+  return compareDecimalStrings(catastrophePrior, deskCeiling) <= 0 ? "CLEARS" : "MISSES";
+}
+
 function moveDecimalLeft(value: string, places: number): string {
   const match = value.match(/^(-?)([0-9]+)(?:\.([0-9]+))?$/);
   if (!match || places < 0) throw new Error("decimal_shift_operand_invalid");
@@ -281,13 +285,15 @@ export function assertWorkbenchCase(candidate: unknown): asserts candidate is Ca
   if (mappings.length !== analysisIds.size || new Set(mappings.map((item) => String(item.source_analysis_id))).size !== analysisIds.size || mappings.some((item) => !analysisIds.has(String(item.source_analysis_id)) || !["BASE_CASE", "VALUE_CREATION_BRIDGE", "SCENARIO_ONLY", "ZERO"].includes(String(item.credit_tier)))) throw new Error("evidence_mapping_coverage_invalid");
   if (candidate.caseId === "atlasgrid" && mappings.find((item) => item.source_analysis_id === "AG-08")?.credit_tier !== "VALUE_CREATION_BRIDGE") throw new Error("ag08_base_case_credit_forbidden");
   if (candidate.caseId === "helios") {
-    if (!record(candidate.vcEngine) || !record(candidate.vcEngine.sensitivities) || !array(candidate.vcEngine.sensitivities.cells) || !record(candidate.vcEngine.distribution) || !record(candidate.vcEngine.risk_policy) || !record(candidate.vcEngine.desk_policy) || !record(candidate.vcEngine.risk_sensitivity)) throw new Error("vc_engine_contract_invalid");
+    if (!record(candidate.vcEngine) || !record(candidate.vcEngine.sensitivities) || !array(candidate.vcEngine.sensitivities.cells) || !record(candidate.vcEngine.distribution) || !record(candidate.vcEngine.distribution.priors) || !record(candidate.vcEngine.risk_policy) || !record(candidate.vcEngine.desk_policy) || !record(candidate.vcEngine.risk_sensitivity)) throw new Error("vc_engine_contract_invalid");
     for (const key of ["base", "milestone", "downside", "financing_shortfall"]) {
       const scenario = candidate.vcEngine[key];
       if (!record(scenario) || scenario.pool_exit_treatment !== "FULLY_GRANTED_COMMON") throw new Error("vc_primary_pool_exit_treatment_invalid");
     }
     const sensitivity = candidate.vcEngine.sensitivities;
     const distribution = candidate.vcEngine.distribution;
+    const priors = distribution.priors;
+    if (!record(priors)) throw new Error("vc_distribution_priors_invalid");
     const policy = candidate.vcEngine.risk_policy;
     const deskPolicy = candidate.vcEngine.desk_policy;
     const riskSensitivity = candidate.vcEngine.risk_sensitivity;
@@ -305,7 +311,7 @@ export function assertWorkbenchCase(candidate: unknown): asserts candidate is Ca
     if (sensitivity.default_cell_id !== baselineCellIds[String(sensitivity.default_axis)]) throw new Error("vc_sensitivity_default_invalid");
     if (policy.schema_version !== "helios.risk-policy/v1" || policy.classification !== "ILLUSTRATIVE_ANALYST_POLICY_NOT_FIRM_POLICY" || policy.approval_status !== "UNREVIEWED" || typeof policy.owner !== "string" || !array(policy.editable_maximum_probability_choices) || !policy.editable_maximum_probability_choices.includes(policy.maximum_probability_below_one)) throw new Error("vc_risk_policy_invalid");
     if (deskPolicy.schema_version !== "underwriting.desk-policy/v1" || deskPolicy.classification !== "DESK_OWNED_DRAFT_POLICY_OUTSIDE_DATA_ROOM" || deskPolicy.status !== "DRAFT" || !record(deskPolicy.thresholds) || !array(deskPolicy.editable_maximum_probability_choices) || !deskPolicy.editable_maximum_probability_choices.includes(deskPolicy.thresholds.maximum_probability_below_one)) throw new Error("vc_desk_policy_invalid");
-    const expectedLossStatus = Number(distribution.probability_below_one) <= Number(deskPolicy.thresholds.maximum_probability_below_one) ? "CLEARS" : "MISSES";
+    const expectedLossStatus = selectedLossPolicyStatus(String(priors.catastrophe_probability), String(deskPolicy.thresholds.maximum_probability_below_one));
     if (sensitivityCells.some((item) => item.binding_loss_hurdle_status !== expectedLossStatus || item.analytical_posture !== "HOLD")) throw new Error("vc_sensitivity_posture_invalid");
     for (const item of sensitivityCells) {
       if (!record(item.operating_exit_bridge) || !array(item.ending_cash_path_cents) || item.ending_cash_path_cents.length === 0 || item.operating_exit_bridge.cash_at_exit_cents !== item.ending_cash_path_cents[item.ending_cash_path_cents.length - 1]) throw new Error("vc_sensitivity_exit_cash_mismatch");
@@ -324,7 +330,7 @@ export function assertWorkbenchCase(candidate: unknown): asserts candidate is Ca
       const continuousPaths = Number(decomposition.continuous_paths);
       const lossPaths = Number(decomposition.catastrophe_loss_paths) + Number(decomposition.continuous_loss_paths);
       if (catastrophePaths + continuousPaths !== draws || Math.abs(Number(cell.probability_below_one) - lossPaths / draws) > 0.000051) throw new Error("vc_risk_sensitivity_decomposition_invalid");
-      const expectedCellStatus = Number(cell.catastrophe_probability) <= Number(deskPolicy.thresholds.maximum_probability_below_one) ? "CLEARS" : "MISSES";
+      const expectedCellStatus = selectedLossPolicyStatus(String(cell.catastrophe_probability), String(deskPolicy.thresholds.maximum_probability_below_one));
       if (cell.canonical_policy_status !== expectedCellStatus) throw new Error("vc_risk_sensitivity_status_invalid");
     }
     const lossPair = issues.find((item) => item.issue_id === "HX-H01");

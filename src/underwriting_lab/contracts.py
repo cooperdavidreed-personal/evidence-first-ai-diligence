@@ -573,7 +573,9 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         if Decimal(cell["probability_below_one"]) != expected_probability:
             raise UnderwritingError("vc_risk_sensitivity_loss_decomposition_mismatch")
         expected_status = (
-            "CLEARS" if expected_probability <= policy_threshold else "MISSES"
+            "CLEARS"
+            if Decimal(cell["catastrophe_probability"]) <= desk_threshold
+            else "MISSES"
         )
         if (
             cell["canonical_policy_status"] != expected_status
@@ -651,7 +653,7 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
             raise UnderwritingError("vc_sensitivity_operating_bridge_mismatch")
         expected_loss_status = (
             "CLEARS"
-            if Decimal(distribution["probability_below_one"]) <= policy_threshold
+            if Decimal(priors["catastrophe_probability"]) <= desk_threshold
             else "MISSES"
         )
         if (
