@@ -61,6 +61,7 @@ def test_capture_script_uses_current_routes_and_declared_stable_controls() -> No
     assert "1440" not in script
     assert "1920" in script and "1080" in script
     assert "REAL_PUBLIC_WORKBENCH_INTERACTIONS" in script
+    assert 'underwriting.demo-capture-receipt/v2' in script
     assert "capture-receipt.json" in script
 
 
