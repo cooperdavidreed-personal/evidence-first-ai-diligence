@@ -9,7 +9,8 @@ type RevisionPackage = {
   case_id: "atlasgrid";
   from_version: string;
   to_version: string;
-  base_analysis_sha256: string;
+  base_retention_analysis_receipt_sha256: string;
+  base_customer_month_sha256: string;
   change_id: string;
   source_path: string;
   source_locator: string;
@@ -25,7 +26,9 @@ function record(value: unknown): value is Record<string, unknown> {
 
 function parseRevisionPackage(raw: string, caseData: CaseData): RevisionPackage {
   const candidate: unknown = JSON.parse(raw);
-  if (!record(candidate) || candidate.schema_version !== "underwriting.change-package/v1" || candidate.case_id !== "atlasgrid" || candidate.base_analysis_sha256 !== caseData.analysis_sha256) throw new Error("Revision package does not match the approved AtlasGrid V1 analysis");
+  const retentionAnalysis = caseData.analyses.find((analysis) => analysis.analysis_id === "AG-02");
+  const customerMonth = caseData.artifacts.find((artifact) => artifact.artifact_id === "customer-month");
+  if (!record(candidate) || candidate.schema_version !== "underwriting.change-package/v1" || candidate.case_id !== "atlasgrid" || candidate.base_retention_analysis_receipt_sha256 !== retentionAnalysis?.receipt_sha256 || candidate.base_customer_month_sha256 !== customerMonth?.sha256) throw new Error("Revision package does not match the approved AtlasGrid V1 retention evidence");
   for (const field of ["from_version", "to_version", "change_id", "source_path", "source_locator", "reason"] as const) if (typeof candidate[field] !== "string" || !candidate[field] || candidate[field].length > 500) throw new Error(`Revision package field ${field} is invalid`);
   for (const field of ["opening_arr_cents", "prior_closing_arr_cents", "revised_closing_arr_cents"] as const) if (!Number.isSafeInteger(candidate[field]) || Number(candidate[field]) <= 0) throw new Error(`Revision package field ${field} is invalid`);
   if (candidate.source_path !== "data/customer_month.csv" || candidate.change_id !== "ag-retention-revision-v2") throw new Error("Revision package contains an unsupported change surface");

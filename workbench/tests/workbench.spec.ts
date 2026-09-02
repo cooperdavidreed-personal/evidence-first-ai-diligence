@@ -282,6 +282,10 @@ test("portable state export downloads and imports its validated scenario ownersh
 test("Version 2 evidence propagates through returns, stale state, diligence, and human disposition", async ({page}) => {
   await page.goto("/#/v3/atlasgrid/overview", {waitUntil: "networkidle"});
   await expect(page.getByRole("heading", {name: "What changed?"})).toBeVisible();
+  const tamperedRevision = JSON.parse(readFileSync(atlasgridRevisionPath, "utf8"));
+  tamperedRevision.base_customer_month_sha256 = "0".repeat(64);
+  await page.locator('.change-control input[type="file"]').setInputFiles({name: "atlasgrid-v2-tampered.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(tamperedRevision))});
+  await expect(page.getByRole("status")).toContainText("does not match the approved AtlasGrid V1 retention evidence");
   await page.locator('.change-control input[type="file"]').setInputFiles(atlasgridRevisionPath);
   await expect(page.getByRole("status")).toContainText("Version 2 validated");
   const change = page.locator(".change-control");
