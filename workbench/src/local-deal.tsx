@@ -137,14 +137,16 @@ function LocalDecisionRail({result, state, view}: {result: IntakeResult; state: 
   const analysis = result.analysis!;
   const overrides = new Set(state.policyOverrides.filter((item) => LOCAL_OVERRIDABLE_GATE_SET.has(item.gateId) && item.actorRole === GROWTH_SCREEN_POLICY.ownerRole).map((item) => item.gateId));
   const failedGates = analysis.tests.filter((test) => test.blocksAdvancement && !overrides.has(test.gateId));
+  const concernGates = failedGates.filter((test) => test.state === "CONCERN");
+  const evidenceGaps = failedGates.filter((test) => test.state !== "CONCERN");
   const openIssues = state.issues.filter((issue) => issue.status !== "RESOLVED");
   const {changed} = normalizedLocalScenario(result, state);
   const nextAction = openIssues.length
     ? `Advance ${openIssues.length} open diligence ${openIssues.length === 1 ? "issue" : "issues"}; ${failedGates.length} screening ${failedGates.length === 1 ? "gate still lacks" : "gates still lack"} a policy disposition.`
     : failedGates.length
-      ? "Disposition failed screening gates with evidence or a recorded policy-owner exception."
+      ? "Disposition unresolved screening gates with evidence or a recorded policy-owner exception."
       : "Document the policy-owner exception and complete human IC review.";
-  return <aside className="decision-rail" aria-label="Decision status" tabIndex={0}><header><span>Current posture</span><strong>FURTHER DILIGENCE</strong><p>Screening complete; no IC advancement</p></header><dl><div><dt>View</dt><dd>{labels[view]}</dd></div><div><dt>Scenario</dt><dd>{changed ? "Unapproved what-if" : "Package case"}</dd></div><div><dt>Failed screening gates</dt><dd>{failedGates.length}</dd></div><div><dt>Open diligence issues</dt><dd>{openIssues.length}</dd></div><div><dt>Policy</dt><dd>Draft · not reviewed</dd></div></dl><section><span>Primary concern</span><strong>{failedGates[0]?.label ?? "No unresolved screening gate"}</strong><p>{failedGates[0]?.explanation ?? "Any exception remains visible and requires human IC review."}</p></section><section><span>Next action</span><strong>{nextAction}</strong></section><footer>IC decision pending</footer></aside>;
+  return <aside className="decision-rail" aria-label="Decision status" tabIndex={0}><header><span>Current posture</span><strong>FURTHER DILIGENCE</strong><p>Screening complete; no IC advancement</p></header><dl><div><dt>View</dt><dd>{labels[view]}</dd></div><div><dt>Scenario</dt><dd>{changed ? "Unapproved what-if" : "Package case"}</dd></div><div><dt>Unresolved screening gates</dt><dd>{failedGates.length}</dd></div><div><dt>Investment concerns</dt><dd>{concernGates.length}</dd></div><div><dt>Evidence or policy gaps</dt><dd>{evidenceGaps.length}</dd></div><div><dt>Open diligence issues</dt><dd>{openIssues.length}</dd></div><div><dt>Policy</dt><dd>Draft · not reviewed</dd></div></dl><section><span>Primary concern</span><strong>{concernGates[0]?.label ?? failedGates[0]?.label ?? "No unresolved screening gate"}</strong><p>{concernGates[0]?.explanation ?? failedGates[0]?.explanation ?? "Any exception remains visible and requires human IC review."}</p></section><section><span>Next action</span><strong>{nextAction}</strong></section><footer>IC decision pending</footer></aside>;
 }
 
 export function LocalDealShell({result, view, onNavigate, onDeals, onConnect, connection, modelTransport, persistenceNotice = ""}: {result: IntakeResult; view: DealView; onNavigate: (view: DealView) => void; onDeals: () => void; onConnect: () => void; connection: ConnectionState | null; modelTransport?: ModelTransport; persistenceNotice?: string}) {

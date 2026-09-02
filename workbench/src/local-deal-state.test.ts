@@ -107,7 +107,7 @@ describe("portable admitted deal state", () => {
   it("requires the registered policy-owner role for a portable Northstar override", async () => {
     const result = await admittedNorthstar();
     const workspace = createWorkspace(localWorkspaceSeed(result), "2026-09-01T12:00:00.000Z");
-    workspace.policyOverrides.push({eventId: "override-1", gateId: "retention-nrr", disposition: "OVERRIDDEN", actor: "Avery Chen", actorRole: "Policy owner", rationale: "Recorded exception while retaining the observed 83.6% NRR concern.", recordedAt: "2026-09-01T13:00:00.000Z"});
+    workspace.policyOverrides.push({eventId: "override-1", gateId: "retention-nrr", disposition: "OVERRIDDEN", actor: "Avery Chen", actorRole: "Policy owner", rationale: "Recorded exception while retaining the observed 83.6% 11-month retention-proxy concern.", recordedAt: "2026-09-01T13:00:00.000Z"});
     expect(() => serializeAdmittedDealBundle(result, workspace)).not.toThrow();
     workspace.policyOverrides[0].actorRole = "Analyst";
     expect(() => serializeAdmittedDealBundle(result, workspace)).toThrow(/requires the Policy owner role/i);

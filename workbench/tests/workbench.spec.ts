@@ -362,7 +362,9 @@ test("ordinary multi-file intake produces a governed local deal that survives re
   await expect((await visibleDealNavigation(page)).getByRole("button")).toHaveCount(5);
   await expect(page.getByRole("heading", {name: "SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED", exact: true})).toHaveCount(1);
   const decisionRail = page.getByRole("complementary", {name: "Decision status"});
-  await expect(decisionRail).toContainText("Failed screening gates");
+  await expect(decisionRail).toContainText("Unresolved screening gates");
+  await expect(decisionRail).toContainText("Investment concerns");
+  await expect(decisionRail).toContainText("Evidence or policy gaps");
   await expect(decisionRail).toContainText("Open diligence issues");
   const retentionGate = page.getByRole("row").filter({hasText: "Minimum ordinary-cohort NRR"});
   await expect(retentionGate).toContainText("83.6%");

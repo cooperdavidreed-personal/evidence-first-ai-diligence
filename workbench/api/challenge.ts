@@ -37,6 +37,21 @@ export function admitRateWindow(identity: string, now = Date.now()) {
   if (requestWindows.size > 10_000) for (const [key, values] of requestWindows) if (values.every((value) => now - value >= RATE_WINDOW_MS)) requestWindows.delete(key);
   return true;
 }
+
+const CLIENT_INPUT_ERRORS = new Set([
+  "Same-origin browser request required",
+  "Invalid request",
+  "Invalid model job contract",
+  "Invalid hosted synthetic deal",
+  "Invalid evidence item",
+  "Evidence digest mismatch",
+  "Selected evidence is too large",
+  "Selected evidence does not match the server registry",
+]);
+export function isClientInputError(error: unknown) {
+  return error instanceof SyntaxError
+    || (error instanceof Error && CLIENT_INPUT_ERRORS.has(error.message));
+}
 export function validateChallengeRequest(raw: unknown): ChallengeRequest {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Invalid request");
   const value = raw as Record<string, unknown>;
@@ -93,9 +108,9 @@ export default {
       return Response.json({...validated, deal_id: parsed.deal_id, model_family: modelFamily, request_digest_sha256: parsed.request_digest_sha256, limitations: "Advisory review of selected synthetic evidence only; no calculation, policy, assumption, issue or recommendation was changed."}, {headers: {"cache-control": "no-store", "content-security-policy": "default-src 'none'", "referrer-policy": "no-referrer", "x-content-type-options": "nosniff"}});
     } catch (error) {
       const message = error instanceof Error ? error.message : "Model review failed";
-      const status = /Invalid|mismatch|too large/i.test(message) ? 400 : 503;
+      const status = isClientInputError(error) ? 400 : 503;
       if (status === 503) console.error("hosted model review failed", {name: error instanceof Error ? error.name : "unknown", message});
-      return Response.json({error: status === 400 ? message : "Model review temporarily unavailable"}, {status, headers: {"cache-control": "no-store"}});
+      return Response.json({error: status === 400 ? "Invalid synthetic review request" : "Model review temporarily unavailable"}, {status, headers: {"cache-control": "no-store"}});
     }
   },
 };

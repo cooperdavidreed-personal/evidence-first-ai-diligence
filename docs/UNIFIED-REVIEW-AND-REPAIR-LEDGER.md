@@ -1,6 +1,6 @@
 # Unified review and repair ledger
 
-Status: `CANDIDATE 3c44098 — FINAL RE-REVIEW PENDING`
+Status: `CLAUDE PORTFOLIO_CANDIDATE_READY — GROK RE-REVIEW PENDING`
 
 This ledger records independent criticism of candidate `36060ec4bd94e3dfea189aa4046f5c594e119c8c` and the product decisions made before the final clean-commit review. Review agreement is advisory; tests, source replay, deterministic recomputation, rendered evidence, and named human judgment remain the acceptance basis.
 
@@ -57,6 +57,20 @@ The native Claude review was read-only, began and ended with a clean worktree, a
 - Public scan: `PASS` over 414 candidate files.
 
 The deployed hosted-inference roundtrip, Git-backed Vercel deployment, final film, and observed practitioner usability remain external release gates and are not inferred from these local results.
+
+## Claude Fable 5.1 — clean candidate acceptance at `b4435e0`
+
+Claude reviewed exact commit `b4435e06e2bb9483fdedf42c9754463ac4d698df`, confirmed a clean and unchanged worktree, performed no writes or delegation, and returned `PORTFOLIO_CANDIDATE_READY`. Scores were 4/5 for finance, econometrics, decision integrity, visual presentation, security/claims discipline, and career signal; 3/5 for investor usability and differentiation.
+
+The review explicitly confirmed:
+
+- Northstar package thresholds cannot grade the case; the 83.6% 11-month proxy remains a locked concern and incomplete packages suppress returns.
+- Helios analyst prior, Desk ceiling, package representation, financing ownership, and preference seniority remain separate and reconcile.
+- Hosted and local proposals are evidence-bound at the registry, request, workspace, and portable-import layers.
+- Portable imports cannot delete canonical issues, rewrite deterministic memo text, preserve policy overrides, or retain trusted proposal origin.
+- AtlasGrid sources and uses, normalized EBITDA, debt schedule, selected returns, downside floor, maximum bid, and provisional `REPRICE` language reconcile.
+
+Claude classified the unavailable live AI Gateway roundtrip as an external high release gate, not a code defect. It also identified stale founder-guide wording, an over-strong continuous-path sentence, ambiguous Northstar gate counts, an over-broad README sentence, and provider-error reflection. These were accepted and repaired: the guide now uses prior-versus-policy and 11-month-proxy language; the replay statement is seed-observed rather than structural; the rail splits one investment concern from evidence/policy gaps; the README matches the actual receipt and interface contract; and arbitrary upstream error text is no longer returned to the browser.
 
 ## Release rule
 

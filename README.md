@@ -109,7 +109,7 @@ The integrated verifier covers the Python/kernel suite, independent Northstar or
 
 - Accounting uses integer cents or declared decimal arithmetic; return, debt, and waterfall mechanics remain deterministic.
 - The same seed reproduces canonical synthetic source-room bytes and digests.
-- Econometric outputs state the estimand, method, uncertainty, assumptions, diagnostics, classification, underwriting meaning, and what the result does not establish.
+- Econometric receipts state the estimand, method, uncertainty, assumptions, diagnostics, and classification; the investor interface leads with underwriting meaning and an explicit limitation rather than statistical notation.
 - Synthetic estimator recovery is not a real-company causal claim, investment forecast, or backtest.
 - Automated accessibility checks are not comprehensive WCAG certification.
 - Browser-local persistence is not enterprise security or confidential-data readiness.

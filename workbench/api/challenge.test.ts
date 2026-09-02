@@ -1,7 +1,7 @@
 // @vitest-environment node
 import {createHash} from "node:crypto";
 import {describe, expect, it} from "vitest";
-import handler, {admitRateWindow, HOSTED_MODEL_FAMILY, validateBrowserBoundary, validateChallengeOutput, validateChallengeRequest} from "./challenge.js";
+import handler, {admitRateWindow, HOSTED_MODEL_FAMILY, isClientInputError, validateBrowserBoundary, validateChallengeOutput, validateChallengeRequest} from "./challenge.js";
 import {HOSTED_EVIDENCE_REGISTRY} from "./canonical-evidence-registry.js";
 
 const dealId = "helios";
@@ -58,5 +58,11 @@ describe("hosted synthetic evidence challenge boundary", () => {
     const response = await handler.fetch(oversized);
     expect(response.status).toBe(413);
     await expect(response.json()).resolves.toEqual({error: "Request too large"});
+  });
+
+  it("never classifies provider wording as a client error by substring", () => {
+    expect(isClientInputError(new Error("Invalid upstream provider response"))).toBe(false);
+    expect(isClientInputError(new Error("Evidence digest mismatch"))).toBe(true);
+    expect(isClientInputError(new SyntaxError("Unexpected token"))).toBe(true);
   });
 });
