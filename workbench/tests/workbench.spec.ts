@@ -77,6 +77,16 @@ test("Deals is a calm product root with no critical accessibility or overflow fi
   writeAccessibilityEvidence(`${testInfo.project.name}-deals.json`, {boundary: "Automated route evidence only; not comprehensive WCAG or observed usability proof.", project: testInfo.project.name, scans: [{view: "Deals", ...scan}], viewport: page.viewportSize()});
 });
 
+test("mobile deal navigation resets a previously scrolled Deals page", async ({page}, testInfo: TestInfo) => {
+  test.skip(testInfo.project.name !== "mobile", "Reproduces the reported mobile route transition");
+  await page.goto("/", {waitUntil: "networkidle"});
+  await page.evaluate(() => window.scrollTo(0, 180));
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  await page.getByRole("button", {name: /Helios Compute Control/}).click();
+  await expect(page.getByRole("heading", {name: "Helios Compute Control", level: 1})).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+});
+
 test("invalid saved workspace remains preserved behind a visible recovery warning", async ({page}) => {
   const key = "underwriting-desk.workspace.v2.atlasgrid";
   const rejected = "{not-valid-json";

@@ -16,6 +16,7 @@ const outputSchema = jsonSchema<{
 }, required: ["challenges", "gaps", "memo_drafts"]});
 const RATE_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT = 5;
+export const HOSTED_MODEL_FAMILY = "anthropic/claude-fable-5.1";
 const requestWindows = new Map<string, number[]>();
 
 function boundedString(value: unknown, max: number) {return typeof value === "string" && value.trim().length > 0 && value.length <= max ? value.trim() : null;}
@@ -82,7 +83,7 @@ export default {
       const rawBody = await request.text();
       if (new TextEncoder().encode(rawBody).byteLength > 12_000) return Response.json({error: "Request too large"}, {status: 413, headers: {"cache-control": "no-store"}});
       const parsed = validateChallengeRequest(JSON.parse(rawBody));
-      const modelFamily = "anthropic/claude-fable-5.1";
+      const modelFamily = HOSTED_MODEL_FAMILY;
       const {output} = await generateText({model: modelFamily, output: Output.object({schema: outputSchema}), prompt: promptFor(parsed), maxOutputTokens: 1500, providerOptions: {gateway: {user: `public-synthetic-${parsed.request_digest_sha256.slice(0, 16)}`, tags: ["feature:evidence-challenge", "scope:public-synthetic"]}}});
       const validated = validateChallengeOutput(output, new Set(parsed.evidence.map((item) => item.id)));
       return Response.json({...validated, model_family: modelFamily, request_digest_sha256: parsed.request_digest_sha256, limitations: "Advisory review of selected synthetic evidence only; no calculation, policy, assumption, issue or recommendation was changed."}, {headers: {"cache-control": "no-store", "content-security-policy": "default-src 'none'", "referrer-policy": "no-referrer", "x-content-type-options": "nosniff"}});

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import {createHash} from "node:crypto";
 import {describe, expect, it} from "vitest";
-import handler, {admitRateWindow, validateBrowserBoundary, validateChallengeOutput, validateChallengeRequest} from "./challenge.js";
+import handler, {admitRateWindow, HOSTED_MODEL_FAMILY, validateBrowserBoundary, validateChallengeOutput, validateChallengeRequest} from "./challenge.js";
 
 const evidence = [{id: "metric-runway", title: "Runway", displayValue: "19.1 months", summary: "Cash divided by average signed net burn."}];
 function request(overrides: Record<string, unknown> = {}) {
@@ -10,6 +10,10 @@ function request(overrides: Record<string, unknown> = {}) {
 }
 
 describe("hosted synthetic evidence challenge boundary", () => {
+  it("pins the public reviewer to the verified AI Gateway model slug", () => {
+    expect(HOSTED_MODEL_FAMILY).toBe("anthropic/claude-fable-5.1");
+  });
+
   it("admits a bounded, digest-bound selected-evidence request", () => {
     expect(validateChallengeRequest(request())).toMatchObject({evidence, job: "challenge_selected_evidence"});
   });
