@@ -14,7 +14,9 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [
-    {name: "desktop-chrome", use: {browserName: "chromium", channel: "chrome", viewport: {width: 1440, height: 900}}},
+    // The canonical desktop project owns reviewed screenshots and print proof.
+    // WebKit independently exercises the same desktop product behavior.
+    {name: "desktop", use: {browserName: "chromium", channel: "chrome", viewport: {width: 1440, height: 900}}},
     {name: "desktop-webkit", use: {browserName: "webkit", viewport: {width: 1440, height: 900}}},
   ],
   webServer: {
