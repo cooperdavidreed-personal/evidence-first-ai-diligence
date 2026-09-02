@@ -16,13 +16,13 @@ def test_release_storyboard_is_current_contiguous_and_source_bound() -> None:
     assert storyboard["capture"] == "REAL_PUBLIC_WORKBENCH_INTERACTIONS"
     assert storyboard["resolution"] == "1920x1080"
     assert storyboard["fps"] == 30
-    assert storyboard["target_duration_seconds"] == 84
+    assert storyboard["target_duration_seconds"] == 88
     assert storyboard["allowed_duration_seconds"] == [75, 90]
     assert len(storyboard["scenes"]) == 8
-    assert len(storyboard["expected_review_frames"]) == 9
+    assert len(storyboard["expected_review_frames"]) == 11
     assert storyboard["required_test_ids"] == ["deal-package-input"]
     assert caption_counts == {"captions.srt": 16, "captions.vtt": 16}
-    assert len(normalized_text(transcript).split()) == 223
+    assert len(normalized_text(transcript).split()) == 222
 
 
 def test_release_storyboard_covers_decision_exports_controls_and_boundaries() -> None:

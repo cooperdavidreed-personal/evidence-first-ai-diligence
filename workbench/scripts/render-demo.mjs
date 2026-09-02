@@ -89,17 +89,34 @@ try {
   };
   const dealNavigation = () => page.locator('nav[aria-label="Deal navigation"]:visible');
 
-  const intake = sceneAt("deal-intake");
+  const retained = sceneAt("retained-decision");
   await page.getByRole("heading", {name: "Deals"}).waitFor();
-  await shot(0, "deals", intake.id);
-  await until(2);
+  await shot(0, "deals", retained.id);
+  await until(1);
+  await page.getByRole("button", {name: /Open AtlasGrid Systems/}).click();
+  await page.getByRole("heading", {name: "AtlasGrid Systems", level: 1}).waitFor();
+  await dealNavigation().getByRole("button", {name: "Financials"}).click();
+  await visibleText("23.3%", retained.id);
+  await visibleText("REPRICE", retained.id);
+  await shot(1, "atlasgrid-canonical", retained.id);
+  await until(8);
+  await page.getByRole("button", {name: "Seller ask"}).click();
+  await visibleText("17.6%", retained.id);
+  await visibleText("Unapproved what-if", retained.id);
+  await shot(2, "atlasgrid-seller-ask", retained.id);
+  await until(retained.end - 1);
+  await page.getByRole("button", {name: "Underwriting Desk deals"}).click();
+  await page.getByRole("heading", {name: "Deals"}).waitFor();
+  await until(retained.end);
+
+  const intake = sceneAt("deal-intake");
   await page.getByRole("button", {name: "New deal"}).click();
   await page.getByTestId("deal-package-input").setInputFiles(packageFiles);
-  await shot(1, "intake", intake.id);
-  await until(7);
+  await shot(3, "intake", intake.id);
+  await until(21);
   await page.getByRole("button", {name: "Validate and analyze"}).click();
   await visibleText("SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED", intake.id);
-  await shot(2, "screening", intake.id);
+  await shot(4, "package-screening", intake.id);
   await until(intake.end);
 
   const screening = sceneAt("screening");
@@ -108,6 +125,7 @@ try {
   const retention = await visibleText("83.6%", screening.id);
   await center(retention);
   await emphasize(retention);
+  await shot(5, "northstar-screening", screening.id);
   await until(screening.end);
   await clearEmphasis();
 
@@ -120,19 +138,8 @@ try {
   const sourceRows = page.locator('.source-row-table[aria-label="Exact admitted source rows"]');
   await sourceRows.waitFor({state: "visible", timeout: 30_000});
   await center(sourceRows);
-  await shot(3, "evidence", evidence.id);
+  await shot(6, "evidence", evidence.id);
   await until(evidence.end);
-
-  const scenario = sceneAt("scenario");
-  await dealNavigation().getByRole("button", {name: "Financials"}).click();
-  const growth = page.getByRole("spinbutton", {name: "Annual revenue growth (%)"});
-  await growth.fill("35");
-  await visibleText("Unapproved what-if", scenario.id);
-  await shot(4, "scenario", scenario.id);
-  await until(scenario.end - 1);
-  await page.getByRole("button", {name: "Reset"}).click();
-  await visibleText("Working case matches package", scenario.id);
-  await until(scenario.end);
 
   const judgment = sceneAt("judgment");
   await dealNavigation().getByRole("button", {name: "Overview"}).click();
@@ -141,7 +148,7 @@ try {
   await page.getByRole("button", {name: "Add observation"}).click();
   const observation = await visibleText("Renewal references require signed-customer validation", judgment.id);
   await center(observation);
-  await shot(5, "observation", judgment.id);
+  await shot(7, "observation", judgment.id);
   await until(judgment.end);
 
   const model = sceneAt("model-proposal");
@@ -155,14 +162,14 @@ try {
   await proposal.waitFor({state: "visible", timeout: 60_000});
   await visibleText("proposed", model.id);
   await center(proposal);
-  await shot(6, "proposed", model.id);
+  await shot(8, "proposed", model.id);
   await until(model.end);
 
   const disposition = sceneAt("human-disposition");
   await page.getByRole("textbox", {name: "Human reviewer"}).fill("Avery Chen");
   await proposal.getByRole("button", {name: "Accept proposal"}).click();
   await visibleText("accepted by Avery Chen", disposition.id);
-  await shot(7, "accepted", disposition.id);
+  await shot(9, "accepted", disposition.id);
   await until(disposition.end);
 
   const memo = sceneAt("memo");
@@ -177,7 +184,7 @@ try {
   if (!memoFooterText.includes("IC decision pending")) throw new Error("IC memo pending-decision boundary is missing");
   receipt.observed_claims.push({scene: memo.id, text: "IC decision pending", url: page.url()});
   await center(memoFooter);
-  await shot(8, "memo", memo.id);
+  await shot(10, "memo", memo.id);
   await until(memo.end);
 
   receipt.actual_capture_seconds = Number(((Date.now() - startedAt) / 1000).toFixed(3));

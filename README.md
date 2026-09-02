@@ -2,7 +2,7 @@
 
 Evidence-linked private-markets underwriting where deterministic finance, firm policy, analyst assumptions, model proposals, and human decisions remain separate.
 
-> **Status: UNIFIED PRACTITIONER-TEST CANDIDATE — FINAL RELEASE VERIFICATION IN PROGRESS**
+> **Status: PUBLIC PRODUCT VERIFIED — FINAL FILM REPAIR AND RELEASE PACKAGING IN PROGRESS**
 >
 > Every company, source record, policy, and output in the public demonstration is fictional and synthetic. This project is not investment advice, real-company diligence, investment-performance evidence, confidential-data-ready software, autonomous investment authority, or evidence of firm adoption.
 
@@ -65,7 +65,7 @@ Uploaded raw files are not retained as an unrestricted data room. The admitted p
 
 ## Model and MCP boundaries
 
-The release candidate's hosted model job is limited to **Challenge selected evidence** for AtlasGrid, Helios, and the included Northstar package. Arbitrary uploaded packages retain deterministic analysis and human workflow but do not display a model control as functional. The browser sends only the evidence subset the user confirms. The server verifies the request against a retained synthetic evidence registry, constrains output to cited challenges, diligence gaps, and one draft memo section, and returns no direct mutation. Browser-side provider keys are prohibited. Live provider availability is recorded in [`LOCAL-VERIFICATION.md`](LOCAL-VERIFICATION.md) and is not implied by local tests.
+The release candidate's hosted model job is limited to **Challenge selected evidence** for AtlasGrid, Helios, and the included Northstar package. Arbitrary uploaded packages retain deterministic analysis and human workflow but do not display a model control as functional. The browser sends only the evidence subset the user confirms. The server verifies the request against a retained synthetic evidence registry, constrains output to cited challenges, diligence gaps, and one draft memo section, and returns no direct mutation. Browser-side provider keys are prohibited. The live public adapter currently uses `openai/gpt-5.4-mini` through Vercel AI Gateway; that provider is replaceable and does not become an authority surface. Exact hosted verification is recorded in [`LOCAL-VERIFICATION.md`](LOCAL-VERIFICATION.md).
 
 The local stdio MCP surface is documented in [`workbench/mcp-server/README.md`](workbench/mcp-server/README.md). It exposes seven read tools and three proposal tools. It has no approval, policy, calculation, recommendation, private-file, trading, spending, or network-mutation tool.
 
@@ -78,6 +78,8 @@ The release candidate includes three distinct artifacts for each retained case:
 - separate technical appendix.
 
 They are available in [`output/pdf`](output/pdf). Technical identifiers, formulas, and receipts stay in the appendix rather than the partner-facing decision pages.
+
+The first source-bound film passed Claude and ChatGPT review but received a Grok `QUALITY_SHORT` verdict: it overemphasized model review and did not show enough deterministic PE/VC depth. The replacement film contract now opens with AtlasGrid's selected structure versus seller ask, preserves the resulting `REPRICE` consequence, and frames model review as a secondary governed step. Publication remains blocked until the replacement film passes all three exact-artifact reviews.
 
 ## Run and verify locally
 
@@ -116,10 +118,10 @@ The integrated verifier covers the Python/kernel suite, independent Northstar or
 - Observed practitioner testing remains `NOT RUN`; give participants the [20-minute test card](docs/PRACTITIONER-TEST-CARD.md), use the [moderator and scoring protocol](docs/PRACTITIONER-TESTING-PACKAGE.md), and retain results in the [feedback template](docs/practitioner-feedback-template.csv) without fabricating outcomes.
 - Passing tests do not establish investment accuracy, performance improvement, production adoption, or model superiority.
 
-The current release receipt will identify the exact public commit, deployment, tests, independent reviews, and remaining limitations. Historical mission receipts remain preserved as prior-state evidence rather than current release claims.
+The current release receipt identifies the exact public product commit, deployment, tests, independent reviews, and remaining limitations. Historical mission receipts remain preserved as prior-state evidence rather than current release claims.
 
 ## Authorship and license
 
-Cooper David Reed is the project lead and product/analytical owner. Codex performed implementation and repository work; Claude, Grok, and ChatGPT were assigned bounded advisory and independent-review roles. Model agreement is not acceptance evidence: deterministic tests and human review remain authoritative.
+Cooper David Reed is the project lead and product/analytical owner. Codex performed implementation and repository work; Claude, Grok, and ChatGPT were assigned bounded advisory and independent-review roles. A reviewer receives credit only for an exact completed review; provider availability is not treated as agreement. Deterministic tests and human review remain authoritative.
 
 Licensed under [Apache-2.0](LICENSE).

@@ -1,6 +1,6 @@
 # Underwriting Desk v0.2.0 — practitioner-test candidate
 
-Status: `PRODUCT SOURCE VERIFIED — FINAL PUBLIC REBIND IN PROGRESS`
+Status: `PRODUCT SOURCE AND DEPLOYMENT VERIFIED — FINAL FILM REPAIR IN PROGRESS`
 
 This release unifies the former Underwriting Intelligence Lab and Underwriting Desk into one finance-native decision workspace, one repository, and one canonical URL.
 
@@ -19,15 +19,15 @@ This release unifies the former Underwriting Intelligence Lab and Underwriting D
 - Complete imported packages that miss deterministic MOIC or annualized-return screens now receive `HOLD` rather than a generic screening-complete posture.
 - Helios' 18.0-month policy threshold is explicitly a post-close modeled-runway floor, separate from the 17.3-month recent pre-financing runway shown in the case.
 
-## Verified locally
+## Verified state
 
-Exact product source `c974440489f96875e4eaf0c0259a635854654c1b` passed 113 frontend/API tests, 9 MCP tests, 40 active browser journeys, 40 visual baselines, six normalized PDFs, and the 415-file public/security scan. Its unchanged Python/kernel surface remains bound to the 189/189 full run at `ebb2b8c`; exact diff verification confirms no Python source, dependency, or lockfile byte changed. A production-equivalent Vercel build emitted only `api/challenge`. See [`LOCAL-VERIFICATION.md`](LOCAL-VERIFICATION.md).
+Exact product source `b7eaf6de16ec6a1a7221fd71d6c155720c7061de` is deployed from GitHub `main` through the Vercel GitHub App as production deployment `dpl_4RHjGFxP7LubC9QizMMPJyLyUEkA`. Local replay passes 115 frontend/API tests and the Vite build. The complete GitHub matrix for the exact commit is still completing its macOS lanes; the unchanged Python/kernel surface remains bound to the prior 189/189 complete run until that exact matrix closes. The hosted public challenge returned a structured cited proposal from `openai/gpt-5.4-mini` for the exact selected retention evidence and did not mutate calculations, policy, assumptions, issues, recommendation, or approval. See [`LOCAL-VERIFICATION.md`](LOCAL-VERIFICATION.md).
+
+The first source-bound film passed Claude Fable 5.1 and ChatGPT review but received a Grok `QUALITY_SHORT` verdict with two high-severity findings: model review was presented as differentiation and the film showed insufficient underwriting depth. A replacement 88-second contract leads with AtlasGrid's deterministic returns and decision consequence, then demonstrates evidence, human judgment, bounded model challenge, disposition, and memo output. The final artifact must pass all three exact-film reviews before publication.
 
 ## Release gates still open
 
-- Vercel GitHub App installation for this single repository.
-- Vercel AI Gateway payment-method verification and one successful live Claude Fable 5.1 proposal roundtrip.
-- Source-bound 75–90 second ElevenLabs demonstration and independent Claude, ChatGPT, and Grok film reviews.
-- Final demo/PDF publication, GitHub release, exact-main Git deployment, public smoke test, and review email.
+- Replacement-film capture and exact Claude, ChatGPT, and Grok review with no unresolved critical or high finding.
+- Final GitHub release publication, anonymous asset checks, and the review email.
 
 Practitioner results remain `NOT RUN`; the repository includes a participant card, moderator protocol, and feedback template without simulated outcomes.

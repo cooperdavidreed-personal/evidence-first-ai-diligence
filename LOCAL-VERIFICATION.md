@@ -1,14 +1,14 @@
 # Local verification receipt
 
-Status: `UNIFIED PRODUCT CANDIDATE VERIFIED — EXTERNAL RELEASE GATES REMAIN`
+Status: `EXACT PUBLIC PRODUCT VERIFIED — FINAL FILM REPAIR AND RELEASE REMAIN`
 
-- Verified product-source commit: `c974440489f96875e4eaf0c0259a635854654c1b`
-- Branch: `codex/underwriting-unified-release`
-- Base merge: `5c273bb` (PR 16 into `main`)
+- Verified product-source commit: `b7eaf6de16ec6a1a7221fd71d6c155720c7061de`
+- Working release branch: `codex/underwriting-v020-release`
+- Product merge: PR 21 into `main`
 - Environment: macOS, Python 3.12.13, Node 26.3.0, Chromium
 - Complete Python-bound command at unchanged Python source `ebb2b8c`: `bash scripts/verify-underwriting.sh`
-- Exact-candidate replay command at `c974440`: `UNDERWRITING_SKIP_PYTEST=1 bash scripts/verify-underwriting.sh`
-- Completed: `2026-09-01` America/Chicago / `2026-09-02` UTC
+- Exact frontend replay at `b7eaf6d`: `cd workbench && npm test -- --run && npm run build`
+- Updated: `2026-09-02` America/Chicago / UTC
 
 ## Exact complete gate
 
@@ -16,7 +16,7 @@ Status: `UNIFIED PRODUCT CANDIDATE VERIFIED — EXTERNAL RELEASE GATES REMAIN`
 - Mutation gates: `PASS` — 16 declared, 13 dynamic, 1 static; whole-program score `NOT_CLAIMED`.
 - AtlasGrid deterministic room: `PASS` — 11 files, 9,987,885 bytes.
 - Helios deterministic room: `PASS` — 15 files, 823,353 bytes.
-- Frontend, intake, persistence, policy, hosted-adapter, and data contracts: `113/113 PASS`.
+- Frontend, intake, persistence, policy, hosted-adapter, and data contracts: `115/115 PASS`.
 - Local MCP boundary: `9/9 PASS`; read and proposal-only surface preserved.
 - TypeScript/Vite build and lazy chunks: `PASS` — shell gzip 118,323 bytes; AtlasGrid payload 203,215 bytes; Helios payload 156,506 bytes.
 - Browser: `40 passed`, `8 intentional skips`, `48 discovered`; all active desktop and mobile journeys passed.
@@ -43,16 +43,18 @@ Status: `UNIFIED PRODUCT CANDIDATE VERIFIED — EXTERNAL RELEASE GATES REMAIN`
 ## Hosted and public state
 
 - Canonical URL: `https://underwriting-desk-delta.vercel.app/`.
-- Current production deployment: `dpl_32Y12VM5aGWJTT76cLqzBY4X1546`; root and bundled assets return `200`.
+- Git-backed production deployment: `dpl_4RHjGFxP7LubC9QizMMPJyLyUEkA`, status `READY`, target `production`, GitHub source `main` at exact SHA `b7eaf6de16ec6a1a7221fd71d6c155720c7061de` with verified commit metadata.
 - Managed Vercel firewall: `rule_synthetic_model_challenge_rate_limit_SOKNGR`, live at five `/api/challenge` requests per IP per 600 seconds.
 - A production-equivalent Vercel build emits exactly one serverless function, `api/challenge`, and includes declared CSP, HSTS, frame, content-type, referrer, and permissions headers. The public scan fails if another file enters the auto-discovered API directory.
-- The public server validates the exact evidence digest and fails closed, but Vercel AI Gateway currently returns an account-credit error. A valid payment method is required to unlock the included free credits before live Claude Fable 5.1 inference can be accepted.
-- Git-backed Vercel deployment remains blocked until the official Vercel GitHub App is installed for the single repository. A manual deployment is not counted as final Git-backed release proof.
+- The public server validates the exact evidence digest and fails closed. A live Northstar retention request returned HTTP 200 from `openai/gpt-5.4-mini` with the exact request digest, cited retention-only challenges and gaps, and an explicit no-mutation limitation. The project retains a non-renewing $1 usage budget; observed Gateway consumption during verification was approximately $0.02 of included credit and no provider key is exposed to the browser.
+- First-film mechanical verification: `PASS` — 84.0 seconds; 1920×1080; 30fps; 16 SRT and 16 VTT cues; nine review frames; 67 source files; −17.45 integrated LUFS; −0.94 dBTP; H.264/AAC; exact SHA-256 `8cc8495e099f4d8617d0dd2d276a745157a94c3458aa222865a4af223de5befb`.
+- First-film review: Claude Fable 5.1 and ChatGPT returned `PASS`, but Grok returned `QUALITY_SHORT` with two high-severity findings. The replacement contract addresses both by leading with AtlasGrid's deterministic seller-ask sensitivity and treating model review as secondary. Exact replacement-artifact review is `NOT YET RUN`.
 
 ## Not established
 
 - Observed PE, VC, CFO, or recruiter usability: `NOT RUN`.
 - Real-company accuracy, investment performance, firm adoption, arbitrary data-room support, confidential-data readiness, enterprise security, authentication, or multitenancy: `NOT CLAIMED`.
-- Final ElevenLabs film, three-reviewer film acceptance, GitHub release, exact-main Vercel deployment, and final review email: `NOT YET COMPLETE`.
+- Exact-main GitHub matrix: `PASS` on Ubuntu and macOS for Python 3.11, 3.12, and 3.13, plus workbench, security, toolkit, Vercel, and Pages gates (run `33649431083`).
+- Three-reviewer film acceptance, GitHub release, anonymous release-asset checks, and final review email: `NOT YET COMPLETE`.
 
 This receipt is committed after the verified product-source commit because a Git commit cannot contain its own final SHA. The receipt commit changes documentation only; final GitHub CI must still bind the eventual public merge commit.

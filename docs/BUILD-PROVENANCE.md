@@ -4,7 +4,7 @@
 
 Codex is the sole filesystem writer. Claude provides read-only architecture, econometrics, synthesis, and independent critique. Grok is limited to read-only reference research and alternate hypotheses. Provider output is advisory: it becomes part of the candidate only when Codex translates it into code or documentation and deterministic checks accept the result.
 
-No API-key or paid fallback route is authorized. No provider output is case evidence, and model attribution does not appear in the primary IC interface.
+No API-key or unrestricted paid fallback route was used. The public synthetic adapter uses Vercel AI Gateway under a fixed non-renewing $1 project budget; it is a bounded product surface, not case evidence or acceptance authority. Model attribution does not appear in the primary IC interface.
 
 ## Recorded advisory work
 
@@ -26,6 +26,10 @@ No API-key or paid fallback route is authorized. No provider output is case evid
 | Unified Desk final skeptical-investor attempt | Grok Build | `HELD_PROVIDER` | Native free usage was exhausted before a verdict; no paid or API-key fallback was used and no acceptance credit is claimed |
 | Unified Desk Python-bound full deterministic acceptance at `ebb2b8c` | Codex | `LOCAL PASS` | 189 Python/kernel checks passed with the complete gate; subsequent exact diff verification through `c974440` confirms no Python source, dependency, or lockfile change |
 | Unified Desk exact-candidate deterministic replay at `c974440` | Codex | `LOCAL PASS` | 113 React/API, 9 MCP, 40 active browser, 40 visual, 8 accessibility-evidence, 6 PDF, and 415-file public-boundary checks passed; hosted inference, Git-backed production, and practitioner use remain external gates |
+| Unified Desk hosted public workflow at `b7eaf6d` | OpenAI through Vercel AI Gateway | `PUBLIC SYNTHETIC PASS` | Exact selected Northstar retention evidence produced cited structured proposals under the server registry; the result remained proposed until named human disposition and could not mutate finance, policy, assumptions, issues, recommendation, or approval |
+| Final source-bound film at `b7eaf6d` | Claude Fable 5.1 | `PASS` | Recomputed all visible Northstar metrics, checked retained-case identities, verified claim boundaries, and reported zero critical/high plus eight low refinements |
+| Final source-bound film at `b7eaf6d` | ChatGPT | `PASS` | Reviewed audience comprehension, product story, presentation, and career signal; reported zero critical/high plus two low refinements |
+| First source-bound film at `b7eaf6d` | Grok signed-in web | `QUALITY_SHORT` | Two high-severity findings: the film presented model review as differentiation and showed insufficient underwriting depth. Publication is blocked pending repaired exact-film review. |
 
 Durable provider stdout, state events, and episode receipts live in the excluded local mission directory, not the proposed public package.
 
@@ -40,4 +44,4 @@ unsafe paths, and digest drift before the review surface is staged.
 
 ## Claim discipline
 
-Passing tests demonstrate local contract behavior on synthetic cases. They do not establish enterprise deployment, real diligence accuracy, comprehensive accessibility compliance, model superiority, or an investment track record. Core Web Vitals tracing is also `NOT RUN` because the required Chrome performance-trace interface was unavailable. Hosted CI, publication, model benchmarks, CoreWeave labels, and public resume/LinkedIn claims remain outside this mission.
+Passing tests demonstrate contract behavior on synthetic cases. They do not establish enterprise deployment, real diligence accuracy, comprehensive accessibility compliance, model superiority, practitioner adoption, or an investment track record. Core Web Vitals tracing is `NOT RUN`. Model benchmarks, CoreWeave labels, and public résumé/LinkedIn claims remain outside this release.
