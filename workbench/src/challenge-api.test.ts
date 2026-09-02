@@ -1,7 +1,7 @@
 // @vitest-environment node
 import {createHash} from "node:crypto";
 import {describe, expect, it} from "vitest";
-import handler, {admitRateWindow, HOSTED_MODEL_FAMILY, isClientInputError, validateBrowserBoundary, validateChallengeOutput, validateChallengeRequest} from "./challenge.js";
+import handler, {admitRateWindow, HOSTED_MODEL_FAMILY, isClientInputError, validateBrowserBoundary, validateChallengeOutput, validateChallengeRequest} from "../api/challenge.js";
 import {HOSTED_EVIDENCE_REGISTRY} from "./canonical-evidence-registry.js";
 
 const dealId = "helios";

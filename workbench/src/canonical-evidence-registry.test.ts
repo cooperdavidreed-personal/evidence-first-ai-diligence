@@ -3,11 +3,11 @@ import {File as NodeFile} from "node:buffer";
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {describe, expect, it} from "vitest";
-import rawData from "../src/data/cases.json";
-import {canonicalEvidenceForCase, modelEvidenceForCase} from "../src/canonical-evidence";
-import {processDealPackage} from "../src/intake";
-import {localCaseId} from "../src/local-deal-state";
-import type {CaseData} from "../src/types";
+import rawData from "./data/cases.json";
+import {canonicalEvidenceForCase, modelEvidenceForCase} from "./canonical-evidence";
+import {processDealPackage} from "./intake";
+import {localCaseId} from "./local-deal-state";
+import type {CaseData} from "./types";
 import {HOSTED_EVIDENCE_REGISTRY} from "./canonical-evidence-registry.js";
 
 const TestFile = NodeFile as unknown as typeof File;

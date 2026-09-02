@@ -11,6 +11,7 @@ from scripts.scan_public import (
     reviewed_binary_allowlist,
     reviewed_demo_allowlist,
     validate_blind_review_binding,
+    validate_vercel_api_surface,
 )
 
 
@@ -72,6 +73,18 @@ def test_reviewed_binary_allowlist_fails_closed_on_digest_mismatch(
 
 def test_current_blind_review_is_bound_to_retained_snapshots() -> None:
     validate_blind_review_binding(ROOT)
+
+
+def test_vercel_api_surface_contains_only_the_public_challenge_route(
+    tmp_path: Path,
+) -> None:
+    api_root = tmp_path / "workbench" / "api"
+    api_root.mkdir(parents=True)
+    (api_root / "challenge.ts").write_text("export default {};", encoding="utf-8")
+    validate_vercel_api_surface(tmp_path)
+    (api_root / "challenge.test.ts").write_text("test('leak', () => {});", encoding="utf-8")
+    with pytest.raises(ValueError, match="vercel_api_inventory_mismatch"):
+        validate_vercel_api_surface(tmp_path)
 
 
 def test_reviewed_demo_binary_requires_exact_manifest_digest(tmp_path: Path) -> None:

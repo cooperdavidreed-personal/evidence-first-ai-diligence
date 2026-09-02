@@ -1,6 +1,6 @@
 import {createHash} from "node:crypto";
 import {generateText, jsonSchema, Output} from "ai";
-import {assertCanonicalEvidenceSubset} from "./canonical-evidence-registry.js";
+import {assertCanonicalEvidenceSubset} from "../src/canonical-evidence-registry.js";
 
 interface EvidenceItem {id: string; title: string; displayValue: string; summary: string}
 interface ChallengeRequest {job: "challenge_selected_evidence"; deal_id: string; evidence: EvidenceItem[]; output_contract: "underwriting-evidence-challenge/v1"; request_digest_sha256: string}
