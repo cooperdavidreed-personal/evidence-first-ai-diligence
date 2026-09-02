@@ -1,6 +1,6 @@
 # Unified review and repair ledger
 
-Status: `POST-REPAIR CLEAN-COMMIT REVIEW PENDING`
+Status: `CANDIDATE 3c44098 — FINAL RE-REVIEW PENDING`
 
 This ledger records independent criticism of candidate `36060ec4bd94e3dfea189aa4046f5c594e119c8c` and the product decisions made before the final clean-commit review. Review agreement is advisory; tests, source replay, deterministic recomputation, rendered evidence, and named human judgment remain the acceptance basis.
 

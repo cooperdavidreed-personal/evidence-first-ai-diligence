@@ -18,7 +18,7 @@ This release unifies the former Underwriting Intelligence Lab and Underwriting D
 
 ## Verified locally
 
-Exact product source `a7795db151811382d209e288ef006bcbf2363bb8` passed 188 Python/kernel tests, 98 frontend/API tests, 9 MCP tests, 38 active browser journeys, 40 visual baselines, six normalized PDFs, and the 412-file public/security scan. See [`LOCAL-VERIFICATION.md`](LOCAL-VERIFICATION.md).
+Exact product source `3c44098451a0bdf8c567a77a7002635ff0e3dbcc` passed 188 Python/kernel tests, 107 frontend/API tests, 9 MCP tests, 38 active browser journeys, 40 visual baselines, six normalized PDFs, and the 414-file public/security scan. See [`LOCAL-VERIFICATION.md`](LOCAL-VERIFICATION.md).
 
 ## Release gates still open
 

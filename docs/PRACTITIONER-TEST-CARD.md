@@ -6,7 +6,7 @@ Open the public Underwriting Desk without a walkthrough. Every company and recor
 
 1. In your own words, explain what this product does, the current posture of one deal, and the risk that matters most.
 2. Open **New deal** and import the four Northstar sample files linked from the product. Confirm what was recognized and whether anything is missing.
-3. Explain why 83.6% ordinary-cohort NRR matters even though the illustrative return screen clears.
+3. Explain why the 83.6% 11-month cohort-retention proxy matters against the separate annual-NRR screen even though the illustrative return screen clears.
 4. Change one scenario input. Identify the financial and decision consequence, then confirm the canonical case was not overwritten.
 5. Trace one important number to the source excerpt, row, period, or field that supports it.
 6. Add a named investment observation.

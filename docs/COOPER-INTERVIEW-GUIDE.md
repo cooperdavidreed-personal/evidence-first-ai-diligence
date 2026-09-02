@@ -31,7 +31,7 @@ separate registry.
 
 The important Northstar result is deliberately uncomfortable. Its package
 reconciles to $15.9 million of LTM revenue, 70.0% gross margin, 83.6%
-ordinary-cohort NRR, 33.3% post-money ownership, 3.23x gross MOIC, and 26.5%
+11-month opening-cohort retention proxy (not annual NRR), 33.3% post-money ownership, 3.23x gross MOIC, and 26.5%
 annualized gross return. The return screens clear, but 83.6% NRR and six other
 quality gates keep the posture at `SCREENING COMPLETE — FURTHER DILIGENCE
 REQUIRED`. Missing or changed required files suppress the return conclusion and

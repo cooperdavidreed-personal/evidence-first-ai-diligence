@@ -29,7 +29,7 @@ Record role and relevant experience, but do not collect confidential employer, f
 
 1. In no more than two minutes, explain what the product does, the current posture of one retained deal, and its main risk.
 2. Open **New deal** and import the four files from the public Northstar sample package. Identify recognized and missing inputs.
-3. Explain why 83.6% ordinary-cohort NRR matters even though the illustrative return screen clears.
+3. Explain why the 83.6% 11-month cohort-retention proxy matters against the separate annual-NRR screen even though the illustrative return screen clears.
 4. Change one authorized scenario input and describe how the financial outputs and decision consequence change. Return to the canonical case and confirm it was not overwritten.
 5. Trace one important number to its exact source excerpt, row, period, or selected field.
 6. Add a named investment observation or meeting note.
