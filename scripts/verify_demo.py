@@ -289,6 +289,7 @@ def main() -> int:
     require(manifest.get("status") == "RENDERED_PENDING_INDEPENDENT_REVIEW", "demo manifest status mismatch")
     require(manifest.get("capture") == "REAL_PUBLIC_WORKBENCH_INTERACTIONS", "demo capture mode mismatch")
     require(manifest.get("deployed_url") == "https://underwriting-desk-delta.vercel.app/", "demo deployed URL mismatch")
+    require(not list(root.glob("*.webm")), "unbound raw browser capture remains in demo root")
 
     video = root / VIDEO_NAME
     require(video.is_file() and not video.is_symlink(), "demo video missing or unsafe")

@@ -1,5 +1,5 @@
 import {chromium} from "@playwright/test";
-import {mkdir, readFile, writeFile} from "node:fs/promises";
+import {mkdir, readFile, rm, writeFile} from "node:fs/promises";
 import {dirname, resolve} from "node:path";
 
 const valueAfter = (name) => {
@@ -182,7 +182,9 @@ try {
   await page.close();
   await context.close();
   context = undefined;
+  const originalVideoPath = resolve(await video.path());
   await video.saveAs(output);
+  if (originalVideoPath !== output) await rm(originalVideoPath, {force: true});
 } finally {
   if (context) await context.close().catch(() => {});
   if (browser) await browser.close().catch(() => {});
