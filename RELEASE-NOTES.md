@@ -1,6 +1,6 @@
 # Underwriting Desk v0.2.0 — practitioner-test candidate
 
-Status: `PRODUCT SOURCE AND DEPLOYMENT VERIFIED — FINAL FILM REPAIR IN PROGRESS`
+Status: `PUBLIC PRACTITIONER-TEST CANDIDATE — v0.2.0 VERIFIED`
 
 This release unifies the former Underwriting Intelligence Lab and Underwriting Desk into one finance-native decision workspace, one repository, and one canonical URL.
 
@@ -21,13 +21,10 @@ This release unifies the former Underwriting Intelligence Lab and Underwriting D
 
 ## Verified state
 
-Exact product source `b7eaf6de16ec6a1a7221fd71d6c155720c7061de` is deployed from GitHub `main` through the Vercel GitHub App as production deployment `dpl_4RHjGFxP7LubC9QizMMPJyLyUEkA`. Local replay passes 115 frontend/API tests and the Vite build. The complete GitHub matrix for the exact commit is still completing its macOS lanes; the unchanged Python/kernel surface remains bound to the prior 189/189 complete run until that exact matrix closes. The hosted public challenge returned a structured cited proposal from `openai/gpt-5.4-mini` for the exact selected retention evidence and did not mutate calculations, policy, assumptions, issues, recommendation, or approval. See [`LOCAL-VERIFICATION.md`](LOCAL-VERIFICATION.md).
+Exact product and film source `5faeb1432be54d0b9a9eb3eca9a70014414e359c` is deployed from GitHub `main` through the Vercel GitHub App as production deployment `dpl_8TCbHQSehUCSbXEUpdrCyVmxe9vW`. Local replay passes 116 frontend/API tests, the Vite build, five demo tests, and the exact three-review demonstration verifier. The exact-main GitHub matrix is run [`33658302350`](https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence/actions/runs/33658302350). The hosted public challenge returned a structured cited proposal from `openai/gpt-5.4-mini` for the exact selected retention evidence and did not mutate calculations, policy, assumptions, issues, recommendation, or approval. See [`LOCAL-VERIFICATION.md`](LOCAL-VERIFICATION.md).
 
-The first source-bound film passed Claude Fable 5.1 and ChatGPT review but received a Grok `QUALITY_SHORT` verdict with two high-severity findings: model review was presented as differentiation and the film showed insufficient underwriting depth. A replacement 88-second contract leads with AtlasGrid's deterministic returns and decision consequence, then demonstrates evidence, human judgment, bounded model challenge, disposition, and memo output. The final artifact must pass all three exact-film reviews before publication.
+The first source-bound film passed Claude Fable 5.1 and ChatGPT review but received a Grok `QUALITY_SHORT` verdict with two high-severity findings: model review was presented as differentiation and the film showed insufficient underwriting depth. The replacement film was rebuilt around deterministic AtlasGrid returns, a complete exit-equity bridge, fail-closed Northstar retention screening, human judgment, bounded model challenge, disposition, and memo provenance. The final 88-second MP4 passes the mechanical gate and exact-artifact reviews from Claude, ChatGPT, and Grok with no unresolved critical or high finding.
 
-## Release gates still open
+## Remaining external evidence
 
-- Replacement-film capture and exact Claude, ChatGPT, and Grok review with no unresolved critical or high finding.
-- Final GitHub release publication, anonymous asset checks, and the review email.
-
-Practitioner results remain `NOT RUN`; the repository includes a participant card, moderator protocol, and feedback template without simulated outcomes.
+Observed practitioner results remain `NOT RUN`; the repository and release include a participant card, moderator protocol, and feedback template without simulated outcomes. Real-company use, confidential-data readiness, authenticated identity, production firm adoption, and investment-performance claims remain outside this release.

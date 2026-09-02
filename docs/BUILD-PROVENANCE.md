@@ -29,7 +29,10 @@ No API-key or unrestricted paid fallback route was used. The public synthetic ad
 | Unified Desk hosted public workflow at `b7eaf6d` | OpenAI through Vercel AI Gateway | `PUBLIC SYNTHETIC PASS` | Exact selected Northstar retention evidence produced cited structured proposals under the server registry; the result remained proposed until named human disposition and could not mutate finance, policy, assumptions, issues, recommendation, or approval |
 | Final source-bound film at `b7eaf6d` | Claude Fable 5.1 | `PASS` | Recomputed all visible Northstar metrics, checked retained-case identities, verified claim boundaries, and reported zero critical/high plus eight low refinements |
 | Final source-bound film at `b7eaf6d` | ChatGPT | `PASS` | Reviewed audience comprehension, product story, presentation, and career signal; reported zero critical/high plus two low refinements |
-| First source-bound film at `b7eaf6d` | Grok signed-in web | `QUALITY_SHORT` | Two high-severity findings: the film presented model review as differentiation and showed insufficient underwriting depth. Publication is blocked pending repaired exact-film review. |
+| First source-bound film at `b7eaf6d` | Grok signed-in web | `QUALITY_SHORT — SUPERSEDED` | Two high-severity findings: the film presented model review as differentiation and showed insufficient underwriting depth. The first cut was not released; the exact repaired-film reviews below supersede it. |
+| Final repaired film at `5faeb14` | Claude Fable 5.1 | `PASS` | Independently verified the exact MP4 and source closure, recomputed the exit-equity bridge, checked human memo provenance, and reported zero critical/high with one medium and four low refinements |
+| Final repaired film at `5faeb14` | ChatGPT | `PASS` | Reviewed the exact final frames, transcript, financial evidence, investor comprehension, presentation, and career signal; reported zero critical/high and three low refinements |
+| Final repaired film at `5faeb14` | Grok signed-in web | `PASS` | Re-tested the prior analyst-toy and differentiation blocks against the exact visual dossier, transcript, and AtlasGrid packet; reported zero findings and retained the synthetic/IC-pending limits |
 
 Durable provider stdout, state events, and episode receipts live in the excluded local mission directory, not the proposed public package.
 
