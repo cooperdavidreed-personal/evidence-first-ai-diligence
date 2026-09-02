@@ -4,6 +4,8 @@ Status: `READY TO RUN — RESULTS NOT YET COLLECTED`
 
 This protocol evaluates whether the public synthetic product is understandable and useful without a guided demonstration. It does not ask participants to validate an investment recommendation, real-company accuracy, enterprise security, or confidential-data readiness.
 
+Give participants the concise [20-minute test card](PRACTITIONER-TEST-CARD.md). Keep this document as the moderator and scoring guide.
+
 ## Participants
 
 Run the same core protocol with four perspectives:

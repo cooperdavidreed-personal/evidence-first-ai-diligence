@@ -113,7 +113,7 @@ The integrated verifier covers the Python/kernel suite, independent Northstar or
 - Synthetic estimator recovery is not a real-company causal claim, investment forecast, or backtest.
 - Automated accessibility checks are not comprehensive WCAG certification.
 - Browser-local persistence is not enterprise security or confidential-data readiness.
-- Observed practitioner testing remains `NOT RUN`; use the [unguided testing package](docs/PRACTITIONER-TESTING-PACKAGE.md) and [feedback template](docs/practitioner-feedback-template.csv) without fabricating results.
+- Observed practitioner testing remains `NOT RUN`; give participants the [20-minute test card](docs/PRACTITIONER-TEST-CARD.md), use the [moderator and scoring protocol](docs/PRACTITIONER-TESTING-PACKAGE.md), and retain results in the [feedback template](docs/practitioner-feedback-template.csv) without fabricating outcomes.
 - Passing tests do not establish investment accuracy, performance improvement, production adoption, or model superiority.
 
 The current release receipt will identify the exact public commit, deployment, tests, independent reviews, and remaining limitations. Historical mission receipts remain preserved as prior-state evidence rather than current release claims.
