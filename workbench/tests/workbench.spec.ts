@@ -369,7 +369,7 @@ test("ordinary multi-file intake produces a governed local deal that survives re
   const retentionGate = page.getByRole("row").filter({hasText: "Minimum ordinary-cohort NRR"});
   await expect(retentionGate).toContainText("83.6%");
   await expect(retentionGate).toContainText("95.0%");
-  await expect(retentionGate).toContainText("Concern");
+  await expect(retentionGate).toContainText("Blocked");
   const scans: Array<Record<string, unknown>> = [];
   for (const view of views) {
     await (await visibleDealNavigation(page)).getByRole("button", {name: view}).click();
