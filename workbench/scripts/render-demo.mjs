@@ -128,7 +128,7 @@ try {
   await visibleText("95.0%", screening.id);
   const retentionGate = page.getByText("Minimum ordinary-cohort NRR", {exact: true}).last();
   await center(retentionGate);
-  await emphasize(retention);
+  await emphasize(retentionGate);
   await shot(5, "northstar-screening", screening.id);
   await until(screening.end);
   await clearEmphasis();
