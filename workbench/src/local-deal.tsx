@@ -149,8 +149,9 @@ function LocalDecisionRail({result, state, view}: {result: IntakeResult; state: 
   const posture = localPostureCopy(result.posture);
   const overrides = new Set(state.policyOverrides.filter((item) => LOCAL_OVERRIDABLE_GATE_SET.has(item.gateId) && item.actorRole === GROWTH_SCREEN_POLICY.ownerRole).map((item) => item.gateId));
   const failedGates = analysis.tests.filter((test) => test.blocksAdvancement && !overrides.has(test.gateId));
-  const concernGates = failedGates.filter((test) => test.state === "CONCERN");
-  const evidenceGaps = failedGates.filter((test) => test.state !== "CONCERN");
+  const concernGates = failedGates.filter((test) => test.state === "CONCERN" || test.gateId === "retention-nrr");
+  const concernGateIds = new Set(concernGates.map((test) => test.gateId));
+  const evidenceGaps = failedGates.filter((test) => !concernGateIds.has(test.gateId));
   const openIssues = state.issues.filter((issue) => issue.status !== "RESOLVED");
   const {changed} = normalizedLocalScenario(result, state);
   const nextAction = openIssues.length

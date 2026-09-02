@@ -129,6 +129,9 @@ try {
   await growth.fill("35");
   await visibleText("Unapproved what-if", scenario.id);
   await shot(4, "scenario", scenario.id);
+  await until(scenario.end - 1);
+  await page.getByRole("button", {name: "Reset"}).click();
+  await visibleText("Working case matches package", scenario.id);
   await until(scenario.end);
 
   const judgment = sceneAt("judgment");
@@ -144,7 +147,7 @@ try {
   const model = sceneAt("model-proposal");
   await dealNavigation().getByRole("button", {name: "Diligence"}).click();
   await page.getByRole("button", {name: "Model review"}).click();
-  await page.getByRole("checkbox").first().check();
+  await page.getByRole("checkbox", {name: /Cohort retention proxy/i}).check();
   await page.getByRole("button", {name: "Challenge evidence"}).click();
   await visibleText("Confirm selected evidence transfer", model.id);
   await page.getByRole("button", {name: "Send selected evidence"}).click();
@@ -164,6 +167,7 @@ try {
 
   const memo = sceneAt("memo");
   await dealNavigation().getByRole("button", {name: "IC Memo"}).click();
+  await page.locator(".memo-workspace").waitFor({state: "visible", timeout: 10_000});
   await page.getByRole("textbox", {name: "Editor"}).fill("Avery Chen");
   const addButton = page.getByRole("button", {name: "Add with provenance"});
   if (await addButton.count()) await addButton.first().click();
