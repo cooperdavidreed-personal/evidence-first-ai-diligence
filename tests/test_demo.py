@@ -96,7 +96,7 @@ def test_render_pipeline_requires_governed_elevenlabs_audio_and_builds_aac() -> 
 def test_thumbnail_spec_uses_real_frame_and_bounded_claims() -> None:
     spec = json.loads((SOURCE / "thumbnail-spec.json").read_text())
     assert (spec["width"], spec["height"]) == (1280, 720)
-    assert spec["source_frame"] == "08-memo.png"
+    assert spec["source_frame"] == "10-memo.png"
     assert spec["headline"] == "Evidence to decision"
     assert "Synthetic deal intake" in spec["case_line"] and "Human IC judgment" in spec["case_line"]
     assert all("enterprise" not in value.lower() for value in spec.values() if isinstance(value, str))
