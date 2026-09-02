@@ -1,6 +1,6 @@
 # Unified review and repair ledger
 
-Status: `CLAUDE PORTFOLIO_CANDIDATE_READY — GROK RE-REVIEW PENDING`
+Status: `CLAUDE FINAL RE-REVIEW PENDING — GROK HELD_PROVIDER`
 
 This ledger records independent criticism of candidate `36060ec4bd94e3dfea189aa4046f5c594e119c8c` and the product decisions made before the final clean-commit review. Review agreement is advisory; tests, source replay, deterministic recomputation, rendered evidence, and named human judgment remain the acceptance basis.
 
@@ -40,7 +40,7 @@ The native Claude review was read-only, began and ended with a clean worktree, a
 | `HIGH` | The local verification receipt was bound to an earlier source commit. | `ACCEPT` | Regenerated the entire deterministic release surface after the repairs. The next immutable candidate commit and this receipt are rebound before final re-review; GitHub CI must still bind the public merge commit. |
 | `HIGH` | Helios displayed a seeded 20% loss frequency as if it independently validated the selected 20% catastrophe prior. | `ACCEPT` | Created separate typed metrics. The selected catastrophe prior is an analyst-owned scenario input; the replay loss frequency remains a formula-backed generator check. Only the selected prior is screened against the separate Desk loss ceiling. The UI, decision record, PDFs, metric contract, and tests now state the structural relationship. |
 | `MEDIUM` | The local MCP accepted 20 evidence references while the canonical workspace accepted eight. | `ACCEPT` | Both interfaces now enforce the same maximum of eight and fail closed on nine. |
-| `MEDIUM` | Northstar's 83.6% eleven-month ratio was labeled annual NRR. | `ACCEPT` | Relabeled it `Cohort retention proxy`, states the 11-month interval in the default view, and explicitly says it is not annual NRR. It still creates a concern against the separate annual-NRR screen. |
+| `MEDIUM` | Northstar's 83.6% eleven-month ratio was labeled annual NRR. | `ACCEPT` | Relabeled it `Cohort retention proxy`, states the 11-month interval in the default view, and explicitly says it is not annual NRR. The final repair further blocks any sub-annual proxy from clearing the 12-month screen. |
 | `MEDIUM` | GitHub Pages could republish a second live application. | `ACCEPT` | Pages now publishes a canonical redirect plus evidence artifacts; it no longer builds or copies a second workbench application. |
 | `MEDIUM` | Hosted review appeared available for any valid imported package although the server registry supported only retained cases and one exact sample. | `ACCEPT` | The product now enables hosted review only for registered retained cases and the exact supported Northstar sample. Other browser-local packages receive an honest unavailable state rather than a failing control. |
 | `MEDIUM` | Imported portable state could carry policy exceptions as if they retained local authority. | `ACCEPT` | Portable imports strip policy overrides and demote imported proposal provenance. A new local human action is required for any authoritative exception. |
@@ -71,6 +71,22 @@ The review explicitly confirmed:
 - AtlasGrid sources and uses, normalized EBITDA, debt schedule, selected returns, downside floor, maximum bid, and provisional `REPRICE` language reconcile.
 
 Claude classified the unavailable live AI Gateway roundtrip as an external high release gate, not a code defect. It also identified stale founder-guide wording, an over-strong continuous-path sentence, ambiguous Northstar gate counts, an over-broad README sentence, and provider-error reflection. These were accepted and repaired: the guide now uses prior-versus-policy and 11-month-proxy language; the replay statement is seed-observed rather than structural; the rail splits one investment concern from evidence/policy gaps; the README matches the actual receipt and interface contract; and arbitrary upstream error text is no longer returned to the browser.
+
+## Claude Fable 5.1 — exact source review at `c4eedec`
+
+Claude reviewed exact clean commit `c4eedec04bb2411a0787dfecc69244216fd4148a` and returned `QUALITY_SHORT`. Its only high finding was release-evidence drift: the committed receipt still named an earlier source commit. The complete verifier was subsequently run against exact source commit `ebb2b8c4fe4db33224613e22ff4ccfd7f2fa2874`, producing 189 Python/kernel passes, 111 React/API passes, 9 MCP passes, 38 active browser passes, 40 visual matches, 8 accessibility evidence matches, 6 PDF passes, and a 414-file public scan.
+
+The review's three substantive medium integrity findings were also repaired rather than deferred:
+
+- A sub-annual retention proxy can no longer clear an annual NRR screen. Northstar's 83.6% across 11 months is visibly `BLOCKED`; a 96% three-month regression fixture is also blocked.
+- The Helios Desk loss ceiling appears only in the policy registry, not in the human assumption-approval registry.
+- Python and browser contracts now grade the selected analyst catastrophe prior against the Desk ceiling; replay loss frequency remains a separate generator check.
+
+Additional accepted repairs place an explicit source-identity caveat in printed memo text for imported proposals, use exact decimal comparison for local what-if screens, declare browser security headers in Vercel configuration, correct unsupported-file retention language, and mark the retired Lab contract as superseded. A production-equivalent Vercel build emits only `api/challenge`; public scanning now fails closed if tests or helpers enter the auto-discovered API directory.
+
+## Grok — final exact-candidate attempt
+
+The bounded native Grok Build attempt against the clean candidate ended `HELD_PROVIDER` because the signed-in free usage allowance was exhausted. No API key, paid route, identity change, or fallback was used. Grok returned no final verdict, so no acceptance credit is claimed. This provider hold does not replace deterministic verification or the required practitioner test.
 
 ## Release rule
 

@@ -6,7 +6,7 @@ This release unifies the former Underwriting Intelligence Lab and Underwriting D
 
 ## What changed
 
-- Northstar intake can no longer authorize itself through uploaded thresholds. Its reproducible 83.6% opening-cohort retention proxy spans 11 months and is not annual NRR; it remains an explicit concern against the separate annual NRR screen and keeps the complete package at `SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED`.
+- Northstar intake can no longer authorize itself through uploaded thresholds. Its reproducible 83.6% opening-cohort retention proxy spans 11 months and is not annual NRR; it is blocked from clearing the separate 12-month annual NRR screen and keeps the complete package at `SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED`.
 - Missing or changed required files fail closed with `NO CALL — PACKAGE INCOMPLETE` and no return conclusion.
 - Source facts, deal terms, analyst assumptions, fund policy, deterministic calculations, model proposals, and named human decisions remain separate.
 - Editable scenarios update returns and decision consequences without overwriting the canonical case.
@@ -18,7 +18,7 @@ This release unifies the former Underwriting Intelligence Lab and Underwriting D
 
 ## Verified locally
 
-Exact product source `3c44098451a0bdf8c567a77a7002635ff0e3dbcc` passed 188 Python/kernel tests, 107 frontend/API tests, 9 MCP tests, 38 active browser journeys, 40 visual baselines, six normalized PDFs, and the 414-file public/security scan. See [`LOCAL-VERIFICATION.md`](LOCAL-VERIFICATION.md).
+Exact product source `ebb2b8c4fe4db33224613e22ff4ccfd7f2fa2874` passed 189 Python/kernel tests, 111 frontend/API tests, 9 MCP tests, 38 active browser journeys, 40 visual baselines, six normalized PDFs, and the 414-file public/security scan. A production-equivalent Vercel build emitted only `api/challenge`. See [`LOCAL-VERIFICATION.md`](LOCAL-VERIFICATION.md).
 
 ## Release gates still open
 

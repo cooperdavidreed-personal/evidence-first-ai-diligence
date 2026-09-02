@@ -22,6 +22,9 @@ No API-key or paid fallback route is authorized. No provider output is case evid
 | Productization implementation and blind first-viewport checks | Codex plus fresh read-only subagents | `LOCAL PASS` | AtlasGrid was completed and blind-read before Helios; both first views passed the frozen comprehension questions without filesystem writes by reviewers |
 | Historical exact-image comprehension review | Two fresh read-only Codex subagents | `SUPERSEDED_NOT_CURRENT` | The prior Snapshot-bound review passed 2/2, but the redesign replaced those images and routes. Current blind review and observed practitioner testing are `NOT_RUN`. |
 | Investor-experience exact-final-commit acceptance | Claude | `EXTERNAL RECEIPT REQUIRED` | Commissioned only against a clean immutable candidate commit; this repository does not anticipate its own result, and the exact SHA, verdict, and findings belong in the external mission receipt |
+| Unified Desk exact-source review at `c4eedec` | Claude Fable 5.1 | `QUALITY_SHORT` then repaired | One high receipt-binding gap and three medium integrity findings were accepted; exact-source verification and policy-boundary repairs are recorded in the unified ledger |
+| Unified Desk final skeptical-investor attempt | Grok Build | `HELD_PROVIDER` | Native free usage was exhausted before a verdict; no paid or API-key fallback was used and no acceptance credit is claimed |
+| Unified Desk exact-source deterministic acceptance at `ebb2b8c` | Codex | `LOCAL PASS` | 189 Python/kernel, 111 React/API, 9 MCP, 38 active browser, 40 visual, 8 accessibility-evidence, and 6 PDF checks passed; hosted inference, Git-backed production, and practitioner use remain external gates |
 
 Durable provider stdout, state events, and episode receipts live in the excluded local mission directory, not the proposed public package.
 
