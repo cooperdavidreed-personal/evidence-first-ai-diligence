@@ -4,13 +4,16 @@
   "capture": "REAL_PUBLIC_WORKBENCH_INTERACTIONS",
   "resolution": "1920x1080",
   "fps": 30,
-  "target_duration_seconds": 84,
+  "target_duration_seconds": 88,
   "allowed_duration_seconds": [75, 90],
   "required_test_ids": [
     "deal-package-input"
   ],
   "required_visible_claims": [
     "SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED",
+    "REPRICE",
+    "23.3%",
+    "17.6%",
     "83.6%",
     "Unapproved what-if",
     "Confirm selected evidence transfer",
@@ -19,63 +22,65 @@
   ],
   "expected_review_frames": [
     "00-deals.png",
-    "01-intake.png",
-    "02-screening.png",
-    "03-evidence.png",
-    "04-scenario.png",
-    "05-observation.png",
-    "06-proposed.png",
-    "07-accepted.png",
-    "08-memo.png"
+    "01-atlasgrid-canonical.png",
+    "02-atlasgrid-seller-ask.png",
+    "03-intake.png",
+    "04-package-screening.png",
+    "05-northstar-screening.png",
+    "06-evidence.png",
+    "07-observation.png",
+    "08-proposed.png",
+    "09-accepted.png",
+    "10-memo.png"
   ],
   "scenes": [
     {
-      "id": "deal-intake",
+      "id": "retained-decision",
       "start": 0,
-      "end": 11,
-      "narration": "Underwriting Desk begins with the deal, not a chat box. Importing this four-file synthetic package validates the declared sources in the browser before any return conclusion appears."
+      "end": 16,
+      "narration": "The Desk's advantage is not model prose. It owns deterministic transaction mechanics and versioned judgment. AtlasGrid's selected two-hundred-ten-million-dollar structure clears the twenty-two-percent hurdle at 23.3 percent. Restoring the seller's two-hundred-forty-million-dollar ask drops returns to 17.6 percent and preserves REPRICE."
+    },
+    {
+      "id": "deal-intake",
+      "start": 16,
+      "end": 28,
+      "narration": "A new deal begins with sources, not a chat window. This four-file synthetic package is validated in the browser before any return conclusion appears, and company thresholds cannot become fund policy."
     },
     {
       "id": "screening",
-      "start": 11,
-      "end": 21,
-      "narration": "The package clears the mechanical intake, but it cannot grade itself. The 11-month retention proxy is 83.6 percent. It cannot clear the separate 95 percent annual NRR screen."
+      "start": 28,
+      "end": 37,
+      "narration": "Northstar clears mechanical intake, but not investment quality. Its 83.6 percent retention proxy spans eleven months, so it cannot clear a separate 95 percent annual NRR screen."
     },
     {
       "id": "evidence",
-      "start": 21,
-      "end": 31,
-      "narration": "Every important output retains a source path. Here, the analyst can inspect the exact customer periods behind retention instead of trusting a filename, summary, or model-generated citation."
-    },
-    {
-      "id": "scenario",
-      "start": 31,
-      "end": 42,
-      "narration": "A bounded scenario changes growth and immediately recomputes terminal value and returns with deterministic math. The interface marks it as an unapproved what-if; the canonical package case remains unchanged."
+      "start": 37,
+      "end": 47,
+      "narration": "The analyst can inspect the exact customer periods and dollar rows behind that proxy. Lineage connects evidence to the output and the blocking decision condition."
     },
     {
       "id": "judgment",
-      "start": 42,
-      "end": 52,
-      "narration": "Human judgment stays explicit. A named analyst records a meeting observation and can assign diligence work without rewriting company facts, fund policy, or the calculated books."
+      "start": 47,
+      "end": 57,
+      "narration": "Human judgment stays explicit. A named analyst records a renewal-risk observation; seven unresolved diligence and policy gates continue to block advancement."
     },
     {
       "id": "model-proposal",
-      "start": 52,
-      "end": 66,
-      "narration": "For model review, the user selects the exact evidence subset and confirms what leaves the browser. The hosted reviewer returns a cited counterthesis as proposed language, never as an approved conclusion."
+      "start": 57,
+      "end": 70,
+      "narration": "Model review is deliberately secondary. The user selects the exact retention evidence and confirms what leaves the browser. The reviewer returns cited objections as proposed language, never a changed book or recommendation."
     },
     {
       "id": "human-disposition",
-      "start": 66,
-      "end": 75,
-      "narration": "A named human must accept, reject, or edit that proposal. Acceptance records the reviewer and preserves the evidence references; it still cannot change financial calculations or policy tests."
+      "start": 70,
+      "end": 78,
+      "narration": "A named human accepts, rejects, or edits the proposal. The disposition preserves evidence references and cannot change finance, policy, issues, or approval."
     },
     {
       "id": "memo",
-      "start": 75,
-      "end": 84,
-      "narration": "The resulting investment-committee memo combines deterministic economics, analyst judgment, and accepted model language with provenance. It remains a synthetic working draft, with the IC decision explicitly pending."
+      "start": 78,
+      "end": 88,
+      "narration": "The memo combines deterministic economics, analyst judgment, and accepted model language with provenance. It remains a synthetic working draft, and the IC decision is pending."
     }
   ],
   "limitations": [
