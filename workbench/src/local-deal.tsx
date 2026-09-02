@@ -30,6 +30,12 @@ function money(cents: number) { return new Intl.NumberFormat("en-US", {style: "c
 function percent(value: number) { return `${(value * 100).toFixed(1)}%`; }
 function stateLabel(state: string) { return state.toLowerCase().replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase()); }
 
+export function localPostureCopy(posture: IntakeResult["posture"]) {
+  return posture === "HOLD"
+    ? {heading: "HOLD", detail: "Return screens miss; no IC advancement", icState: "HOLD — deterministic return screens miss"}
+    : {heading: "FURTHER DILIGENCE", detail: "Screening complete; no IC advancement", icState: "Further diligence required"};
+}
+
 function normalizedLocalScenario(result: IntakeResult, state: DealWorkspaceState) {
   const deal = result.deal!, analysis = result.analysis!;
   const parsedGrowth = Number(state.scenarioValues.localGrowth ?? deal.annualRevenueGrowth);
@@ -89,9 +95,10 @@ function LocalDecisionTests({analysis, state}: {analysis: QuickAnalysis; state: 
 
 function LocalOverview({result, state, update}: {result: IntakeResult; state: DealWorkspaceState; update: WorkspaceUpdate}) {
   const analysis = result.analysis!;
+  const posture = localPostureCopy(result.posture);
   const [selectedMetric, setSelectedMetric] = useState(analysis.metrics[0]?.id ?? "");
   const activeMetric = analysis.metrics.find((metric) => metric.id === selectedMetric);
-  return <div className="view-stack"><section className="decision-brief"><div><p className="eyebrow">Provisional analytical posture</p><h2>{result.posture}</h2><p>{result.rationale}</p></div><dl><div><dt>IC state</dt><dd>Further diligence required</dd></div><div><dt>Primary concern</dt><dd>{percent(analysis.ordinaryNrr)} cohort retention proxy</dd></div><div><dt>Cohort interval</dt><dd>{analysis.cohortElapsedMonths} months · not annual NRR</dd></div></dl></section><section className="overview-metrics">{analysis.metrics.slice(0, 5).map((metric) => <button type="button" aria-pressed={metric.id === selectedMetric} key={metric.id} onClick={() => setSelectedMetric(metric.id)}><span>{metric.label}</span><strong>{metric.display}</strong><small>Inspect sources</small></button>)}</section>{activeMetric ? <section className="workspace-card local-lineage" aria-live="polite"><div className="section-heading"><div><p className="eyebrow">Calculation trace</p><h2>{activeMetric.label}</h2></div><strong>{activeMetric.display}</strong></div><p>{activeMetric.meaning}</p><dl><div><dt>Source files</dt><dd>{activeMetric.sourceFiles.join(" · ")}</dd></div><div><dt>Boundary</dt><dd>{activeMetric.limitation}</dd></div></dl></section> : null}<LocalDecisionTests analysis={analysis} state={state} /><ObservationComposer state={state} update={update} /></div>;
+  return <div className="view-stack"><section className="decision-brief"><div><p className="eyebrow">Provisional analytical posture</p><h2>{result.posture}</h2><p>{result.rationale}</p></div><dl><div><dt>IC state</dt><dd>{posture.icState}</dd></div><div><dt>Primary concern</dt><dd>{percent(analysis.ordinaryNrr)} cohort retention proxy</dd></div><div><dt>Cohort interval</dt><dd>{analysis.cohortElapsedMonths} months · not annual NRR</dd></div></dl></section><section className="overview-metrics">{analysis.metrics.slice(0, 5).map((metric) => <button type="button" aria-pressed={metric.id === selectedMetric} key={metric.id} onClick={() => setSelectedMetric(metric.id)}><span>{metric.label}</span><strong>{metric.display}</strong><small>Inspect sources</small></button>)}</section>{activeMetric ? <section className="workspace-card local-lineage" aria-live="polite"><div className="section-heading"><div><p className="eyebrow">Calculation trace</p><h2>{activeMetric.label}</h2></div><strong>{activeMetric.display}</strong></div><p>{activeMetric.meaning}</p><dl><div><dt>Source files</dt><dd>{activeMetric.sourceFiles.join(" · ")}</dd></div><div><dt>Boundary</dt><dd>{activeMetric.limitation}</dd></div></dl></section> : null}<LocalDecisionTests analysis={analysis} state={state} /><ObservationComposer state={state} update={update} /></div>;
 }
 
 function LocalFinancials({result, state, update}: {result: IntakeResult; state: DealWorkspaceState; update: WorkspaceUpdate}) {
@@ -139,6 +146,7 @@ function localScenarioMemoSummary(result: IntakeResult, state: DealWorkspaceStat
 
 function LocalDecisionRail({result, state, view}: {result: IntakeResult; state: DealWorkspaceState; view: DealView}) {
   const analysis = result.analysis!;
+  const posture = localPostureCopy(result.posture);
   const overrides = new Set(state.policyOverrides.filter((item) => LOCAL_OVERRIDABLE_GATE_SET.has(item.gateId) && item.actorRole === GROWTH_SCREEN_POLICY.ownerRole).map((item) => item.gateId));
   const failedGates = analysis.tests.filter((test) => test.blocksAdvancement && !overrides.has(test.gateId));
   const concernGates = failedGates.filter((test) => test.state === "CONCERN");
@@ -150,7 +158,7 @@ function LocalDecisionRail({result, state, view}: {result: IntakeResult; state: 
     : failedGates.length
       ? "Disposition unresolved screening gates with evidence or a recorded policy-owner exception."
       : "Document the policy-owner exception and complete human IC review.";
-  return <aside className="decision-rail" aria-label="Decision status" tabIndex={0}><header><span>Current posture</span><strong>FURTHER DILIGENCE</strong><p>Screening complete; no IC advancement</p></header><dl><div><dt>View</dt><dd>{labels[view]}</dd></div><div><dt>Scenario</dt><dd>{changed ? "Unapproved what-if" : "Package case"}</dd></div><div><dt>Unresolved screening gates</dt><dd>{failedGates.length}</dd></div><div><dt>Investment concerns</dt><dd>{concernGates.length}</dd></div><div><dt>Evidence or policy gaps</dt><dd>{evidenceGaps.length}</dd></div><div><dt>Open diligence issues</dt><dd>{openIssues.length}</dd></div><div><dt>Policy</dt><dd>Draft · not reviewed</dd></div></dl><section><span>Primary concern</span><strong>{concernGates[0]?.label ?? failedGates[0]?.label ?? "No unresolved screening gate"}</strong><p>{concernGates[0]?.explanation ?? failedGates[0]?.explanation ?? "Any exception remains visible and requires human IC review."}</p></section><section><span>Next action</span><strong>{nextAction}</strong></section><footer>IC decision pending</footer></aside>;
+  return <aside className="decision-rail" aria-label="Decision status" tabIndex={0}><header><span>Current posture</span><strong>{posture.heading}</strong><p>{posture.detail}</p></header><dl><div><dt>View</dt><dd>{labels[view]}</dd></div><div><dt>Scenario</dt><dd>{changed ? "Unapproved what-if" : "Package case"}</dd></div><div><dt>Unresolved screening gates</dt><dd>{failedGates.length}</dd></div><div><dt>Investment concerns</dt><dd>{concernGates.length}</dd></div><div><dt>Evidence or policy gaps</dt><dd>{evidenceGaps.length}</dd></div><div><dt>Open diligence issues</dt><dd>{openIssues.length}</dd></div><div><dt>Policy</dt><dd>Draft · not reviewed</dd></div></dl><section><span>Primary concern</span><strong>{concernGates[0]?.label ?? failedGates[0]?.label ?? "No unresolved screening gate"}</strong><p>{concernGates[0]?.explanation ?? failedGates[0]?.explanation ?? "Any exception remains visible and requires human IC review."}</p></section><section><span>Next action</span><strong>{nextAction}</strong></section><footer>IC decision pending</footer></aside>;
 }
 
 export function LocalDealShell({result, view, onNavigate, onDeals, onConnect, connection, modelTransport, persistenceNotice = ""}: {result: IntakeResult; view: DealView; onNavigate: (view: DealView) => void; onDeals: () => void; onConnect: () => void; connection: ConnectionState | null; modelTransport?: ModelTransport; persistenceNotice?: string}) {

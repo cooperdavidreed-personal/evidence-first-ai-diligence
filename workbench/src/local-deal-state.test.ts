@@ -15,6 +15,7 @@ import {
   validateAdmittedDealBundle,
 } from "./local-deal-state";
 import {createWorkspace, createWorkspaceIntegrityContract, loadWorkspace, validateWorkspace} from "./workspace-state";
+import {localPostureCopy} from "./local-deal";
 
 const TestFile = NodeFile as unknown as typeof File;
 const packageRoot = resolve(process.cwd(), "public/sample-package");
@@ -56,6 +57,19 @@ describe("portable admitted deal state", () => {
     installAdmittedDealBundle(bundle);
     expect((await loadAdmittedDeal())?.deal?.company).toBe("Northstar Metrics");
     expect(loadWorkspace(caseId, workspace).issues[0].owner).toBeTruthy();
+  });
+
+  it("binds local overview and rail copy to the deterministic posture", () => {
+    expect(localPostureCopy("HOLD")).toEqual({
+      heading: "HOLD",
+      detail: "Return screens miss; no IC advancement",
+      icState: "HOLD — deterministic return screens miss",
+    });
+    expect(localPostureCopy("SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED")).toEqual({
+      heading: "FURTHER DILIGENCE",
+      detail: "Screening complete; no IC advancement",
+      icState: "Further diligence required",
+    });
   });
 
   it("rejects incomplete results, cross-deal workspaces, and oversized bundles", async () => {

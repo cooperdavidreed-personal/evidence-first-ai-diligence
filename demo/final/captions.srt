@@ -15,8 +15,9 @@ but it cannot grade itself.
 
 4
 00:00:16,000 --> 00:00:21,000
-Ordinary-cohort retention is 83.6 percent against a separate
-95 percent Desk policy, so further diligence is required.
+The ordinary-cohort retention proxy is 83.6 percent over 11 months.
+It cannot clear the separate 95 percent annual NRR screen,
+so further diligence is required.
 
 5
 00:00:21,000 --> 00:00:26,000
