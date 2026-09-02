@@ -2,11 +2,14 @@
 import {createHash} from "node:crypto";
 import {describe, expect, it} from "vitest";
 import handler, {admitRateWindow, HOSTED_MODEL_FAMILY, validateBrowserBoundary, validateChallengeOutput, validateChallengeRequest} from "./challenge.js";
+import {HOSTED_EVIDENCE_REGISTRY} from "./canonical-evidence-registry.js";
 
-const evidence = [{id: "metric-runway", title: "Runway", displayValue: "19.1 months", summary: "Cash divided by average signed net burn."}];
+const dealId = "helios";
+const evidence = [HOSTED_EVIDENCE_REGISTRY.helios.find((item) => item.id === "hx-runway-metric")!];
 function request(overrides: Record<string, unknown> = {}) {
-  const canonical = JSON.stringify({job: "challenge_selected_evidence", evidence, output_contract: "underwriting-evidence-challenge/v1"});
-  return {job: "challenge_selected_evidence", evidence, output_contract: "underwriting-evidence-challenge/v1", request_digest_sha256: createHash("sha256").update(canonical).digest("hex"), ...overrides};
+  const candidate = {job: "challenge_selected_evidence", deal_id: dealId, evidence, output_contract: "underwriting-evidence-challenge/v1", ...overrides};
+  const canonical = JSON.stringify({job: candidate.job, deal_id: candidate.deal_id, evidence: candidate.evidence, output_contract: candidate.output_contract});
+  return {...candidate, request_digest_sha256: createHash("sha256").update(canonical).digest("hex"), ...overrides};
 }
 
 describe("hosted synthetic evidence challenge boundary", () => {
@@ -32,8 +35,13 @@ describe("hosted synthetic evidence challenge boundary", () => {
   });
 
   it("admits only a bounded proposal envelope and preserves evidence ids", () => {
-    const output = {challenges: [{claim: "Runway may be overstated", evidence_refs: ["metric-runway"], severity: "HIGH", management_question: "Which costs are committed?"}], gaps: [{title: "Reconcile commitments", why_it_matters: "The runway denominator may omit contracted spend.", proposed_owner: "Finance diligence", evidence_refs: ["metric-runway"]}], memo_drafts: []};
-    expect(validateChallengeOutput(output, new Set(["metric-runway"]))).toEqual(output);
+    const output = {challenges: [{claim: "Runway may be overstated", evidence_refs: ["hx-runway-metric"], severity: "HIGH", management_question: "Which costs are committed?"}], gaps: [{title: "Reconcile commitments", why_it_matters: "The runway denominator may omit contracted spend.", proposed_owner: "Finance diligence", evidence_refs: ["hx-runway-metric"]}], memo_drafts: []};
+    expect(validateChallengeOutput(output, new Set(["hx-runway-metric"]))).toEqual(output);
+  });
+
+  it("rejects a digest-consistent evidence item that differs from the server registry", () => {
+    const substituted = [{...evidence[0], summary: "Browser supplied replacement summary."}];
+    expect(() => validateChallengeRequest(request({evidence: substituted}))).toThrow(/server registry/i);
   });
 
   it("requires the same browser origin and bounds repeated calls", () => {

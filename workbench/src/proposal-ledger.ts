@@ -34,7 +34,7 @@ export function importProposalLedger(source: string, caseData: CaseData): Import
     if (!title || !body) { reasons.push(`Line ${index + 1}: proposal text is invalid`); continue; }
     if (digestTextSync(JSON.stringify(sourcePayload)) !== sourceRequestDigestSha256) { reasons.push(`Line ${index + 1}: request digest does not match the ledger proposal`); continue; }
     const selectedEvidence = requestEvidence(caseData, evidenceRefs);
-    proposals.push({proposalId: `ledger:${proposalId}`, kind, state: "PROPOSED", title, body, evidenceRefs, requestEvidence: selectedEvidence, requestDigestSha256: digestChallengePayloadSync(selectedEvidence), sourceRequestDigestSha256, modelFamily: "Local MCP ledger", ...extras}); ids.add(proposalId);
+    proposals.push({proposalId: `ledger:${proposalId}`, kind, state: "PROPOSED", title, body, evidenceRefs, dealId: caseData.caseId, origin: "LOCAL_MCP_LEDGER", requestEvidence: selectedEvidence, requestDigestSha256: digestChallengePayloadSync(caseData.caseId, selectedEvidence), sourceRequestDigestSha256, modelFamily: "Local MCP ledger", ...extras}); ids.add(proposalId);
   }
   return {proposals, dropped: reasons.length, reasons};
 }

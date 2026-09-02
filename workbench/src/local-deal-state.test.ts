@@ -140,8 +140,9 @@ describe("portable admitted deal state", () => {
   it("rejects retained-case or fabricated evidence references in a local portable deal", async () => {
     const result = await admittedNorthstar();
     const workspace = createWorkspace(localWorkspaceSeed(result), "2026-09-01T12:00:00.000Z");
+    const dealId = localCaseId(result);
     const requestEvidence = [{id: result.analysis!.metrics[0].id, title: result.analysis!.metrics[0].label, displayValue: result.analysis!.metrics[0].display, summary: result.analysis!.metrics[0].meaning}];
-    workspace.proposals.push({proposalId: "proposal-1", kind: "CHALLENGE", state: "PROPOSED", title: "Challenge retention", body: "Reconcile the cohort denominator.", evidenceRefs: ["atlasgrid-SELECTED-gross-irr"], requestEvidence, requestDigestSha256: digestChallengePayloadSync(requestEvidence)});
+    workspace.proposals.push({proposalId: "proposal-1", kind: "CHALLENGE", state: "PROPOSED", title: "Challenge retention", body: "Reconcile the cohort denominator.", evidenceRefs: ["atlasgrid-SELECTED-gross-irr"], dealId, origin: "PORTABLE_IMPORT_UNVERIFIED", requestEvidence, requestDigestSha256: digestChallengePayloadSync(dealId, requestEvidence)});
     expect(() => serializeAdmittedDealBundle(result, workspace)).toThrow(/outside its selected request subset/i);
     workspace.proposals[0].evidenceRefs = [result.analysis!.metrics[0].id];
     expect(() => serializeAdmittedDealBundle(result, workspace)).not.toThrow();

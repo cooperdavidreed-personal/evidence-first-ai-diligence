@@ -1,8 +1,9 @@
 import {createHash} from "node:crypto";
 import {generateText, jsonSchema, Output} from "ai";
+import {assertCanonicalEvidenceSubset} from "./canonical-evidence-registry.js";
 
 interface EvidenceItem {id: string; title: string; displayValue: string; summary: string}
-interface ChallengeRequest {job: "challenge_selected_evidence"; evidence: EvidenceItem[]; output_contract: "underwriting-evidence-challenge/v1"; request_digest_sha256: string}
+interface ChallengeRequest {job: "challenge_selected_evidence"; deal_id: string; evidence: EvidenceItem[]; output_contract: "underwriting-evidence-challenge/v1"; request_digest_sha256: string}
 type ChallengeOutput = {challenges: Array<{claim: string; evidence_refs: string[]; severity: "HIGH" | "MEDIUM" | "LOW"; management_question: string}>; gaps: Array<{title: string; why_it_matters: string; proposed_owner: string; evidence_refs: string[]}>; memo_drafts: Array<{section: string; draft_text: string; evidence_refs: string[]}>};
 
 const outputSchema = jsonSchema<{
@@ -20,7 +21,7 @@ export const HOSTED_MODEL_FAMILY = "anthropic/claude-fable-5.1";
 const requestWindows = new Map<string, number[]>();
 
 function boundedString(value: unknown, max: number) {return typeof value === "string" && value.trim().length > 0 && value.length <= max ? value.trim() : null;}
-function canonicalPayload(evidence: EvidenceItem[]) {return JSON.stringify({job: "challenge_selected_evidence", evidence, output_contract: "underwriting-evidence-challenge/v1"});}
+function canonicalPayload(dealId: string, evidence: EvidenceItem[]) {return JSON.stringify({job: "challenge_selected_evidence", deal_id: dealId, evidence, output_contract: "underwriting-evidence-challenge/v1"});}
 export function validateBrowserBoundary(request: Request) {
   const origin = request.headers.get("origin");
   const expectedOrigin = new URL(request.url).origin;
@@ -40,6 +41,8 @@ export function validateChallengeRequest(raw: unknown): ChallengeRequest {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Invalid request");
   const value = raw as Record<string, unknown>;
   if (value.job !== "challenge_selected_evidence" || value.output_contract !== "underwriting-evidence-challenge/v1" || !Array.isArray(value.evidence) || value.evidence.length < 1 || value.evidence.length > 8) throw new Error("Invalid model job contract");
+  const dealId = boundedString(value.deal_id, 100);
+  if (!dealId || !/^[a-z0-9][a-z0-9-]{0,99}$/.test(dealId)) throw new Error("Invalid hosted synthetic deal");
   const ids = new Set<string>();
   const evidence = value.evidence.map((candidate) => {
     if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) throw new Error("Invalid evidence item");
@@ -48,10 +51,11 @@ export function validateChallengeRequest(raw: unknown): ChallengeRequest {
     return {id, title, displayValue, summary};
   });
   const digest = boundedString(value.request_digest_sha256, 64);
-  const expected = createHash("sha256").update(canonicalPayload(evidence)).digest("hex");
+  assertCanonicalEvidenceSubset(dealId, evidence);
+  const expected = createHash("sha256").update(canonicalPayload(dealId, evidence)).digest("hex");
   if (!digest || digest !== expected) throw new Error("Evidence digest mismatch");
-  if (Buffer.byteLength(canonicalPayload(evidence), "utf8") > 12_000) throw new Error("Selected evidence is too large");
-  return {job: "challenge_selected_evidence", evidence, output_contract: "underwriting-evidence-challenge/v1", request_digest_sha256: digest};
+  if (Buffer.byteLength(canonicalPayload(dealId, evidence), "utf8") > 12_000) throw new Error("Selected evidence is too large");
+  return {job: "challenge_selected_evidence", deal_id: dealId, evidence, output_contract: "underwriting-evidence-challenge/v1", request_digest_sha256: digest};
 }
 
 function string(value: unknown, max: number) {return typeof value === "string" && value.trim().length > 0 && value.length <= max ? value.trim() : null;}
@@ -86,7 +90,7 @@ export default {
       const modelFamily = HOSTED_MODEL_FAMILY;
       const {output} = await generateText({model: modelFamily, output: Output.object({schema: outputSchema}), prompt: promptFor(parsed), maxOutputTokens: 1500, providerOptions: {gateway: {user: `public-synthetic-${parsed.request_digest_sha256.slice(0, 16)}`, tags: ["feature:evidence-challenge", "scope:public-synthetic"]}}});
       const validated = validateChallengeOutput(output, new Set(parsed.evidence.map((item) => item.id)));
-      return Response.json({...validated, model_family: modelFamily, request_digest_sha256: parsed.request_digest_sha256, limitations: "Advisory review of selected synthetic evidence only; no calculation, policy, assumption, issue or recommendation was changed."}, {headers: {"cache-control": "no-store", "content-security-policy": "default-src 'none'", "referrer-policy": "no-referrer", "x-content-type-options": "nosniff"}});
+      return Response.json({...validated, deal_id: parsed.deal_id, model_family: modelFamily, request_digest_sha256: parsed.request_digest_sha256, limitations: "Advisory review of selected synthetic evidence only; no calculation, policy, assumption, issue or recommendation was changed."}, {headers: {"cache-control": "no-store", "content-security-policy": "default-src 'none'", "referrer-policy": "no-referrer", "x-content-type-options": "nosniff"}});
     } catch (error) {
       const message = error instanceof Error ? error.message : "Model review failed";
       const status = /Invalid|mismatch|too large/i.test(message) ? 400 : 503;

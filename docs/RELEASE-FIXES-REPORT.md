@@ -1,5 +1,7 @@
 # Underwriting Lab release-fix verification report
 
+> Historical release record only. This report describes the retired pre-Desk public experience and is preserved for provenance; it is not the current product, URL, deployment, demonstration, or release claim. Open the canonical [Underwriting Desk](https://underwriting-desk-delta.vercel.app/) and current root README instead.
+
 Status: `RELEASE_CANDIDATE_VERIFIED`
 
 Bound source candidate: `a0ae46c11d3faf4d2885e19c54583c285f8cd69f`

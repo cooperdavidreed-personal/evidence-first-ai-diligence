@@ -29,7 +29,8 @@ Company evidence, deal terms, analyst assumptions, fund policy, deterministic ca
 - Retained-case payloads are lazy-loaded and validated before rendering.
 - Supported Northstar intake and portable deal-state import are replayed and recomputed before admission.
 - Browser storage is local, unauthenticated, and unsuitable for confidential information.
-- The hosted model request is same-origin, size-limited, rate-limited, digest-bound, and restricted to a confirmed synthetic evidence subset. Provider credentials remain server-side.
+- The hosted model request is same-origin, size-limited, rate-limited, digest-bound, and restricted to a confirmed synthetic evidence subset that must match the server-retained registry for the exact deal. Provider credentials remain server-side. Same-origin is a browser boundary, not user authentication.
+- Portable workspace import preserves proposal content and named human disposition but strips model-family attribution and labels provider origin unverified; the public slice does not claim cryptographic provider attestation.
 - The local stdio MCP server has read and proposal tools only. Optional proposal-ledger writes are operator-enabled and do not alter the case.
 
 No route can trade, spend, contact a company, approve an investment, or make a model proposal canonical without named human action. Deterministic verification proves internal behavior on synthetic fixtures; it does not prove real-deal accuracy, production security, or investment outcomes.

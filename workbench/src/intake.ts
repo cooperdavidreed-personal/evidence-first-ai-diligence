@@ -200,8 +200,8 @@ function centsCell(value: string, field: string) {
   if (!Number.isSafeInteger(parsed)) throw new Error(`${field} exceeds safe integer-cent range`);
   return parsed;
 }
-function periodCell(value: string) {
-  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) throw new Error(`Invalid period ${value || "(blank)"}; expected YYYY-MM`);
+function periodCell(value: string, source: string) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) throw new Error(`${source} contains invalid period ${value || "(blank)"}; expected YYYY-MM`);
   return value;
 }
 
@@ -220,7 +220,7 @@ function parseMonthly(raw: string, cutoff: string) {
   const seen = new Set<string>(); let excluded = 0;
   const rows: MonthlyRow[] = [];
   for (const [index, row] of parsed.rows.entries()) {
-    const period = periodCell(row[indexes.period]);
+    const period = periodCell(row[indexes.period], "monthly_financials.csv");
     if (seen.has(period)) throw new Error(`Monthly financials contain duplicate period ${period}`);
     seen.add(period);
     const candidate = {sourceRow: index + 2, period, revenueCents: centsCell(row[indexes.revenue_cents], "revenue_cents"), costOfRevenueCents: centsCell(row[indexes.cost_of_revenue_cents], "cost_of_revenue_cents"), operatingExpenseCents: centsCell(row[indexes.operating_expense_cents], "operating_expense_cents")};
@@ -242,7 +242,7 @@ function parseCustomers(raw: string, cutoff: string) {
   const rows: CustomerRow[] = [];
   for (const [index, row] of parsed.rows.entries()) {
     const customerId = row[indexes.customer_id]?.trim(); if (!customerId) throw new Error("customer_id cannot be blank");
-    const period = periodCell(row[indexes.period]); const key = `${customerId}\u0000${period}`;
+    const period = periodCell(row[indexes.period], "customer_arr.csv"); const key = `${customerId}\u0000${period}`;
     if (seen.has(key)) throw new Error(`Customer ARR contains a duplicate customer-period row for ${customerId} in ${period}`);
     seen.add(key);
     const candidate = {sourceRow: index + 2, customerId, period, arrCents: centsCell(row[indexes.arr_cents], "arr_cents")};

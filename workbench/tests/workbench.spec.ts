@@ -117,8 +117,9 @@ test("model connection center separates governed MCP from in-desk inference", as
 
 test("bounded hosted model proposal requires evidence confirmation and named human acceptance", async ({page}, testInfo: TestInfo) => {
   await page.route("**/api/challenge", async (route) => {
-    const request = route.request().postDataJSON() as {request_digest_sha256: string; evidence: Array<{id: string}>};
+    const request = route.request().postDataJSON() as {deal_id: string; request_digest_sha256: string; evidence: Array<{id: string}>};
     await route.fulfill({status: 200, contentType: "application/json", body: JSON.stringify({
+      deal_id: request.deal_id,
       request_digest_sha256: request.request_digest_sha256,
       model_family: "acceptance-test-adapter",
       limitations: "Synthetic acceptance fixture; no external inference was run.",
@@ -165,6 +166,14 @@ test("scenario, observation, issue, assumption, and memo changes persist as huma
   await page.getByLabel("Decision impact").fill("Could remove pricing credit and reduce debt capacity.");
   await page.getByRole("button", {name: "Create issue"}).click();
   await expect(page.getByText("Reconcile renewal references")).toBeVisible();
+  const createdIssue = page.locator("details.worklist-row").filter({hasText: "Reconcile renewal references"});
+  await createdIssue.locator("summary").click();
+  const createdOwner = createdIssue.getByRole("textbox", {name: "Owner"});
+  await createdOwner.clear();
+  await createdOwner.press("Tab");
+  await expect(createdIssue.getByText("Owner is required; the prior assignment was retained.")).toBeVisible();
+  await expect(createdOwner).toHaveValue("Commercial diligence");
+  await expect(page.getByText("Reconcile renewal references")).toBeVisible();
   await chooseDiligenceSection(page, "assumptions", "Assumptions");
   await page.getByRole("textbox", {name: "Reviewer"}).fill("Avery Chen");
   await page.getByRole("textbox", {name: "Review rationale"}).fill("Entry value remains subject to commercial diligence findings.");
@@ -173,7 +182,11 @@ test("scenario, observation, issue, assumption, and memo changes persist as huma
   await (await visibleDealNavigation(page)).getByRole("button", {name: "IC Memo"}).click();
   await expect(page.getByRole("region", {name: "Scenario represented in this memo"})).toContainText("Unapproved what-if");
   await expect(page.getByRole("region", {name: "Scenario represented in this memo"})).toContainText("Seller ask");
-  await page.getByRole("textbox", {name: "Editor"}).fill("Avery Chen");
+  const memoEditor = page.getByRole("textbox", {name: "Editor"});
+  await memoEditor.fill("Financial model");
+  await expect(page.getByText("Enter a person rather than a system label.")).toBeVisible();
+  await expect(page.getByRole("textbox", {name: "Recommendation and rationale memo section"})).toBeDisabled();
+  await memoEditor.fill("Avery Chen");
   const recommendation = page.getByRole("textbox", {name: "Recommendation and rationale memo section"});
   await recommendation.fill("REPRICE pending signed-renewal validation and a revised fixed-value cap.");
   await expect(page.getByText("Analyst revision · calculated baseline preserved")).toBeVisible();
@@ -213,8 +226,8 @@ test("portable state rejects a fabricated accepted-proposal citation", async ({p
   await page.goto("/#/v3/atlasgrid/memo", {waitUntil: "networkidle"});
   const raw = await page.evaluate(() => JSON.parse(localStorage.getItem("underwriting-desk.workspace.v2.atlasgrid")!));
   const requestEvidence = [{id: "fabricated-metric", title: "Fabricated", displayValue: "1.0x", summary: "Fabricated evidence."}];
-  const requestDigestSha256 = await page.evaluate(async (evidence) => { const payload = JSON.stringify({job: "challenge_selected_evidence", evidence, output_contract: "underwriting-evidence-challenge/v1"}); const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload)); return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join(""); }, requestEvidence);
-  raw.proposals.push({proposalId: "proposal-tampered", kind: "MEMO_DRAFT", state: "ACCEPTED", title: "Draft conclusion", body: "Fabricated evidence claim.", evidenceRefs: ["fabricated-metric"], requestEvidence, requestDigestSha256, humanActor: "Avery Chen", reviewedAt: "2026-09-01T12:00:00.000Z"});
+  const requestDigestSha256 = await page.evaluate(async (evidence) => { const payload = JSON.stringify({job: "challenge_selected_evidence", deal_id: "atlasgrid", evidence, output_contract: "underwriting-evidence-challenge/v1"}); const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload)); return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join(""); }, requestEvidence);
+  raw.proposals.push({proposalId: "proposal-tampered", kind: "MEMO_DRAFT", state: "ACCEPTED", title: "Draft conclusion", body: "Fabricated evidence claim.", evidenceRefs: ["fabricated-metric"], dealId: "atlasgrid", origin: "PORTABLE_IMPORT_UNVERIFIED", requestEvidence, requestDigestSha256, humanActor: "Avery Chen", reviewedAt: "2026-09-01T12:00:00.000Z"});
   raw.memoSections.push({sectionId: "proposal-tampered", title: "Draft conclusion", body: "Fabricated evidence claim.", provenance: "HUMAN_ACCEPTED_MODEL_PROPOSAL", sourceProposalId: "proposal-tampered", updatedBy: "Avery Chen", updatedAt: "2026-09-01T12:00:00.000Z"});
   await page.locator('.workspace-transfer input[type="file"]').setInputFiles({name: "tampered-workspace.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(raw))});
   await expect(page.getByRole("status")).toContainText("canonical registry");

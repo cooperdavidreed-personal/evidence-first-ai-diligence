@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vitest";
 import {digestChallengePayloadSync} from "./model-workflow";
-import {createWorkspace, createWorkspaceIntegrityContract, serializeWorkspace, touchWorkspace, validateWorkspace} from "./workspace-state";
+import {createWorkspace, createWorkspaceIntegrityContract, sanitizePortableWorkspaceImport, serializeWorkspace, touchWorkspace, validateWorkspace} from "./workspace-state";
 
 const seed = {
   caseId: "atlasgrid",
@@ -47,10 +47,20 @@ describe("portable deal workspace", () => {
     expect(() => validateWorkspace(state)).toThrow(/accepted model proposal/i);
   });
 
+  it("preserves portable proposal text and human decisions without trusting imported model identity", () => {
+    const state = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
+    const requestEvidence = seed.canonicalEvidence;
+    state.proposals.push({proposalId: "proposal-1", kind: "CHALLENGE", state: "ACCEPTED", title: "Challenge retention", body: "Reconcile the denominator.", evidenceRefs: ["AG-01"], dealId: "atlasgrid", origin: "IN_PRODUCT_RUNTIME", requestEvidence, requestDigestSha256: digestChallengePayloadSync("atlasgrid", requestEvidence), responseDigestSha256: "a".repeat(64), modelFamily: "forged-provider-name", humanActor: "Avery Chen", reviewedAt: "2026-09-01T01:00:00.000Z"});
+    const restored = sanitizePortableWorkspaceImport(state, "atlasgrid", new Set(["AG-01"]), undefined, createWorkspaceIntegrityContract(seed));
+    expect(restored.proposals[0]).toMatchObject({body: "Reconcile the denominator.", humanActor: "Avery Chen", origin: "PORTABLE_IMPORT_UNVERIFIED"});
+    expect(restored.proposals[0].modelFamily).toBeUndefined();
+    expect(restored.proposals[0].limitations).toMatch(/does not authenticate/i);
+  });
+
   it("rejects a claimed human edit that does not preserve the distinct model draft", () => {
     const state = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
     const requestEvidence = seed.canonicalEvidence;
-    state.proposals.push({proposalId: "proposal-1", kind: "CHALLENGE", state: "ACCEPTED", title: "Challenge retention", body: "Reconcile the denominator.", evidenceRefs: ["AG-01"], requestEvidence, requestDigestSha256: digestChallengePayloadSync(requestEvidence), humanActor: "Avery Chen", humanEdited: true, reviewedAt: "2026-09-01T01:00:00.000Z"});
+    state.proposals.push({proposalId: "proposal-1", kind: "CHALLENGE", state: "ACCEPTED", title: "Challenge retention", body: "Reconcile the denominator.", evidenceRefs: ["AG-01"], dealId: "atlasgrid", origin: "PORTABLE_IMPORT_UNVERIFIED", requestEvidence, requestDigestSha256: digestChallengePayloadSync("atlasgrid", requestEvidence), humanActor: "Avery Chen", humanEdited: true, reviewedAt: "2026-09-01T01:00:00.000Z"});
     expect(() => validateWorkspace(state, "atlasgrid", new Set(["AG-01"]))).toThrow(/preserve a distinct original model draft/i);
     state.proposals[0].originalBody = state.proposals[0].body;
     expect(() => validateWorkspace(state, "atlasgrid", new Set(["AG-01"]))).toThrow(/preserve a distinct original model draft/i);
@@ -61,7 +71,7 @@ describe("portable deal workspace", () => {
   it("requires a newly accepted model memo section to preserve the accepted proposal text", () => {
     const state = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
     const requestEvidence = seed.canonicalEvidence;
-    state.proposals.push({proposalId: "proposal-1", kind: "MEMO_DRAFT", state: "ACCEPTED", title: "Draft downside", body: "Validate renewal evidence.", evidenceRefs: ["AG-01"], requestEvidence, requestDigestSha256: digestChallengePayloadSync(requestEvidence), humanActor: "Avery Chen", reviewedAt: "2026-09-01T01:00:00.000Z"});
+    state.proposals.push({proposalId: "proposal-1", kind: "MEMO_DRAFT", state: "ACCEPTED", title: "Draft downside", body: "Validate renewal evidence.", evidenceRefs: ["AG-01"], dealId: "atlasgrid", origin: "PORTABLE_IMPORT_UNVERIFIED", requestEvidence, requestDigestSha256: digestChallengePayloadSync("atlasgrid", requestEvidence), humanActor: "Avery Chen", reviewedAt: "2026-09-01T01:00:00.000Z"});
     state.memoSections.push({sectionId: "proposal-1", title: "Draft downside", body: "A different model-authored conclusion.", provenance: "HUMAN_ACCEPTED_MODEL_PROPOSAL", sourceProposalId: "proposal-1", updatedBy: "Avery Chen", updatedAt: "2026-09-01T01:00:00.000Z"});
     expect(() => validateWorkspace(state, "atlasgrid", new Set(["AG-01"]))).toThrow(/does not preserve its accepted proposal text/i);
   });
@@ -69,14 +79,14 @@ describe("portable deal workspace", () => {
   it("rejects digest-consistent evidence metadata that differs from the canonical registry", () => {
     const state = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
     const requestEvidence = [{...seed.canonicalEvidence[0], title: "Misleading substituted title"}];
-    state.proposals.push({proposalId: "proposal-1", kind: "CHALLENGE", state: "PROPOSED", title: "Challenge retention", body: "Reconcile the cohort denominator.", evidenceRefs: ["AG-01"], requestEvidence, requestDigestSha256: digestChallengePayloadSync(requestEvidence)});
+    state.proposals.push({proposalId: "proposal-1", kind: "CHALLENGE", state: "PROPOSED", title: "Challenge retention", body: "Reconcile the cohort denominator.", evidenceRefs: ["AG-01"], dealId: "atlasgrid", origin: "PORTABLE_IMPORT_UNVERIFIED", requestEvidence, requestDigestSha256: digestChallengePayloadSync("atlasgrid", requestEvidence)});
     expect(() => validateWorkspace(state, "atlasgrid", new Set(["AG-01"]), undefined, createWorkspaceIntegrityContract(seed))).toThrow(/does not match the canonical registry/i);
   });
 
   it("preserves an accepted proposal when a named analyst later revises memo language", () => {
     const state = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
     const requestEvidence = [{id: "AG-01", title: "Retention", displayValue: "99.9%", summary: "Complete cohort retention."}];
-    state.proposals.push({proposalId: "proposal-1", kind: "MEMO_DRAFT", state: "ACCEPTED", title: "Draft downside", body: "Validate renewal evidence.", evidenceRefs: ["AG-01"], requestEvidence, requestDigestSha256: digestChallengePayloadSync(requestEvidence), humanActor: "Avery Chen", reviewedAt: "2026-09-01T01:00:00.000Z"});
+    state.proposals.push({proposalId: "proposal-1", kind: "MEMO_DRAFT", state: "ACCEPTED", title: "Draft downside", body: "Validate renewal evidence.", evidenceRefs: ["AG-01"], dealId: "atlasgrid", origin: "PORTABLE_IMPORT_UNVERIFIED", requestEvidence, requestDigestSha256: digestChallengePayloadSync("atlasgrid", requestEvidence), humanActor: "Avery Chen", reviewedAt: "2026-09-01T01:00:00.000Z"});
     state.memoSections.push({sectionId: "proposal-1", title: "Draft downside", body: "The analyst narrowed the diligence request.", provenance: "ANALYST_JUDGMENT", sourceProposalId: "proposal-1", sourceProvenance: "HUMAN_ACCEPTED_MODEL_PROPOSAL", sourceBody: "Validate renewal evidence.", updatedBy: "Morgan Lee", updatedAt: "2026-09-01T02:00:00.000Z"});
     expect(validateWorkspace(state, "atlasgrid", new Set(["AG-01"])).memoSections.at(-1)?.sourceBody).toBe("Validate renewal evidence.");
     state.memoSections.at(-1)!.sourceBody = "Forged source text.";
@@ -86,7 +96,7 @@ describe("portable deal workspace", () => {
   it("rejects portable proposals and issues with non-canonical evidence references", () => {
     const state = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
     const requestEvidence = [{id: "AG-01", title: "Retention", displayValue: "99.9%", summary: "Complete cohort retention."}];
-    state.proposals.push({proposalId: "proposal-1", kind: "MEMO_DRAFT", state: "ACCEPTED", title: "Draft downside", body: "Validate renewal evidence.", evidenceRefs: ["fabricated-metric"], requestEvidence, requestDigestSha256: digestChallengePayloadSync(requestEvidence), humanActor: "Avery Chen", reviewedAt: "2026-09-01T01:00:00.000Z"});
+    state.proposals.push({proposalId: "proposal-1", kind: "MEMO_DRAFT", state: "ACCEPTED", title: "Draft downside", body: "Validate renewal evidence.", evidenceRefs: ["fabricated-metric"], dealId: "atlasgrid", origin: "PORTABLE_IMPORT_UNVERIFIED", requestEvidence, requestDigestSha256: digestChallengePayloadSync("atlasgrid", requestEvidence), humanActor: "Avery Chen", reviewedAt: "2026-09-01T01:00:00.000Z"});
     state.memoSections.push({sectionId: "proposal-1", title: "Draft downside", body: "Validate renewal evidence.", provenance: "HUMAN_ACCEPTED_MODEL_PROPOSAL", sourceProposalId: "proposal-1", updatedBy: "Avery Chen", updatedAt: "2026-09-01T01:00:00.000Z"});
     expect(() => validateWorkspace(state, "atlasgrid", new Set(["AG-01"]))).toThrow(/outside its selected request subset/i);
     state.proposals[0].evidenceRefs = ["AG-01"];
@@ -98,7 +108,7 @@ describe("portable deal workspace", () => {
   it("rejects a same-case citation swapped outside its selected evidence subset", () => {
     const state = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
     const requestEvidence = [{id: "AG-01", title: "Retention", displayValue: "99.9%", summary: "Complete cohort retention."}];
-    state.proposals.push({proposalId: "proposal-1", kind: "CHALLENGE", state: "PROPOSED", title: "Challenge retention", body: "Reconcile the denominator.", evidenceRefs: ["AG-02"], requestEvidence, requestDigestSha256: digestChallengePayloadSync(requestEvidence)});
+    state.proposals.push({proposalId: "proposal-1", kind: "CHALLENGE", state: "PROPOSED", title: "Challenge retention", body: "Reconcile the denominator.", evidenceRefs: ["AG-02"], dealId: "atlasgrid", origin: "PORTABLE_IMPORT_UNVERIFIED", requestEvidence, requestDigestSha256: digestChallengePayloadSync("atlasgrid", requestEvidence)});
     expect(() => validateWorkspace(state, "atlasgrid", new Set(["AG-01", "AG-02"]))).toThrow(/outside its selected request subset/i);
     state.proposals[0].evidenceRefs = ["AG-01"];
     state.proposals[0].requestEvidence[0].summary = "Tampered summary";

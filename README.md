@@ -65,7 +65,7 @@ Uploaded raw files are not retained as an unrestricted data room. The admitted p
 
 ## Model and MCP boundaries
 
-The hosted model job is limited to **Challenge selected evidence**. The browser sends only the evidence subset the user confirms. The server validates the request digest, constrains output to cited challenges, diligence gaps, and one draft memo section, and returns no direct mutation. Browser-side provider keys are prohibited.
+The release candidate's hosted model job is limited to **Challenge selected evidence**. The browser sends only the evidence subset the user confirms. The server verifies the request against a retained synthetic evidence registry, constrains output to cited challenges, diligence gaps, and one draft memo section, and returns no direct mutation. Browser-side provider keys are prohibited. Live provider availability is recorded in [`LOCAL-VERIFICATION.md`](LOCAL-VERIFICATION.md) and is not implied by local tests.
 
 The local stdio MCP surface is documented in [`workbench/mcp-server/README.md`](workbench/mcp-server/README.md). It exposes seven read tools and three proposal tools. It has no approval, policy, calculation, recommendation, private-file, trading, spending, or network-mutation tool.
 

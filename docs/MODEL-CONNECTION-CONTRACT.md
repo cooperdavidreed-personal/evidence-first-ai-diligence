@@ -28,12 +28,14 @@ The browser never asks for a Claude, OpenAI, or xAI API key. Provider credential
 
 1. The analyst selects an exact set of retained synthetic evidence.
 2. The Desk displays the complete outbound subset for confirmation and binds it to a SHA-256 request digest.
-3. A same-origin serverless function enforces method, size, origin, evidence-id, duplicate, and digest checks plus a bounded request window.
+3. A same-origin serverless function enforces method, size, origin, evidence-id, duplicate, and digest checks; matches every selected item byte-for-byte to the server-retained registry for the exact synthetic deal; and sits behind a managed request-rate firewall rule.
 4. The provider returns a structured challenge, diligence gap, or draft memo section. Every item must cite an admitted evidence id.
 5. The browser validates the response again and stores it as `PROPOSED`.
 6. A named human accepts, rejects, or edits the item. Only accepted memo language enters the editable IC memo with provenance.
 
 The endpoint has no tool capable of changing calculations, package inputs, policy, assumption dispositions, issues, recommendation, or approval. The public route is synthetic-only and does not imply confidential-data readiness.
+
+Portable JSON is not a provider attestation. On import, proposal text and recorded human disposition are preserved, but provider/model identity is deliberately relabeled as unverified. The current public slice does not claim cryptographically signed model provenance.
 
 ## Local proposal handoff
 

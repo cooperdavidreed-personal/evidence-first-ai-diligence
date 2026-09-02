@@ -1,6 +1,6 @@
 import {processDealPackage, REQUIRED_FILES, type IntakeResult} from "./intake";
 import {assertRegisteredPolicyProfile} from "./policy";
-import {createWorkspaceIntegrityContract, storageKey, validateWorkspace, type DealWorkspaceState, type WorkspaceScenarioContract, type WorkspaceSeed} from "./workspace-state";
+import {createWorkspaceIntegrityContract, sanitizePortableWorkspaceImport, storageKey, validateWorkspace, type DealWorkspaceState, type WorkspaceScenarioContract, type WorkspaceSeed} from "./workspace-state";
 
 export const ADMITTED_DEAL_BUNDLE_VERSION = "underwriting.admitted-deal-bundle/v1" as const;
 const LOCAL_DEAL_KEY = "underwriting-desk.admitted-deal.v1";
@@ -157,7 +157,7 @@ export async function validateAdmittedDealBundle(source: string): Promise<Admitt
   const raw: unknown = JSON.parse(source);
   if (!record(raw) || raw.schemaVersion !== ADMITTED_DEAL_BUNDLE_VERSION || typeof raw.exportedAt !== "string" || Number.isNaN(Date.parse(raw.exportedAt))) throw new Error("Portable deal bundle version is unsupported");
   const admittedDeal = await replayAdmittedDeal(validateAdmittedDeal(raw.admittedDeal));
-  const workspace = validateWorkspace(raw.workspace, localCaseId(admittedDeal), new Set(admittedDeal.analysis!.metrics.map((item) => item.id)), localScenarioContract(), localIntegrityContract(admittedDeal));
+  const workspace = sanitizePortableWorkspaceImport(raw.workspace, localCaseId(admittedDeal), new Set(admittedDeal.analysis!.metrics.map((item) => item.id)), localScenarioContract(), localIntegrityContract(admittedDeal));
   return {schemaVersion: ADMITTED_DEAL_BUNDLE_VERSION, admittedDeal, workspace, exportedAt: raw.exportedAt};
 }
 

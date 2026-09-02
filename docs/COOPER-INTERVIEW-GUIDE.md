@@ -47,7 +47,7 @@ progressive disclosure instead of dominating the investment workflow.
 ## Eight-minute unguided walkthrough
 
 1. Start on Deals. Open Helios and state the posture: `HOLD` because 20.0% of
-   retained synthetic paths fall below 1.0x versus an analyst-owned 10.0% loss
+   retained synthetic paths fall below 1.0x versus a Desk-owned draft 10.0% loss
    ceiling. The 8.2x milestone-case upside is not the recommendation.
 2. Open Financials. Change one authorized what-if input and show the returns and
    decision consequence update while the canonical case remains unchanged.
