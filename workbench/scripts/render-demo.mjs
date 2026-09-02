@@ -98,6 +98,8 @@ try {
   await dealNavigation().getByRole("button", {name: "Financials"}).click();
   await visibleText("23.3%", retained.id);
   await visibleText("REPRICE", retained.id);
+  await visibleText("+ Exit cash", retained.id);
+  await visibleText("$3.9M", retained.id);
   await shot(1, "atlasgrid-canonical", retained.id);
   await until(8);
   await page.getByRole("button", {name: "Seller ask"}).click();
@@ -122,8 +124,10 @@ try {
   const screening = sceneAt("screening");
   await page.getByRole("button", {name: "Open decision review"}).click();
   await page.getByRole("heading", {name: "Northstar Metrics", level: 1}).waitFor();
-  const retention = await visibleText("83.6%", screening.id);
-  await center(retention);
+  await visibleText("83.6%", screening.id);
+  await visibleText("95.0%", screening.id);
+  const retentionGate = page.getByText("Minimum ordinary-cohort NRR", {exact: true}).last();
+  await center(retentionGate);
   await emphasize(retention);
   await shot(5, "northstar-screening", screening.id);
   await until(screening.end);
@@ -176,6 +180,7 @@ try {
   await dealNavigation().getByRole("button", {name: "IC Memo"}).click();
   await page.locator(".memo-workspace").waitFor({state: "visible", timeout: 10_000});
   await page.getByRole("textbox", {name: "Editor"}).fill("Avery Chen");
+  await page.getByRole("textbox", {name: "Required diligence memo section"}).fill("Renewal references require signed-customer validation before IC advancement. Validate the retention interval, cohort quality, cost classification, customer concentration, committed costs, cap table, and assumption provenance.");
   const addButton = page.getByRole("button", {name: "Add with provenance"});
   if (await addButton.count()) await addButton.first().click();
   const memoFooter = page.locator(".memo-editor footer");
