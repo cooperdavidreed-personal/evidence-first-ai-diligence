@@ -8,7 +8,7 @@ Attack:
 
 1. investor-toy risk, AI theater, fake sophistication, vibe-coded visual cues, unexplained statistics, sparse layouts, and workflow friction;
 2. whether deterministic finance, canonical state, fund-owned policy, source lineage, human notes/issues, scenario consequences, and proposal approval are visible and useful in ordinary use;
-3. whether Northstar can self-authorize or conceal the 83.6% NRR concern;
+3. whether Northstar can self-authorize or conceal the 83.6% 11-month retention-proxy concern against the separate annual-NRR screen;
 4. whether Helios' HOLD, loss ceiling, priors, ownership, and sensitivities remain defensible and editable without claiming universal truth;
 5. whether portable state or model output can impersonate canonical evidence, calculations, issues, policy authority, or memo provenance;
 6. whether desktop/mobile screenshots and partner PDFs look credible for an experienced private-markets audience;

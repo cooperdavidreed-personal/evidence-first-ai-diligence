@@ -10,7 +10,7 @@ export const canonicalCasePath = resolve(serverRoot, "../src/data/cases.json");
 
 const objectSchema = (properties, required) => ({type: "object", additionalProperties: false, properties, required});
 const dealId = {type: "string", enum: ["atlasgrid", "helios"]};
-const evidenceRefs = {type: "array", minItems: 1, maxItems: 20, uniqueItems: true, items: {type: "string", minLength: 1, maxLength: 120}};
+const evidenceRefs = {type: "array", minItems: 1, maxItems: 8, uniqueItems: true, items: {type: "string", minLength: 1, maxLength: 120}};
 export const toolDefinitions = [
   {name: "list_deals", description: "List canonical retained deals.", inputSchema: objectSchema({}, [])},
   {name: "get_decision", description: "Read the canonical analytical decision and human-approval state.", inputSchema: objectSchema({deal_id: dealId}, ["deal_id"])},
@@ -32,7 +32,7 @@ function loadData() {
 function bounded(value, name, max) { if (typeof value !== "string" || value.trim().length < 1 || value.length > max) throw new Error(`${name}_invalid`); return value.trim(); }
 function getCase(data, dealIdValue) { const deal = data.cases.find((item) => item.caseId === dealIdValue); if (!deal) throw new Error("deal_not_found"); return deal; }
 function validateRefs(deal, refs) {
-  if (!Array.isArray(refs) || refs.length < 1 || refs.length > 20 || new Set(refs).size !== refs.length) throw new Error("evidence_refs_invalid");
+  if (!Array.isArray(refs) || refs.length < 1 || refs.length > 8 || new Set(refs).size !== refs.length) throw new Error("evidence_refs_invalid");
   const known = new Set([...deal.metricRegistry.map((item) => item.metric_id), ...deal.analyses.map((item) => item.analysis_id), ...deal.artifacts.map((item) => item.artifact_id)]);
   if (refs.some((reference) => typeof reference !== "string" || !known.has(reference))) throw new Error("evidence_reference_not_canonical");
   return [...refs];

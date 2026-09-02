@@ -65,7 +65,7 @@ The browser must:
 4. Present explicit column mapping when a supported alias is recognized.
 5. Refuse oversize, duplicate, hash-mismatched, or structurally invalid inputs.
 6. Keep bytes in memory only. Refresh clears the deal. No file or file content is sent to a server.
-7. Compute only the declared v1 metrics: LTM revenue, gross margin, ordinary-cohort NRR, recent net burn, runway, post-money ownership, terminal revenue scenario, exit equity scenario, gross MOIC, and annualized gross return.
+7. Compute only the declared v1 metrics: LTM revenue, gross margin, an opening-cohort retention proxy with its exact interval, recent net burn, runway, post-money ownership, terminal revenue scenario, exit equity scenario, gross MOIC, and annualized gross return. Do not relabel the proxy as annual NRR without a full twelve-month comparable cohort.
 8. Use integer cents for accounting and explicit decimal rounding for ratios.
 9. Render `NO CALL — PACKAGE INCOMPLETE` when any required input is missing or invalid.
 10. Render `READY FOR IC REVIEW` only when the package is complete and declared return thresholds clear. This is an analytical posture, not an investment recommendation or approval.

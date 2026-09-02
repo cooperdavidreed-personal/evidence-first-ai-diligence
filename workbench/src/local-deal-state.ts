@@ -1,6 +1,6 @@
 import {processDealPackage, REQUIRED_FILES, type IntakeResult} from "./intake";
 import {assertRegisteredPolicyProfile} from "./policy";
-import {createWorkspaceIntegrityContract, storageKey, validateWorkspace, type DealWorkspaceState, type WorkspaceScenarioContract, type WorkspaceSeed} from "./workspace-state";
+import {createWorkspaceIntegrityContract, sanitizePortableWorkspaceImport, storageKey, validateWorkspace, type DealWorkspaceState, type WorkspaceScenarioContract, type WorkspaceSeed} from "./workspace-state";
 
 export const ADMITTED_DEAL_BUNDLE_VERSION = "underwriting.admitted-deal-bundle/v1" as const;
 const LOCAL_DEAL_KEY = "underwriting-desk.admitted-deal.v1";
@@ -72,7 +72,7 @@ export function localWorkspaceSeed(result: IntakeResult): WorkspaceSeed {
     })),
     memoSections: [
       {sectionId: "screening", title: "Screening posture and rationale", body: result.rationale, provenance: "DETERMINISTIC_ANALYSIS", updatedBy: "Underwriting Desk"},
-      {sectionId: "economics", title: "Economics", body: `LTM revenue ${compactMoney(analysis.ltmRevenueCents)} · gross margin ${compactPercent(analysis.grossMargin)} · ordinary-cohort NRR ${compactPercent(analysis.ordinaryNrr)} · gross multiple ${analysis.grossMoic.toFixed(2)}x.`, provenance: "DETERMINISTIC_ANALYSIS", updatedBy: "Underwriting Desk"},
+      {sectionId: "economics", title: "Economics", body: `LTM revenue ${compactMoney(analysis.ltmRevenueCents)} · gross margin ${compactPercent(analysis.grossMargin)} · ${analysis.cohortElapsedMonths}-month cohort retention proxy ${compactPercent(analysis.ordinaryNrr)} · gross multiple ${analysis.grossMoic.toFixed(2)}x. The retention ratio is not annual NRR.`, provenance: "DETERMINISTIC_ANALYSIS", updatedBy: "Underwriting Desk"},
       {sectionId: "diligence", title: "Required diligence", body: "Validate retention interval and cohort quality, cost classification, customer concentration, committed costs, cap table and assumption provenance before any IC advancement.", provenance: "ANALYST_JUDGMENT", updatedBy: "Deal team"},
     ],
   };
@@ -157,7 +157,7 @@ export async function validateAdmittedDealBundle(source: string): Promise<Admitt
   const raw: unknown = JSON.parse(source);
   if (!record(raw) || raw.schemaVersion !== ADMITTED_DEAL_BUNDLE_VERSION || typeof raw.exportedAt !== "string" || Number.isNaN(Date.parse(raw.exportedAt))) throw new Error("Portable deal bundle version is unsupported");
   const admittedDeal = await replayAdmittedDeal(validateAdmittedDeal(raw.admittedDeal));
-  const workspace = validateWorkspace(raw.workspace, localCaseId(admittedDeal), new Set(admittedDeal.analysis!.metrics.map((item) => item.id)), localScenarioContract(), localIntegrityContract(admittedDeal));
+  const workspace = sanitizePortableWorkspaceImport(raw.workspace, localCaseId(admittedDeal), new Set(admittedDeal.analysis!.metrics.map((item) => item.id)), localScenarioContract(), localIntegrityContract(admittedDeal));
   return {schemaVersion: ADMITTED_DEAL_BUNDLE_VERSION, admittedDeal, workspace, exportedAt: raw.exportedAt};
 }
 

@@ -1,5 +1,7 @@
 # Demo transcript
 
+> **SUPERSEDED LEGACY TRANSCRIPT.** This transcript describes a retired Lab interface. Use [`final/transcript.txt`](final/transcript.txt) for the current Underwriting Desk production plan; do not publish this file as the current demonstration.
+
 AtlasGrid opens with an analytical posture, not an approval: the workflow is
 on hold, human authority is pending, and the decision record is unsigned. The
 first read states the decisive evidence, the loss mechanism, and the exact

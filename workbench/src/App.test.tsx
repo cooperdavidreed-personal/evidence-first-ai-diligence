@@ -130,6 +130,18 @@ describe("Underwriting Desk investor workspace", () => {
     expect(screen.getByRole("dialog", {name: "Optimizer test effect"})).toBeInTheDocument();
   });
 
+  it("keeps the Helios loss ceiling in policy rather than the assumption approval registry", async () => {
+    window.history.replaceState(null, "", "/#/v3/helios/diligence");
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", {name: "Assumptions"}));
+    expect(screen.getByRole("heading", {name: "Material assumptions"})).toBeInTheDocument();
+    expect(screen.getByText("Catastrophe-state prior")).toBeInTheDocument();
+    expect(screen.queryByText("Maximum probability below 1.0x")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: "Policy"}));
+    expect(screen.getByText("Maximum probability below 1.0x")).toBeInTheDocument();
+  });
+
   it("opens the pricing-test lineage rather than an unrelated return metric", async () => {
     window.history.replaceState(null, "", "/#/v3/atlasgrid/diligence");
     const user = userEvent.setup();

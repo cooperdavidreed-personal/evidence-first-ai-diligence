@@ -1,15 +1,22 @@
 // @vitest-environment node
 import {createHash} from "node:crypto";
 import {describe, expect, it} from "vitest";
-import handler, {admitRateWindow, validateBrowserBoundary, validateChallengeOutput, validateChallengeRequest} from "./challenge";
+import handler, {admitRateWindow, HOSTED_MODEL_FAMILY, isClientInputError, validateBrowserBoundary, validateChallengeOutput, validateChallengeRequest} from "../api/challenge.js";
+import {HOSTED_EVIDENCE_REGISTRY} from "./canonical-evidence-registry.js";
 
-const evidence = [{id: "metric-runway", title: "Runway", displayValue: "19.1 months", summary: "Cash divided by average signed net burn."}];
+const dealId = "helios";
+const evidence = [HOSTED_EVIDENCE_REGISTRY.helios.find((item) => item.id === "hx-runway-metric")!];
 function request(overrides: Record<string, unknown> = {}) {
-  const canonical = JSON.stringify({job: "challenge_selected_evidence", evidence, output_contract: "underwriting-evidence-challenge/v1"});
-  return {job: "challenge_selected_evidence", evidence, output_contract: "underwriting-evidence-challenge/v1", request_digest_sha256: createHash("sha256").update(canonical).digest("hex"), ...overrides};
+  const candidate = {job: "challenge_selected_evidence", deal_id: dealId, evidence, output_contract: "underwriting-evidence-challenge/v1", ...overrides};
+  const canonical = JSON.stringify({job: candidate.job, deal_id: candidate.deal_id, evidence: candidate.evidence, output_contract: candidate.output_contract});
+  return {...candidate, request_digest_sha256: createHash("sha256").update(canonical).digest("hex"), ...overrides};
 }
 
 describe("hosted synthetic evidence challenge boundary", () => {
+  it("pins the public reviewer to the verified AI Gateway model slug", () => {
+    expect(HOSTED_MODEL_FAMILY).toBe("anthropic/claude-fable-5.1");
+  });
+
   it("admits a bounded, digest-bound selected-evidence request", () => {
     expect(validateChallengeRequest(request())).toMatchObject({evidence, job: "challenge_selected_evidence"});
   });
@@ -27,9 +34,18 @@ describe("hosted synthetic evidence challenge boundary", () => {
     expect(() => validateChallengeOutput(output, new Set(["metric-runway"]))).toThrow(/evidence reference/);
   });
 
+  it("rejects a provider response without a counterthesis", () => {
+    expect(() => validateChallengeOutput({challenges: [], gaps: [], memo_drafts: []}, new Set(["hx-runway-metric"]))).toThrow(/challenges are invalid/i);
+  });
+
   it("admits only a bounded proposal envelope and preserves evidence ids", () => {
-    const output = {challenges: [{claim: "Runway may be overstated", evidence_refs: ["metric-runway"], severity: "HIGH", management_question: "Which costs are committed?"}], gaps: [{title: "Reconcile commitments", why_it_matters: "The runway denominator may omit contracted spend.", proposed_owner: "Finance diligence", evidence_refs: ["metric-runway"]}], memo_drafts: []};
-    expect(validateChallengeOutput(output, new Set(["metric-runway"]))).toEqual(output);
+    const output = {challenges: [{claim: "Runway may be overstated", evidence_refs: ["hx-runway-metric"], severity: "HIGH", management_question: "Which costs are committed?"}], gaps: [{title: "Reconcile commitments", why_it_matters: "The runway denominator may omit contracted spend.", proposed_owner: "Finance diligence", evidence_refs: ["hx-runway-metric"]}], memo_drafts: []};
+    expect(validateChallengeOutput(output, new Set(["hx-runway-metric"]))).toEqual(output);
+  });
+
+  it("rejects a digest-consistent evidence item that differs from the server registry", () => {
+    const substituted = [{...evidence[0], summary: "Browser supplied replacement summary."}];
+    expect(() => validateChallengeRequest(request({evidence: substituted}))).toThrow(/server registry/i);
   });
 
   it("requires the same browser origin and bounds repeated calls", () => {
@@ -46,5 +62,11 @@ describe("hosted synthetic evidence challenge boundary", () => {
     const response = await handler.fetch(oversized);
     expect(response.status).toBe(413);
     await expect(response.json()).resolves.toEqual({error: "Request too large"});
+  });
+
+  it("never classifies provider wording as a client error by substring", () => {
+    expect(isClientInputError(new Error("Invalid upstream provider response"))).toBe(false);
+    expect(isClientInputError(new Error("Evidence digest mismatch"))).toBe(true);
+    expect(isClientInputError(new SyntaxError("Unexpected token"))).toBe(true);
   });
 });

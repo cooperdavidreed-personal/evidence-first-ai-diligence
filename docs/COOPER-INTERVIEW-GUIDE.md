@@ -31,9 +31,9 @@ separate registry.
 
 The important Northstar result is deliberately uncomfortable. Its package
 reconciles to $15.9 million of LTM revenue, 70.0% gross margin, 83.6%
-ordinary-cohort NRR, 33.3% post-money ownership, 3.23x gross MOIC, and 26.5%
-annualized gross return. The return screens clear, but 83.6% NRR and six other
-quality gates keep the posture at `SCREENING COMPLETE — FURTHER DILIGENCE
+11-month opening-cohort retention proxy (not annual NRR), 33.3% post-money ownership, 3.23x gross MOIC, and 26.5%
+annualized gross return. The return screens clear, but the 83.6% proxy is a
+retention concern and six other evidence or policy gates keep the posture at `SCREENING COMPLETE — FURTHER DILIGENCE
 REQUIRED`. Missing or changed required files suppress the return conclusion and
 produce `NO CALL — PACKAGE INCOMPLETE`.
 
@@ -46,9 +46,10 @@ progressive disclosure instead of dominating the investment workflow.
 
 ## Eight-minute unguided walkthrough
 
-1. Start on Deals. Open Helios and state the posture: `HOLD` because 20.0% of
-   retained synthetic paths fall below 1.0x versus an analyst-owned 10.0% loss
-   ceiling. The 8.2x milestone-case upside is not the recommendation.
+1. Start on Deals. Open Helios and state the posture: `HOLD` because the selected
+   unreviewed 20.0% analyst catastrophe prior exceeds a separate Desk-owned draft
+   10.0% loss ceiling. The seeded replay is a generator check, and the 8.2x
+   milestone-case upside is not the recommendation.
 2. Open Financials. Change one authorized what-if input and show the returns and
    decision consequence update while the canonical case remains unchanged.
 3. Open Documents. Search for a metric and inspect an exact source excerpt,
@@ -60,8 +61,8 @@ progressive disclosure instead of dominating the investment workflow.
 6. Enter a reviewer name, accept or reject the proposal, then open IC Memo and
    add an accepted proposal with provenance.
 7. Return to Deals, choose New deal, download and import the Northstar package,
-   and point to the 83.6% NRR concern beside the clearing 3.23x / 26.5% return
-   case.
+   and point to the 83.6% 11-month retention-proxy concern beside the clearing
+   3.23x / 26.5% return case.
 8. Remove or modify a required file and rerun intake. Show `NO CALL — PACKAGE
    INCOMPLETE` with return conclusions suppressed.
 
@@ -113,10 +114,12 @@ were assigned bounded advisory or review roles. Provider prose never became
 case evidence, and model agreement was never treated as acceptance. Deterministic
 tests, source replay, visual inspection, and human review remain authoritative.
 
-### What does the hosted model workflow prove?
+### What does the hosted model workflow demonstrate?
 
-It proves a narrow synthetic-only pattern: the user selects evidence, confirms
-the transfer, receives cited proposals, and must make a named human disposition.
+The implemented contract demonstrates a narrow synthetic-only pattern: the user
+selects evidence, confirms the transfer, and must make a named human disposition
+if the hosted provider successfully returns a cited proposal. A live proposal is
+not claimed without an exact deployment receipt.
 It does not prove confidential-data readiness, remote MCP, identity, role-based
 authority, cost governance at firm scale, or model accuracy.
 

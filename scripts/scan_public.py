@@ -23,6 +23,7 @@ SOURCE_ROOM_ROOTS = {
     "atlasgrid": "portfolio/atlasgrid/data-room",
     "helios": "portfolio/helios/data-room",
 }
+VERCEL_API_ALLOWLIST = {"challenge.ts"}
 PATTERNS = {
     "absolute-user-path": re.compile(rb"/(?:Users|home)/[^/\s]+/"),
     "aws-access-key": re.compile(b"AKIA" + rb"[0-9A-Z]{16}"),
@@ -214,6 +215,22 @@ def source_room_allowlist(root: Path) -> set[str]:
     return reviewed
 
 
+def validate_vercel_api_surface(root: Path) -> None:
+    """Keep tests and helpers out of Vercel's auto-discovered API surface."""
+
+    api_root = root / "workbench" / "api"
+    observed = {
+        path.name
+        for path in api_root.iterdir()
+        if path.is_file() or path.is_symlink()
+    }
+    if observed != VERCEL_API_ALLOWLIST:
+        raise ValueError(
+            f"vercel_api_inventory_mismatch:extra={sorted(observed - VERCEL_API_ALLOWLIST)}:"
+            f"missing={sorted(VERCEL_API_ALLOWLIST - observed)}"
+        )
+
+
 def validate_blind_review_binding(root: Path) -> None:
     """Reject a current PASS that is not bound to the retained IC snapshots."""
 
@@ -363,6 +380,10 @@ def main() -> int:
         validate_blind_review_binding(ROOT)
     except (OSError, ValueError, json.JSONDecodeError) as error:
         failures.append(f"verification/blind-review-result.md: {error}")
+    try:
+        validate_vercel_api_surface(ROOT)
+    except (OSError, ValueError) as error:
+        failures.append(f"workbench/api: {error}")
     for raw in files:
         relative = raw.decode("utf-8", errors="strict")
         path = ROOT / relative

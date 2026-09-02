@@ -1,6 +1,8 @@
 import {File as NodeFile} from "node:buffer";
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
+import {createElement} from "react";
+import {render, within} from "@testing-library/react";
 import {beforeEach, describe, expect, it} from "vitest";
 import {processDealPackage} from "./intake";
 import {digestChallengePayloadSync} from "./model-workflow";
@@ -15,6 +17,7 @@ import {
   validateAdmittedDealBundle,
 } from "./local-deal-state";
 import {createWorkspace, createWorkspaceIntegrityContract, loadWorkspace, validateWorkspace} from "./workspace-state";
+import {LocalDealShell, localPostureCopy} from "./local-deal";
 
 const TestFile = NodeFile as unknown as typeof File;
 const packageRoot = resolve(process.cwd(), "public/sample-package");
@@ -56,6 +59,35 @@ describe("portable admitted deal state", () => {
     installAdmittedDealBundle(bundle);
     expect((await loadAdmittedDeal())?.deal?.company).toBe("Northstar Metrics");
     expect(loadWorkspace(caseId, workspace).issues[0].owner).toBeTruthy();
+  });
+
+  it("binds the rendered local overview and rail to the deterministic posture", async () => {
+    expect(localPostureCopy("HOLD")).toEqual({
+      heading: "HOLD",
+      detail: "Return screens miss; no IC advancement",
+      icState: "HOLD — deterministic return screens miss",
+    });
+    expect(localPostureCopy("SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED")).toEqual({
+      heading: "FURTHER DILIGENCE",
+      detail: "Screening complete; no IC advancement",
+      icState: "Further diligence required",
+    });
+
+    const admitted = await admittedNorthstar();
+    const result = {...admitted, posture: "HOLD" as const, rationale: "The deterministic return screens miss."};
+    const rendered = render(createElement(LocalDealShell, {
+      result,
+      view: "overview",
+      onNavigate: () => undefined,
+      onDeals: () => undefined,
+      onConnect: () => undefined,
+      connection: null,
+    }));
+    const rail = within(rendered.container).getByRole("complementary", {name: "Decision status"});
+    expect(within(rail).getByText("HOLD")).toBeTruthy();
+    expect(within(rail).getByText("Return screens miss; no IC advancement")).toBeTruthy();
+    expect(within(rendered.container).getByText("HOLD — deterministic return screens miss")).toBeTruthy();
+    rendered.unmount();
   });
 
   it("rejects incomplete results, cross-deal workspaces, and oversized bundles", async () => {
@@ -107,7 +139,7 @@ describe("portable admitted deal state", () => {
   it("requires the registered policy-owner role for a portable Northstar override", async () => {
     const result = await admittedNorthstar();
     const workspace = createWorkspace(localWorkspaceSeed(result), "2026-09-01T12:00:00.000Z");
-    workspace.policyOverrides.push({eventId: "override-1", gateId: "retention-nrr", disposition: "OVERRIDDEN", actor: "Avery Chen", actorRole: "Policy owner", rationale: "Recorded exception while retaining the observed 83.6% NRR concern.", recordedAt: "2026-09-01T13:00:00.000Z"});
+    workspace.policyOverrides.push({eventId: "override-1", gateId: "retention-nrr", disposition: "OVERRIDDEN", actor: "Avery Chen", actorRole: "Policy owner", rationale: "Recorded exception while retaining the observed 83.6% 11-month retention-proxy concern.", recordedAt: "2026-09-01T13:00:00.000Z"});
     expect(() => serializeAdmittedDealBundle(result, workspace)).not.toThrow();
     workspace.policyOverrides[0].actorRole = "Analyst";
     expect(() => serializeAdmittedDealBundle(result, workspace)).toThrow(/requires the Policy owner role/i);
@@ -140,8 +172,9 @@ describe("portable admitted deal state", () => {
   it("rejects retained-case or fabricated evidence references in a local portable deal", async () => {
     const result = await admittedNorthstar();
     const workspace = createWorkspace(localWorkspaceSeed(result), "2026-09-01T12:00:00.000Z");
+    const dealId = localCaseId(result);
     const requestEvidence = [{id: result.analysis!.metrics[0].id, title: result.analysis!.metrics[0].label, displayValue: result.analysis!.metrics[0].display, summary: result.analysis!.metrics[0].meaning}];
-    workspace.proposals.push({proposalId: "proposal-1", kind: "CHALLENGE", state: "PROPOSED", title: "Challenge retention", body: "Reconcile the cohort denominator.", evidenceRefs: ["atlasgrid-SELECTED-gross-irr"], requestEvidence, requestDigestSha256: digestChallengePayloadSync(requestEvidence)});
+    workspace.proposals.push({proposalId: "proposal-1", kind: "CHALLENGE", state: "PROPOSED", title: "Challenge retention", body: "Reconcile the cohort denominator.", evidenceRefs: ["atlasgrid-SELECTED-gross-irr"], dealId, origin: "PORTABLE_IMPORT_UNVERIFIED", requestEvidence, requestDigestSha256: digestChallengePayloadSync(dealId, requestEvidence)});
     expect(() => serializeAdmittedDealBundle(result, workspace)).toThrow(/outside its selected request subset/i);
     workspace.proposals[0].evidenceRefs = [result.analysis!.metrics[0].id];
     expect(() => serializeAdmittedDealBundle(result, workspace)).not.toThrow();

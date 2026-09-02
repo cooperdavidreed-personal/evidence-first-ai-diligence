@@ -119,6 +119,12 @@ function requiredString(value: unknown, field: string, max = MAX_TEXT) {
   return validated;
 }
 
+function namedHuman(value: unknown, field: string) {
+  const validated = requiredString(value, field, 120);
+  if (["financial model", "underwriting desk"].includes(validated.trim().toLowerCase())) throw new Error(`${field} must name a human reviewer`);
+  return validated;
+}
+
 function assertUnique(values: string[], field: string) {
   if (new Set(values).size !== values.length) throw new Error(`${field} identifiers must be unique`);
 }
@@ -231,7 +237,7 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
   const proposals = raw.proposals.map((item, index): ModelProposal => {
     if (!record(item) || !["CHALLENGE", "DILIGENCE_GAP", "MEMO_DRAFT"].includes(String(item.kind)) || !["PROPOSED", "ACCEPTED", "REJECTED"].includes(String(item.state))) throw new Error(`proposals[${index}] is invalid`);
     const state = item.state as ModelProposal["state"];
-    const humanActor = item.humanActor === undefined ? undefined : boundedString(item.humanActor, `proposals[${index}].humanActor`, 120);
+    const humanActor = item.humanActor === undefined ? undefined : namedHuman(item.humanActor, `proposals[${index}].humanActor`);
     const reviewedAt = item.reviewedAt === undefined ? undefined : timestamp(item.reviewedAt, `proposals[${index}].reviewedAt`);
     if (state !== "PROPOSED" && (!humanActor?.trim() || !reviewedAt)) throw new Error(`proposals[${index}] requires a named, timestamped human disposition`);
     const requestDigestSha256 = boundedString(item.requestDigestSha256, `proposals[${index}].requestDigestSha256`, 64);
@@ -241,7 +247,10 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
       if (!record(candidate)) throw new Error(`proposals[${index}].requestEvidence[${evidenceIndex}] is invalid`);
       return {id: requiredString(candidate.id, `proposals[${index}].requestEvidence[${evidenceIndex}].id`, 80), title: requiredString(candidate.title, `proposals[${index}].requestEvidence[${evidenceIndex}].title`, 160), displayValue: requiredString(candidate.displayValue, `proposals[${index}].requestEvidence[${evidenceIndex}].displayValue`, 120), summary: requiredString(candidate.summary, `proposals[${index}].requestEvidence[${evidenceIndex}].summary`, 800)};
     });
-    try { validateSelectedEvidence(requestEvidence); }
+    const dealId = requiredString(item.dealId, `proposals[${index}].dealId`, 100);
+    if (dealId !== caseId) throw new Error(`proposals[${index}] belongs to a different deal`);
+    const origin = ["IN_PRODUCT_RUNTIME", "LOCAL_MCP_LEDGER", "PORTABLE_IMPORT_UNVERIFIED"].includes(String(item.origin)) ? item.origin as ModelProposal["origin"] : (() => {throw new Error(`proposals[${index}] origin is invalid`);})();
+    try { validateSelectedEvidence(dealId, requestEvidence); }
     catch { throw new Error(`proposals[${index}] selected-evidence request envelope is invalid`); }
     if (integrityContract && Object.keys(integrityContract.canonicalEvidence).length) {
       for (const selected of requestEvidence) {
@@ -249,7 +258,7 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
         if (!canonical || JSON.stringify(selected) !== JSON.stringify(canonical)) throw new Error(`proposals[${index}] selected-evidence content does not match the canonical registry`);
       }
     }
-    if (digestChallengePayloadSync(requestEvidence) !== requestDigestSha256) throw new Error(`proposals[${index}] selected-evidence request digest does not match its envelope`);
+    if (digestChallengePayloadSync(dealId, requestEvidence) !== requestDigestSha256) throw new Error(`proposals[${index}] selected-evidence request digest does not match its envelope`);
     const requestedIds = new Set(requestEvidence.map((candidate) => candidate.id));
     const evidenceRefs = stringArray(item.evidenceRefs, `proposals[${index}].evidenceRefs`, 20);
     if (evidenceRefs.some((ref) => !requestedIds.has(ref))) throw new Error(`proposals[${index}] cites evidence outside its selected request subset`);
@@ -264,7 +273,11 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
     if (humanEdited && (!originalBody || originalBody === body)) throw new Error(`proposals[${index}] must preserve a distinct original model draft when human-edited`);
     if (!humanEdited && originalBody !== undefined) throw new Error(`proposals[${index}] cannot claim an original draft without a human edit`);
     if (state === "PROPOSED" && (humanEdited !== undefined || originalBody !== undefined)) throw new Error(`proposals[${index}] cannot claim human editing before review`);
-    return {proposalId: boundedString(item.proposalId, `proposals[${index}].proposalId`, 160), kind: item.kind as ModelProposal["kind"], state, title: boundedString(item.title, `proposals[${index}].title`, 500), body, originalBody, evidenceRefs, requestEvidence, requestDigestSha256, sourceRequestDigestSha256, responseDigestSha256, severity, proposedOwner: item.proposedOwner === undefined ? undefined : boundedString(item.proposedOwner, `proposals[${index}].proposedOwner`, 160), memoSection: item.memoSection === undefined ? undefined : boundedString(item.memoSection, `proposals[${index}].memoSection`, 100), humanActor, humanEdited, reviewedAt, modelFamily: item.modelFamily === undefined ? undefined : boundedString(item.modelFamily, `proposals[${index}].modelFamily`, 120), limitations: item.limitations === undefined ? undefined : boundedString(item.limitations, `proposals[${index}].limitations`, 500)};
+    const modelFamily = item.modelFamily === undefined ? undefined : boundedString(item.modelFamily, `proposals[${index}].modelFamily`, 120);
+    if (origin === "IN_PRODUCT_RUNTIME" && (!responseDigestSha256 || !modelFamily)) throw new Error(`proposals[${index}] hosted runtime origin requires its response receipt`);
+    if (origin === "LOCAL_MCP_LEDGER" && (!sourceRequestDigestSha256 || modelFamily !== "Local MCP ledger")) throw new Error(`proposals[${index}] local ledger origin requires its source receipt`);
+    if (origin === "PORTABLE_IMPORT_UNVERIFIED" && modelFamily !== undefined) throw new Error(`proposals[${index}] portable import cannot claim a model family`);
+    return {proposalId: boundedString(item.proposalId, `proposals[${index}].proposalId`, 160), kind: item.kind as ModelProposal["kind"], state, title: boundedString(item.title, `proposals[${index}].title`, 500), body, originalBody, evidenceRefs, dealId, origin, requestEvidence, requestDigestSha256, sourceRequestDigestSha256, responseDigestSha256, severity, proposedOwner: item.proposedOwner === undefined ? undefined : boundedString(item.proposedOwner, `proposals[${index}].proposedOwner`, 160), memoSection: item.memoSection === undefined ? undefined : boundedString(item.memoSection, `proposals[${index}].memoSection`, 100), humanActor, humanEdited, reviewedAt, modelFamily, limitations: item.limitations === undefined ? undefined : boundedString(item.limitations, `proposals[${index}].limitations`, 500)};
   });
   assertUnique(proposals.map((item) => item.proposalId), "Model proposal");
   if (allowedEvidenceRefs) {
@@ -277,7 +290,9 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
   const memoSections = raw.memoSections.map((item, index): MemoSectionState => {
     if (!record(item) || !["DETERMINISTIC_ANALYSIS", "ANALYST_JUDGMENT", "HUMAN_ACCEPTED_MODEL_PROPOSAL"].includes(String(item.provenance))) throw new Error(`memoSections[${index}] is invalid`);
     const sourceProvenance = item.sourceProvenance === undefined ? undefined : ["DETERMINISTIC_ANALYSIS", "ANALYST_JUDGMENT", "HUMAN_ACCEPTED_MODEL_PROPOSAL"].includes(String(item.sourceProvenance)) ? item.sourceProvenance as MemoSectionState["provenance"] : (() => {throw new Error(`memoSections[${index}].sourceProvenance is invalid`);})();
-    return {sectionId: boundedString(item.sectionId, `memoSections[${index}].sectionId`, 120), title: boundedString(item.title, `memoSections[${index}].title`, 200), body: boundedString(item.body, `memoSections[${index}].body`), provenance: item.provenance as MemoSectionState["provenance"], sourceProposalId: item.sourceProposalId === undefined ? undefined : boundedString(item.sourceProposalId, `memoSections[${index}].sourceProposalId`, 160), sourceProvenance, sourceBody: item.sourceBody === undefined ? undefined : boundedString(item.sourceBody, `memoSections[${index}].sourceBody`), updatedBy: boundedString(item.updatedBy, `memoSections[${index}].updatedBy`, 120), updatedAt: timestamp(item.updatedAt, `memoSections[${index}].updatedAt`)};
+    const updatedBy = boundedString(item.updatedBy, `memoSections[${index}].updatedBy`, 120);
+    if (item.provenance !== "DETERMINISTIC_ANALYSIS" && ["financial model", "underwriting desk"].includes(updatedBy.trim().toLowerCase())) throw new Error(`memoSections[${index}].updatedBy must name a human reviewer`);
+    return {sectionId: boundedString(item.sectionId, `memoSections[${index}].sectionId`, 120), title: boundedString(item.title, `memoSections[${index}].title`, 200), body: boundedString(item.body, `memoSections[${index}].body`), provenance: item.provenance as MemoSectionState["provenance"], sourceProposalId: item.sourceProposalId === undefined ? undefined : boundedString(item.sourceProposalId, `memoSections[${index}].sourceProposalId`, 160), sourceProvenance, sourceBody: item.sourceBody === undefined ? undefined : boundedString(item.sourceBody, `memoSections[${index}].sourceBody`), updatedBy, updatedAt: timestamp(item.updatedAt, `memoSections[${index}].updatedAt`)};
   });
   assertUnique(memoSections.map((item) => item.sectionId), "Memo section");
   if (integrityContract) {
@@ -347,6 +362,20 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
     }
   }
   return {schemaVersion: WORKSPACE_SCHEMA, caseId, revision: Number(raw.revision), privateNote, observations, assumptionReviews, assumptionReviewEvents, issues, proposals, memoSections, scenarioValues: raw.scenarioValues as Record<string, string>, policyOverrides, updatedAt: timestamp(raw.updatedAt, "updatedAt")};
+}
+
+export function sanitizePortableWorkspaceImport(raw: unknown, expectedCaseId: string, allowedEvidenceRefs?: ReadonlySet<string>, scenarioContract?: WorkspaceScenarioContract, integrityContract?: WorkspaceIntegrityContract) {
+  const validated = validateWorkspace(raw, expectedCaseId, allowedEvidenceRefs, scenarioContract, integrityContract);
+  const proposals = validated.proposals.map((proposal): ModelProposal => ({
+    ...proposal,
+    origin: "PORTABLE_IMPORT_UNVERIFIED",
+    modelFamily: undefined,
+    limitations: "Imported portable state preserves the proposal and named human disposition, but does not authenticate the original model or provider.",
+  }));
+  // A portable file can preserve work product, but it cannot authenticate the
+  // model provider or a policy owner's authority. Policy exceptions therefore
+  // require a fresh, named action in the receiving browser.
+  return validateWorkspace({...validated, proposals, policyOverrides: []}, expectedCaseId, allowedEvidenceRefs, scenarioContract, integrityContract);
 }
 
 export function loadWorkspaceResult(caseId: string, fallback: DealWorkspaceState, allowedEvidenceRefs?: ReadonlySet<string>, scenarioContract?: WorkspaceScenarioContract, integrityContract?: WorkspaceIntegrityContract) {

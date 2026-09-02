@@ -1,6 +1,8 @@
 # Underwriting Intelligence Lab product contract
 
-Status: `FROZEN BEFORE GENERATED CASE RESULTS`  
+Status: `SUPERSEDED HISTORICAL CONTRACT — CURRENT PRODUCT IS UNDERWRITING DESK`
+
+Current direction: [`UNIFIED-CAREER-PRODUCT-CONTRACT.md`](UNIFIED-CAREER-PRODUCT-CONTRACT.md). The `INVEST` language below records the retired 2026-08-28 Lab specification and is not the current Helios decision, which is conditional `HOLD`.
 Mission: `underwriting-intelligence-lab-20260828`  
 Base: `f00c4ecdfe7691c23b24a8f7d1d0ab5408984909`
 

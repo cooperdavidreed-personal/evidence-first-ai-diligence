@@ -200,8 +200,8 @@ function centsCell(value: string, field: string) {
   if (!Number.isSafeInteger(parsed)) throw new Error(`${field} exceeds safe integer-cent range`);
   return parsed;
 }
-function periodCell(value: string) {
-  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) throw new Error(`Invalid period ${value || "(blank)"}; expected YYYY-MM`);
+function periodCell(value: string, source: string) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) throw new Error(`${source} contains invalid period ${value || "(blank)"}; expected YYYY-MM`);
   return value;
 }
 
@@ -220,7 +220,7 @@ function parseMonthly(raw: string, cutoff: string) {
   const seen = new Set<string>(); let excluded = 0;
   const rows: MonthlyRow[] = [];
   for (const [index, row] of parsed.rows.entries()) {
-    const period = periodCell(row[indexes.period]);
+    const period = periodCell(row[indexes.period], "monthly_financials.csv");
     if (seen.has(period)) throw new Error(`Monthly financials contain duplicate period ${period}`);
     seen.add(period);
     const candidate = {sourceRow: index + 2, period, revenueCents: centsCell(row[indexes.revenue_cents], "revenue_cents"), costOfRevenueCents: centsCell(row[indexes.cost_of_revenue_cents], "cost_of_revenue_cents"), operatingExpenseCents: centsCell(row[indexes.operating_expense_cents], "operating_expense_cents")};
@@ -242,7 +242,7 @@ function parseCustomers(raw: string, cutoff: string) {
   const rows: CustomerRow[] = [];
   for (const [index, row] of parsed.rows.entries()) {
     const customerId = row[indexes.customer_id]?.trim(); if (!customerId) throw new Error("customer_id cannot be blank");
-    const period = periodCell(row[indexes.period]); const key = `${customerId}\u0000${period}`;
+    const period = periodCell(row[indexes.period], "customer_arr.csv"); const key = `${customerId}\u0000${period}`;
     if (seen.has(key)) throw new Error(`Customer ARR contains a duplicate customer-period row for ${customerId} in ${period}`);
     seen.add(key);
     const candidate = {sourceRow: index + 2, customerId, period, arrCents: centsCell(row[indexes.arr_cents], "arr_cents")};
@@ -305,10 +305,13 @@ function analyze(deal: DealInput, monthly: MonthlyRow[], customers: CustomerRow[
   const runwayTest: QuickDecisionTest = runwayMonths === null
     ? {gateId: "runway-numeric", label: runwayPolicy.label, observed: "Cash generative", required: runwayPolicy.displayValue, state: "CLEARS", blocksAdvancement: false, owner: runwayPolicy.owner, source: runwayPolicy.source, policyStatus: runwayPolicy.status, lastReviewed: runwayPolicy.lastReviewed, explanation: "The latest three uploaded periods are cash generative, so the minimum-runway screen clears without using an infinite numeric placeholder; committed costs and financing timing remain unverified."}
     : thresholdGate("runway-numeric", runwayPolicy, runwayMonths, `${runwayMonths.toFixed(1)} months`, "Recent runway meets the numeric screen; committed costs and financing timing remain unverified.");
+  const retentionTest: QuickDecisionTest = cohortElapsedMonths === 12
+    ? thresholdGate("retention-nrr", nrrPolicy, ordinaryNrr, percent(ordinaryNrr), "The opening-cohort ratio spans 12 months and is screened against the Desk-owned annual NRR threshold. Segmentation, contracts and parent mapping remain unverified.")
+    : {gateId: "retention-nrr", label: nrrPolicy.label, observed: `${percent(ordinaryNrr)} across ${cohortElapsedMonths} months`, required: `${nrrPolicy.displayValue} across 12 months`, state: "BLOCKED", blocksAdvancement: true, owner: nrrPolicy.owner, source: nrrPolicy.source, policyStatus: nrrPolicy.status, lastReviewed: nrrPolicy.lastReviewed, explanation: `The opening-cohort ratio spans ${cohortElapsedMonths} months, so it cannot clear an annual NRR screen. It remains directional retention evidence only.`};
   const tests: QuickDecisionTest[] = [
     thresholdGate("returns-moic", moicPolicy, grossMoic, `${grossMoic.toFixed(2)}x`, "The deterministic scenario clears the illustrative Desk-owned multiple screen, but the scenario assumptions remain unapproved."),
     thresholdGate("returns-annualized", returnPolicy, annualizedGrossReturn, percent(annualizedGrossReturn), "The deterministic scenario clears the illustrative Desk-owned return screen, but the scenario assumptions remain unapproved."),
-    thresholdGate("retention-nrr", nrrPolicy, ordinaryNrr, percent(ordinaryNrr), "Ordinary-cohort retention is below the Desk-owned screen and requires a documented policy-owner override or further diligence."),
+    retentionTest,
     thresholdGate("margin-numeric", marginPolicy, grossMargin, percent(grossMargin), "Reported gross margin meets the numeric screen; cost classification and customer-success burden remain unverified."),
     runwayTest,
     {gateId: "burn-runway-quality", label: "Burn and runway quality", observed: "Three-month signed net burn", required: "Committed-cost and financing review", state: "UNREVIEWED", blocksAdvancement: true, owner: policyProfile.owner, source: policyProfile.source, policyStatus: policyProfile.status, lastReviewed: policyProfile.lastReviewed, explanation: "The numeric runway screen does not establish committed costs, working-capital needs, financing timing, or burn durability."},
@@ -334,7 +337,7 @@ function analyze(deal: DealInput, monthly: MonthlyRow[], customers: CustomerRow[
   const metrics: QuickMetric[] = [
     {id: "ltm-revenue", label: "LTM revenue", value: ltmRevenueCents, display: money(ltmRevenueCents), meaning: "Revenue recognized across the latest twelve eligible monthly rows.", limitation: "Quick Package accounting only; no QoE adjustment or invoice-level reconciliation.", sourceFiles: ["monthly_financials.csv"]},
     {id: "gross-margin", label: "Gross margin", value: grossMargin, display: percent(grossMargin), meaning: "Revenue remaining after declared cost of revenue.", limitation: "Uses the uploaded classification and does not test whether delivery costs are complete.", sourceFiles: ["monthly_financials.csv"]},
-    {id: "ordinary-nrr", label: "Ordinary-cohort NRR", value: ordinaryNrr, display: percent(ordinaryNrr), meaning: `ARR retained from customers present in ${basePeriod}, measured at ${latestPeriod}.`, limitation: "Simple fixed cohort; no segmentation, contract review, or parent-account reconciliation.", sourceFiles: ["customer_arr.csv"]},
+    {id: "ordinary-nrr", label: "Cohort retention proxy", value: ordinaryNrr, display: percent(ordinaryNrr), meaning: `ARR retained from customers present in ${basePeriod}, measured ${cohortElapsedMonths} months later at ${latestPeriod}; this is not annual NRR.`, limitation: `This ${cohortElapsedMonths}-month fixed-cohort ratio also lacks segmentation, contract review, and parent-account reconciliation.`, sourceFiles: ["customer_arr.csv"]},
     {id: "runway", label: "Recent runway", value: runwayMonths, display: runwayMonths === null ? "Cash generative" : `${runwayMonths.toFixed(1)} mo`, meaning: "Cash divided by average signed net burn over the latest three months.", limitation: "No financing events, working-capital schedule, or committed costs beyond the uploaded rows.", sourceFiles: ["deal.json", "monthly_financials.csv"]},
     {id: "ownership", label: "Post-money ownership", value: postMoneyOwnership, display: percent(postMoneyOwnership), meaning: "New investment divided by declared pre-money value plus new investment.", limitation: "No option-pool refresh, preferences, dilution, or later financing rounds.", sourceFiles: ["deal.json"]},
     {id: "gross-moic", label: "Gross multiple", value: grossMoic, display: `${grossMoic.toFixed(2)}x`, meaning: "Illustrative exit equity proceeds divided by the proposed investment.", limitation: "Scenario assumes debt- and cash-neutral exit equity; no preference waterfall, fees, taxes, or dilution.", sourceFiles: ["deal.json", "monthly_financials.csv"]},
@@ -343,7 +346,7 @@ function analyze(deal: DealInput, monthly: MonthlyRow[], customers: CustomerRow[
   const sourcePreviews: QuickSourcePreview[] = [
     {sourceFile: "deal.json", classification: "MANAGEMENT_REPRESENTATION", title: "Proposed financing and scenario", period: deal.cutoff, excerpt: [{label: "New investment", value: money(deal.investmentCents)}, {label: "Pre-money value", value: money(deal.preMoneyCents)}, {label: "Annual growth assumption", value: percent(deal.annualRevenueGrowth)}, {label: "Exit revenue multiple", value: `${deal.exitRevenueMultiple.toFixed(1)}x`}, {label: "Package-requested hurdle", value: `${deal.packageRequestedThresholds.minimumGrossMoic.toFixed(1)}x — not fund policy`}]},
     {sourceFile: "monthly_financials.csv", classification: "SOURCE_FACT", title: "Latest twelve monthly rows", period: `${ltm[0].period} to ${ltm.at(-1)!.period}`, excerpt: [{label: "Rows", value: String(ltm.length)}, {label: "Revenue total", value: money(ltmRevenueCents)}, {label: "Cost of revenue", value: money(ltmCostCents)}, {label: "Latest month revenue", value: money(ltm.at(-1)!.revenueCents)}, {label: "Recent signed net burn", value: money(recentNetBurnCents)}], rows: ltm.map((row) => ({dataRow: row.sourceRow, cells: [{label: "Period", value: row.period}, {label: "Revenue", value: money(row.revenueCents)}, {label: "Cost of revenue", value: money(row.costOfRevenueCents)}, {label: "Operating expense", value: money(row.operatingExpenseCents)}]}))},
-    {sourceFile: "customer_arr.csv", classification: "SOURCE_FACT", title: "Opening-customer retention cohort", period: `${basePeriod} to ${latestPeriod}`, excerpt: [{label: "Opening customers", value: String(base.size)}, {label: "Opening ARR", value: money(baseArr)}, {label: "Ending ARR for opening IDs", value: money(endingArr)}, {label: "Elapsed interval", value: `${cohortElapsedMonths} months`}, {label: "Ordinary-cohort NRR", value: percent(ordinaryNrr)}], rows: customers.filter((row) => (row.period === basePeriod && row.arrCents > 0) || (row.period === latestPeriod && base.has(row.customerId))).map((row) => ({dataRow: row.sourceRow, cells: [{label: "Customer", value: row.customerId}, {label: "Period", value: row.period}, {label: "ARR", value: money(row.arrCents)}]}))},
+    {sourceFile: "customer_arr.csv", classification: "SOURCE_FACT", title: "Opening-customer retention cohort", period: `${basePeriod} to ${latestPeriod}`, excerpt: [{label: "Opening customers", value: String(base.size)}, {label: "Opening ARR", value: money(baseArr)}, {label: "Ending ARR for opening IDs", value: money(endingArr)}, {label: "Elapsed interval", value: `${cohortElapsedMonths} months`}, {label: "Cohort retention proxy", value: percent(ordinaryNrr)}], rows: customers.filter((row) => (row.period === basePeriod && row.arrCents > 0) || (row.period === latestPeriod && base.has(row.customerId))).map((row) => ({dataRow: row.sourceRow, cells: [{label: "Customer", value: row.customerId}, {label: "Period", value: row.period}, {label: "ARR", value: money(row.arrCents)}]}))},
     {sourceFile: "deal.json", classification: "ANALYST_ASSUMPTION", title: "Return assumptions awaiting review", period: `Five-year working case`, excerpt: [{label: "Revenue growth", value: percent(deal.annualRevenueGrowth)}, {label: "Exit multiple", value: `${deal.exitRevenueMultiple.toFixed(1)}x`}, {label: "Status", value: "Unreviewed"}]},
   ];
   return {ltmRevenueCents, grossMargin, ordinaryNrr, cohortElapsedMonths, recentNetBurnCents, runwayMonths, postMoneyOwnership, terminalRevenueCents, exitEquityCents, grossMoic, annualizedGrossReturn, metrics, tests, policyProfile, sourcePreviews};
@@ -420,7 +423,7 @@ export async function processDealPackage(input: File[], policyProfile: PolicyPro
   for (const [name, file] of byName) if (!declared.has(name)) {
     const extension = name.split(".").at(-1)?.toLowerCase();
     const isExperiment = name === "experiment.csv";
-    statuses.push({name, role: isExperiment ? "experiment" : "supporting_document", state: isExperiment ? "EXCLUDED" : "UNSUPPORTED", detail: isExperiment ? "Retained as a document only; no causal analysis is run" : ["pdf", "docx", "pptx", "xlsx", "csv", "txt"].includes(extension ?? "") ? "Listed but not parsed by the Quick Package" : "Unsupported file type", bytes: file.size});
+    statuses.push({name, role: isExperiment ? "experiment" : "supporting_document", state: isExperiment ? "EXCLUDED" : "UNSUPPORTED", detail: isExperiment ? "Listed but not retained or analyzed by the Quick Package" : ["pdf", "docx", "pptx", "xlsx", "csv", "txt"].includes(extension ?? "") ? "Listed but not parsed by the Quick Package" : "Unsupported file type", bytes: file.size});
   }
   if (errors.length > 0 || recognized.size !== 3) return incomplete(statuses, errors);
   let deal: DealInput | null = null;
@@ -434,9 +437,14 @@ export async function processDealPackage(input: File[], policyProfile: PolicyPro
     }
     const analysis = analyze(deal, monthly.rows, customers.rows, policyProfile);
     const blockers = analysis.tests.filter((test) => test.blocksAdvancement);
+    const returnScreenMisses = blockers.filter((test) => test.gateId === "returns-moic" || test.gateId === "returns-annualized");
+    const posture: IntakeResult["posture"] = returnScreenMisses.length ? "HOLD" : "SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED";
     for (const status of statuses) if (status.state === "RECOGNIZED") status.state = "READY";
     const sourcePayloads = await Promise.all(REQUIRED_FILES.map(async (name) => ({name, text: await byName.get(name)!.text()})));
-    return {packageState: "READY", posture: "SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED", rationale: `${blockers.length} policy or diligence gates remain unresolved. The package is complete enough for screening, but uploaded thresholds and assumptions cannot authorize advancement.`, files: statuses, errors: [], deal, analysis, sourcePayloads, processedLocally: true};
+    const rationale = returnScreenMisses.length
+      ? `${returnScreenMisses.length} deterministic return screen${returnScreenMisses.length === 1 ? "" : "s"} miss and ${blockers.length} policy or diligence gates remain unresolved. HOLD is a screening posture, not an investment recommendation.`
+      : `${blockers.length} policy or diligence gates remain unresolved. The package is complete enough for screening, but uploaded thresholds and assumptions cannot authorize advancement.`;
+    return {packageState: "READY", posture, rationale, files: statuses, errors: [], deal, analysis, sourcePayloads, processedLocally: true};
   } catch (error) {
     const detail = error instanceof Error ? error.message : "Package analysis failed"; errors.push(detail);
     const target = analysisErrorTarget(detail);

@@ -2024,7 +2024,7 @@ def _atlasgrid(
     return {
         "caseId": "atlasgrid",
         "company": "AtlasGrid Systems",
-        "caseType": "PE / Growth Equity",
+        "caseType": "Buyout",
         "synthetic": True,
         "investmentAdjudication": "PENDING_HUMAN",
         "workflowDisposition": _workflow_disposition(receipts, decision),
@@ -2641,6 +2641,7 @@ def _helios(
     moic_q = [Decimal(value) for value in vc_distribution["moic_quantiles"]]
     irr_q = [Decimal(value) for value in vc_distribution["xirr_quantiles"]]
     loss_probability = Decimal(vc_distribution["probability_below_one"])
+    selected_catastrophe_prior = Decimal(venture_scenarios["catastrophe_probability"])
     three_x_probability = Decimal(
         sum(
             Decimal(item["gross_moic"]) >= 3 for item in vc_distribution["path_records"]
@@ -2737,7 +2738,6 @@ def _helios(
                     prior_classification=venture_scenarios["prior_classification"],
                 )
             )
-            cell_loss_probability = Decimal(distribution["probability_below_one"])
             path_records = distribution["path_records"]
             catastrophe_paths = [
                 item for item in path_records if item["prior_state"] == "CATASTROPHE"
@@ -2774,7 +2774,7 @@ def _helios(
                     ),
                 },
                 "canonical_policy_status": "CLEARS"
-                if cell_loss_probability <= canonical_policy_threshold
+                if catastrophe_probability <= canonical_policy_threshold
                 else "MISSES",
                 "analytical_posture": "HOLD",
             }
@@ -2851,7 +2851,7 @@ def _helios(
                 else "MISSES"
             ),
             "binding_loss_hurdle_status": (
-                "CLEARS" if loss_probability <= canonical_policy_threshold else "MISSES"
+                "CLEARS" if selected_catastrophe_prior <= canonical_policy_threshold else "MISSES"
             ),
             "analytical_posture": "HOLD",
         }
@@ -3811,7 +3811,7 @@ def _helios(
             field="loss definition, maximum probability below 1.0x, operating and return hurdles, falsifiers, owner, and approval status",
             analysis_id="HX-09",
             output_names=["probability_below_1x"],
-            transformation="Compare the retained conditional loss frequency with a separately declared illustrative analyst-policy maximum",
+            transformation="Compare the analyst-selected catastrophe prior with the separate Desk loss ceiling; disclose that the retained structure maps every catastrophe path to a sub-1.0x result and use the replay only as a generator check",
             downstream="Quantitative hurdle state; never investment authorization",
         ),
         lineage_item(
@@ -3834,7 +3834,8 @@ def _helios(
     moic_hurdle = Decimal(return_policy["gross_moic"])
     loss_hurdle_pct = canonical_policy_threshold * 100
     loss_probability_pct = loss_probability * 100
-    loss_hurdle_misses = loss_probability > canonical_policy_threshold
+    selected_catastrophe_prior_pct = selected_catastrophe_prior * 100
+    loss_hurdle_misses = selected_catastrophe_prior > canonical_policy_threshold
     metric_pairs = [
         _decision_pair(
             metric="Ordinary-cohort NRR",
@@ -3882,13 +3883,13 @@ def _helios(
             observed_value=selected_vc.gross_moic,
         ),
         _decision_pair(
-            metric="Modeled loss probability",
-            metric_id="helios-hx-09-probability_below_1x",
+            metric="Selected catastrophe prior",
+            metric_id="helios-selected-catastrophe-prior",
             operator="<=",
             threshold=f"<={quantize(loss_hurdle_pct)}%",
             threshold_value=quantize(loss_hurdle_pct),
-            observed=f"{quantize(loss_probability_pct)}% (MC SE {quantize(loss_probability_mce_pp)} pp)",
-            observed_value=quantize(loss_probability_pct),
+            observed=f"{quantize(selected_catastrophe_prior_pct)}%",
+            observed_value=quantize(selected_catastrophe_prior_pct),
         ),
     ]
     condition_states = [
@@ -3912,9 +3913,9 @@ def _helios(
         ),
         _condition_state(
             condition_id="hx-loss-range",
-            text=f"Modeled probability below 1.0x at or below {quantize(loss_hurdle_pct)}%",
+            text=f"Selected catastrophe prior at or below the {quantize(loss_hurdle_pct)}% Desk loss ceiling; in this retained structure every catastrophe path returns below 1.0x",
             metric_pairs=metric_pairs,
-            metric_ids=("helios-hx-09-probability_below_1x",),
+            metric_ids=("helios-selected-catastrophe-prior",),
         ),
         _condition_state(
             condition_id="hx-pipeline-history",
@@ -3952,7 +3953,7 @@ def _helios(
         [
             {
                 "issue_id": "HX-H01",
-                "title": "Loss hurdle exceeds policy maximum"
+                "title": "Selected catastrophe prior exceeds policy maximum"
                 if loss_hurdle_misses
                 else "Loss hurdle clears quantitatively",
                 "owner": "Illustrative investment committee",
@@ -3961,12 +3962,12 @@ def _helios(
                 "kind": "QUANTITATIVE_HURDLE",
                 "state": "FAILED" if loss_hurdle_misses else "CLEARED",
                 "blocks_advancement": loss_hurdle_misses,
-                "consequence": "Hold under the canonical synthetic prior. Do not revise the prior or policy after observing the result; alternative values remain unreviewed what-if sensitivities."
+                "consequence": "Hold because the selected analyst catastrophe prior exceeds the separate Desk loss ceiling. In this retained structure every catastrophe path loses; the seeded replay checks the path generator rather than estimating the input. Do not revise the prior or policy after observing the result; alternatives remain unreviewed what-if sensitivities."
                 if loss_hurdle_misses
                 else "The quantitative loss test clears, but unresolved diligence and human investment committee approval still block funding.",
                 "linked_condition_ids": ["hx-loss-range"],
                 "evidence_state": "PRESENT",
-                "evidence_metric_ids": ["helios-hx-09-probability_below_1x"],
+                "evidence_metric_ids": ["helios-selected-catastrophe-prior"],
                 "analysis_ids": ["HX-09"],
                 "source_locator_ids": ["locator-hx-09-risk-policy"],
                 "consequence_target": "sensitivity",
@@ -4065,7 +4066,7 @@ def _helios(
         "status": "DECISION_RECORD_INCOMPLETE",
         "signature_status": "PENDING_FOUNDER_SIGNATURE",
         "as_of": CUTOFF,
-        "rationale": f"Hold because, under the canonical unreviewed synthetic prior, {quantize(loss_probability_pct)}% of retained paths fall below 1.0x versus the illustrative {quantize(loss_hurdle_pct)}% policy maximum. This result is driven by the explicit catastrophe-state assumption; the proposed milestone financing is a path to reconsideration, not a current investment recommendation.",
+        "rationale": f"Hold because the selected unreviewed synthetic catastrophe prior is {quantize(selected_catastrophe_prior_pct)}% versus the separate {quantize(loss_hurdle_pct)}% Desk loss ceiling. In this retained structure every catastrophe path falls below 1.0x, while the seeded replay frequency of {quantize(loss_probability_pct)}% is a generator check rather than an independent estimate. The proposed milestone financing is a path to reconsideration, not a current investment recommendation.",
         "conditions": [item["text"] for item in condition_states],
         "condition_states": condition_states,
         "open_conditions": _open_condition_count(condition_states),

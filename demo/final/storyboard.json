@@ -39,7 +39,7 @@
       "id": "screening",
       "start": 11,
       "end": 21,
-      "narration": "The package clears the mechanical intake, but it cannot grade itself. Ordinary-cohort retention is 83.6 percent against a separate 95 percent Desk policy, so further diligence is required."
+      "narration": "The package clears the mechanical intake, but it cannot grade itself. The 11-month retention proxy is 83.6 percent. It cannot clear the separate 95 percent annual NRR screen."
     },
     {
       "id": "evidence",
@@ -51,7 +51,7 @@
       "id": "scenario",
       "start": 31,
       "end": 42,
-      "narration": "A bounded scenario changes growth and immediately recomputes ownership and returns with deterministic math. The interface marks it as an unapproved what-if; the canonical package case remains unchanged."
+      "narration": "A bounded scenario changes growth and immediately recomputes terminal value and returns with deterministic math. The interface marks it as an unapproved what-if; the canonical package case remains unchanged."
     },
     {
       "id": "judgment",

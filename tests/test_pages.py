@@ -122,7 +122,7 @@ def test_pages_stage_v2_workbench_and_bound_candidate_artifacts(tmp_path: Path) 
     manifest = json.loads((destination / "candidate-artifacts.json").read_text())
     assert manifest["schema_version"] == "underwriting.portfolio-candidate/v2"
     roles = {entry["role"] for entry in manifest["artifacts"]}
-    assert {"v2-workbench", "case-packet", "synthetic-data-room", "accessibility-evidence", "visual-manifest", "visual-evidence", "print-pdf"} <= roles
+    assert {"legacy-workbench", "case-packet", "synthetic-data-room", "accessibility-evidence", "visual-manifest", "visual-evidence", "print-pdf"} <= roles
     for entry in manifest["artifacts"]:
         artifact = destination / entry["path"]
         assert artifact.stat().st_size == entry["bytes"]
@@ -152,6 +152,12 @@ def test_pages_can_redirect_stale_root_to_the_canonical_https_product(tmp_path: 
     assert "Old experience" not in redirect
     assert "https://desk.example/" in redirect
     assert "Underwriting Desk has moved" in redirect
+    assert not (destination / "assets" / "app.js").exists()
+    roles = {entry["role"] for entry in json.loads((destination / "candidate-artifacts.json").read_text())["artifacts"]}
+    assert "canonical-redirect" in roles
+    assert "legacy-workbench" not in roles
+    assert "release-demo" not in roles
+    assert not (destination / "demo").exists()
 
 
 @pytest.mark.parametrize("unsafe", ["http://desk.example/", "javascript:alert(1)", "https://user:pass@desk.example/"])

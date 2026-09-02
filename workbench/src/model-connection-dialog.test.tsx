@@ -37,7 +37,8 @@ describe("model connection wizard", () => {
     await user.click(screen.getByRole("button", {name: "Continue"}));
     expect(screen.getByRole("heading", {name: "Keep provider credentials out of the browser"})).toBeInTheDocument();
     await user.click(screen.getByRole("button", {name: "Continue"}));
-    expect(screen.getByRole("heading", {name: "Run a bounded challenge from Diligence"})).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "Attempt a bounded challenge from Diligence"})).toBeInTheDocument();
+    expect(screen.getByText(/proposal is not claimed until the server returns it successfully/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/API key/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox", {name: "Adapter endpoint"})).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", {name: "Done"}));

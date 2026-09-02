@@ -1,5 +1,7 @@
 # Demo quality review
 
+> **SUPERSEDED LEGACY FILM REVIEW.** This review covers a retired Underwriting Intelligence Lab demonstration and is not current Underwriting Desk release evidence. The current storyboard, transcript, captions, and review contract live in [`final/`](final/); the final rendered Desk film remains a release gate until its manifest and independent reviews pass.
+
 Verdict: `RENDERED SOURCE-BOUND CANDIDATE — MECHANICAL PASS — FOUNDER REVIEW PENDING`
 
 The former 80-second static-card artifact was retired. The replacement records

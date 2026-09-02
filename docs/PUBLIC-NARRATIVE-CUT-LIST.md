@@ -1,6 +1,8 @@
 # Public-narrative cut list
 
-Status: `INTERNAL EDITORIAL GATE — NO PUBLIC RELEASE CLAIM`  
+> **SUPERSEDED HISTORICAL EDITORIAL GATE.** This document governed the retired public-company/CoreWeave direction and must not be used for current Underwriting Desk release, résumé, demo, or interview claims. The current claim boundary is [`CAREER-CLAIMS.md`](CAREER-CLAIMS.md), with exact release state in [`../LOCAL-VERIFICATION.md`](../LOCAL-VERIFICATION.md) and [`../RELEASE-NOTES.md`](../RELEASE-NOTES.md).
+
+Status: `SUPERSEDED — RETAINED FOR DECISION HISTORY`
 Applies to: README, repository description, demo, resume, LinkedIn, portfolio,
 technical report and interview talking points
 

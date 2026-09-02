@@ -7,7 +7,7 @@ Act as an independent private-equity/growth-equity financial architect, economet
 Audit:
 
 1. the strict separation of source/company facts, deal terms, analyst assumptions, fund policy, deterministic calculations, model proposals, and named human decisions;
-2. whether Northstar's uploaded package can grade or authorize itself, whether 83.6% NRR remains decision-adverse, whether complete and incomplete paths fail closed, and whether portable JSON can delete canonical issues, rewrite deterministic memo content, forge policy roles, or substitute proposal citations;
+2. whether Northstar's uploaded package can grade or authorize itself, whether the 83.6% 11-month retention proxy remains decision-adverse against the separate annual-NRR screen, whether complete and incomplete paths fail closed, and whether portable JSON can delete canonical issues, rewrite deterministic memo content, forge policy roles, or substitute proposal citations;
 3. Helios ownership, financing, preference, priors, loss ceiling, canonical/what-if separation, sensitivity mechanics, and conditional HOLD language;
 4. AtlasGrid accounting, normalized EBITDA, leverage, returns, downside, scenario mechanics, and provisional REPRICE language;
 5. econometric classification, decision meaning, uncertainty, diagnostics, and claims discipline;

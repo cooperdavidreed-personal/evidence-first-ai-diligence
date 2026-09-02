@@ -1,12 +1,14 @@
 # Underwriting Lab release-fix verification report
 
+> Historical release record only. This report describes the retired pre-Desk public experience and is preserved for provenance; it is not the current product, URL, deployment, demonstration, or release claim. Open the canonical [Underwriting Desk](https://underwriting-desk-delta.vercel.app/) and current root README instead.
+
 Status: `RELEASE_CANDIDATE_VERIFIED`
 
 Bound source candidate: `a0ae46c11d3faf4d2885e19c54583c285f8cd69f`
 
 Public release commit and deployment result are recorded in the completion email because a commit cannot truthfully contain its own final SHA.
 
-Live workbench: <https://cooperdavidreed-personal.github.io/evidence-first-ai-diligence/>
+Canonical workbench: <https://underwriting-desk-delta.vercel.app/>. GitHub Pages is retained only as a release-artifact mirror whose root redirects to the canonical product.
 
 ## Completed release work
 
@@ -40,7 +42,7 @@ The model reviews are advisory editorial checks. Agreement is not treated as fin
 ## Known limitations
 
 - Both companies, source rooms, results, policies, and observations are synthetic. This is not investment advice or proof of real-world investment performance.
-- The Helios 20% loss frequency comes from the declared catastrophe-state prior in a 1,000-path synthetic replay. It is not an empirical forecast or a firm policy calibration.
+- Helios's selected 20% catastrophe prior is an analyst input. Every catastrophe path loses in the retained structure and no continuous path loses, so the prior determines the screen; the 1,000-path replay is disclosed only as a generator check, not a second estimate.
 - The maximum acceptable loss probability is an illustrative, analyst-set, `UNREVIEWED` threshold. It is not an approved investment-firm policy.
 - Notes and assumption reviews remain browser-local. There is no authentication, encryption, sharing, multitenancy, audit service, or confidential-data readiness.
 - The public build has no runtime model integration and no broad MCP surface. Models cannot change assumptions, approve capital, or write the canonical deal record.

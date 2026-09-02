@@ -1,5 +1,6 @@
 import {useMemo, useState} from "react";
 import {dealViews, type DealView} from "./App";
+import {compareDecimalStrings} from "./data-contract";
 import {calculateQuickScenario, processDealPackage, type IntakeResult, type QuickAnalysis} from "./intake";
 import {localCaseId, localScenarioContract, localWorkspaceSeed, serializeAdmittedDealBundle} from "./local-deal-state";
 import {ModelReviewPanel} from "./model-review-panel";
@@ -28,6 +29,12 @@ const LOCAL_POLICY_OVERRIDE_ROLES = {"retention-nrr": "Policy owner"};
 function money(cents: number) { return new Intl.NumberFormat("en-US", {style: "currency", currency: "USD", maximumFractionDigits: 1, notation: "compact"}).format(cents / 100); }
 function percent(value: number) { return `${(value * 100).toFixed(1)}%`; }
 function stateLabel(state: string) { return state.toLowerCase().replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase()); }
+
+export function localPostureCopy(posture: IntakeResult["posture"]) {
+  return posture === "HOLD"
+    ? {heading: "HOLD", detail: "Return screens miss; no IC advancement", icState: "HOLD — deterministic return screens miss"}
+    : {heading: "FURTHER DILIGENCE", detail: "Screening complete; no IC advancement", icState: "Further diligence required"};
+}
 
 function normalizedLocalScenario(result: IntakeResult, state: DealWorkspaceState) {
   const deal = result.deal!, analysis = result.analysis!;
@@ -83,14 +90,15 @@ function LocalBundleTransfer({result, state}: {result: IntakeResult; state: Deal
 function LocalDecisionTests({analysis, state}: {analysis: QuickAnalysis; state: DealWorkspaceState}) {
   const overrides = new Set(state.policyOverrides.filter((item) => LOCAL_OVERRIDABLE_GATE_SET.has(item.gateId) && item.actorRole === GROWTH_SCREEN_POLICY.ownerRole).map((item) => item.gateId));
   const unresolved = analysis.tests.filter((test) => test.blocksAdvancement && !overrides.has(test.gateId));
-  return <section className="panel"><div className="section-heading"><div><p className="eyebrow">Desk-owned screening policy</p><h2>Screening gates</h2></div><span>{unresolved.length} unresolved</span></div><div className="table-wrap" tabIndex={0} aria-label="Scrollable screening gates"><table><thead><tr><th>Gate</th><th>Observed</th><th>Required</th><th>State</th></tr></thead><tbody>{analysis.tests.map((test) => {const overridden = overrides.has(test.gateId); return <tr key={test.gateId}><td>{test.label}</td><td>{test.observed}</td><td>{test.required}</td><td><span className={`status status-${overridden ? "accepted" : test.state.toLowerCase()}`}>{overridden ? "Recorded override" : stateLabel(test.state)}</span></td></tr>;})}</tbody></table></div><details className="method-disclosure"><summary>Policy ownership and review</summary><p>{analysis.policyProfile.name} · {analysis.policyProfile.owner}. Source: Desk default, outside the company package. Status: {analysis.policyProfile.status.toLowerCase()}. Last reviewed: {formatHumanDate(analysis.policyProfile.lastReviewed)}.</p><p>Thresholds embedded in the uploaded deal file are retained only as package representations. They do not grade or authorize this deal.</p></details></section>;
+  return <section className="panel"><div className="section-heading"><div><p className="eyebrow">Desk-owned screening policy</p><h2>Screening gates</h2></div><span>{unresolved.length} unresolved</span></div><div className="table-wrap" tabIndex={0} aria-label="Scrollable screening gates"><table><thead><tr><th>Gate</th><th>Observed</th><th>Required</th><th>State</th></tr></thead><tbody>{analysis.tests.map((test) => {const overridden = overrides.has(test.gateId); return <tr key={test.gateId}><td>{test.label}</td><td>{test.observed}</td><td>{test.required}</td><td><span className={`status status-${overridden ? "accepted" : test.state.toLowerCase()}`}>{overridden ? "Policy exception recorded · evidence issue remains open" : stateLabel(test.state)}</span></td></tr>;})}</tbody></table></div><details className="method-disclosure"><summary>Policy ownership and review</summary><p>{analysis.policyProfile.name} · {analysis.policyProfile.owner}. Source: Desk default, outside the company package. Status: {analysis.policyProfile.status.toLowerCase()}. Last reviewed: {formatHumanDate(analysis.policyProfile.lastReviewed)}.</p><p>Thresholds embedded in the uploaded deal file are retained only as package representations. They do not grade or authorize this deal.</p></details></section>;
 }
 
 function LocalOverview({result, state, update}: {result: IntakeResult; state: DealWorkspaceState; update: WorkspaceUpdate}) {
   const analysis = result.analysis!;
+  const posture = localPostureCopy(result.posture);
   const [selectedMetric, setSelectedMetric] = useState(analysis.metrics[0]?.id ?? "");
   const activeMetric = analysis.metrics.find((metric) => metric.id === selectedMetric);
-  return <div className="view-stack"><section className="decision-brief"><div><p className="eyebrow">Provisional analytical posture</p><h2>{result.posture}</h2><p>{result.rationale}</p></div><dl><div><dt>IC state</dt><dd>Further diligence required</dd></div><div><dt>Primary concern</dt><dd>{percent(analysis.ordinaryNrr)} ordinary-cohort NRR</dd></div><div><dt>Cohort interval</dt><dd>{analysis.cohortElapsedMonths} months · directional</dd></div></dl></section><section className="overview-metrics">{analysis.metrics.slice(0, 5).map((metric) => <button type="button" aria-pressed={metric.id === selectedMetric} key={metric.id} onClick={() => setSelectedMetric(metric.id)}><span>{metric.label}</span><strong>{metric.display}</strong><small>Inspect sources</small></button>)}</section>{activeMetric ? <section className="workspace-card local-lineage" aria-live="polite"><div className="section-heading"><div><p className="eyebrow">Calculation trace</p><h2>{activeMetric.label}</h2></div><strong>{activeMetric.display}</strong></div><p>{activeMetric.meaning}</p><dl><div><dt>Source files</dt><dd>{activeMetric.sourceFiles.join(" · ")}</dd></div><div><dt>Boundary</dt><dd>{activeMetric.limitation}</dd></div></dl></section> : null}<LocalDecisionTests analysis={analysis} state={state} /><ObservationComposer state={state} update={update} /></div>;
+  return <div className="view-stack"><section className="decision-brief"><div><p className="eyebrow">Provisional analytical posture</p><h2>{result.posture}</h2><p>{result.rationale}</p></div><dl><div><dt>IC state</dt><dd>{posture.icState}</dd></div><div><dt>Primary concern</dt><dd>{percent(analysis.ordinaryNrr)} cohort retention proxy</dd></div><div><dt>Cohort interval</dt><dd>{analysis.cohortElapsedMonths} months · not annual NRR</dd></div></dl></section><section className="overview-metrics">{analysis.metrics.slice(0, 5).map((metric) => <button type="button" aria-pressed={metric.id === selectedMetric} key={metric.id} onClick={() => setSelectedMetric(metric.id)}><span>{metric.label}</span><strong>{metric.display}</strong><small>Inspect sources</small></button>)}</section>{activeMetric ? <section className="workspace-card local-lineage" aria-live="polite"><div className="section-heading"><div><p className="eyebrow">Calculation trace</p><h2>{activeMetric.label}</h2></div><strong>{activeMetric.display}</strong></div><p>{activeMetric.meaning}</p><dl><div><dt>Source files</dt><dd>{activeMetric.sourceFiles.join(" · ")}</dd></div><div><dt>Boundary</dt><dd>{activeMetric.limitation}</dd></div></dl></section> : null}<LocalDecisionTests analysis={analysis} state={state} /><ObservationComposer state={state} update={update} /></div>;
 }
 
 function LocalFinancials({result, state, update}: {result: IntakeResult; state: DealWorkspaceState; update: WorkspaceUpdate}) {
@@ -99,7 +107,10 @@ function LocalFinancials({result, state, update}: {result: IntakeResult; state: 
   const canonical = calculateQuickScenario(analysis, deal, {annualRevenueGrowth: deal.annualRevenueGrowth, exitRevenueMultiple: deal.exitRevenueMultiple});
   const moicPolicy = policyThreshold(analysis.policyProfile, "gross_moic");
   const returnPolicy = policyThreshold(analysis.policyProfile, "annualized_return");
-  const clears = (observed: number, threshold: typeof moicPolicy) => threshold.operator === ">=" ? observed >= threshold.value : observed <= threshold.value;
+  const clears = (observed: number, threshold: typeof moicPolicy) => {
+    const comparison = compareDecimalStrings(observed.toFixed(12), threshold.value.toFixed(12));
+    return threshold.operator === ">=" ? comparison >= 0 : comparison <= 0;
+  };
   const returnsClear = clears(working.grossMoic, moicPolicy) && clears(working.annualizedGrossReturn, returnPolicy);
   const growthSteps = [Math.max(-.99, deal.annualRevenueGrowth - .1), deal.annualRevenueGrowth, Math.min(5, deal.annualRevenueGrowth + .1)];
   const multipleSteps = [Math.max(.01, deal.exitRevenueMultiple - 1), deal.exitRevenueMultiple, Math.min(100, deal.exitRevenueMultiple + 1)];
@@ -108,6 +119,8 @@ function LocalFinancials({result, state, update}: {result: IntakeResult; state: 
 
 function LocalDiligence({result, state, update, modelTransport, connection}: {result: IntakeResult; state: DealWorkspaceState; update: WorkspaceUpdate; modelTransport?: ModelTransport; connection: ConnectionState | null}) {
   const analysis = result.analysis!, deal = result.deal!;
+  const dealId = localCaseId(result);
+  const hostedEligible = dealId === "local-northstar-metrics-00a75b14db10";
   const [section, setSection] = useState<"issues" | "assumptions" | "policy" | "model">("issues");
   const assumptions: AssumptionDefinition[] = [
     {id: "local-growth", label: "Annual revenue growth", value: percent(deal.annualRevenueGrowth), owner: deal.analystOwner, basis: "Package representation", consequence: "Changes terminal revenue and return outputs.", status: "Unreviewed"},
@@ -116,7 +129,7 @@ function LocalDiligence({result, state, update, modelTransport, connection}: {re
   ];
   const tabs = [{id: "issues", label: `Issues · ${state.issues.filter((issue) => issue.status !== "RESOLVED").length}`}, {id: "assumptions", label: "Assumptions"}, {id: "policy", label: "Policy"}, {id: "model", label: "Model review"}] as const;
   const lockedIssueIds = new Set(localWorkspaceSeed(result).lockedIssueIds ?? []);
-  return <div className="view-stack"><label className="mobile-workspace-selector"><span>Diligence workspace</span><select value={section} onChange={(event) => setSection(event.target.value as typeof section)}>{tabs.map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}</select></label><nav className="workspace-tabs" aria-label="Diligence workspace">{tabs.map((tab) => <button type="button" key={tab.id} aria-pressed={section === tab.id} onClick={() => setSection(tab.id)}>{tab.label}</button>)}</nav>{section === "issues" ? <DiligenceWorklist state={state} update={update} lockedIssueIds={lockedIssueIds} /> : null}{section === "assumptions" ? <AssumptionRegistry assumptions={assumptions} state={state} update={update} /> : null}{section === "policy" ? <PolicyRegistry profile={analysis.policyProfile} state={state} update={update} blockingGates={analysis.tests.filter((test) => test.blocksAdvancement).map((test) => ({gateId: test.gateId, label: test.label}))} overridableGateIds={LOCAL_OVERRIDABLE_GATES} /> : null}{section === "model" ? <ModelReviewPanel connection={connection} transport={modelTransport} proposals={state.proposals} onProposalsChange={(next) => update((current) => ({proposals: typeof next === "function" ? next(current.proposals) : next}))} evidence={analysis.metrics.map((metric) => ({id: metric.id, title: metric.label, displayValue: metric.display, summary: metric.meaning}))} /> : null}</div>;
+  return <div className="view-stack"><label className="mobile-workspace-selector"><span>Diligence workspace</span><select value={section} onChange={(event) => setSection(event.target.value as typeof section)}>{tabs.map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}</select></label><nav className="workspace-tabs" aria-label="Diligence workspace">{tabs.map((tab) => <button type="button" key={tab.id} aria-pressed={section === tab.id} onClick={() => setSection(tab.id)}>{tab.label}</button>)}</nav>{section === "issues" ? <DiligenceWorklist state={state} update={update} lockedIssueIds={lockedIssueIds} /> : null}{section === "assumptions" ? <AssumptionRegistry assumptions={assumptions} state={state} update={update} /> : null}{section === "policy" ? <PolicyRegistry profile={analysis.policyProfile} state={state} update={update} blockingGates={analysis.tests.filter((test) => test.blocksAdvancement).map((test) => ({gateId: test.gateId, label: test.label}))} overridableGateIds={LOCAL_OVERRIDABLE_GATES} /> : null}{section === "model" ? <ModelReviewPanel dealId={dealId} connection={connection} transport={modelTransport} hostedEligible={hostedEligible} unavailableReason="Hosted review is enabled for the included Northstar sample only. Other admitted packages keep deterministic analysis and human workflow, but no model control is presented as functional." proposals={state.proposals} onProposalsChange={(next) => update((current) => ({proposals: typeof next === "function" ? next(current.proposals) : next}))} evidence={analysis.metrics.map((metric) => ({id: metric.id, title: metric.label, displayValue: metric.display, summary: metric.meaning}))} /> : null}</div>;
 }
 
 function LocalDocuments({result}: {result: IntakeResult}) {
@@ -133,16 +146,19 @@ function localScenarioMemoSummary(result: IntakeResult, state: DealWorkspaceStat
 
 function LocalDecisionRail({result, state, view}: {result: IntakeResult; state: DealWorkspaceState; view: DealView}) {
   const analysis = result.analysis!;
+  const posture = localPostureCopy(result.posture);
   const overrides = new Set(state.policyOverrides.filter((item) => LOCAL_OVERRIDABLE_GATE_SET.has(item.gateId) && item.actorRole === GROWTH_SCREEN_POLICY.ownerRole).map((item) => item.gateId));
   const failedGates = analysis.tests.filter((test) => test.blocksAdvancement && !overrides.has(test.gateId));
+  const concernGates = failedGates.filter((test) => test.state === "CONCERN");
+  const evidenceGaps = failedGates.filter((test) => test.state !== "CONCERN");
   const openIssues = state.issues.filter((issue) => issue.status !== "RESOLVED");
   const {changed} = normalizedLocalScenario(result, state);
   const nextAction = openIssues.length
     ? `Advance ${openIssues.length} open diligence ${openIssues.length === 1 ? "issue" : "issues"}; ${failedGates.length} screening ${failedGates.length === 1 ? "gate still lacks" : "gates still lack"} a policy disposition.`
     : failedGates.length
-      ? "Disposition failed screening gates with evidence or a recorded policy-owner exception."
+      ? "Disposition unresolved screening gates with evidence or a recorded policy-owner exception."
       : "Document the policy-owner exception and complete human IC review.";
-  return <aside className="decision-rail" aria-label="Decision status"><header><span>Current posture</span><strong>FURTHER DILIGENCE</strong><p>Screening complete; no IC advancement</p></header><dl><div><dt>View</dt><dd>{labels[view]}</dd></div><div><dt>Scenario</dt><dd>{changed ? "Unapproved what-if" : "Package case"}</dd></div><div><dt>Failed screening gates</dt><dd>{failedGates.length}</dd></div><div><dt>Open diligence issues</dt><dd>{openIssues.length}</dd></div><div><dt>Policy</dt><dd>Draft · not reviewed</dd></div></dl><section><span>Primary concern</span><strong>{failedGates[0]?.label ?? "No unresolved screening gate"}</strong><p>{failedGates[0]?.explanation ?? "Any exception remains visible and requires human IC review."}</p></section><section><span>Next action</span><strong>{nextAction}</strong></section><footer>IC decision pending</footer></aside>;
+  return <aside className="decision-rail" aria-label="Decision status" tabIndex={0}><header><span>Current posture</span><strong>{posture.heading}</strong><p>{posture.detail}</p></header><dl><div><dt>View</dt><dd>{labels[view]}</dd></div><div><dt>Scenario</dt><dd>{changed ? "Unapproved what-if" : "Package case"}</dd></div><div><dt>Unresolved screening gates</dt><dd>{failedGates.length}</dd></div><div><dt>Investment concerns</dt><dd>{concernGates.length}</dd></div><div><dt>Evidence or policy gaps</dt><dd>{evidenceGaps.length}</dd></div><div><dt>Open diligence issues</dt><dd>{openIssues.length}</dd></div><div><dt>Policy</dt><dd>Draft · not reviewed</dd></div></dl><section><span>Primary concern</span><strong>{concernGates[0]?.label ?? failedGates[0]?.label ?? "No unresolved screening gate"}</strong><p>{concernGates[0]?.explanation ?? failedGates[0]?.explanation ?? "Any exception remains visible and requires human IC review."}</p></section><section><span>Next action</span><strong>{nextAction}</strong></section><footer>IC decision pending</footer></aside>;
 }
 
 export function LocalDealShell({result, view, onNavigate, onDeals, onConnect, connection, modelTransport, persistenceNotice = ""}: {result: IntakeResult; view: DealView; onNavigate: (view: DealView) => void; onDeals: () => void; onConnect: () => void; connection: ConnectionState | null; modelTransport?: ModelTransport; persistenceNotice?: string}) {

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ic-evidence-lab"
-version = "0.1.0"
-description = "Offline, evidence-first investment diligence reference workflow"
+version = "0.2.0"
+description = "Evidence-linked synthetic PE and VC underwriting decision workspace"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{name = "Cooper Reed"}]
@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://cooperdavidreed-personal.github.io/evidence-first-ai-diligence/"
+Homepage = "https://underwriting-desk-delta.vercel.app/"
 Repository = "https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence"
 Issues = "https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence/issues"
 

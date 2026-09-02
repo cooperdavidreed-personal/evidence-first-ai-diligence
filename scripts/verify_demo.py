@@ -217,7 +217,9 @@ def verify_source_closure(repo: Path, manifest: dict[str, Any]) -> int:
         "demo/final/transcript.txt",
         "output/pdf/atlasgrid-underwriting-packet-letter.pdf",
         "output/pdf/helios-underwriting-packet-letter.pdf",
+        "workbench/api/challenge.ts",
         "workbench/src/data/cases.json",
+        "workbench/vercel.json",
     ):
         require(required in observed, f"required source omitted: {required}")
     return len(observed)
@@ -348,7 +350,7 @@ def main() -> int:
 
     capture_receipt = verify_bound_file(root, manifest["capture_receipt"])
     capture = json.loads(capture_receipt.read_text(encoding="utf-8"))
-    require(capture.get("schema_version") == "underwriting.demo-capture-receipt/v1", "capture receipt schema mismatch")
+    require(capture.get("schema_version") == "underwriting.demo-capture-receipt/v2", "capture receipt schema mismatch")
     require(capture.get("required_test_ids") == storyboard["required_test_ids"], "capture selector contract mismatch")
     require([item["filename"] for item in capture["frames"]] == expected_frames, "capture frame sequence mismatch")
     claims = {item["text"] for item in capture["observed_claims"]}

@@ -22,7 +22,7 @@ def test_release_storyboard_is_current_contiguous_and_source_bound() -> None:
     assert len(storyboard["expected_review_frames"]) == 9
     assert storyboard["required_test_ids"] == ["deal-package-input"]
     assert caption_counts == {"captions.srt": 16, "captions.vtt": 16}
-    assert len(normalized_text(transcript).split()) == 222
+    assert len(normalized_text(transcript).split()) == 223
 
 
 def test_release_storyboard_covers_decision_exports_controls_and_boundaries() -> None:
@@ -61,7 +61,13 @@ def test_capture_script_uses_current_routes_and_declared_stable_controls() -> No
     assert "1440" not in script
     assert "1920" in script and "1080" in script
     assert "REAL_PUBLIC_WORKBENCH_INTERACTIONS" in script
+    assert 'underwriting.demo-capture-receipt/v2' in script
     assert "capture-receipt.json" in script
+    renderer = (ROOT / "scripts" / "render_demo.py").read_text()
+    verifier = (ROOT / "scripts" / "verify_demo.py").read_text()
+    for required in ("workbench/api/challenge.ts", "workbench/vercel.json"):
+        assert required in renderer
+        assert required in verifier
 
 
 def test_render_pipeline_requires_governed_elevenlabs_audio_and_builds_aac() -> None:

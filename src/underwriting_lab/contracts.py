@@ -573,7 +573,9 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
         if Decimal(cell["probability_below_one"]) != expected_probability:
             raise UnderwritingError("vc_risk_sensitivity_loss_decomposition_mismatch")
         expected_status = (
-            "CLEARS" if expected_probability <= policy_threshold else "MISSES"
+            "CLEARS"
+            if Decimal(cell["catastrophe_probability"]) <= desk_threshold
+            else "MISSES"
         )
         if (
             cell["canonical_policy_status"] != expected_status
@@ -651,7 +653,7 @@ def _validate_vc_payload(case: dict[str, Any]) -> None:
             raise UnderwritingError("vc_sensitivity_operating_bridge_mismatch")
         expected_loss_status = (
             "CLEARS"
-            if Decimal(distribution["probability_below_one"]) <= policy_threshold
+            if Decimal(priors["catastrophe_probability"]) <= desk_threshold
             else "MISSES"
         )
         if (
@@ -997,13 +999,6 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             expected_display = f">={quantize(observed)} modeled months"
         else:
             raise UnderwritingError("decision_metric_unit_unsupported")
-        if pair["metric_id"] == "helios-hx-09-probability_below_1x":
-            probability = observed / Decimal(100)
-            draws = Decimal(case["vcEngine"]["distribution"]["draws"])
-            standard_error_pp = (
-                probability * (Decimal(1) - probability) / draws
-            ).sqrt() * Decimal(100)
-            expected_display += f" (MC SE {quantize(standard_error_pp)} pp)"
         if pair["observed"] != expected_display:
             raise UnderwritingError("decision_metric_display_mismatch")
 
@@ -1019,7 +1014,7 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             ),
             "helios-MILESTONE-gross-xirr": Decimal(desk_thresholds["gross_xirr"]),
             "helios-MILESTONE-gross-moic": Decimal(desk_thresholds["gross_moic"]),
-            "helios-hx-09-probability_below_1x": Decimal(
+            "helios-selected-catastrophe-prior": Decimal(
                 desk_thresholds["maximum_probability_below_one"]
             )
             * Decimal(100),
@@ -1028,7 +1023,7 @@ def _validate_metric_contract(case: dict[str, Any]) -> None:
             pair = pairs_by_id.get(metric_id)
             if not pair or Decimal(pair["threshold_value"]) != expected_threshold:
                 raise UnderwritingError("vc_desk_policy_decision_pair_mismatch")
-        loss_pair = pairs_by_id.get("helios-hx-09-probability_below_1x")
+        loss_pair = pairs_by_id.get("helios-selected-catastrophe-prior")
         if not loss_pair:
             raise UnderwritingError("vc_risk_policy_decision_pair_missing")
         expected_loss_threshold_percent = Decimal(

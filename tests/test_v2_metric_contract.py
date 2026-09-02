@@ -114,7 +114,7 @@ def test_decision_metric_display_cannot_be_rebound_to_a_false_value(helios_v2: d
     pair = next(
         item
         for item in case["decision"]["metric_pairs"]
-        if item["metric"] == "Modeled loss probability"
+        if item["metric"] == "Selected catastrophe prior"
     )
     pair["observed"] = "999999.99%"
     decision_body = dict(case["decision"])

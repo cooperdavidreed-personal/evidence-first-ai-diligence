@@ -59,19 +59,19 @@ Use **New deal** with the four files in [`workbench/public/sample-package`](work
 - `monthly_financials.csv`
 - `customer_arr.csv`
 
-The browser verifies declared roles, sizes, SHA-256 digests, cutoff behavior, and supported fields. A complete Northstar package reproduces $15.9M LTM revenue, 70.0% gross margin, 83.6% ordinary-cohort NRR, 33.3% post-money ownership, 3.23x gross MOIC, and 26.5% annualized gross return. The weak retention result and six other diligence or policy gates keep the posture at `SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED`; clearing an illustrative return screen does not make the deal IC-ready. Removing or modifying a required source produces `NO CALL — PACKAGE INCOMPLETE` and suppresses return conclusions.
+The browser verifies declared roles, sizes, SHA-256 digests, cutoff behavior, and supported fields. A complete Northstar package reproduces $15.9M LTM revenue, 70.0% gross margin, an 83.6% opening-cohort retention proxy over an 11-month interval, 33.3% post-money ownership, 3.23x gross MOIC, and 26.5% annualized gross return. The proxy is not annual NRR; it is compared directionally with the separate 95% annual NRR screen while cohort completeness remains blocked. That concern and six other diligence or policy gates keep the posture at `SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED`; clearing an illustrative return screen does not make the deal IC-ready. Removing or modifying a required source produces `NO CALL — PACKAGE INCOMPLETE` and suppresses return conclusions.
 
 Uploaded raw files are not retained as an unrestricted data room. The admitted parsed deal, its bounded replay sources, and the human workspace persist locally and can be exported and re-imported through a validated bundle. This is not encrypted, shared, authenticated, or appropriate for confidential information.
 
 ## Model and MCP boundaries
 
-The hosted model job is limited to **Challenge selected evidence**. The browser sends only the evidence subset the user confirms. The server validates the request digest, constrains output to cited challenges, diligence gaps, and one draft memo section, and returns no direct mutation. Browser-side provider keys are prohibited.
+The release candidate's hosted model job is limited to **Challenge selected evidence** for AtlasGrid, Helios, and the included Northstar package. Arbitrary uploaded packages retain deterministic analysis and human workflow but do not display a model control as functional. The browser sends only the evidence subset the user confirms. The server verifies the request against a retained synthetic evidence registry, constrains output to cited challenges, diligence gaps, and one draft memo section, and returns no direct mutation. Browser-side provider keys are prohibited. Live provider availability is recorded in [`LOCAL-VERIFICATION.md`](LOCAL-VERIFICATION.md) and is not implied by local tests.
 
 The local stdio MCP surface is documented in [`workbench/mcp-server/README.md`](workbench/mcp-server/README.md). It exposes seven read tools and three proposal tools. It has no approval, policy, calculation, recommendation, private-file, trading, spending, or network-mutation tool.
 
 ## Decision materials
 
-The public release includes three distinct artifacts for each retained case:
+The release candidate includes three distinct artifacts for each retained case:
 
 - one-page IC snapshot;
 - partner-facing underwriting packet; and
@@ -109,11 +109,11 @@ The integrated verifier covers the Python/kernel suite, independent Northstar or
 
 - Accounting uses integer cents or declared decimal arithmetic; return, debt, and waterfall mechanics remain deterministic.
 - The same seed reproduces canonical synthetic source-room bytes and digests.
-- Econometric outputs state the estimand, method, uncertainty, assumptions, diagnostics, classification, underwriting meaning, and what the result does not establish.
+- Econometric receipts state the estimand, method, uncertainty, assumptions, diagnostics, and classification; the investor interface leads with underwriting meaning and an explicit limitation rather than statistical notation.
 - Synthetic estimator recovery is not a real-company causal claim, investment forecast, or backtest.
 - Automated accessibility checks are not comprehensive WCAG certification.
 - Browser-local persistence is not enterprise security or confidential-data readiness.
-- Observed practitioner testing remains `NOT RUN`; use the [unguided testing package](docs/PRACTITIONER-TESTING-PACKAGE.md) and [feedback template](docs/practitioner-feedback-template.csv) without fabricating results.
+- Observed practitioner testing remains `NOT RUN`; give participants the [20-minute test card](docs/PRACTITIONER-TEST-CARD.md), use the [moderator and scoring protocol](docs/PRACTITIONER-TESTING-PACKAGE.md), and retain results in the [feedback template](docs/practitioner-feedback-template.csv) without fabricating outcomes.
 - Passing tests do not establish investment accuracy, performance improvement, production adoption, or model superiority.
 
 The current release receipt will identify the exact public commit, deployment, tests, independent reviews, and remaining limitations. Historical mission receipts remain preserved as prior-state evidence rather than current release claims.

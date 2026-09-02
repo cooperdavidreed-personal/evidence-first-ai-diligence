@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## Unreleased — Underwriting Desk unified practitioner-test candidate
+## 0.2.0 — 2026-09-02 — Underwriting Desk practitioner-test candidate
 
 - Unified prior Lab and Desk capabilities into one finance-native decision workspace.
 - Added fail-closed Growth SaaS intake with an external Desk-owned policy profile and independent Northstar oracle.
