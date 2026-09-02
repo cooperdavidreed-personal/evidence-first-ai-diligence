@@ -1,7 +1,7 @@
 // @vitest-environment node
 import {createHash} from "node:crypto";
 import {describe, expect, it} from "vitest";
-import handler, {admitRateWindow, validateBrowserBoundary, validateChallengeOutput, validateChallengeRequest} from "./challenge";
+import handler, {admitRateWindow, validateBrowserBoundary, validateChallengeOutput, validateChallengeRequest} from "./challenge.js";
 
 const evidence = [{id: "metric-runway", title: "Runway", displayValue: "19.1 months", summary: "Cash divided by average signed net burn."}];
 function request(overrides: Record<string, unknown> = {}) {

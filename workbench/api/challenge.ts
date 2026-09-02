@@ -82,13 +82,14 @@ export default {
       const rawBody = await request.text();
       if (new TextEncoder().encode(rawBody).byteLength > 12_000) return Response.json({error: "Request too large"}, {status: 413, headers: {"cache-control": "no-store"}});
       const parsed = validateChallengeRequest(JSON.parse(rawBody));
-      const modelFamily = "anthropic/claude-sonnet-5";
+      const modelFamily = "anthropic/claude-fable-5.1";
       const {output} = await generateText({model: modelFamily, output: Output.object({schema: outputSchema}), prompt: promptFor(parsed), maxOutputTokens: 1500, providerOptions: {gateway: {user: `public-synthetic-${parsed.request_digest_sha256.slice(0, 16)}`, tags: ["feature:evidence-challenge", "scope:public-synthetic"]}}});
       const validated = validateChallengeOutput(output, new Set(parsed.evidence.map((item) => item.id)));
       return Response.json({...validated, model_family: modelFamily, request_digest_sha256: parsed.request_digest_sha256, limitations: "Advisory review of selected synthetic evidence only; no calculation, policy, assumption, issue or recommendation was changed."}, {headers: {"cache-control": "no-store", "content-security-policy": "default-src 'none'", "referrer-policy": "no-referrer", "x-content-type-options": "nosniff"}});
     } catch (error) {
       const message = error instanceof Error ? error.message : "Model review failed";
       const status = /Invalid|mismatch|too large/i.test(message) ? 400 : 503;
+      if (status === 503) console.error("hosted model review failed", {name: error instanceof Error ? error.name : "unknown", message});
       return Response.json({error: status === 400 ? message : "Model review temporarily unavailable"}, {status, headers: {"cache-control": "no-store"}});
     }
   },
