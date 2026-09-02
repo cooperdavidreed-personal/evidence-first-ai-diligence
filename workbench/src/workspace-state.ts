@@ -258,7 +258,13 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
     const severity = item.severity === undefined ? undefined : ["HIGH", "MEDIUM", "LOW"].includes(String(item.severity)) ? item.severity as ModelProposal["severity"] : (() => {throw new Error(`proposals[${index}] severity is invalid`);})();
     const sourceRequestDigestSha256 = item.sourceRequestDigestSha256 === undefined ? undefined : boundedString(item.sourceRequestDigestSha256, `proposals[${index}].sourceRequestDigestSha256`, 64);
     if (sourceRequestDigestSha256 !== undefined && !/^[a-f0-9]{64}$/.test(sourceRequestDigestSha256)) throw new Error(`proposals[${index}] source request digest is invalid`);
-    return {proposalId: boundedString(item.proposalId, `proposals[${index}].proposalId`, 160), kind: item.kind as ModelProposal["kind"], state, title: boundedString(item.title, `proposals[${index}].title`, 500), body: boundedString(item.body, `proposals[${index}].body`, 2000), evidenceRefs, requestEvidence, requestDigestSha256, sourceRequestDigestSha256, responseDigestSha256, severity, proposedOwner: item.proposedOwner === undefined ? undefined : boundedString(item.proposedOwner, `proposals[${index}].proposedOwner`, 160), memoSection: item.memoSection === undefined ? undefined : boundedString(item.memoSection, `proposals[${index}].memoSection`, 100), humanActor, humanEdited: item.humanEdited === undefined ? undefined : Boolean(item.humanEdited), reviewedAt, modelFamily: item.modelFamily === undefined ? undefined : boundedString(item.modelFamily, `proposals[${index}].modelFamily`, 120), limitations: item.limitations === undefined ? undefined : boundedString(item.limitations, `proposals[${index}].limitations`, 500)};
+    const body = boundedString(item.body, `proposals[${index}].body`, 2000);
+    const originalBody = item.originalBody === undefined ? undefined : boundedString(item.originalBody, `proposals[${index}].originalBody`, 2000);
+    const humanEdited = item.humanEdited === undefined ? undefined : Boolean(item.humanEdited);
+    if (humanEdited && (!originalBody || originalBody === body)) throw new Error(`proposals[${index}] must preserve a distinct original model draft when human-edited`);
+    if (!humanEdited && originalBody !== undefined) throw new Error(`proposals[${index}] cannot claim an original draft without a human edit`);
+    if (state === "PROPOSED" && (humanEdited !== undefined || originalBody !== undefined)) throw new Error(`proposals[${index}] cannot claim human editing before review`);
+    return {proposalId: boundedString(item.proposalId, `proposals[${index}].proposalId`, 160), kind: item.kind as ModelProposal["kind"], state, title: boundedString(item.title, `proposals[${index}].title`, 500), body, originalBody, evidenceRefs, requestEvidence, requestDigestSha256, sourceRequestDigestSha256, responseDigestSha256, severity, proposedOwner: item.proposedOwner === undefined ? undefined : boundedString(item.proposedOwner, `proposals[${index}].proposedOwner`, 160), memoSection: item.memoSection === undefined ? undefined : boundedString(item.memoSection, `proposals[${index}].memoSection`, 100), humanActor, humanEdited, reviewedAt, modelFamily: item.modelFamily === undefined ? undefined : boundedString(item.modelFamily, `proposals[${index}].modelFamily`, 120), limitations: item.limitations === undefined ? undefined : boundedString(item.limitations, `proposals[${index}].limitations`, 500)};
   });
   assertUnique(proposals.map((item) => item.proposalId), "Model proposal");
   if (allowedEvidenceRefs) {
@@ -343,13 +349,17 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
   return {schemaVersion: WORKSPACE_SCHEMA, caseId, revision: Number(raw.revision), privateNote, observations, assumptionReviews, assumptionReviewEvents, issues, proposals, memoSections, scenarioValues: raw.scenarioValues as Record<string, string>, policyOverrides, updatedAt: timestamp(raw.updatedAt, "updatedAt")};
 }
 
-export function loadWorkspace(caseId: string, fallback: DealWorkspaceState, allowedEvidenceRefs?: ReadonlySet<string>, scenarioContract?: WorkspaceScenarioContract, integrityContract?: WorkspaceIntegrityContract) {
+export function loadWorkspaceResult(caseId: string, fallback: DealWorkspaceState, allowedEvidenceRefs?: ReadonlySet<string>, scenarioContract?: WorkspaceScenarioContract, integrityContract?: WorkspaceIntegrityContract) {
   try {
     const raw = window.localStorage?.getItem(storageKey(caseId));
-    return raw ? validateWorkspace(JSON.parse(raw) as unknown, caseId, allowedEvidenceRefs, scenarioContract, integrityContract) : fallback;
+    return {state: raw ? validateWorkspace(JSON.parse(raw) as unknown, caseId, allowedEvidenceRefs, scenarioContract, integrityContract) : fallback, notice: null as string | null};
   } catch {
-    return fallback;
+    return {state: fallback, notice: "Saved workspace failed validation and was not loaded. The canonical case remains unchanged; import a valid portable state to recover prior work."};
   }
+}
+
+export function loadWorkspace(caseId: string, fallback: DealWorkspaceState, allowedEvidenceRefs?: ReadonlySet<string>, scenarioContract?: WorkspaceScenarioContract, integrityContract?: WorkspaceIntegrityContract) {
+  return loadWorkspaceResult(caseId, fallback, allowedEvidenceRefs, scenarioContract, integrityContract).state;
 }
 
 export function persistWorkspace(state: DealWorkspaceState, allowedEvidenceRefs?: ReadonlySet<string>, scenarioContract?: WorkspaceScenarioContract, integrityContract?: WorkspaceIntegrityContract) {

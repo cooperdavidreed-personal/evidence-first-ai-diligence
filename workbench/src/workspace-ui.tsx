@@ -5,7 +5,7 @@ import type {ScenarioMemoSummary} from "./financial-workspace";
 import {
   createWorkspace,
   createWorkspaceIntegrityContract,
-  loadWorkspace,
+  loadWorkspaceResult,
   persistWorkspace,
   serializeWorkspace,
   touchWorkspace,
@@ -42,15 +42,18 @@ export function formatHumanDate(value: string | null | undefined) {
 export function useDealWorkspace(seed: WorkspaceSeed, allowedEvidenceRefs: ReadonlySet<string>, scenarioContract: WorkspaceScenarioContract, policyOverrideRoles: Record<string, string> = EMPTY_POLICY_OVERRIDE_ROLES) {
   const fallback = useMemo(() => createWorkspace(seed), [seed]);
   const integrityContract = useMemo(() => createWorkspaceIntegrityContract(seed, policyOverrideRoles), [seed, policyOverrideRoles]);
-  const [state, setState] = useState<DealWorkspaceState>(() => loadWorkspace(seed.caseId, fallback, allowedEvidenceRefs, scenarioContract, integrityContract));
-  const [storageNotice, setStorageNotice] = useState("Saved locally");
+  const initialLoad = useMemo(() => loadWorkspaceResult(seed.caseId, fallback, allowedEvidenceRefs, scenarioContract, integrityContract), [seed.caseId, fallback, allowedEvidenceRefs, scenarioContract, integrityContract]);
+  const [state, setState] = useState<DealWorkspaceState>(() => initialLoad.state);
+  const [loadNotice, setLoadNotice] = useState<string | null>(() => initialLoad.notice);
+  const [saveNotice, setSaveNotice] = useState("Saved locally");
 
-  useEffect(() => setState(loadWorkspace(seed.caseId, fallback, allowedEvidenceRefs, scenarioContract, integrityContract)), [seed.caseId, fallback, allowedEvidenceRefs, scenarioContract, integrityContract]);
+  useEffect(() => {const loaded = loadWorkspaceResult(seed.caseId, fallback, allowedEvidenceRefs, scenarioContract, integrityContract); setState(loaded.state); setLoadNotice(loaded.notice);}, [seed.caseId, fallback, allowedEvidenceRefs, scenarioContract, integrityContract]);
   useEffect(() => {
-    setStorageNotice(persistWorkspace(state, allowedEvidenceRefs, scenarioContract, integrityContract) ? "Saved locally" : "In memory · local save unavailable");
+    setSaveNotice(persistWorkspace(state, allowedEvidenceRefs, scenarioContract, integrityContract) ? "Saved locally" : "In memory · local save unavailable");
   }, [allowedEvidenceRefs, scenarioContract, integrityContract, state]);
 
   const update: WorkspaceUpdate = (patch) => {
+    setLoadNotice(null);
     setState((current) => {
       const next = touchWorkspace(current, typeof patch === "function" ? patch(current) : patch);
       return validateWorkspace(next, seed.caseId, allowedEvidenceRefs, scenarioContract, integrityContract);
@@ -58,9 +61,10 @@ export function useDealWorkspace(seed: WorkspaceSeed, allowedEvidenceRefs: Reado
   };
   const replace = (next: DealWorkspaceState) => {
     setState(validateWorkspace(next, seed.caseId, allowedEvidenceRefs, scenarioContract, integrityContract));
-    setStorageNotice("Imported and saved locally");
+    setLoadNotice(null);
+    setSaveNotice("Imported and saved locally");
   };
-  return {state, update, replace, storageNotice, integrityContract};
+  return {state, update, replace, storageNotice: loadNotice ?? saveNotice, integrityContract};
 }
 
 export function ObservationComposer({state, update}: {state: DealWorkspaceState; update: WorkspaceUpdate}) {
@@ -155,7 +159,7 @@ export function DiligenceWorklist({state, update, lockedIssueIds = new Set<strin
     {adding ? <div className="issue-create-form"><label><span>Issue</span><input maxLength={240} value={draft.title} onChange={(event) => setDraft({...draft, title: event.target.value})} /></label><label><span>Owner</span><input maxLength={120} value={draft.owner} onChange={(event) => setDraft({...draft, owner: event.target.value})} /></label><label><span>Priority</span><select value={draft.priority} onChange={(event) => setDraft({...draft, priority: event.target.value as IssuePriority})}>{["CRITICAL", "HIGH", "MEDIUM", "LOW"].map((item) => <option key={item}>{item}</option>)}</select></label><label><span>Due date</span><input type="date" value={draft.dueDate} onChange={(event) => setDraft({...draft, dueDate: event.target.value})} /></label><label className="wide"><span>Decision impact</span><input maxLength={1200} value={draft.decisionImpact} onChange={(event) => setDraft({...draft, decisionImpact: event.target.value})} /></label><button type="button" className="primary-button" onClick={create} disabled={!draft.title.trim() || !draft.owner.trim() || !draft.decisionImpact.trim()}>Create issue</button></div> : null}
     <div className="worklist-table" aria-label="Diligence issue worklist">
       <div className="worklist-head" aria-hidden="true"><span>Issue</span><span>Priority</span><span>Owner</span><span>Status</span><span>Due</span></div>
-      {state.issues.map((issue) => {const locked = lockedIssueIds.has(issue.id); return <details key={issue.id} className="worklist-row"><summary><span><strong>{issue.title}</strong><small>{issue.decisionImpact}</small></span><span className={`priority priority-${issue.priority.toLowerCase()}`}>{issue.priority.toLowerCase()}</span><span>{issue.owner}</span><span className={`status status-${issue.status.toLowerCase()}`}>{issue.status.toLowerCase().replace("_", " ")}</span><span>{issue.dueDate ? formatHumanDate(`${issue.dueDate}T12:00:00Z`) : "Not set"}</span></summary><div className="issue-detail"><p>{issue.description}</p><div className="issue-controls"><label><span>Owner</span><input maxLength={120} value={issue.owner} onChange={(event) => edit(issue.id, {owner: event.target.value})} /></label><label><span>Status</span><select value={issue.status === "RESOLVED" ? "RESOLVED" : issue.status} disabled={locked || issue.status === "RESOLVED"} onChange={(event) => edit(issue.id, {status: event.target.value as Exclude<IssueStatus, "RESOLVED">, resolution: null, resolvedBy: null})}><option value="OPEN">Open</option><option value="IN_PROGRESS">In progress</option>{issue.status === "RESOLVED" ? <option value="RESOLVED">Resolved</option> : null}</select></label><label><span>Priority</span><select value={issue.priority} onChange={(event) => edit(issue.id, {priority: event.target.value as IssuePriority})}>{["CRITICAL", "HIGH", "MEDIUM", "LOW"].map((item) => <option key={item}>{item}</option>)}</select></label><label><span>Due date</span><input type="date" value={issue.dueDate ?? ""} onChange={(event) => edit(issue.id, {dueDate: event.target.value || null})} /></label></div>{locked ? <p className="resolution-record"><strong>Quantitative hurdle:</strong> This issue cannot be cleared with a free-text resolution. Change the governed policy or canonical evidence through an authorized workflow.</p> : issue.status === "RESOLVED" ? <p className="resolution-record"><strong>Resolution:</strong> {issue.resolution}<br /><small>Resolved by {issue.resolvedBy}</small></p> : <div className="resolution-form"><label><span>Resolver</span><input maxLength={120} value={resolvers[issue.id] ?? ""} onChange={(event) => setResolvers({...resolvers, [issue.id]: event.target.value})} placeholder="Named human resolver" /></label><label><span>Resolution record</span><textarea maxLength={2000} value={resolutions[issue.id] ?? ""} onChange={(event) => setResolutions({...resolutions, [issue.id]: event.target.value})} placeholder="What evidence or decision resolved this issue?" /></label><button type="button" onClick={() => resolve(issue.id)} disabled={!resolutions[issue.id]?.trim() || !resolvers[issue.id]?.trim()}>Resolve issue</button></div>}</div></details>;})}
+      {state.issues.map((issue) => {const locked = lockedIssueIds.has(issue.id); return <details key={issue.id} className="worklist-row"><summary><span><strong>{issue.title}</strong><small>{issue.decisionImpact}</small></span><span className={`priority priority-${issue.priority.toLowerCase()}`}>{issue.priority.toLowerCase()}</span><span>{issue.owner}</span><span className={`status status-${issue.status.toLowerCase()}`}>{issue.status.toLowerCase().replace("_", " ")}</span><span>{issue.dueDate ? formatHumanDate(`${issue.dueDate}T12:00:00Z`) : "Not set"}</span></summary><div className="issue-detail"><p>{issue.description}</p><div className="issue-controls"><label><span>Owner</span><input maxLength={120} value={issue.owner} onChange={(event) => edit(issue.id, {owner: event.target.value})} /></label><label><span>Status</span><select value={issue.status === "RESOLVED" ? "RESOLVED" : issue.status} disabled={locked || issue.status === "RESOLVED"} onChange={(event) => edit(issue.id, {status: event.target.value as Exclude<IssueStatus, "RESOLVED">, resolution: null, resolvedBy: null})}><option value="OPEN">Open</option><option value="IN_PROGRESS">In progress</option>{issue.status === "RESOLVED" ? <option value="RESOLVED">Resolved</option> : null}</select></label><label><span>Priority</span><select value={issue.priority} onChange={(event) => edit(issue.id, {priority: event.target.value as IssuePriority})}>{["CRITICAL", "HIGH", "MEDIUM", "LOW"].map((item) => <option key={item}>{item}</option>)}</select></label><label><span>Due date</span><input type="date" value={issue.dueDate ?? ""} onChange={(event) => edit(issue.id, {dueDate: event.target.value || null})} /></label></div>{locked ? <p className="resolution-record"><strong>Quantitative hurdle:</strong> This issue cannot be cleared with a free-text resolution. A recorded policy exception can disposition the screen, but the evidence-quality diligence concern remains open until canonical evidence changes through an authorized workflow.</p> : issue.status === "RESOLVED" ? <p className="resolution-record"><strong>Resolution:</strong> {issue.resolution}<br /><small>Resolved by {issue.resolvedBy}</small></p> : <div className="resolution-form"><label><span>Resolver</span><input maxLength={120} value={resolvers[issue.id] ?? ""} onChange={(event) => setResolvers({...resolvers, [issue.id]: event.target.value})} placeholder="Named human resolver" /></label><label><span>Resolution record</span><textarea maxLength={2000} value={resolutions[issue.id] ?? ""} onChange={(event) => setResolutions({...resolutions, [issue.id]: event.target.value})} placeholder="What evidence or decision resolved this issue?" /></label><button type="button" onClick={() => resolve(issue.id)} disabled={!resolutions[issue.id]?.trim() || !resolvers[issue.id]?.trim()}>Resolve issue</button></div>}</div></details>;})}
     </div>
   </section>;
 }

@@ -47,6 +47,17 @@ describe("portable deal workspace", () => {
     expect(() => validateWorkspace(state)).toThrow(/accepted model proposal/i);
   });
 
+  it("rejects a claimed human edit that does not preserve the distinct model draft", () => {
+    const state = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
+    const requestEvidence = seed.canonicalEvidence;
+    state.proposals.push({proposalId: "proposal-1", kind: "CHALLENGE", state: "ACCEPTED", title: "Challenge retention", body: "Reconcile the denominator.", evidenceRefs: ["AG-01"], requestEvidence, requestDigestSha256: digestChallengePayloadSync(requestEvidence), humanActor: "Avery Chen", humanEdited: true, reviewedAt: "2026-09-01T01:00:00.000Z"});
+    expect(() => validateWorkspace(state, "atlasgrid", new Set(["AG-01"]))).toThrow(/preserve a distinct original model draft/i);
+    state.proposals[0].originalBody = state.proposals[0].body;
+    expect(() => validateWorkspace(state, "atlasgrid", new Set(["AG-01"]))).toThrow(/preserve a distinct original model draft/i);
+    state.proposals[0].originalBody = "Which cohort definitions are incomplete?";
+    expect(validateWorkspace(state, "atlasgrid", new Set(["AG-01"])).proposals[0].originalBody).toBe("Which cohort definitions are incomplete?");
+  });
+
   it("requires a newly accepted model memo section to preserve the accepted proposal text", () => {
     const state = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
     const requestEvidence = seed.canonicalEvidence;

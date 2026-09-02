@@ -174,7 +174,8 @@ test("Helios policy sensitivity is an unapproved what-if and follows the memo", 
   await (await visibleDealNavigation(page)).getByRole("button", {name: "IC Memo"}).click();
   const summary = page.getByRole("region", {name: "Scenario represented in this memo"});
   await expect(summary).toContainText("Unapproved what-if");
-  await expect(summary).toContainText("modeled below 1.0x");
+  await expect(summary).toContainText("selected analyst prior implies");
+  await expect(summary).toContainText("returning less than 1.0x");
   await expect(summary).toContainText("ceiling");
 });
 

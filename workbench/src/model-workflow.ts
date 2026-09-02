@@ -12,6 +12,7 @@ export interface ModelProposal {
   state: ProposalState;
   title: string;
   body: string;
+  originalBody?: string;
   evidenceRefs: string[];
   requestEvidence: SelectedEvidence[];
   severity?: "HIGH" | "MEDIUM" | "LOW";
@@ -133,7 +134,8 @@ export function reviewProposal(proposal: ModelProposal, decision: "ACCEPTED" | "
   const actor = bounded(humanActor, 120); if (!actor) throw new Error("A human actor is required");
   const nextBody = editedBody === undefined ? proposal.body : bounded(editedBody, 2000);
   if (!nextBody) throw new Error("Edited proposal text is required");
-  return {...proposal, body: nextBody, state: decision, humanActor: actor, humanEdited: nextBody !== proposal.body, reviewedAt: new Date().toISOString()};
+  const humanEdited = nextBody !== proposal.body;
+  return {...proposal, body: nextBody, originalBody: humanEdited ? proposal.originalBody ?? proposal.body : proposal.originalBody, state: decision, humanActor: actor, humanEdited, reviewedAt: new Date().toISOString()};
 }
 import {sha256} from "@noble/hashes/sha2.js";
 import {bytesToHex} from "@noble/hashes/utils.js";

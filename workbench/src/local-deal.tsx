@@ -138,7 +138,7 @@ function LocalDecisionRail({result, state, view}: {result: IntakeResult; state: 
   const openIssues = state.issues.filter((issue) => issue.status !== "RESOLVED");
   const {changed} = normalizedLocalScenario(result, state);
   const nextAction = openIssues.length
-    ? `Resolve ${openIssues.length} open diligence ${openIssues.length === 1 ? "issue" : "issues"}; disposition failed screening gates separately.`
+    ? `Advance ${openIssues.length} open diligence ${openIssues.length === 1 ? "issue" : "issues"}; ${failedGates.length} screening ${failedGates.length === 1 ? "gate still lacks" : "gates still lack"} a policy disposition.`
     : failedGates.length
       ? "Disposition failed screening gates with evidence or a recorded policy-owner exception."
       : "Document the policy-owner exception and complete human IC review.";

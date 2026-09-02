@@ -103,6 +103,14 @@ describe("Underwriting Desk investor workspace", () => {
     expect(screen.getByRole("heading", {name: "AtlasGrid Systems"})).toBeInTheDocument();
   });
 
+  it("surfaces rejected saved state instead of silently resetting it", async () => {
+    window.localStorage.setItem("underwriting-desk.workspace.v2.atlasgrid", "{not-valid-json");
+    window.history.replaceState(null, "", "/#/v3/atlasgrid/overview");
+    render(<App />);
+    expect(await screen.findByText(/Saved workspace failed validation and was not loaded/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "AtlasGrid Systems"})).toBeInTheDocument();
+  });
+
   it("puts plain-language decision evidence before methods", async () => {
     window.history.replaceState(null, "", "/#/v3/helios/diligence");
     const user = userEvent.setup();
@@ -114,6 +122,9 @@ describe("Underwriting Desk investor workspace", () => {
     expect(screen.getByText("How it changes underwriting")).toBeInTheDocument();
     expect(screen.getByText("What it does not establish")).toBeInTheDocument();
     expect(screen.getByText("Method and uncertainty").closest("details")).not.toHaveAttribute("open");
+    await user.click(screen.getByText("Method and uncertainty"));
+    expect(screen.getByText(/6.2% to 11.2% lower unit compute cost/)).toBeInTheDocument();
+    expect(screen.getByText(/About 1.4 percentage points on the log-cost scale/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", {name: "Inspect evidence and calculation"}));
     expect(screen.getByRole("dialog", {name: "Optimizer test effect"})).toBeInTheDocument();
   });
@@ -124,6 +135,8 @@ describe("Underwriting Desk investor workspace", () => {
     render(<App />);
     await user.click(screen.getByRole("button", {name: "Assumption test"}));
     expect(screen.getByText(/6.7 percentage points lower renewal conversion/)).toBeInTheDocument();
+    await user.click(screen.getByText("Method and uncertainty"));
+    expect(screen.getByText(/2.5 to 10.9 percentage points lower renewal conversion/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", {name: "Inspect evidence and calculation"}));
     expect(screen.getByRole("dialog", {name: "Renewal-pricing test effect"})).toBeInTheDocument();
   });

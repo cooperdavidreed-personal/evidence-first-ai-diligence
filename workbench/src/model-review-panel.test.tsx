@@ -30,9 +30,15 @@ describe("model review panel", () => {
     expect(screen.getByText("Model proposed")).toBeInTheDocument();
     const accept = screen.getByRole("button", {name: "Accept proposal"});
     expect(accept).toBeDisabled();
+    const editor = screen.getByRole("textbox", {name: "Edit Burn window may be too short"});
+    await user.clear(editor);
+    await user.type(editor, "Reconcile committed costs against the signed plan.");
     await user.type(screen.getByRole("textbox", {name: "Human reviewer"}), "Avery Chen");
     await user.click(accept);
     expect(screen.getByText("accepted")).toBeInTheDocument();
-    expect(screen.getByText((_, node) => node?.tagName === "FOOTER" && Boolean(node.textContent?.includes("accepted by Avery Chen")))).toBeInTheDocument();
+    expect(screen.getByText((_, node) => node?.tagName === "FOOTER" && Boolean(node.textContent?.includes("Edited and accepted by Avery Chen")))).toBeInTheDocument();
+    await user.click(screen.getByText("Compare accepted edit to model draft"));
+    expect(screen.getByText("Which committed costs are absent?")).toBeInTheDocument();
+    expect(screen.getAllByText("Reconcile committed costs against the signed plan.")).toHaveLength(2);
   });
 });

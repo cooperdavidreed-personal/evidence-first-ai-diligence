@@ -47,6 +47,12 @@ describe("controlled evidence challenge", () => {
     expect(JSON.stringify(rawData)).toBe(before);
   });
 
+  it("preserves the original model draft when a named reviewer edits it", async () => {
+    const result = await runEvidenceChallenge(evidence, async (request) => ({request_digest_sha256: request.request_digest_sha256, challenges: [{claim: "Challenge", evidence_refs: ["metric-runway"], severity: "MEDIUM", management_question: "Which committed costs are absent?"}], gaps: [], memo_drafts: []}));
+    const reviewed = reviewProposal(result.proposals[0], "ACCEPTED", "Avery Chen", "Reconcile committed costs against the signed plan.");
+    expect(reviewed).toMatchObject({state: "ACCEPTED", body: "Reconcile committed costs against the signed plan.", originalBody: "Which committed costs are absent?", humanEdited: true, humanActor: "Avery Chen"});
+  });
+
   it("fails before transport when evidence exceeds the selected-evidence contract", async () => {
     const transport = vi.fn();
     const result = await runEvidenceChallenge([], transport);

@@ -492,6 +492,10 @@ dd { margin: 5px 0 0; }
 .proposal-list small { display: block; margin-top: 10px; color: var(--muted); }
 .proposal-list footer { display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; color: var(--muted); font-size: 12px; }
 .proposal-list footer button { border: 1px solid var(--line-dark); border-radius: 5px; padding: 6px 9px; background: white; color: var(--cobalt); cursor: pointer; }
+.proposal-diff { margin: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 10px 0; }
+.proposal-diff > div { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.proposal-diff section { padding: 10px; background: var(--canvas); }
+.proposal-diff span { display: block; margin-bottom: 6px; color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
 .search-field { display: grid; grid-template-columns: 150px minmax(240px, 560px); gap: 14px; align-items: center; margin-bottom: 18px; color: var(--muted); font-size: 12px; }
 .search-field input { border: 1px solid var(--line-dark); border-radius: 5px; padding: 9px 10px; background: white; color: var(--ink); }
 .document-list { display: grid; }
@@ -670,6 +674,7 @@ code { overflow-wrap: anywhere; font-family: "SFMono-Regular", Consolas, monospa
   .connection-dialog-footer > div { align-items: flex-end; flex-direction: column; gap: 7px; text-align: right; }
   .connection-dialog-footer span { max-width: 180px; }
   .memo-sheet .source-tag { font-size: 12px; }
+  .proposal-diff > div { grid-template-columns: 1fr; }
 }
 @media print {
   .sidebar, .deal-topbar, .mobile-nav, .deal-heading, .memo-actions { display: none !important; }
