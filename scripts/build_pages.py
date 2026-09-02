@@ -4,7 +4,9 @@ import argparse
 import hashlib
 import json
 import shutil
+from html import escape
 from pathlib import Path
+from urllib.parse import urlparse
 
 from ic_evidence_lab.canonical import canonical_json
 try:
@@ -42,6 +44,7 @@ def build(
     workbench_dist: Path,
     *,
     include_demo: bool = False,
+    canonical_url: str | None = None,
 ) -> None:
     index = workbench_dist / "index.html"
     if not index.is_file():
@@ -59,6 +62,19 @@ def build(
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
         staged.append((target, "v2-workbench"))
+    if canonical_url is not None:
+        parsed = urlparse(canonical_url)
+        if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
+            raise ValueError("canonical redirect URL must be an absolute HTTPS URL")
+        safe_url = escape(canonical_url, quote=True)
+        redirect = (
+            "<!doctype html><html lang=en><head><meta charset=utf-8>"
+            "<meta name=viewport content='width=device-width,initial-scale=1'>"
+            f"<meta http-equiv=refresh content='0;url={safe_url}'>"
+            f"<link rel=canonical href='{safe_url}'><title>Underwriting Desk</title></head>"
+            f"<body><main><h1>Underwriting Desk has moved</h1><p><a href='{safe_url}'>Open the canonical application</a>.</p></main></body></html>"
+        )
+        (destination / "index.html").write_text(redirect, encoding="utf-8")
     (destination / ".nojekyll").write_text("", encoding="utf-8")
     staged.append((destination / ".nojekyll", "pages-control"))
 
@@ -107,24 +123,6 @@ def build(
             shutil.copy2(source, target)
             staged.append((target, "release-demo"))
 
-    accessibility_root = repo / "verification" / "accessibility-evidence"
-    accessibility_files = sorted(accessibility_root.glob("*.json"))
-    if len(accessibility_files) != 4:
-        raise RuntimeError(
-            f"expected four accessibility evidence files, got {len(accessibility_files)}"
-        )
-    for source in accessibility_files:
-        staged.append(
-            (
-                _copy_file(
-                    repo,
-                    destination,
-                    f"verification/accessibility-evidence/{source.name}",
-                ),
-                "accessibility-evidence",
-            )
-        )
-
     visual_manifest_path = repo / "verification/visual-evidence.json"
     visual_manifest = json.loads(visual_manifest_path.read_text(encoding="utf-8"))
     expected_manifest_sha256 = visual_manifest.get("manifest_sha256")
@@ -135,6 +133,31 @@ def build(
     staged.append(
         (_copy_file(repo, destination, "verification/visual-evidence.json"), "visual-manifest")
     )
+    accessibility_entries = visual_manifest.get("accessibility_files")
+    if accessibility_entries is None:
+        accessibility_root = repo / "verification" / "accessibility-evidence"
+        accessibility_entries = [
+            {"path": source.relative_to(repo).as_posix()}
+            for source in sorted(accessibility_root.glob("*.json"))
+        ]
+        if len(accessibility_entries) != 4:
+            raise RuntimeError(
+                f"expected four legacy accessibility evidence files, got {len(accessibility_entries)}"
+            )
+    if not isinstance(accessibility_entries, list) or not accessibility_entries:
+        raise RuntimeError("visual manifest contains no accessibility evidence")
+    for entry in accessibility_entries:
+        relative = entry.get("path")
+        if not isinstance(relative, str) or not relative.startswith("verification/accessibility-evidence/"):
+            raise RuntimeError("visual manifest contains an invalid accessibility path")
+        path = _copy_file(repo, destination, relative)
+        data = path.read_bytes()
+        if "bytes" in entry and (
+            len(data) != entry.get("bytes")
+            or hashlib.sha256(data).hexdigest() != entry.get("sha256")
+        ):
+            raise RuntimeError(f"visual manifest mismatch: {relative}")
+        staged.append((path, "accessibility-evidence"))
     visual_entries = [*visual_manifest.get("files", []), *visual_manifest.get("print_files", [])]
     if not visual_entries:
         raise RuntimeError("visual manifest contains no candidate artifacts")
@@ -167,6 +190,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", default="dist/pages")
     parser.add_argument("--workbench-dist", default="workbench/dist")
+    parser.add_argument(
+        "--canonical-url",
+        default="https://underwriting-desk-delta.vercel.app/",
+        help="Replace the Pages root with a safe redirect while retaining release artifacts.",
+    )
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
     destination = Path(args.out)
@@ -175,7 +203,13 @@ def main() -> int:
     workbench_dist = Path(args.workbench_dist)
     if not workbench_dist.is_absolute():
         workbench_dist = repo / workbench_dist
-    build(repo, destination, workbench_dist, include_demo=True)
+    build(
+        repo,
+        destination,
+        workbench_dist,
+        include_demo=True,
+        canonical_url=args.canonical_url,
+    )
     print(json.dumps({"status": "PRODUCED", "path": str(destination)}, sort_keys=True))
     return 0
 

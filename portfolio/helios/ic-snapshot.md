@@ -6,7 +6,7 @@
 
 Hold because, under the canonical unreviewed synthetic prior, 20.00% of retained paths fall below 1.0x versus the illustrative 10.00% policy maximum. This result is driven by the explicit catastrophe-state assumption; the proposed milestone financing is a path to reconsideration, not a current investment recommendation.
 
-**Decision requested:** HOLD under the selected synthetic prior and analyst-set loss maximum. Do not authorize funding while diligence remains unresolved; reopen only after human IC review of the risk specification and new evidence.
+**Decision requested:** HOLD under the selected synthetic prior and Desk-owned draft loss maximum. Do not authorize funding while diligence remains unresolved; reopen only after human IC review of the risk specification and new evidence.
 
 ## Decision at a glance
 

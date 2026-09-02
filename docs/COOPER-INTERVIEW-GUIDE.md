@@ -4,143 +4,148 @@ Status: `DRAFT FOR FOUNDER LEARNING — NOT A PUBLIC CLAIM`
 
 ## The one-sentence thesis
 
-I built a shared PE and VC underwriting workbench that forces every important
-number through a visible chain from retained evidence to estimate, investment
-economics, decision gate, and operating action.
+I built an evidence-linked PE and VC underwriting workspace in which the Desk,
+not the language model, owns the source package, deterministic calculations,
+policy, scenarios, approvals, and final investment record.
 
 ## Thirty-second explanation
 
-Most AI diligence demos optimize for generating a memo. I optimized for the
-harder part: knowing which numbers deserve decision credit. The project contains
-two fully synthetic companies—a SaaS buyout and an AI-infrastructure growth
-round—with deterministic accounting, causal and noncausal analyses, full return
-mechanics, and clickable number-to-source lineage. The interface deliberately
-separates an analytical posture from actual investment authority, so a model can
-say `REPRICE` or `CONDITIONAL INVEST` while the workflow remains on `HOLD` for a
-human decision.
+Most AI diligence demos optimize for generating prose. This project makes the
+decision record the product: sources remain distinct from assumptions and fund
+policy; calculations are deterministic; what-if cases cannot overwrite the
+canonical case; and model output begins as a cited proposal that a named human
+must accept, reject, or edit. The public release uses fictional companies and
+synthetic records so the full workflow can be reproduced without exposing
+private deal data.
 
 ## Two-minute explanation
 
-The system starts with versioned synthetic data-room manifests rather than a
-chat prompt. AtlasGrid plants realistic buyout distortions: active-only NRR,
-subsidiary concentration, underburdened margin, challenged add-backs, booked ARR,
-and leverage risk. Helios plants venture-specific problems: design-partner
-selection, pipeline quality, compute unit economics, dilution, milestone
-financing, runway, and preference waterfalls.
+The Desk has three working entry points. AtlasGrid is a synthetic SaaS buyout
+with debt, price, covenant, concentration, margin, retention, and return
+mechanics. Helios is a synthetic AI-infrastructure growth investment with
+cohorts, unit economics, runway, financing events, dilution, preferences, and
+probabilistic returns. Northstar is a supported four-file browser-local intake
+that proves an uploaded company package cannot grade itself: package hurdles are
+retained as representations, while Desk-owned draft screening policy remains a
+separate registry.
 
-The Python layer precommits analysis specifications, reconciles money in integer
-cents, runs the econometrics, and computes debt or capitalization outcomes. It
-emits typed metrics, formulas, source locators, scenario books, decision records,
-and receipts. The React layer consumes those generated contracts without a
-runtime backend. A reviewer can move from a headline return to its business
-meaning, formula, operands, source selection, and audit digest.
+The important Northstar result is deliberately uncomfortable. Its package
+reconciles to $15.9 million of LTM revenue, 70.0% gross margin, 83.6%
+ordinary-cohort NRR, 33.3% post-money ownership, 3.23x gross MOIC, and 26.5%
+annualized gross return. The return screens clear, but 83.6% NRR and six other
+quality gates keep the posture at `SCREENING COMPLETE — FURTHER DILIGENCE
+REQUIRED`. Missing or changed required files suppress the return conclusion and
+produce `NO CALL — PACKAGE INCOMPLETE`.
 
-The investment insight is not “AI made a report.” It is that evidence quality
-changes economics. AtlasGrid's seller definitions reduce normalized earnings and
-reveal parent concentration, so the ask misses the hurdle and the posture becomes
-`REPRICE`. Helios can support a first close, but the second tranche remains tied
-to explicit operating evidence, and a failed milestone reruns cash, ownership,
-preferences, and returns. Econometric results receive zero, scenario-only, or
-bounded model credit depending on identification.
+Inside a deal, a practitioner can inspect source-linked evidence, change a
+bounded scenario, see deterministic consequences, write notes, manage diligence
+issues, disposition assumptions, review fund-owned policy, request a bounded
+model challenge, make a named human decision on the proposal, edit the memo, and
+export portable state. Technical receipts and methodology are available through
+progressive disclosure instead of dominating the investment workflow.
 
-## Ten-minute walkthrough
+## Eight-minute unguided walkthrough
 
-1. Start on AtlasGrid's IC Snapshot. Explain `REPRICE` versus `HOLD`, `PENDING
-   HUMAN`, and `PENDING FOUNDER SIGNATURE`.
-2. Point to the selected $210M EV, $120M debt, $88M/$20M earnout mechanics, and
-   23.3% gross XIRR. Then show that the $240M ask produces 17.6% and misses the
-   22% hurdle.
-3. Use the 60-second IC read: definition quality is the decisive driver; churn
-   plus multiple compression is the loss case; covenant EBITDA is the gate.
-4. Open the hurdle ledger. Say explicitly: “Clearing the quantitative hurdle is
-   necessary in this illustrative rule set; it is not investment approval.”
-5. Open Gross IRR lineage. Walk through business meaning, dated XIRR operands,
-   retained source evidence, then hashes last.
-6. Search the deal room for “covenant.” Show that the product retrieves the
-   request, owner, consequence, and relevant evidence—not just a filename.
-7. In the Econometric Lab, compare association/abstention with identified
-   synthetic effects. Explain why observed price slope gets zero credit and why
-   even a randomized synthetic effect does not automatically transfer to a real
-   portfolio company.
-8. In the Underwriting Room, switch among seller ask, selected, and downside;
-   then change exit multiple. Explain that each displayed state is a retained
-   engine result, and the URL captures the selected state.
-9. Switch to Helios. Explain why $25M closes first and $15M is conditional, why
-   current and funded runway differ, and why the milestone failure must rerun the
-   capitalization and cash model.
-10. End on Value Creation. Show that an initiative needs a baseline, target,
-    owner, cost, milestone, stop rule, evidence class, and reconciled economic
-    bridge before it receives credit.
+1. Start on Deals. Open Helios and state the posture: `HOLD` because 20.0% of
+   retained synthetic paths fall below 1.0x versus an analyst-owned 10.0% loss
+   ceiling. The 8.2x milestone-case upside is not the recommendation.
+2. Open Financials. Change one authorized what-if input and show the returns and
+   decision consequence update while the canonical case remains unchanged.
+3. Open Documents. Search for a metric and inspect an exact source excerpt,
+   period, value, and downstream calculation.
+4. Open Diligence. Add a named human observation, assign an issue, and show the
+   separate assumption and policy registries.
+5. Open Model review. Select the exact evidence subset, confirm the transfer,
+   run the bounded challenge, and show that the response begins as `PROPOSED`.
+6. Enter a reviewer name, accept or reject the proposal, then open IC Memo and
+   add an accepted proposal with provenance.
+7. Return to Deals, choose New deal, download and import the Northstar package,
+   and point to the 83.6% NRR concern beside the clearing 3.23x / 26.5% return
+   case.
+8. Remove or modify a required file and rerun intake. Show `NO CALL — PACKAGE
+   INCOMPLETE` with return conclusions suppressed.
 
 ## Architecture you should be able to draw
 
 ```text
-Synthetic source room
-  → content-addressed manifest
-  → precommitted analysis specification
-  → accounting / econometric / finance engines
-  → typed metrics + formulas + source locators
-  → scenario + decision + value-creation contracts
-  → static IC workbench
-  → human review and signature
+Synthetic or supported public package
+  -> browser-local validation and source replay
+  -> source facts / deal terms / assumptions / fund policy kept separate
+  -> deterministic finance and bounded empirical analysis
+  -> canonical case plus explicitly unapproved what-if cases
+  -> evidence-linked issues, observations, approvals, and memo
+  -> selected-evidence model proposal (PROPOSED only)
+  -> named human acceptance, rejection, or edit
+  -> portable deal state and IC output
 ```
-
-The browser is a reader and scenario navigator. It does not contain hidden truth,
-recompute the core models, call a hosted LLM, or possess investment authority.
 
 ## Hard questions and honest answers
 
 ### Is this enterprise-grade?
 
-It is engineered as a portfolio-grade local reference implementation with
-versioned contracts, deterministic tests, security gates, browser evidence, and
-independent review. It is not enterprise-proven: there is no live deployment,
-private data integration, institutional user study, or production operating
-history.
+No. It is a rigorously tested public career product and synthetic reference
+implementation. It has no authentication, multitenancy, confidential-data
+controls, firm adoption, or production operating history. The release is ready
+for unguided practitioner testing only after the final public verification and
+the testing results themselves remain `NOT RUN` until real participants complete
+the protocol.
 
 ### Why synthetic data?
 
-Private-company data could not be published responsibly. Synthetic cases let me
-make the planted distortions, causal truth, and expected recovery conditions
-testable while publishing the entire reasoning chain. That proves system design
-and analytical discipline, not real-world investment accuracy.
+Private-company data cannot be published responsibly. Synthetic cases make the
+planted distortions, causal boundaries, and expected recovery conditions
+testable while allowing the full reasoning chain to be shared. That proves
+system design and analytical discipline, not real-world investment accuracy.
+
+### Why not just use Claude or ChatGPT with Excel?
+
+A general model is useful for reasoning and drafting, but its session usually
+owns the temporary context and narrative. The Desk preserves a typed,
+replayable decision state across models: source selections, calculations,
+policy, scenario boundaries, approvals, and memo provenance remain stable.
+Models can challenge the case; they cannot silently become the case. The claim
+is still a hypothesis until experienced practitioners complete the unguided test.
 
 ### What did AI do?
 
-Multiple frontier models provided read-only architecture, research, and
-adversarial critique. Codex was the sole filesystem writer. Provider prose never
-became case evidence; deterministic contracts and tests decided what entered the
-candidate. Human investment authority stayed outside every model.
+Codex performed implementation and repository work. Claude, Grok, and ChatGPT
+were assigned bounded advisory or review roles. Provider prose never became
+case evidence, and model agreement was never treated as acceptance. Deterministic
+tests, source replay, visual inspection, and human review remain authoritative.
 
-### What is differentiated from an analyst's AI memo tool?
+### What does the hosted model workflow prove?
 
-The unit of work is not prose. It is a reproducible decision dependency graph:
-source selection, estimand, calculation, scenario consequence, hurdle, gate, and
-operating initiative. The same contracts work across control-buyout debt and
-venture capitalization mechanics.
+It proves a narrow synthetic-only pattern: the user selects evidence, confirms
+the transfer, receives cited proposals, and must make a named human disposition.
+It does not prove confidential-data readiness, remote MCP, identity, role-based
+authority, cost governance at firm scale, or model accuracy.
 
 ### What would you build next with real firm access?
 
-I would begin with read-only ingestion into the same manifest and locator
-contracts, add role-based access and retention controls, validate the metric
-definitions with the deal team, and run a shadow comparison against completed
-diligence. I would not enable autonomous recommendations or write-back actions.
+Begin with read-only ingestion into the same source and policy contracts; add
+identity, role-based access, retention and deletion controls; validate firm
+metric definitions; then run a shadow comparison against completed deals. Do
+not enable autonomous recommendations or write-back actions.
 
 ### What can fail?
 
-Source definitions can be wrong, causal assumptions can fail, scenario priors can
-be poorly calibrated, a metric can be precisely computed but irrelevant, and a
-clean interface can create false confidence. The system responds with explicit
-abstention, zero credit, open gates, falsifiers, and human signature requirements.
+Source definitions can be wrong, causal assumptions can fail, scenario priors
+can be poorly calibrated, a metric can be precise but irrelevant, and a clean
+interface can create false confidence. The product responds with abstention,
+zero-credit treatment, visible gates, falsifiers, source replay, and required
+human disposition—but none of those controls guarantees a good investment.
 
 ## Resume and LinkedIn draft boundary
 
-After anonymous public verification and founder approval, a supportable draft is:
+Only after the public commit, deployment, final artifacts, and founder approval
+are verified, a supportable draft is:
 
-> Built an evidence-bound PE/VC underwriting workbench spanning synthetic SaaS
-> buyout and AI-infrastructure growth cases; linked accounting, econometric,
-> scenario, and value-creation outputs to content-addressed source selections and
-> reproducible analysis receipts.
+> Built a public evidence-linked PE/VC underwriting workspace across synthetic
+> SaaS buyout, AI-infrastructure growth, and browser-local intake cases;
+> separated deterministic finance, fund policy, scenarios, evidence lineage,
+> human approvals, and governed model proposals in a reproducible decision
+> workflow.
 
 Do not claim investment outperformance, proprietary data access, production
-adoption, comprehensive accessibility, model superiority, or enterprise proof.
+adoption, comprehensive accessibility, model superiority, practitioner
+validation before testing, or enterprise security.

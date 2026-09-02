@@ -52,9 +52,9 @@ These are role-level evidence states, not invented biographies or reference-chec
 
 | Scenario | Funded Series C | Ownership | Minimum cash | Exit proceeds | Gross XIRR | Gross MOIC |
 |---|---:|---:|---:|---:|---:|---:|
-| BASE | $25M | 12.94% | $13.4M | $160.3M | 45.0% | 6.4x |
-| MILESTONE | $40M | 20.00% | $17M | $326.9M | 56.3% | 8.2x |
-| DOWNSIDE | $25M | 10.14% | $9M | $35.6M | 7.3% | 1.4x |
+| Base | $25M | 12.94% | $13.4M | $160.3M | 45.0% | 6.4x |
+| Milestone-funded | $40M | 20.00% | $17M | $326.9M | 56.3% | 8.2x |
+| Downside | $25M | 10.14% | $9M | $35.6M | 7.3% | 1.4x |
 | Financing shortfall | $25M | 10.79% | $250,000 | $56.7M | 17.8% | 2.3x |
 
 | Selected event | Month | Status | Cash | New shares | Fully diluted shares |
@@ -64,12 +64,12 @@ These are role-level evidence states, not invented biographies or reference-chec
 
 ## Milestone financing and monthly runway
 
-The $15M second tranche releases only when `All covenant tests pass after cure` after a 30-day cure. Evaluator: `Board finance committee`. Failure consequence: `Withhold tranche and re-underwrite runway`.
+The $15M second tranche releases only if every test below passes after a 30-day cure. The board finance committee evaluates the evidence. If any test fails, the tranche is withheld and runway is re-underwritten.
 
-- `hx-nrr-metric` >= `1.05` over `trailing_12_months`.
-- `hx-margin-metric` >= `0.70` over `trailing_3_months`.
-- `hx-pipeline-audit` == `COMPLETE` over `as_of_test`.
-- `hx-optimizer-replication` == `REPLICATED` over `pre_tranche`.
+- Ordinary-customer NRR is at least 105.0% across the trailing twelve months.
+- Gross margin is at least 70.0% across the trailing three months.
+- The opportunity-stage history is complete as of the test date.
+- The optimizer result has been replicated before the second tranche.
 
 | Year | Ending cash |
 |---:|---:|
@@ -112,12 +112,12 @@ Declared scenario-state priors: Base 30.0%; Downside 15.0%; Financing Shortfall 
 | Gross MOIC | 0.0x | 5.1x | 9.9x |
 | Gross XIRR | -100.0% | 36.4% | 61.8% |
 
-- Probability below 1.0x: **20.0%** (Monte Carlo SE **1.26 pp**, 1,000 draws).
+- Probability below 1.0x: **20.0%** across 1,000 retained scenario paths.
 - Sensitivity book: 14 full-engine cells across exit value, exit date, later-round price, and milestone state.
 
 ### Risk policy and decision sensitivity
 
-Illustrative analyst-set loss maximum: maximum probability below 1.0x of 10.0%; state UNREVIEWED.
+Helios growth investment screening profile: maximum probability below 1.0x of 10.0%; state DRAFT.
 6 retained risk-sensitivity cases are available for review.
 
 ## Value creation and board cadence

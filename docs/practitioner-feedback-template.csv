@@ -1,0 +1,2 @@
+session_id,participant_role,experience_band,candidate_commit,public_url,test_date,viewport,consent_recorded,task_number,task_name,completion,time_seconds,confidence_1_to_5,wrong_turns,help_requested,confusion_or_quote,trust_objection,error_or_missing_workflow,issue_severity,proposed_repair,retest_state
+EXAMPLE-REMOVE,senior_vc,10_plus_years,REPLACE_WITH_SHA,REPLACE_WITH_URL,YYYY-MM-DD,1440x900,no,1,Explain product and posture,not_run,,,,,,,,,,not_run

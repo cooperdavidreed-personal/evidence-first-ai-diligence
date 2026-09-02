@@ -12,8 +12,8 @@ from typing import Any
 WIDTH = 1920
 HEIGHT = 1080
 FPS = 30
-DEMO_SOURCE = Path("demo/release-fix")
-VIDEO_NAME = "underwriting-lab-demo-1080p.mp4"
+DEMO_SOURCE = Path("demo/final")
+VIDEO_NAME = "underwriting-desk-demo-1080p.mp4"
 
 
 def run(command: list[str], *, cwd: Path | None = None) -> None:
@@ -59,17 +59,16 @@ def source_closure(repo: Path) -> list[dict[str, str]]:
         path
         for path in tracked
         if path in exact
-        or path.startswith("demo/release-fix/")
+        or path.startswith("demo/final/")
         or path.startswith("output/pdf/")
         or path.startswith("workbench/src/")
     )
     required = {
-        "demo/release-fix/storyboard.json",
-        "demo/release-fix/transcript.txt",
-        "demo/release-fix/captions.srt",
-        "demo/release-fix/captions.vtt",
-        "demo/release-fix/thumbnail-spec.json",
-        "demo/release-fix/review-protocol.json",
+        "demo/final/storyboard.json",
+        "demo/final/transcript.txt",
+        "demo/final/captions.srt",
+        "demo/final/captions.vtt",
+        "demo/final/thumbnail-spec.json",
         "output/pdf/atlasgrid-underwriting-packet-letter.pdf",
         "output/pdf/helios-underwriting-packet-letter.pdf",
         "workbench/src/data/cases.json",
@@ -205,6 +204,7 @@ def main() -> int:
     parser.add_argument("--out", default="dist/release-demo")
     parser.add_argument("--audio", required=True)
     parser.add_argument("--tts-receipt", required=True)
+    parser.add_argument("--base-url", required=True)
     args = parser.parse_args()
 
     repo = Path(__file__).resolve().parents[1]
@@ -218,6 +218,9 @@ def main() -> int:
     lower, upper = map(int, storyboard["allowed_duration_seconds"])
     if not (75 <= lower <= target <= upper <= 90):
         raise RuntimeError("storyboard duration contract must remain within 75–90 seconds")
+    base_url = str(args.base_url).rstrip("/") + "/"
+    if base_url != "https://underwriting-desk-delta.vercel.app/":
+        raise RuntimeError("demo base URL must be the canonical HTTPS deployment")
 
     for binary in ("ffmpeg", "ffprobe", "node", "pnpm"):
         if shutil.which(binary) is None:
@@ -259,6 +262,8 @@ def main() -> int:
             str(frames),
             "--storyboard",
             str(storyboard_path),
+            "--base-url",
+            base_url,
         ],
         cwd=repo / "workbench",
     )
@@ -326,7 +331,7 @@ def main() -> int:
             "-metadata",
             "creation_time=1970-01-01T00:00:00Z",
             "-metadata",
-            "title=Underwriting Intelligence Lab — Evidence to Decision",
+            "title=Underwriting Desk - Evidence to Decision",
             "-metadata",
             "artist=Cooper David Reed",
             str(video),
@@ -409,7 +414,8 @@ def main() -> int:
             "sha256": sha256(capture_receipt_path),
         },
         "pdfs": pdfs,
-        "capture": "REAL_LOCAL_WORKBENCH_INTERACTIONS",
+        "capture": "REAL_PUBLIC_WORKBENCH_INTERACTIONS",
+        "deployed_url": base_url,
         "source_commit": source_commit,
         "source_tree_oid": source_tree_oid,
         "source_closure": closure,

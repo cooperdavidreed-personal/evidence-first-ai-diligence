@@ -475,6 +475,29 @@ export interface VCEngine {
     rationale: string;
     receipt_sha256: string;
   };
+  desk_policy: {
+    schema_version: "underwriting.desk-policy/v1";
+    profile_id: "helios-growth-screen-public-demo-v1";
+    classification: "DESK_OWNED_DRAFT_POLICY_OUTSIDE_DATA_ROOM";
+    name: string;
+    strategy: "GROWTH_EQUITY";
+    owner: string;
+    owner_role: "Policy owner";
+    source: string;
+    status: "DRAFT" | "APPROVED" | "REJECTED";
+    last_reviewed: string | null;
+    thresholds: {
+      ordinary_cohort_nrr: string;
+      gross_margin: string;
+      post_close_runway_months: number;
+      gross_xirr: string;
+      gross_moic: string;
+      maximum_probability_below_one: string;
+    };
+    editable_maximum_probability_choices: string[];
+    rationale: string;
+    receipt_sha256: string;
+  };
   risk_sensitivity: {
     schema_version: "underwriting.vc-risk-sensitivity/v1";
     classification: "SYNTHETIC_SCENARIO_NOT_FORECAST";

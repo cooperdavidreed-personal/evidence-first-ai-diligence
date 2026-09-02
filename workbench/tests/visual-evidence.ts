@@ -1,3 +1,4 @@
+import {createHash} from "node:crypto";
 import {mkdirSync, readFileSync, writeFileSync} from "node:fs";
 import {dirname, resolve} from "node:path";
 
@@ -20,13 +21,20 @@ export function writeAccessibilityEvidence(fileName: string, value: object): voi
     : "dist/accessibility-candidates";
   const path = resolve(repositoryRoot, root, fileName);
   mkdirSync(dirname(path), {recursive: true});
-  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  const workbenchData = readFileSync(resolve(repositoryRoot, "workbench/src/data/cases.json"));
+  writeFileSync(path, `${JSON.stringify({
+    ...value,
+    workbench_data_sha256: createHash("sha256").update(workbenchData).digest("hex"),
+  }, null, 2)}\n`, "utf8");
 }
 
 export async function captureVisualEvidence(page: Page, fileName: string, fullPage = false): Promise<void> {
   const isCanonicalWorkbenchRoute = fileName.endsWith(".png")
     && !fileName.includes("-landing")
+    && !fileName.includes("-deals")
+    && !fileName.includes("-package-")
     && !fileName.includes("-lineage-drawer")
+    && !fileName.includes("-model-connection-")
     && !fileName.includes("-contextual-source-drawer")
     && !fileName.includes("-selected-thesis-path")
     && !fileName.includes("-ic-snapshot")
@@ -34,27 +42,27 @@ export async function captureVisualEvidence(page: Page, fileName: string, fullPa
     && !fileName.includes("-technical-appendix");
   if (isCanonicalWorkbenchRoute) {
     const state = await page.evaluate(() => {
-      const brand = document.querySelector(".topbar")?.getBoundingClientRect();
-      const disclosure = document.querySelector(".synthetic-banner")?.getBoundingClientRect();
-      const nav = document.querySelector(".view-nav")?.getBoundingClientRect();
+      const visible = (selector: string) => [...document.querySelectorAll<HTMLElement>(selector)].find((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && getComputedStyle(element).visibility !== "hidden";
+      });
+      const brand = visible(".deal-topbar")?.getBoundingClientRect();
+      const navElement = visible('nav[aria-label="Deal navigation"]');
+      const nav = navElement?.getBoundingClientRect();
       return {
         scrollY: window.scrollY,
         visualTop: window.visualViewport?.pageTop ?? window.scrollY,
         brandTop: brand?.top ?? -1,
         brandBottom: brand?.bottom ?? Number.POSITIVE_INFINITY,
-        disclosureTop: disclosure?.top ?? -1,
-        disclosureBottom: disclosure?.bottom ?? Number.POSITIVE_INFINITY,
-        disclosureText: document.querySelector(".synthetic-banner")?.textContent?.trim() ?? "",
         navTop: nav?.top ?? -1,
         navBottom: nav?.bottom ?? Number.POSITIVE_INFINITY,
-        navControls: document.querySelectorAll(".view-nav button").length,
+        navControls: navElement?.querySelectorAll("button").length ?? 0,
         viewportHeight: window.innerHeight,
       };
     });
     const inFrame = (top: number, bottom: number) => top >= 0 && bottom <= state.viewportHeight;
     if (state.scrollY !== 0 || state.visualTop !== 0 || !inFrame(state.brandTop, state.brandBottom)
-      || !inFrame(state.disclosureTop, state.disclosureBottom) || !inFrame(state.navTop, state.navBottom)
-      || state.disclosureText !== "SYNTHETIC — NOT INVESTMENT ADVICE" || state.navControls !== 4) {
+      || !inFrame(state.navTop, state.navBottom) || state.navControls !== 5) {
       throw new Error(`canonical_visual_precondition_failed:${fileName}:${JSON.stringify(state)}`);
     }
   }

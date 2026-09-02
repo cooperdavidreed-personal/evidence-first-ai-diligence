@@ -1,0 +1,32 @@
+{
+  "package_version": "growth-saas-quick-package/v1",
+  "files": {
+    "deal.json": {"bytes": 544, "sha256": "70efbc25e7e43f137fc2f144ccf148e269289b3a4795f8796a248f780c8a90b2"},
+    "monthly_financials.csv": {"bytes": 548, "sha256": "63ba72a1f5a29c987fa57d23142f23c749aba37f9be024af8f86862140a53927"},
+    "customer_arr.csv": {"bytes": 224, "sha256": "2a0f6a439c1e1ce5bf965751ef1278165bfaa4ef7b47ddf9458e6f485b9e7b94"}
+  },
+  "outputs": {
+    "ltm_revenue_cents": 1590000000,
+    "ltm_cost_cents": 477000000,
+    "gross_margin": "0.700000000000",
+    "recent_net_burn_cents": 23500000,
+    "runway_months": "19.148936170213",
+    "cohort_elapsed_months": 11,
+    "ordinary_nrr": "0.835714285714",
+    "post_money_ownership": "0.333333333333",
+    "terminal_revenue_cents": 4852294922,
+    "exit_equity_cents": 24261474610,
+    "gross_proceeds_cents": 8087158203,
+    "gross_moic": "3.234863281200",
+    "annualized_gross_return": "0.264652439362"
+  },
+  "displays": {
+    "ltm_revenue": "$15.9M",
+    "gross_margin": "70.0%",
+    "ordinary_nrr": "83.6%",
+    "runway": "19.1 mo",
+    "post_money_ownership": "33.3%",
+    "gross_moic": "3.23x",
+    "annualized_gross_return": "26.5%"
+  }
+}

@@ -687,7 +687,7 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
     risk_policy = {
         "schema_version": "helios.risk-policy/v1",
         "classification": "ILLUSTRATIVE_ANALYST_POLICY_NOT_FIRM_POLICY",
-        "owner": "Illustrative investment committee",
+        "owner": "Synthetic package author",
         "approval_status": "UNREVIEWED",
         "loss_definition": "gross_moic_below_1.0x",
         "maximum_probability_below_one": "0.10",
@@ -695,7 +695,7 @@ def _helios(case_root: Path, truth_root: Path, seed: int) -> list[dict[str, Any]
         "return_hurdles": {"gross_xirr": "0.30", "gross_moic": "3.0"},
         "operating_hurdles": {"ordinary_cohort_nrr": "1.05", "gross_margin": "0.70", "post_close_runway_months": 18},
         "falsifiers": {"ordinary_cohort_nrr": "1.00", "pipeline_conversion": "0.20", "gross_margin": "0.65", "post_close_runway_months": 12},
-        "rationale": "Illustrative policy thresholds are declared before analysis for the synthetic case. They are not an adopted firm policy and require human review.",
+        "rationale": "Thresholds requested by the synthetic package author are retained as untrusted deal representations. They never grade the case or become Desk policy.",
     }
     risk_policy["receipt_sha256"] = digest(risk_policy)
     write_json(case_root / "data/risk_policy.json", risk_policy)

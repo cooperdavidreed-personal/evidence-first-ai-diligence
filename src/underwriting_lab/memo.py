@@ -163,6 +163,7 @@ def _vc_packet(case: dict[str, Any]) -> dict[str, Any]:
     risk_policy = (
         engine.get("risk_policy") or case.get("riskPolicy") or case.get("risk_policy")
     )
+    desk_policy = engine.get("desk_policy") or case.get("deskPolicy")
     risk_sensitivity = (
         engine.get("risk_sensitivity")
         or case.get("riskSensitivity")
@@ -170,6 +171,8 @@ def _vc_packet(case: dict[str, Any]) -> dict[str, Any]:
     )
     if isinstance(risk_policy, dict):
         body["risk_policy"] = risk_policy
+    if isinstance(desk_policy, dict):
+        body["desk_policy"] = desk_policy
     if isinstance(risk_sensitivity, dict):
         body["risk_sensitivity"] = risk_sensitivity
     body["packet_sha256"] = digest(body)
@@ -193,7 +196,9 @@ def _vc_risk_context(
     packet: dict[str, Any], loss_hurdle: dict[str, Any]
 ) -> dict[str, Any]:
     """Return investor-readable risk context across current and future schemas."""
-    policy = packet.get("risk_policy")
+    policy = packet.get("desk_policy")
+    if not isinstance(policy, dict):
+        policy = packet.get("risk_policy")
     if not isinstance(policy, dict):
         policy = {}
     sensitivity = packet.get("risk_sensitivity")
@@ -202,8 +207,11 @@ def _vc_risk_context(
     threshold = _percent_number(
         next(
             (
-                policy[key]
+                policy.get("thresholds", {}).get("maximum_probability_below_one")
+                if key == "thresholds"
+                else policy[key]
                 for key in (
+                    "thresholds",
                     "maximum_probability_below_one_percent",
                     "maximum_probability_below_one",
                     "loss_probability_threshold_percent",
@@ -222,7 +230,7 @@ def _vc_risk_context(
             for key in ("label", "name", "policy_name", "version")
             if policy.get(key)
         ),
-        "Illustrative analyst-set loss maximum",
+        "Desk-owned draft loss maximum",
     )
     approval = next(
         (
@@ -290,6 +298,18 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
         if selected["pool_exit_treatment"] == "FULLY_GRANTED_COMMON"
         else "Unissued option-pool shares are cancelled before exit and receive no proceeds."
     )
+    scenario_labels = {
+        "BASE": "Base",
+        "MILESTONE": "Milestone-funded",
+        "DOWNSIDE": "Downside",
+        "FINANCING_SHORTFALL": "Financing shortfall",
+    }
+    milestone_test_copy = {
+        "hx-nrr-metric": lambda item: f"Ordinary-customer NRR is at least {Decimal(item['threshold']) * 100:.1f}% across the trailing twelve months.",
+        "hx-margin-metric": lambda item: f"Gross margin is at least {Decimal(item['threshold']) * 100:.1f}% across the trailing three months.",
+        "hx-pipeline-audit": lambda item: "The opportunity-stage history is complete as of the test date.",
+        "hx-optimizer-replication": lambda item: "The optimizer result has been replicated before the second tranche.",
+    }
     lines = [
         f"# {packet['company']} — illustrative venture investment committee memorandum",
         "",
@@ -349,7 +369,7 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
         "| Scenario | Funded Series C | Ownership | Minimum cash | Exit proceeds | Gross XIRR | Gross MOIC |",
         "|---|---:|---:|---:|---:|---:|---:|",
         *[
-            f"| {item['scenario_id']} | {_money(item['target_invested_cents'])} | {Decimal(item['target_ownership']) * 100:.2f}% | {_money(item['minimum_cash_cents'])} | {_money(item['target_proceeds_cents'])} | {_percent(item['gross_xirr'])} | {_multiple(item['gross_moic'])} |"
+            f"| {scenario_labels.get(item['scenario_id'], item['scenario_id'].replace('_', ' ').title())} | {_money(item['target_invested_cents'])} | {Decimal(item['target_ownership']) * 100:.2f}% | {_money(item['minimum_cash_cents'])} | {_money(item['target_proceeds_cents'])} | {_percent(item['gross_xirr'])} | {_multiple(item['gross_moic'])} |"
             for item in (base, selected, downside, shortfall)
         ],
         "",
@@ -362,10 +382,10 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
         "",
         "## Milestone financing and monthly runway",
         "",
-        f"The {_money(packet['milestone_contract']['amount_cents'])} second tranche releases only when `{packet['milestone_contract']['release_rule']}` after a {packet['milestone_contract']['cure_period_days']}-day cure. Evaluator: `{packet['milestone_contract']['evaluator']}`. Failure consequence: `{packet['milestone_contract']['failure_consequence']}`.",
+        f"The {_money(packet['milestone_contract']['amount_cents'])} second tranche releases only if every test below passes after a {packet['milestone_contract']['cure_period_days']}-day cure. The board finance committee evaluates the evidence. If any test fails, the tranche is withheld and runway is re-underwritten.",
         "",
         *[
-            f"- `{item['metric_id']}` {item['operator']} `{item['threshold']}` over `{item['period']}`."
+            f"- {milestone_test_copy[item['metric_id']](item)}"
             for item in packet["milestone_contract"]["tests"]
         ],
         "",
@@ -417,7 +437,7 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
         f"| Gross MOIC | {_multiple(packet['distribution']['moic_quantiles'][0])} | {_multiple(packet['distribution']['moic_quantiles'][1])} | {_multiple(packet['distribution']['moic_quantiles'][2])} |",
         f"| Gross XIRR | {_percent(packet['distribution']['xirr_quantiles'][0])} | {_percent(packet['distribution']['xirr_quantiles'][1])} | {_percent(packet['distribution']['xirr_quantiles'][2])} |",
         "",
-        f"- Probability below 1.0x: **{_percent(packet['distribution']['probability_below_one'])}** (Monte Carlo SE **{packet['distribution']['probability_below_one_monte_carlo_se_pp']} pp**, 1,000 draws).",
+        f"- Probability below 1.0x: **{_percent(packet['distribution']['probability_below_one'])}** across 1,000 retained scenario paths.",
         f"- Sensitivity book: {len(packet['sensitivities']['cells'])} full-engine cells across exit value, exit date, later-round price, and milestone state.",
         *(
             [
@@ -529,8 +549,8 @@ def _memo_markdown(packet: dict[str, Any]) -> str:
         "",
         f"> {packet['disclosure']}",
         "",
-        f"**Provisional posture:** `{decision['decision']}`  ",
-        f"**Workflow state:** `{decision['status']}` / `{decision['signature_status']}`  ",
+        f"**Provisional posture:** **{decision['decision']}**",
+        f"**Workflow state:** `{decision['status']}` / `{decision['signature_status']}`",
         f"**Knowledge cutoff:** `{decision['as_of']}`",
         f"**Packet receipt:** `{packet['packet_sha256']}`",
         "",
@@ -538,7 +558,7 @@ def _memo_markdown(packet: dict[str, Any]) -> str:
         "",
         decision["rationale"],
         "",
-        "The asking price fails the frozen return hurdle. The selected upfront structure clears the base hurdle while preserving the declared downside floor; open diligence conditions and founder adjudication still prevent approval.",
+        "The asking price fails the frozen return hurdle. The selected upfront structure clears the base hurdle while preserving the declared downside floor; open diligence conditions and human IC review still prevent approval.",
         "",
         "| Case | Upfront EV | Gross IRR | Gross MOIC | Exit debt | Minimum liquidity | Covenant breach |",
         "|---|---:|---:|---:|---:|---:|---|",
@@ -583,9 +603,9 @@ def _memo_markdown(packet: dict[str, Any]) -> str:
         f"| Gross MOIC | {_multiple(distribution['moic_quantiles'][0])} | {_multiple(distribution['moic_quantiles'][1])} | {_multiple(distribution['moic_quantiles'][2])} |",
         f"| Gross IRR | {_percent(distribution['xirr_quantiles'][0])} | {_percent(distribution['xirr_quantiles'][1])} | {_percent(distribution['xirr_quantiles'][2])} |",
         "",
-        f"- Probability below 1.0x MOIC: **{_percent(distribution['probability_below_one'])}** (Monte Carlo SE **{distribution['probability_below_one_monte_carlo_se_pp']} pp**, 1,000 draws).",
-        f"- Probability of a modeled covenant breach: **{_percent(distribution['probability_covenant_breach'])}** (Monte Carlo SE **{distribution['probability_covenant_breach_monte_carlo_se_pp']} pp**, 1,000 draws).",
-        f"- Probability of modeled payment default: **{_percent(distribution['probability_payment_default'])}** (Monte Carlo SE **{distribution['probability_payment_default_monte_carlo_se_pp']} pp**, 1,000 draws).",
+        f"- Probability below 1.0x MOIC: **{_percent(distribution['probability_below_one'])}** across 1,000 retained scenario paths.",
+        f"- Probability of a modeled covenant breach: **{_percent(distribution['probability_covenant_breach'])}** across 1,000 retained scenario paths.",
+        f"- Probability of modeled payment default: **{_percent(distribution['probability_payment_default'])}** across 1,000 retained scenario paths.",
         f"- Named downside floor: **{_percent(downside['gross_xirr'])} IRR / {_multiple(downside['gross_moic'])} MOIC**; distributional p10: **{_percent(distribution['xirr_quantiles'][0])} / {_multiple(distribution['moic_quantiles'][0])}**.",
         "",
         "### Entry value × exit multiple sensitivity",
@@ -709,7 +729,10 @@ def _memo_html(
         elif line.startswith("### "):
             paragraphs.append(f"<h3>{inline(line[4:])}</h3>")
         elif line.startswith("> "):
-            paragraphs.append(f"<aside>{inline(line[2:])}</aside>")
+            disclosure = line[2:]
+            if "SYNTHETIC" in disclosure and "INVESTMENT ADVICE" in disclosure:
+                disclosure = "Illustrative synthetic case - not investment advice"
+            paragraphs.append(f"<aside>{inline(disclosure)}</aside>")
         elif line.startswith("|---"):
             continue
         elif line.startswith("|"):
@@ -741,8 +764,13 @@ def _memo_html(
     @page{size:letter;margin:.48in .5in .62in;@bottom-left{content:"Underwriting Intelligence Lab";font:7.5px Arial,sans-serif;color:#657078}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:7.5px Arial,sans-serif;color:#657078}}
     *{box-sizing:border-box}body{margin:0;color:#20272d;font:10px/1.32 Arial,sans-serif;font-variant-numeric:tabular-nums}h1,h2,h3{font-family:Georgia,serif;font-weight:500;break-after:avoid-page}h1{font-size:25px;line-height:1.08;border-bottom:2px solid #20272d;padding-bottom:9px;margin:0 0 8px}h2{font-size:16px;line-height:1.15;margin:17px 0 6px;border-bottom:1px solid #aeb4b7;padding-bottom:4px}h3{font-size:11.5px;line-height:1.2;margin:10px 0 4px;color:#315f8b}aside{border:1px solid #9b3f31;color:#87382d;padding:5px 8px;font:700 7.5px Arial,sans-serif;letter-spacing:.55px;break-inside:avoid;margin-bottom:6px}p{margin:4px 0;orphans:3;widows:3}p:has(+table),h2:has(+p),h3:has(+p){break-after:avoid-page}.bullet{padding-left:10px}.receipt-title{margin-top:14px}.receipt-row{display:inline-block;width:50%;margin:2px 0;padding-right:8px;font-size:7.5px;line-height:1.2;vertical-align:top}code{font:8px monospace;color:#315f8b;overflow-wrap:anywhere}.receipt-row code{font-size:6.6px}table{width:100%;border-collapse:collapse;margin:6px 0 10px;break-inside:avoid-page;table-layout:fixed}thead{display:table-header-group}th,td{border-bottom:1px solid #ccd0d2;padding:4px;text-align:left;vertical-align:top;overflow-wrap:anywhere;word-break:normal}th{font:700 7.4px Arial,sans-serif;text-transform:uppercase;letter-spacing:.35px;color:#59646b;background:#f3f4f4}td{font-size:8.4px;line-height:1.25}tr{break-inside:avoid}footer{display:block;clear:both;margin-top:8px;border-top:1px solid #20272d;padding-top:4px;font:7.5px Arial,sans-serif;color:#657078;break-inside:avoid}.packet>p:first-of-type{font-weight:600}.atlasgrid-memo.packet,.helios-memo.packet{font-size:9.4px;line-height:1.29}.packet h1{font-size:25px}.packet h2{font-size:15px;margin-top:14px}.packet h3{font-size:11px;margin-top:8px}.packet p{margin:3.5px 0}.packet table{margin:5px 0 8px}.packet th,.packet td{padding:3.5px}.packet td{font-size:7.9px}.technical{font-size:8.3px;line-height:1.23}.technical h1{font-size:22px}.technical h2{font-size:14px;margin-top:13px}.technical h3{font-size:10.5px}.technical table{margin:5px 0 8px}.technical th,.technical td{padding:3px;font-size:6.8px}.technical code{font-size:6.3px;word-break:break-all}@media print{footer{display:none}}@media screen{body{max-width:900px;margin:36px auto;padding:38px;background:#fbf9f4}}
     """
+    style += """
+    @page{@bottom-left{content:"Underwriting Desk"}}
+    aside{border:0;border-top:1px solid #cbd0d2;border-bottom:1px solid #cbd0d2;color:#657078;padding:5px 0;font-weight:600;letter-spacing:.25px}
+    """
     body_class = f"{escape(packet['case_id'])}-memo {escape(artifact_kind)}"
-    return f"<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>{escape(packet['company'])} IC memorandum</title><style>{style}</style></head><body class='{body_class}'>{''.join(paragraphs)}<footer>Packet {packet['packet_sha256']} · {escape(packet['disclosure'])}</footer></body></html>"
+    rendered = f"<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>{escape(packet['company'])} IC memorandum</title><style>{style}</style></head><body class='{body_class}'>{''.join(paragraphs)}<footer>Packet {packet['packet_sha256']} · {escape(packet['disclosure'])}</footer></body></html>"
+    return "\n".join(line.rstrip() for line in rendered.splitlines())
 
 
 def _remove_sections(markdown: str, headings: set[str]) -> str:
@@ -867,18 +895,20 @@ def _snapshot_markdown(case: dict[str, Any]) -> str:
             for item in decision["metric_pairs"]
             if item["metric_id"] == "helios-hx-09-probability_below_1x"
         )
-        policy = (
+        package_policy = (
             engine.get("risk_policy")
             or case.get("riskPolicy")
             or case.get("risk_policy")
             or {}
         )
-        packet_like = (
-            {"risk_policy": policy} if isinstance(policy, dict) and policy else {}
-        )
+        desk_policy = engine.get("desk_policy") or case.get("deskPolicy") or {}
+        packet_like = {
+            "risk_policy": package_policy,
+            "desk_policy": desk_policy,
+        }
         risk_context = _vc_risk_context(packet_like, loss_hurdle)
         decision_request = (
-            "HOLD under the selected synthetic prior and analyst-set loss maximum. Do not "
+            "HOLD under the selected synthetic prior and Desk-owned draft loss maximum. Do not "
             "authorize funding while diligence remains unresolved; reopen only after human "
             "IC review of the risk specification and new evidence."
         )
@@ -946,11 +976,12 @@ def _bar_row(
     label: str, value: Decimal, maximum: Decimal, display: str, tone: str = ""
 ) -> str:
     width = max(Decimal("1.5"), min(Decimal("100"), value / maximum * 100))
-    return (
+    rendered = (
         f"<div class='bar-row {escape(tone)}'><div class=bar-label><span>{escape(label)}</span>"
         f"<strong>{escape(display)}</strong></div><div class=bar-track>"
         f"<span class=bar-fill style='width:{width:.2f}%'></span></div></div>"
     )
+    return "\n".join(line.rstrip() for line in rendered.splitlines())
 
 
 def _snapshot_html(case: dict[str, Any], packet: dict[str, Any]) -> str:
@@ -1041,7 +1072,7 @@ def _snapshot_html(case: dict[str, Any], packet: dict[str, Any]) -> str:
         observed_loss = _percent_number(loss_hurdle["observed_value"], Decimal("20"))
         threshold = Decimal(risk_context["threshold_percent"])
         action = (
-            "HOLD under the selected synthetic prior and analyst-set loss maximum. Do not "
+            "HOLD under the selected synthetic prior and Desk-owned draft loss maximum. Do not "
             "authorize funding while diligence remains unresolved; reopen only after human "
             "IC review of the risk specification and new evidence."
         )
@@ -1076,7 +1107,7 @@ def _snapshot_html(case: dict[str, Any], packet: dict[str, Any]) -> str:
         chart_one = (
             "<div class=visual data-visual='loss-policy' role=img "
             f"aria-label='Modeled probability below 1.0x is {observed_loss:.1f} percent versus a maximum of {threshold:.1f} percent.'>"
-            "<div class=visual-head><div><h2>The analyst-set gate fails</h2>"
+            "<div class=visual-head><div><h2>The Desk-owned draft gate fails</h2>"
             f"<p>{escape(str(risk_context['label']))}; {escape(str(risk_context['approval']))}</p></div>"
             f"<span class=legend>Maximum {threshold:.1f}%</span></div>"
             f"<div class=meter-body><div class=risk-meter><span class=risk-fill style='width:{min(Decimal('100'), observed_loss / meter_max * 100):.2f}%'></span>"
@@ -1152,14 +1183,22 @@ def _snapshot_html(case: dict[str, Any], packet: dict[str, Any]) -> str:
     *{box-sizing:border-box}body{margin:0;color:#20272d;font:10.15px/1.28 Arial,sans-serif;font-variant-numeric:tabular-nums;background:#fff}h1,h2,p{margin:0}h1{font:500 24px/1.03 Georgia,serif;letter-spacing:-.25px}h2{font:600 12px/1.15 Arial,sans-serif}.brief{display:grid;gap:11px;min-height:9.15in;grid-template-rows:auto auto auto minmax(210px,1fr) auto auto}.brief-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-bottom:2px solid #20272d;padding-bottom:8px}.eyebrow{font:700 7.5px/1.2 Arial,sans-serif;text-transform:uppercase;letter-spacing:1px;color:#3a5f8a;margin-bottom:4px}.metadata{text-align:right;min-width:175px}.disclosure{display:inline-block;border:1px solid #9b3f31;color:#87382d;padding:4px 7px;font:700 7px/1.15 Arial,sans-serif;letter-spacing:.5px}.as-of{display:block;margin-top:5px;color:#657078;font-size:8px}.decision-band{display:grid;grid-template-columns:1.28fr .72fr;border-left:7px solid #9b3f31;background:#f3f0e9;break-inside:avoid}.decision-copy{padding:10px 12px}.decision-label{font:700 7.5px/1.2 Arial,sans-serif;text-transform:uppercase;letter-spacing:1px;color:#657078}.decision{font:600 26px/1 Georgia,serif;margin:2px 0 5px;color:#87382d}.rationale{font-size:10.5px;line-height:1.3}.decision-request{padding:10px 12px;border-left:1px solid #d5d0c6;background:#faf8f3}.decision-request strong{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.7px;color:#3a5f8a;margin-bottom:4px}.decision-request p{font-weight:600;line-height:1.3}.hero-gate{margin-top:5px;color:#4d565d;font-size:8.5px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;break-inside:avoid}.stat{border-top:3px solid #3a5f8a;background:#f7f8f8;padding:7px 8px;min-height:55px}.stat>span{display:block;color:#657078;font-size:7.5px;text-transform:uppercase;letter-spacing:.45px}.stat>strong{display:block;font:600 17px/1.08 Georgia,serif;margin:3px 0 2px}.stat small{display:block;color:#4d565d;font-size:7.5px;line-height:1.15}.visuals{display:grid;grid-template-columns:1fr 1fr;gap:8px;break-inside:avoid}.visual{border:1px solid #cbd0d2;padding:10px 11px;min-height:210px;display:flex;flex-direction:column}.visual-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:8px}.visual-head p{color:#657078;font-size:8px;margin-top:3px}.legend{font-size:8px;color:#87382d;border-bottom:2px solid #87382d;white-space:nowrap}.bar-chart{position:relative;flex:1;display:flex;flex-direction:column;justify-content:space-around}.bar-row{margin:6px 0}.bar-label{display:flex;justify-content:space-between;font-size:8.5px;margin-bottom:3px}.bar-track{height:8px;background:#e3e6e7;overflow:hidden}.bar-fill{display:block;height:100%;background:#6c7d89}.bar-row.good .bar-fill{background:#315f8b}.bar-row.warn .bar-fill{background:#a17632}.bar-row.risk .bar-fill{background:#9b3f31}.hurdle{position:absolute;top:0;bottom:0;border-left:1.5px dashed #87382d;z-index:2}.compare-row{display:grid;grid-template-columns:.78fr 1fr 14px 1.15fr;gap:5px;align-items:center;border-top:1px solid #e1dfd9;padding:6px 0;font-size:8.2px;flex:1}.compare-row:first-child{border-top:0}.compare-row>b{text-align:center;color:#657078}.compare-row .underwritten{font-weight:700;color:#244d75}.meter-body{margin:auto 0}.risk-meter{height:30px;background:#e3e6e7;position:relative;margin:0 0 6px}.risk-fill{height:100%;display:block;background:#9b3f31}.policy-marker{position:absolute;top:-8px;bottom:-8px;border-left:3px solid #20272d}.meter-scale{display:flex;justify-content:space-between;font-size:8.5px}.meter-scale strong{color:#87382d}.gates{display:grid;grid-template-columns:1fr .62fr;gap:10px;border-top:2px solid #20272d;padding-top:8px;break-inside:avoid}.gates h2{margin-bottom:5px}.gate-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.gate-list li{border-left:3px solid #a17632;padding-left:7px}.gate-list strong,.gate-list span{display:block}.gate-list strong{font-size:8.7px}.gate-list span{font-size:7.6px;color:#657078;margin:2px 0}.gate-list p{font-size:7.8px;line-height:1.2}.path{border-left:1px solid #cbd0d2;padding-left:11px}.path p{font-size:8.4px;line-height:1.25}.boundary{border-top:1px solid #cbd0d2;padding-top:6px;color:#657078;font-size:7.7px;display:flex;justify-content:space-between;gap:12px}.boundary strong{color:#20272d}@media screen{body{max-width:8.5in;margin:24px auto;padding:.42in .48in;background:#fff;box-shadow:0 2px 18px #0002}}@media print{footer{display:none}}
     @media screen{body{margin:0 auto;padding:10px .48in}}
     """
-    return (
+    style += """
+    @page{@bottom-left{content:"Underwriting Desk"}}
+    .disclosure{border:0;color:#657078;padding:0;font-weight:600;letter-spacing:.25px}
+    .decision-band{border-left-color:#315f8b;background:#f2f4f5}
+    .decision{color:#20272d}
+    .legend{color:#315f8b;border-bottom-color:#315f8b}
+    .bar-row.risk .bar-fill,.risk-fill{background:#7d6848}
+    """
+    rendered = (
         "<!doctype html><html lang=en><head><meta charset=utf-8>"
         "<meta name=viewport content='width=device-width,initial-scale=1'>"
         f"<title>{escape(case['company'])} IC decision brief</title><style>{style}</style></head>"
         "<body><main class=brief data-decision-brief>"
         f"<header class=brief-head><div><p class=eyebrow>{'Private equity buyout' if case['caseId'] == 'atlasgrid' else 'Venture and growth equity'} | IC decision brief</p>"
         f"<h1>{escape(case['company'])}</h1></div><div class=metadata>"
-        f"<aside class=disclosure>{escape(case['disclosure'])}</aside><span class=as-of>Analysis cutoff {escape(as_of)}</span></div></header>"
+        f"<aside class=disclosure>Illustrative synthetic case - not investment advice</aside><span class=as-of>Analysis cutoff {escape(as_of)}</span></div></header>"
         f"<section class=decision-band aria-labelledby=decision-heading><div class=decision-copy><p class=decision-label>Recommendation</p>"
         f"<h2 class=decision id=decision-heading>{escape(decision['decision'].replace('_', ' '))}</h2>"
         f"<p class=rationale>{escape(decision['rationale'])}</p></div><div class=decision-request>"
@@ -1171,6 +1210,7 @@ def _snapshot_html(case: dict[str, Any], packet: dict[str, Any]) -> str:
         f"<section class=boundary><span>{escape(qualifier)}</span><strong>Human IC approval required. No capital action is authorized.</strong></section>"
         "</main></body></html>"
     )
+    return "\n".join(line.rstrip() for line in rendered.splitlines())
 
 
 def _technical_appendix_markdown(case: dict[str, Any], packet: dict[str, Any]) -> str:
@@ -1182,6 +1222,19 @@ def _technical_appendix_markdown(case: dict[str, Any], packet: dict[str, Any]) -
             f"{preview}; +{len(operand_ids) - 3} more in model-appendix.json "
             f"(ordered-list SHA-256 `{digest(operand_ids)}`)"
         )
+
+    if case["caseId"] == "atlasgrid":
+        distribution = packet["distribution"]
+        sampling_precision = [
+            f"- Probability below 1.0x MOIC: Monte Carlo SE `{distribution['probability_below_one_monte_carlo_se_pp']} pp` (1,000 draws).",
+            f"- Modeled covenant-breach probability: Monte Carlo SE `{distribution['probability_covenant_breach_monte_carlo_se_pp']} pp` (1,000 draws).",
+            f"- Modeled payment-default probability: Monte Carlo SE `{distribution['probability_payment_default_monte_carlo_se_pp']} pp` (1,000 draws).",
+        ]
+    else:
+        distribution = packet["distribution"]
+        sampling_precision = [
+            f"- Probability below 1.0x: Monte Carlo SE `{distribution['probability_below_one_monte_carlo_se_pp']} pp` (1,000 draws).",
+        ]
 
     lines = [
         f"# {case['company']} - technical appendix",
@@ -1223,6 +1276,12 @@ def _technical_appendix_markdown(case: dict[str, Any], packet: dict[str, Any]) -
             f"| `{item['formula_id']}` | {item['operation']} | `{item['output_metric_id']}` | {operand_summary(item['operand_ids'])} |"
             for item in case["formulaRegistry"]
         ],
+        "",
+        "## Sampling precision",
+        "",
+        "These standard errors describe finite simulation sampling error only. They do not measure investment-model accuracy or real-world forecast uncertainty.",
+        "",
+        *sampling_precision,
         "",
         "## Reproducibility boundary",
         "",

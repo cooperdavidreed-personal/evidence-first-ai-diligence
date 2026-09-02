@@ -1,0 +1,13 @@
+{
+  "width": 1280,
+  "height": 720,
+  "source_frame": "08-memo.png",
+  "eyebrow": "UNDERWRITING DESK",
+  "headline": "Evidence to decision",
+  "subhead": "Deterministic finance · Governed model review",
+  "case_line": "Synthetic deal intake   /   Human IC judgment",
+  "colors": {
+    "graphite": "#1d252d",
+    "cobalt": "#24527a"
+  }
+}

@@ -298,6 +298,14 @@ This appendix retains reproducibility records, raw identifiers, mappings, and fo
 | `pe-formula-value-combined` | SUBTRACT | `atlasgrid-value-combined` | `atlasgrid-value-combined-exit-equity-result`, `atlasgrid-value-base-exit_equity_delta_cents` |
 | `pe-formula-value-interaction` | SUBTRACT | `atlasgrid-value-interaction` | `atlasgrid-value-combined`, `atlasgrid-value-standalone-sum` |
 
+## Sampling precision
+
+These standard errors describe finite simulation sampling error only. They do not measure investment-model accuracy or real-world forecast uncertainty.
+
+- Probability below 1.0x MOIC: Monte Carlo SE `0.85 pp` (1,000 draws).
+- Modeled covenant-breach probability: Monte Carlo SE `0.17 pp` (1,000 draws).
+- Modeled payment-default probability: Monte Carlo SE `0.00 pp` (1,000 draws).
+
 ## Reproducibility boundary
 
 All data and results are synthetic. Exact arithmetic, source locators, scenario receipts, and deterministic generation establish internal reproducibility only. They do not establish live-deal accuracy, investment approval, or real-world performance.

@@ -17,10 +17,21 @@ def main() -> int:
     args = parser.parse_args()
     root = Path(__file__).parents[1]
     evidence = root / "dist" / "visual-evidence"
-    views = ("overview", "thesis", "financials", "risks", "value-creation", "memo")
-    cases = ("atlasgrid-systems", "helios-compute-control")
+    views = ("overview", "financials", "diligence", "documents", "ic-memo")
+    cases = ("atlasgrid", "helios", "northstar")
     files = []
     for viewport, dimensions in (("desktop", "1440x900"), ("mobile", "390x844")):
+        path = evidence / f"{viewport}-deals.png"
+        if not path.is_file():
+            raise SystemExit(f"missing_deals_evidence:{path.name}")
+        files.append(
+            {
+                "path": path.relative_to(root).as_posix(),
+                "viewport": dimensions,
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                "bytes": path.stat().st_size,
+            }
+        )
         for case in cases:
             for view in views:
                 path = evidence / f"{viewport}-{case}-{view}.png"
@@ -34,30 +45,32 @@ def main() -> int:
                         "bytes": path.stat().st_size,
                     }
                 )
-    for viewport, dimensions in (("desktop", "1440x900"), ("mobile", "390x844")):
-        path = evidence / f"{viewport}-investor-workspace-landing.png"
-        if not path.is_file():
-            raise SystemExit(f"missing_landing_evidence:{path.name}")
-        files.append(
-            {
-                "path": path.relative_to(root).as_posix(),
-                "viewport": dimensions,
-                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-                "bytes": path.stat().st_size,
-            }
-        )
-    for case in cases:
-        path = evidence / f"desktop-{case}-contextual-source-drawer.png"
-        if not path.is_file():
-            raise SystemExit(f"missing_interaction_evidence:{path.name}")
-        files.append(
-            {
-                "path": path.relative_to(root).as_posix(),
-                "viewport": "1440x900",
-                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-                "bytes": path.stat().st_size,
-            }
-        )
+        for state in ("ready", "incomplete"):
+            path = evidence / f"{viewport}-northstar-package-{state}.png"
+            if not path.is_file():
+                raise SystemExit(f"missing_intake_evidence:{path.name}")
+            files.append(
+                {
+                    "path": path.relative_to(root).as_posix(),
+                    "viewport": dimensions,
+                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                    "bytes": path.stat().st_size,
+                }
+            )
+    accessibility_files = []
+    accessibility_root = root / "verification" / "accessibility-evidence"
+    for viewport in ("desktop", "mobile"):
+        for surface in ("deals", "atlasgrid-product", "helios-product", "northstar-intake"):
+            path = accessibility_root / f"{viewport}-{surface}.json"
+            if not path.is_file():
+                raise SystemExit(f"missing_accessibility_evidence:{path.name}")
+            accessibility_files.append(
+                {
+                    "path": path.relative_to(root).as_posix(),
+                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                    "bytes": path.stat().st_size,
+                }
+            )
     print_files = []
     for path, format_name in (
         (evidence / "desktop-atlasgrid-ic-snapshot.png", "one-page snapshot PNG"),
@@ -83,8 +96,9 @@ def main() -> int:
     manifest = {
         "schema_version": "underwriting.visual-evidence/v1",
         "files": files,
+        "accessibility_files": accessibility_files,
         "print_files": print_files,
-        "scope": "Investor-first landing plus four primary views and the supporting Evidence layer for two synthetic cases at desktop and mobile; contextual source drawers retained at desktop; automated critical/serious Axe scan and root-overflow assertion per tested route; each case retains a one-page snapshot, detailed underwriting packet, and technical appendix as normalized US Letter PDF proof. Observed practitioner usability remains NOT_RUN.",
+        "scope": "Calm deal root plus exactly five primary deal destinations for two retained synthetic cases and one browser-local supported-package case at desktop and mobile; complete and fail-closed intake states; automated critical/serious Axe scan and root-overflow assertion per tested default route; each retained case keeps a one-page snapshot, detailed underwriting packet, and technical appendix as normalized US Letter PDF proof. Observed practitioner usability remains NOT_RUN.",
     }
     manifest["manifest_sha256"] = hashlib.sha256(canonical_json(manifest)).hexdigest()
     output = root / "verification" / "visual-evidence.json"

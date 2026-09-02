@@ -47,12 +47,20 @@ describe("workbench v2 data contract", () => {
     expect(() => assertWorkbenchData(candidate)).toThrow(/vc_primary_pool_exit_treatment_invalid/);
   });
 
-  it("binds Helios risk policy to the canonical distribution and decision", () => {
+  it("binds Helios Desk policy to the canonical distribution and decision", () => {
+    const candidate: unknown = structuredClone(rawData);
+    assertWorkbenchData(candidate);
+    const helios = candidate.cases.find((item) => item.caseId === "helios")!;
+    helios.vcEngine!.desk_policy.thresholds.maximum_probability_below_one = "0.20";
+    expect(() => assertWorkbenchData(candidate)).toThrow(/vc_sensitivity_posture_invalid|vc_risk_sensitivity_invalid|vc_desk_policy_decision_mismatch/);
+  });
+
+  it("does not let the uploaded Helios package policy grade the decision", () => {
     const candidate: unknown = structuredClone(rawData);
     assertWorkbenchData(candidate);
     const helios = candidate.cases.find((item) => item.caseId === "helios")!;
     helios.vcEngine!.risk_policy.maximum_probability_below_one = "0.20";
-    expect(() => assertWorkbenchData(candidate)).toThrow(/vc_sensitivity_posture_invalid|vc_risk_sensitivity_policy_binding|vc_risk_policy_decision/);
+    expect(() => assertWorkbenchData(candidate)).not.toThrow();
   });
 
   it("recomputes dated XIRR from every retained dated cash flow", () => {

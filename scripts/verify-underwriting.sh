@@ -32,12 +32,27 @@ uv run underwriting-lab build-memo \
 uv run python scripts/build_recovery_ledger.py
 
 cd workbench
-pnpm install --frozen-lockfile
-pnpm test
-pnpm build
-pnpm verify:chunks
-pnpm test:e2e
+if command -v pnpm >/dev/null 2>&1; then
+  pnpm install --frozen-lockfile
+  pnpm test
+  pnpm test:mcp
+  pnpm build
+  pnpm verify:chunks
+  pnpm test:e2e
+else
+  test -x node_modules/.bin/vitest
+  test -x node_modules/.bin/tsc
+  test -x node_modules/.bin/vite
+  test -x node_modules/.bin/playwright
+  ./node_modules/.bin/vitest run
+  node --test mcp-server/server.test.mjs
+  ./node_modules/.bin/tsc -b
+  ./node_modules/.bin/vite build
+  node scripts/verify-case-chunks.mjs
+  ./node_modules/.bin/playwright test
+fi
 cd ..
 uv run python scripts/verify_visual_regression.py
 uv run python scripts/verify_pdf_contract.py
 uv run python scripts/build_visual_manifest.py
+uv run python scripts/scan_public.py

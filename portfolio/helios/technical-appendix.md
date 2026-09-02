@@ -6,10 +6,10 @@ This appendix retains reproducibility records, raw identifiers, mappings, and fo
 
 ## Content identity
 
-- Manifest SHA-256: `4f590ab6ea0b33914062348b7e3bdcca71475bb97a2e4c85b9594a94b4fe17f4`
-- Analysis SHA-256: `39bd296edbdf32b39c3070d744824a84d2469fa6028aff823670ea7e19a71072`
-- Decision SHA-256: `501f4a36e3b48b5fa96c5bec789d3643a3313240216c2a120114049112fb22cd`
-- Packet SHA-256: `392b74abebaaf1b51fa5b3913b382fb67e6e4058d04e598bbca893b78f8a8841`
+- Manifest SHA-256: `aee7763d4b99a635cb5e1f77336829dbe2ea0bb00211446bd6cd32998b187329`
+- Analysis SHA-256: `dbe159ae6b416db52182f2507aed3bcd7cbdedf5943b81e6fabdea18ca28db1e`
+- Decision SHA-256: `5e25cf080814b7767cb2468ac6fbf1359587606ca6469c841996ababb1b9429e`
+- Packet SHA-256: `4fb0f6c2b999bddc923a00a73564b336d79ff1ca01f21239eaa4b573b93c65cd`
 
 ## Analysis receipts
 
@@ -23,7 +23,7 @@ This appendix retains reproducibility records, raw identifiers, mappings, and fo
 | HX-06 | CAUSAL_SYNTHETIC_ONLY | REPORTED | `0e1b65ba0e8dee3c2a13481cb97850a5a43ce3ab6ac091b2678138c2010e6f2b` | `13ce7025a4507d27baea7edc84ff4f3dde9478baf64ce720e87899fa8a8f6c20` |
 | HX-07 | NOT_IDENTIFIED | ABSTAIN | `1d274869a7fe75ea3c635061cb3dd615d1ceb7a273b83d4917d477f76515e3cc` | `73fa9bef8097c9ee38a1100648c9c5f18cd6e8856ad5aedd9ba839e3836809f7` |
 | HX-08 | ACCOUNTING_IDENTITY | REPORTED | `a837153dd36285f132e0c74662d034ab3543b5be1a4d011d069d78086fe9ca29` | `9fff1fd75cee1f45e1913ad9dc9cf96f816b87ee795247085f49c6ef6957067f` |
-| HX-09 | SCENARIO | REPORTED | `7780c967d835a7e2f5e001adc48968e348de043ce81d2ec84707a7f1ca315bfe` | `814cbc3df911d6fa721a2e4232410f7e429d433def1aace7312494c88753d634` |
+| HX-09 | SCENARIO | REPORTED | `7780c967d835a7e2f5e001adc48968e348de043ce81d2ec84707a7f1ca315bfe` | `570f2a7ab70c168b77f684f8585c10db5ca958bd5bc1f95aeb8d8369aa953f81` |
 
 ## Evidence-to-model mappings
 
@@ -203,6 +203,12 @@ This appendix retains reproducibility records, raw identifiers, mappings, and fo
 | `vc-formula-value-combined-gross-moic-delta` | SUBTRACT | `helios-value-combined-gross-moic-delta` | `helios-value-combined-gross-moic-delta-result`, `helios-value-base-gross-moic-delta` |
 | `vc-formula-value-standalone-proceeds-sum` | SUM | `helios-value-sum_standalone_target_proceeds_delta_cents` | `helios-value-ordinary-expansion-target_proceeds_delta_cents`, `helios-value-optimizer-unit-economics-target_proceeds_delta_cents`, `helios-value-sales-governance-target_proceeds_delta_cents` |
 | `vc-formula-value-interaction` | SUBTRACT | `helios-value-interaction_residual_cents` | `helios-value-combined_target_proceeds_delta_cents`, `helios-value-sum_standalone_target_proceeds_delta_cents` |
+
+## Sampling precision
+
+These standard errors describe finite simulation sampling error only. They do not measure investment-model accuracy or real-world forecast uncertainty.
+
+- Probability below 1.0x: Monte Carlo SE `1.26 pp` (1,000 draws).
 
 ## Reproducibility boundary
 

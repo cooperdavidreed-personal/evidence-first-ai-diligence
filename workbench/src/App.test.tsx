@@ -1,7 +1,8 @@
-import {render, screen, waitFor} from "@testing-library/react";
+import {render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import {beforeEach, describe, expect, it} from "vitest";
-import WorkbenchApp, {parseRoute} from "./App";
+import {File as NodeFile} from "node:buffer";
+import {beforeEach, describe, expect, it, vi} from "vitest";
+import WorkbenchApp, {dealViews, parseRoute} from "./App";
 import rawData from "./data/cases.json";
 import {assertWorkbenchData} from "./data-contract";
 
@@ -9,206 +10,246 @@ function App() {
   const candidate: unknown = rawData;
   assertWorkbenchData(candidate);
   const initialRoute = parseRoute();
-  const initialCase = candidate.cases.find((item) => item.caseId === initialRoute.caseId)!;
-  return <WorkbenchApp initialCase={initialCase} initialRoute={initialRoute} />;
+  const initialCase = candidate.cases.find((item) => item.caseId === (initialRoute.caseId === "local" ? "atlasgrid" : initialRoute.caseId))!;
+  return <WorkbenchApp initialCase={initialCase} initialRoute={initialRoute} loadCaseFn={async (caseId) => candidate.cases.find((item) => item.caseId === caseId)!} />;
 }
+const TestFile = NodeFile as unknown as typeof File;
 
-describe("Underwriting Intelligence Lab investor workspace", () => {
-  beforeEach(() => window.history.replaceState(null, "", "/#/v2/atlasgrid/overview"));
-
-  it("offers a no-instruction landing journey", async () => {
+describe("Underwriting Desk investor workspace", () => {
+  beforeEach(() => {
+    const values = new Map<string, string>();
+    Object.defineProperty(window, "localStorage", {configurable: true, value: {
+      clear: () => values.clear(),
+      getItem: (key: string) => values.get(key) ?? null,
+      key: (index: number) => Array.from(values.keys())[index] ?? null,
+      get length() { return values.size; },
+      removeItem: (key: string) => values.delete(key),
+      setItem: (key: string, value: string) => values.set(key, value),
+    }});
     window.history.replaceState(null, "", "/");
-    const user = userEvent.setup();
-    render(<App />);
-    expect(screen.getByRole("heading", {name: /Turn a crowded data room/})).toBeInTheDocument();
-    expect(screen.getByText("Do we meet the $240M ask, counter at $210M, or walk?")).toBeInTheDocument();
-    expect(screen.queryByText(/\$220M ask/)).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", {name: /Review a sample deal/}));
-    expect(screen.getByRole("heading", {name: "AtlasGrid Systems"})).toBeInTheDocument();
-    expect(window.location.hash).toBe("#/v2/atlasgrid/overview");
+    Object.defineProperty(window, "scrollTo", {configurable: true, value: vi.fn()});
   });
 
-  it("puts the investment question, company context, and four primary sections first", () => {
+  it("fails closed when a direct local-deal route has no admitted deal", async () => {
+    window.history.replaceState(null, "", "/#/v3/local/financials");
     render(<App />);
-    expect(screen.getByRole("heading", {name: "Do we meet the $240M ask, counter at $210M, or walk?"})).toBeInTheDocument();
-    expect(screen.getByText(/regulated electric-utility grid planning/)).toBeInTheDocument();
-    expect(screen.getByText("SYNTHETIC — NOT INVESTMENT ADVICE")).toBeInTheDocument();
-    for (const name of ["Overview", "Financials", "Risks", "Memo"]) {
-      expect(screen.getByRole("button", {name: new RegExp(name)})).toBeInTheDocument();
+    expect(await screen.findByRole("heading", {name: "Deals"})).toBeInTheDocument();
+    expect(screen.getByText(/local deal .*unavailable in this browser/i)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", {name: "AtlasGrid Systems"})).not.toBeInTheDocument();
+    await waitFor(() => expect(window.location.hash).toBe("#/"));
+  });
+
+  it("starts with a quiet deal list and supported intake boundary", () => {
+    render(<App />);
+    expect(screen.getByRole("heading", {name: "Deals"})).toBeInTheDocument();
+    expect(screen.getByRole("button", {name: "New deal"})).toBeInTheDocument();
+    expect(screen.getByText(/Public demonstration with fictional companies/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "Growth SaaS Quick Package"})).toBeInTheDocument();
+    expect(screen.queryByText(/Evidence → economics → action/)).not.toBeInTheDocument();
+    expect(screen.getByText("Decision workspaces")).toBeInTheDocument();
+    expect(screen.getByText("Open issues")).toBeInTheDocument();
+    expect(screen.getByText("Last activity")).toBeInTheDocument();
+  });
+
+  it("opens a model connection center that explains the Desk-model boundary", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", {name: "Model options"}));
+    expect(screen.getByRole("dialog", {name: "Governed review, without handing over the case"})).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "One deal record. Replaceable models."})).toBeInTheDocument();
+    expect(screen.getByText(/No provider keys are collected/)).toBeInTheDocument();
+  });
+
+  it("opens an ordinary browser-local package intake", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", {name: "New deal"}));
+    expect(screen.getByRole("heading", {name: "Growth SaaS Quick Package"})).toBeInTheDocument();
+    expect(screen.getByText(/bytes stay in this browser tab/)).toBeInTheDocument();
+    expect(screen.getByTestId("deal-package-input")).toHaveAttribute("multiple");
+    expect(screen.getByRole("button", {name: "Validate and analyze"})).toBeDisabled();
+    expect(screen.getByText(/Files are validated and calculated locally/)).toBeInTheDocument();
+    expect(screen.getByText(/evidence summaries you explicitly select after confirmation/)).toBeInTheDocument();
+  });
+
+  it("opens a retained case with exactly five in-deal destinations", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", {name: /Open AtlasGrid Systems/}));
+    await screen.findByRole("heading", {name: "AtlasGrid Systems"});
+    const desktopNavigation = document.querySelector<HTMLElement>(".sidebar nav")!;
+    expect(within(desktopNavigation).getAllByRole("button")).toHaveLength(dealViews.length);
+    for (const label of ["Overview", "Financials", "Diligence", "Documents", "IC Memo"]) {
+      expect(within(desktopNavigation).getByRole("button", {name: label})).toBeInTheDocument();
     }
-    expect(screen.getByText("Evidence")).toBeInTheDocument();
+    expect(screen.getAllByText("REPRICE", {exact: true}).length).toBeGreaterThan(0);
+    expect(screen.getByText("IC decision pending")).toBeInTheDocument();
+    expect(window.location.hash).toBe("#/v3/atlasgrid/overview");
+    expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
   });
 
-  it("switches strategy while preserving the human-authority boundary", async () => {
+  it("stays usable and tells the analyst when browser-local saving is unavailable", async () => {
+    Object.defineProperty(window, "localStorage", {configurable: true, value: {
+      getItem: () => null,
+      setItem: () => { throw new DOMException("Quota exceeded", "QuotaExceededError"); },
+      removeItem: () => undefined,
+      clear: () => undefined,
+      key: () => null,
+      length: 0,
+    }});
+    window.history.replaceState(null, "", "/#/v3/atlasgrid/overview");
+    render(<App />);
+    expect(await screen.findByText("In memory · local save unavailable")).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "AtlasGrid Systems"})).toBeInTheDocument();
+  });
+
+  it("surfaces rejected saved state instead of silently resetting it", async () => {
+    window.localStorage.setItem("underwriting-desk.workspace.v2.atlasgrid", "{not-valid-json");
+    window.history.replaceState(null, "", "/#/v3/atlasgrid/overview");
+    render(<App />);
+    expect(await screen.findByText(/Saved workspace failed validation and was not loaded/)).toBeInTheDocument();
+    expect(window.localStorage.getItem("underwriting-desk.workspace.v2.atlasgrid")).toBe("{not-valid-json");
+    expect(screen.getByRole("heading", {name: "AtlasGrid Systems"})).toBeInTheDocument();
+  });
+
+  it("puts plain-language decision evidence before methods", async () => {
+    window.history.replaceState(null, "", "/#/v3/helios/diligence");
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", {name: "VC / Growth Helios Compute Control"}));
-    await waitFor(
-      () => expect(screen.getByRole("heading", {name: "Helios Compute Control"})).toBeInTheDocument(),
-      {timeout: 10_000},
-    );
-    expect(screen.getByRole("heading", {name: "HOLD"})).toBeInTheDocument();
-    expect(screen.getAllByText(/Requires investment committee approval/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/canonical unreviewed synthetic prior/).length).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", {name: "Assumption test"}));
+    expect(screen.getByRole("heading", {name: "Optimizer test reduced unit compute cost"})).toBeInTheDocument();
+    expect(screen.getByText(/8.7% less compute per workload/)).toBeInTheDocument();
+    expect(screen.getByText("Population")).toBeInTheDocument();
+    expect(screen.getByText("How it changes underwriting")).toBeInTheDocument();
+    expect(screen.getByText("What it does not establish")).toBeInTheDocument();
+    expect(screen.getByText("Method and uncertainty").closest("details")).not.toHaveAttribute("open");
+    await user.click(screen.getByText("Method and uncertainty"));
+    expect(screen.getByText(/6.1% to 11.2% lower unit compute cost/)).toBeInTheDocument();
+    expect(screen.getByText(/0.0141 log points \(roughly 1.4%\)/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: "Inspect evidence and calculation"}));
+    expect(screen.getByRole("dialog", {name: "Optimizer test effect"})).toBeInTheDocument();
   });
 
-  it("reruns canonical PE and VC assumption cells from the overview", async () => {
+  it("opens the pricing-test lineage rather than an unrelated return metric", async () => {
+    window.history.replaceState(null, "", "/#/v3/atlasgrid/diligence");
     const user = userEvent.setup();
     render(<App />);
-    expect(screen.getAllByText("23.3%").length).toBeGreaterThan(0);
-    expect(screen.getByText(/>=22% IRR/)).toBeInTheDocument();
-    expect(screen.getByText(/Sponsor equity at close/)).toBeInTheDocument();
-    expect(screen.getByText(/Decision impact:/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", {name: "$220M"}));
-    expect(screen.getByText("21.0%")).toBeInTheDocument();
-    expect(screen.getByText(/Return hurdle fails/)).toBeInTheDocument();
-    expect(window.location.hash).toContain("driver=entry_enterprise_value_cents");
-    await user.click(screen.getByRole("button", {name: "VC / Growth Helios Compute Control"}));
-    await waitFor(
-      () => expect(screen.getByRole("heading", {name: "Helios Compute Control"})).toBeInTheDocument(),
-      {timeout: 10_000},
-    );
-    await user.click(screen.getByRole("button", {name: "30.0% annual growth"}));
-    expect(screen.getByText("36.6%")).toBeInTheDocument();
-    expect(screen.getByText("4.3x")).toBeInTheDocument();
-    expect(screen.getByText(/option pool modeled as fully granted common at exit/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: "Assumption test"}));
+    expect(screen.getByText(/6.7 percentage points lower renewal conversion/)).toBeInTheDocument();
+    await user.click(screen.getByText("Method and uncertainty"));
+    expect(screen.getByText(/2.5 to 10.9 percentage points lower renewal conversion/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: "Inspect evidence and calculation"}));
+    expect(screen.getByRole("dialog", {name: "Renewal-pricing test effect"})).toBeInTheDocument();
   });
 
-  it("recalculates a bounded local Helios working case without changing the canonical HOLD", async () => {
-    window.history.replaceState(null, "", "/#/v2/helios/overview");
+  it("fails closed with a readable boundary when retained analysis is incomplete", async () => {
+    const candidate: unknown = structuredClone(rawData);
+    assertWorkbenchData(candidate);
+    const helios = structuredClone(candidate.cases.find((item) => item.caseId === "helios")!);
+    helios.analyses = helios.analyses.filter((analysis) => analysis.analysis_id !== "HX-06");
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const user = userEvent.setup();
+    render(<WorkbenchApp initialCase={helios} initialRoute={{caseId: "helios", view: "diligence"}} />);
+    await user.click(screen.getByRole("button", {name: "Assumption test"}));
+    expect(screen.getByRole("heading", {name: "Analysis unavailable"})).toBeInTheDocument();
+    expect(screen.getByText(/no analytical conclusion is shown/)).toBeInTheDocument();
+    expect(screen.queryByText(/less compute per workload/)).not.toBeInTheDocument();
+    consoleError.mockRestore();
+  });
+
+  it("derives empirical direction from the retained estimate sign", async () => {
+    const candidate: unknown = structuredClone(rawData);
+    assertWorkbenchData(candidate);
+    const helios = structuredClone(candidate.cases.find((item) => item.caseId === "helios")!);
+    const optimizer = helios.analyses.find((analysis) => analysis.analysis_id === "HX-06")!;
+    optimizer.outputs.find((output) => output.name === "optimizer_ate")!.value = "0.0911";
+    const user = userEvent.setup();
+    render(<WorkbenchApp initialCase={helios} initialRoute={{caseId: "helios", view: "diligence"}} />);
+    await user.click(screen.getByRole("button", {name: "Assumption test"}));
+    expect(screen.getByRole("heading", {name: "Optimizer test increased unit compute cost"})).toBeInTheDocument();
+    expect(screen.getByText(/9.5% more compute per workload/)).toBeInTheDocument();
+    expect(screen.getByText("Adverse signal")).toBeInTheDocument();
+    expect(screen.getByText(/No base-case savings credit/)).toBeInTheDocument();
+  });
+
+  it("renders an honest neutral state for a zero empirical estimate", async () => {
+    const candidate: unknown = structuredClone(rawData);
+    assertWorkbenchData(candidate);
+    const helios = structuredClone(candidate.cases.find((item) => item.caseId === "helios")!);
+    const optimizer = helios.analyses.find((analysis) => analysis.analysis_id === "HX-06")!;
+    optimizer.outputs.find((output) => output.name === "optimizer_ate")!.value = "0";
+    const user = userEvent.setup();
+    render(<WorkbenchApp initialCase={helios} initialRoute={{caseId: "helios", view: "diligence"}} />);
+    await user.click(screen.getByRole("button", {name: "Assumption test"}));
+    expect(screen.getByRole("heading", {name: "Optimizer test did not change unit compute cost"})).toBeInTheDocument();
+    expect(screen.getByText(/no measurable difference in compute per workload/)).toBeInTheDocument();
+    expect(screen.getByText("No measured effect")).toBeInTheDocument();
+  });
+
+  it("keeps reproduction identifiers behind document disclosure", async () => {
+    window.history.replaceState(null, "", "/#/v3/atlasgrid/documents");
     const user = userEvent.setup();
     render(<App />);
-    const growth = await screen.findByTestId("helios-assumption-growth");
-    const policy = screen.getByTestId("helios-policy-loss-maximum");
-    await user.clear(growth);
-    await user.type(growth, "30");
-    await user.clear(policy);
-    await user.type(policy, "8");
-    await user.click(screen.getByTestId("helios-recalculate-working-case"));
-    expect(screen.getByTestId("helios-working-change-record")).toHaveTextContent("Growth 48.0% → 30.0%");
-    expect(screen.getByTestId("helios-working-change-record")).toHaveTextContent("Loss ceiling 10.0% → 8.0%");
-    expect(screen.getByTestId("helios-working-case-status")).toHaveTextContent("HOLD");
-    expect(screen.getByTestId("helios-working-assumptions")).toHaveTextContent("milestone");
-    expect(screen.getByTestId("helios-working-assumptions")).toHaveTextContent("financing shortfall");
+    expect(screen.getByRole("heading", {name: "Sources and evidence"})).toBeInTheDocument();
+    const search = screen.getByRole("searchbox", {name: "Search filenames and retained evidence"});
+    await user.type(search, "customer");
+    expect(screen.getAllByText(/Customer/i).length).toBeGreaterThan(0);
+    for (const details of document.querySelectorAll(".technical-record")) expect(details).not.toHaveAttribute("open");
   });
 
-  it("migrates legacy routes deterministically", async () => {
-    window.history.replaceState(null, "", "/#/v2/helios/underwriting?scenario=optimistic&driver=fantasy&cell=missing");
-    render(<App />);
-    await waitFor(() => expect(window.location.hash).toBe("#/v2/helios/financials"));
-    expect(screen.getByRole("heading", {name: "Terms, ownership, runway, and preferences"})).toBeInTheDocument();
-  });
-
-  it("opens a keyboard-addressable number-to-source drawer", async () => {
+  it("switches cases without changing the human approval boundary", async () => {
+    window.history.replaceState(null, "", "/#/v3/atlasgrid/overview");
     const user = userEvent.setup();
     render(<App />);
-    const metric = screen.getByRole("button", {name: /Inspect lineage for Repriced return/});
-    metric.focus();
-    await user.keyboard("{Enter}");
-    expect(screen.getByRole("dialog", {name: "Repriced return"})).toHaveTextContent(/Calculation and decision chain/);
-    await user.keyboard("{Escape}");
-    expect(metric).toHaveFocus();
+    await user.selectOptions(screen.getByRole("combobox", {name: "Deal"}), "helios");
+    await waitFor(() => expect(screen.getByRole("heading", {name: "Helios Compute Control"})).toBeInTheDocument());
+    expect(screen.getAllByText("HOLD", {exact: true}).length).toBeGreaterThan(0);
+    expect(screen.getByText("Maintain HOLD while the binding screen and open diligence remain unresolved.")).toBeInTheDocument();
+    expect(screen.getByText("Path to reconsideration")).toBeInTheDocument();
+    expect(screen.queryByText(/Working recommendation/)).not.toBeInTheDocument();
+    expect(screen.getByText("IC decision pending")).toBeInTheDocument();
+    expect(window.location.hash).toBe("#/v3/helios/overview");
   });
 
-  it("keeps finance controls bound to retained engine metrics", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    await user.click(screen.getByRole("button", {name: /Financials/}));
-    await user.click(screen.getByRole("button", {name: /Upfront EV/}));
-    expect(screen.getByRole("dialog", {name: "Upfront EV"})).toHaveTextContent(/Direct observation or declared assumption/);
-    await user.keyboard("{Escape}");
-    expect(screen.getByRole("combobox", {name: "Driver"})).toBeInTheDocument();
-  });
-
-  it("presents open diligence as an investor worklist", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    await user.click(screen.getByRole("button", {name: /Risks/}));
-    expect(screen.getByRole("heading", {name: "Resolve these before the next committee step"})).toBeInTheDocument();
-    expect(screen.getByText("AG-D04")).toBeInTheDocument();
-    expect(screen.getByText(/Management assessment/)).toBeInTheDocument();
-  });
-
-  it("keeps econometric credit and diagnostics in Methodology", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    const evidenceMenu = screen.getByText("Evidence").closest("details")!;
-    if (!evidenceMenu.open) await user.click(screen.getByText("Evidence"));
-    await user.click(screen.getByRole("button", {name: "Methodology"}));
-    expect(screen.getAllByText("VALUE-CREATION BRIDGE ONLY").length).toBeGreaterThan(0);
-    const paired = screen.getByRole("button", {name: "Inspect lineage for Randomized offer ITT"});
-    expect(paired).toHaveAttribute("data-metric-id", "atlasgrid-ag-07-renewal_itt");
-  });
-
-  it("states the recommended cap without a public one-cent claim", () => {
-    render(<App />);
-    expect(screen.getByText(/Mathematical maximum: \$215.4M. The recommended cap remains \$210M/)).toBeInTheDocument();
-    expect(screen.queryByText(/one additional cent/)).not.toBeInTheDocument();
-  });
-
-  it("provides an accessible one-page IC memo path", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    await user.click(screen.getByRole("button", {name: /Memo/}));
-    expect(screen.getAllByRole("heading", {name: "AtlasGrid Systems"})).toHaveLength(2);
-    expect(screen.getByRole("link", {name: "Open one-page IC snapshot"})).toHaveAttribute("href", "output/pdf/atlasgrid-ic-snapshot-letter.pdf");
-    expect(screen.getByRole("link", {name: "Open underwriting packet"})).toBeInTheDocument();
-    expect(screen.getByText("Requires investment committee approval")).toBeInTheDocument();
-  });
-
-  it("keeps human judgment separate and requires confirmation for assumption review", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    expect(screen.getByText("Private to this browser.")).toBeInTheDocument();
-    const note = screen.getByRole("textbox", {name: "Private analyst note"});
-    await user.type(note, "Confirm parent concentration before IOI.");
-    await user.click(screen.getByRole("button", {name: "Save private note"}));
-    await user.click(screen.getAllByRole("button", {name: "Review approval"})[0]);
-    expect(screen.getByText(/This records analyst judgment only/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", {name: "Confirm approved"}));
-    expect(screen.getAllByText("approved").length).toBeGreaterThan(0);
-  });
-
-  it("distinguishes source classes and states the model-hypothesis boundary", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    const evidenceMenu = screen.getByText("Evidence").closest("details")!;
-    if (!evidenceMenu.open) await user.click(screen.getByText("Evidence"));
-    await user.click(screen.getByRole("button", {name: "Sources"}));
-    expect(screen.getByRole("heading", {name: /Keep facts, representations, assumptions, and judgment separate/})).toBeInTheDocument();
-    expect(screen.getByText(/A future model may propose, but cannot approve/)).toBeInTheDocument();
-    expect(screen.getAllByText(/Management representation · synthetic/).length).toBeGreaterThan(0);
-  });
-
-  it("searches retained sources and deep-links analyses", async () => {
-    window.history.replaceState(null, "", "/#/v2/helios/explore");
-    const user = userEvent.setup();
-    render(<App />);
-    const search = screen.getByRole("searchbox", {name: "Search room"});
-    await user.type(search, "HX-05");
-    await user.click(screen.getByRole("button", {name: /Open analysis/}));
-    expect(window.location.hash).toBe("#/v2/helios/methodology?section=analysis-HX-05");
-    expect(document.getElementById("analysis-HX-05")).toBeInTheDocument();
-  });
-
-  it("binds every rendered finance element to the registry", async () => {
+  it("fails closed when a retained deal payload cannot be opened", async () => {
     const candidate: unknown = rawData;
     assertWorkbenchData(candidate);
+    const atlasgrid = candidate.cases.find((item) => item.caseId === "atlasgrid")!;
     const user = userEvent.setup();
+    render(<WorkbenchApp initialCase={atlasgrid} initialRoute={{caseId: "atlasgrid", view: "overview"}} loadCaseFn={async () => {throw new Error("payload unavailable");}} />);
+    await user.selectOptions(screen.getByRole("combobox", {name: "Deal"}), "helios");
+    expect(await screen.findByRole("heading", {name: "Deal unavailable"})).toBeInTheDocument();
+    expect(screen.getByText(/No data, assumption or decision was changed/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: "Return to Deals"}));
+    expect(screen.getByRole("heading", {name: "Deals"})).toBeInTheDocument();
+  });
+
+  it("renders a committee-readable memo with source ownership", () => {
+    window.history.replaceState(null, "", "/#/v3/atlasgrid/memo");
     render(<App />);
-    for (const caseData of candidate.cases) {
-      await user.click(screen.getByRole("button", {name: new RegExp(caseData.company)}));
-      const registered = new Set(caseData.metricRegistry.map((item) => item.metric_id));
-      for (const targetView of ["Overview", "Financials", "Value Creation"]) {
-        if (targetView === "Value Creation") {
-          const evidenceMenu = screen.getByText("Evidence").closest("details")!;
-          if (!evidenceMenu.open) await user.click(screen.getByText("Evidence"));
-        }
-        await user.click(screen.getByRole("button", {name: new RegExp(targetView)}));
-        for (const element of document.querySelectorAll<HTMLElement>("[data-metric-id]")) {
-          expect(registered.has(element.dataset.metricId!), element.dataset.metricId).toBe(true);
-        }
-      }
-    }
+    expect(screen.getByText("Investment committee working draft")).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "Recommendation and rationale"})).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "Downside and what must be true"})).toBeInTheDocument();
+    expect(screen.getAllByText("Calculated baseline").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/IC decision pending/).length).toBeGreaterThan(0);
+  });
+
+  it("records named human observations without mutating retained case data", async () => {
+    window.history.replaceState(null, "", "/#/v3/atlasgrid/overview");
+    const user = userEvent.setup(); const before = JSON.stringify(rawData);
+    render(<App />);
+    await user.type(screen.getByRole("textbox", {name: "Author"}), "Avery Chen");
+    await user.type(screen.getByRole("textbox", {name: "New observation"}), "Validate cancellation rights before crediting booked ARR.");
+    await user.click(screen.getByRole("button", {name: "Add observation"}));
+    expect(screen.getByText("Validate cancellation rights before crediting booked ARR.")).toBeInTheDocument();
+    expect(screen.getByText(/Investment observation · Avery Chen/)).toBeInTheDocument();
+    expect(JSON.stringify(rawData)).toBe(before);
+  });
+
+  it("migrates legacy view names into the five-destination shell", () => {
+    window.history.replaceState(null, "", "/#/v2/helios/methodology");
+    expect(parseRoute()).toEqual({caseId: "helios", view: "diligence"});
+    window.history.replaceState(null, "", "/#/v2/atlasgrid/underwriting");
+    expect(parseRoute()).toEqual({caseId: "atlasgrid", view: "financials"});
   });
 });

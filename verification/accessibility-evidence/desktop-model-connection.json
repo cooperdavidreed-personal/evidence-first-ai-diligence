@@ -1,0 +1,19 @@
+{
+  "boundary": "Connection-wizard route evidence only; hosted inference is verified separately, and no remote MCP, credential, or comprehensive WCAG claim is made here.",
+  "project": "desktop",
+  "scans": [
+    {
+      "view": "Governed review boundary",
+      "critical_or_serious_count": 0,
+      "violations": [],
+      "root_client_width": 1440,
+      "root_scroll_width": 1440,
+      "minimum_visible_text_px": 12
+    }
+  ],
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "workbench_data_sha256": "0fabe848c92d431135c1343a455f4725c2cb3e5b0156624fc00f2a322f520e42"
+}

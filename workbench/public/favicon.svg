@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Underwriting Desk">
+  <rect width="64" height="64" rx="8" fill="#1f2b35"/>
+  <path d="M17 17h8v21c0 6 2.7 9 8.1 9 5.2 0 7.9-3 7.9-9V17h8v21.7C49 49 42.8 55 33 55c-10.2 0-16-6-16-16.3V17Z" fill="#f7f5f1"/>
+</svg>

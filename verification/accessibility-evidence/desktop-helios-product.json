@@ -1,0 +1,52 @@
+{
+  "boundary": "No critical or serious Axe finding and no root overflow on the five tested default surfaces; not comprehensive WCAG or practitioner evidence.",
+  "case": "Helios Compute Control",
+  "project": "desktop",
+  "scans": [
+    {
+      "view": "Overview",
+      "critical_or_serious_count": 0,
+      "violations": [],
+      "root_client_width": 1440,
+      "root_scroll_width": 1440,
+      "minimum_visible_text_px": 12
+    },
+    {
+      "view": "Financials",
+      "critical_or_serious_count": 0,
+      "violations": [],
+      "root_client_width": 1440,
+      "root_scroll_width": 1440,
+      "minimum_visible_text_px": 12
+    },
+    {
+      "view": "Diligence",
+      "critical_or_serious_count": 0,
+      "violations": [],
+      "root_client_width": 1440,
+      "root_scroll_width": 1440,
+      "minimum_visible_text_px": 12
+    },
+    {
+      "view": "Documents",
+      "critical_or_serious_count": 0,
+      "violations": [],
+      "root_client_width": 1440,
+      "root_scroll_width": 1440,
+      "minimum_visible_text_px": 12
+    },
+    {
+      "view": "IC Memo",
+      "critical_or_serious_count": 0,
+      "violations": [],
+      "root_client_width": 1440,
+      "root_scroll_width": 1440,
+      "minimum_visible_text_px": 12
+    }
+  ],
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "workbench_data_sha256": "0fabe848c92d431135c1343a455f4725c2cb3e5b0156624fc00f2a322f520e42"
+}

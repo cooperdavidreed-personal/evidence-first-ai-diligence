@@ -11,8 +11,8 @@ from typing import Any
 from PIL import Image
 
 
-DEMO_SOURCE = Path("demo/release-fix")
-VIDEO_NAME = "underwriting-lab-demo-1080p.mp4"
+DEMO_SOURCE = Path("demo/final")
+VIDEO_NAME = "underwriting-desk-demo-1080p.mp4"
 EXPECTED_REVIEWERS = {"CLAUDE", "CHATGPT", "GROK"}
 
 
@@ -213,8 +213,8 @@ def verify_source_closure(repo: Path, manifest: dict[str, Any]) -> int:
         require(sha256(repo / relative) == item["sha256"], f"source changed after capture: {relative}")
     require(observed == sorted(observed), "source closure is not sorted")
     for required in (
-        "demo/release-fix/storyboard.json",
-        "demo/release-fix/transcript.txt",
+        "demo/final/storyboard.json",
+        "demo/final/transcript.txt",
         "output/pdf/atlasgrid-underwriting-packet-letter.pdf",
         "output/pdf/helios-underwriting-packet-letter.pdf",
         "workbench/src/data/cases.json",
@@ -285,7 +285,8 @@ def main() -> int:
     )
     require(manifest.get("schema_version") == "underwriting.demo-manifest/v3", "demo manifest schema mismatch")
     require(manifest.get("status") == "RENDERED_PENDING_INDEPENDENT_REVIEW", "demo manifest status mismatch")
-    require(manifest.get("capture") == "REAL_LOCAL_WORKBENCH_INTERACTIONS", "demo capture mode mismatch")
+    require(manifest.get("capture") == "REAL_PUBLIC_WORKBENCH_INTERACTIONS", "demo capture mode mismatch")
+    require(manifest.get("deployed_url") == "https://underwriting-desk-delta.vercel.app/", "demo deployed URL mismatch")
 
     video = root / VIDEO_NAME
     require(video.is_file() and not video.is_symlink(), "demo video missing or unsafe")
