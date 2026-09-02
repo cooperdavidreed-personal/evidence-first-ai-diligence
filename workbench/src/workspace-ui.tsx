@@ -89,7 +89,7 @@ export function ObservationComposer({state, update}: {state: DealWorkspaceState;
   </section>;
 }
 
-export function AssumptionRegistry({assumptions, state, update}: {assumptions: AssumptionDefinition[]; state: DealWorkspaceState; update: WorkspaceUpdate}) {
+export function AssumptionRegistry({assumptions, state, update, staleAssumptionIds = [], staleSince}: {assumptions: AssumptionDefinition[]; state: DealWorkspaceState; update: WorkspaceUpdate; staleAssumptionIds?: string[]; staleSince?: string}) {
   const [actor, setActor] = useState("");
   const [rationale, setRationale] = useState("");
   const decide = (assumptionId: string, disposition: Exclude<AssumptionDisposition, "UNREVIEWED">) => {
@@ -106,8 +106,9 @@ export function AssumptionRegistry({assumptions, state, update}: {assumptions: A
     <div className="registry-table" role="list" aria-label="Material assumption registry">
       {assumptions.map((assumption) => {
         const review = state.assumptionReviews[assumption.id];
-        const disposition = review?.disposition ?? "UNREVIEWED";
-        return <article role="listitem" key={assumption.id}><div><strong>{assumption.label}</strong><span>{assumption.basis} · {assumption.owner}</span><p>{assumption.consequence}</p>{review ? <small>{review.rationale} · {review.actor} · {formatHumanDate(review.reviewedAt)}</small> : null}</div><b>{assumption.value}</b><span className={`status status-${disposition.toLowerCase()}`}>{disposition.toLowerCase()}</span><div className="row-actions"><button type="button" onClick={() => decide(assumption.id, "APPROVED")} disabled={!actor.trim() || rationale.trim().length < 12}>Approve</button><button type="button" onClick={() => decide(assumption.id, "REJECTED")} disabled={!actor.trim() || rationale.trim().length < 12}>Reject</button></div></article>;
+        const stale = staleAssumptionIds.includes(assumption.id) && (!review || !staleSince || new Date(review.reviewedAt).getTime() < new Date(staleSince).getTime());
+        const disposition = stale ? "STALE" : review?.disposition ?? "UNREVIEWED";
+        return <article role="listitem" key={assumption.id} data-stale={stale || undefined}><div><strong>{assumption.label}</strong><span>{assumption.basis} · {assumption.owner}</span><p>{assumption.consequence}</p>{stale ? <small>Reapproval required because the revised package changed a decision input.</small> : review ? <small>{review.rationale} · {review.actor} · {formatHumanDate(review.reviewedAt)}</small> : null}</div><b>{assumption.value}</b><span className={`status status-${disposition.toLowerCase()}`}>{stale ? "stale · reapproval required" : disposition.toLowerCase()}</span><div className="row-actions"><button type="button" onClick={() => decide(assumption.id, "APPROVED")} disabled={!actor.trim() || rationale.trim().length < 12}>Approve</button><button type="button" onClick={() => decide(assumption.id, "REJECTED")} disabled={!actor.trim() || rationale.trim().length < 12}>Reject</button></div></article>;
       })}
     </div>
   </section>;
@@ -188,7 +189,9 @@ export function WorkspaceTransfer({state, replace, allowedEvidenceRefs, scenario
       const anchor = document.createElement("a");
       anchor.href = url;
       anchor.download = `${state.caseId}-underwriting-workspace.json`;
+      document.body.append(anchor);
       anchor.click();
+      anchor.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       setNotice("Portable workspace exported.");
     } catch (error) { setNotice(error instanceof Error ? error.message : "Workspace export failed."); }
@@ -207,18 +210,55 @@ export function WorkspaceTransfer({state, replace, allowedEvidenceRefs, scenario
   return <section className="workspace-transfer" aria-label="Portable deal state"><div><strong>Portable deal state</strong><span>Browser-local, validated JSON. The private analyst note is excluded unless you opt in. Do not use for confidential information.</span></div><label><input type="checkbox" checked={includePrivateNote} onChange={(event) => setIncludePrivateNote(event.target.checked)} /> Include private analyst note in export</label><div><button type="button" onClick={exportState}>Export state</button><label className="file-button">Import state<input type="file" accept="application/json,.json" onChange={(event) => importState(event.target.files?.[0])} /></label></div>{notice ? <p role="status">{notice}</p> : null}</section>;
 }
 
+function htmlEscape(value: string) {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+}
+
+export function memoDownloadHtml(title: string, subtitle: string, scenarioSummary: ScenarioMemoSummary, sections: DealWorkspaceState["memoSections"]) {
+  const sectionHtml = sections.map((section) => `<section><h2>${htmlEscape(section.title)}</h2><p>${htmlEscape(section.body)}</p><small>${htmlEscape(section.updatedBy)} · ${htmlEscape(formatHumanDate(section.updatedAt))}</small></section>`).join("");
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${htmlEscape(title)} — IC memo</title><style>body{font:15px/1.55 Arial,sans-serif;color:#17202a;max-width:820px;margin:48px auto;padding:0 32px}header{border-bottom:2px solid #17202a;padding-bottom:24px}h1{font-size:30px;margin:8px 0}h2{font-size:18px;margin:0 0 8px}section{border-top:1px solid #ccd2d8;padding:22px 0}p{white-space:pre-wrap}small{color:#5d6873}.scenario{background:#f3f5f7;padding:18px;margin:24px 0}.disclosure{margin-top:36px;color:#5d6873;font-size:12px}</style></head><body><header><small>Investment committee working draft</small><h1>${htmlEscape(title)}</h1><p>${htmlEscape(subtitle)}</p></header><div class="scenario"><strong>${htmlEscape(scenarioSummary.label)} · ${htmlEscape(scenarioSummary.state)}</strong><p>${htmlEscape(scenarioSummary.returnLine)}</p><small>${htmlEscape(scenarioSummary.detail)}</small></div>${sectionHtml}<p class="disclosure">Synthetic public demonstration. Not investment advice. IC decision pending.</p></body></html>`;
+}
+
 export function EditableMemo({state, update, title, subtitle, scenarioSummary}: {state: DealWorkspaceState; update: WorkspaceUpdate; title: string; subtitle: string; scenarioSummary: ScenarioMemoSummary}) {
   const [editor, setEditor] = useState("");
+  const [exportNotice, setExportNotice] = useState("");
   const namedHumanEditor = Boolean(editor.trim()) && !["financial model", "underwriting desk"].includes(editor.trim().toLowerCase());
   const setSection = (sectionId: string, body: string) => {
     if (!namedHumanEditor) return;
-    update({memoSections: state.memoSections.map((section) => section.sectionId === sectionId ? {...section, body, provenance: section.provenance === "DETERMINISTIC_ANALYSIS" || section.provenance === "HUMAN_ACCEPTED_MODEL_PROPOSAL" ? "ANALYST_JUDGMENT" : section.provenance, sourceProvenance: section.sourceProvenance ?? section.provenance, sourceBody: section.sourceBody ?? section.body, updatedBy: editor.trim(), updatedAt: new Date().toISOString()} : section)});
+    update({memoSections: state.memoSections.map((section) => section.sectionId === sectionId ? {...section, body, provenance: section.provenance === "DETERMINISTIC_ANALYSIS" || section.provenance === "HUMAN_ACCEPTED_MODEL_PROPOSAL" ? "ANALYST_JUDGMENT" : section.provenance, sourceProvenance: section.sourceProvenance ?? section.provenance, sourceBody: section.sourceBody ?? section.body, scenarioSnapshotId: scenarioSummary.snapshotId, updatedBy: editor.trim(), updatedAt: new Date().toISOString()} : section)});
   };
   const acceptedDrafts = state.proposals.filter((proposal) => proposal.state === "ACCEPTED" && !state.memoSections.some((section) => section.sourceProposalId === proposal.proposalId));
   const addProposal = (proposal: ModelProposal) => {
     if (!namedHumanEditor) return;
     const title = proposal.kind === "CHALLENGE" ? `Accepted counterthesis — ${proposal.title}` : proposal.kind === "DILIGENCE_GAP" ? `Accepted diligence gap — ${proposal.title}` : proposal.memoSection || proposal.title;
-    update({memoSections: [...state.memoSections, {sectionId: `proposal-${proposal.proposalId}`, title, body: proposal.body, provenance: "HUMAN_ACCEPTED_MODEL_PROPOSAL", sourceProposalId: proposal.proposalId, updatedBy: editor.trim(), updatedAt: new Date().toISOString()}]});
+    update({memoSections: [...state.memoSections, {sectionId: `proposal-${proposal.proposalId}`, title, body: proposal.body, provenance: "HUMAN_ACCEPTED_MODEL_PROPOSAL", sourceProposalId: proposal.proposalId, scenarioSnapshotId: scenarioSummary.snapshotId, updatedBy: editor.trim(), updatedAt: new Date().toISOString()}]});
+  };
+  const staleSections = state.memoSections.filter((section) => section.scenarioSnapshotId !== scenarioSummary.snapshotId);
+  const reconcileCoreSections = () => {
+    if (!namedHumanEditor) return;
+    const now = new Date().toISOString();
+    update({memoSections: state.memoSections.map((section) => {
+      const generated = scenarioSummary.sectionBodies[section.sectionId as keyof typeof scenarioSummary.sectionBodies];
+      if (!generated) return section;
+      return {...section, body: generated, provenance: section.provenance === "DETERMINISTIC_ANALYSIS" ? "ANALYST_JUDGMENT" as const : section.provenance, sourceProvenance: section.sourceProvenance ?? section.provenance, sourceBody: section.sourceBody ?? section.body, scenarioSnapshotId: scenarioSummary.snapshotId, updatedBy: editor.trim(), updatedAt: now};
+    })});
+    setExportNotice(`Core memo sections reconciled to ${scenarioSummary.label}. Review any remaining stale sections before export.`);
+  };
+  const exportReady = staleSections.length === 0;
+  const downloadMemo = () => {
+    if (!exportReady) { setExportNotice("Export blocked: reconcile every memo section to the selected scenario first."); return; }
+    try {
+      setExportNotice("Preparing scenario-bound memo…");
+      const url = URL.createObjectURL(new Blob([memoDownloadHtml(title, subtitle, scenarioSummary, state.memoSections)], {type: "text/html;charset=utf-8"}));
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${state.caseId}-${scenarioSummary.label.toLowerCase().replaceAll(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-ic-memo.html`;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setExportNotice(`Downloaded ${scenarioSummary.label} IC memo.`);
+    } catch (error) { setExportNotice(error instanceof Error ? error.message : "Memo export failed."); }
   };
   const provenanceLabel = (section: DealWorkspaceState["memoSections"][number]) => {
     if (section.provenance === "DETERMINISTIC_ANALYSIS") return "Calculated baseline";
@@ -233,5 +273,5 @@ export function EditableMemo({state, update, title, subtitle, scenarioSummary}: 
   const importedProposalCaveat = (section: DealWorkspaceState["memoSections"][number]) => state.proposals.find((proposal) => proposal.proposalId === section.sourceProposalId)?.origin === "PORTABLE_IMPORT_UNVERIFIED"
     ? "Portable import note: the proposal text and recorded human disposition were preserved, but the original model and provider identity are not authenticated."
     : null;
-    return <div className="memo-workspace"><section className="memo-editor"><header><div><span>Investment committee working draft</span><h2>{title}</h2><p>{subtitle}</p></div><label><span>Editor</span><input value={editor} maxLength={120} aria-describedby={!namedHumanEditor && editor.trim() ? "memo-editor-notice" : undefined} onChange={(event) => setEditor(event.target.value)} placeholder="Named editor required to revise" />{!namedHumanEditor && editor.trim() ? <small id="memo-editor-notice" role="status">Enter a person rather than a system label.</small> : null}</label></header><section className="memo-scenario-summary" aria-label="Scenario represented in this memo"><div><span>{scenarioSummary.state}</span><h3>{scenarioSummary.label}</h3></div><strong>{scenarioSummary.returnLine}</strong><p>{scenarioSummary.detail}</p></section>{state.memoSections.map((section) => {const caveat = importedProposalCaveat(section); return <article key={section.sectionId}><div className="memo-section-heading"><div><h3>{section.title}</h3><small>{provenanceLabel(section)}</small></div><span>{section.updatedBy} · {formatHumanDate(section.updatedAt)}</span></div>{caveat ? <p className="proposal-import-caveat">{caveat}</p> : null}<textarea className="memo-screen-editor" maxLength={8000} disabled={!namedHumanEditor} aria-label={`${section.title} memo section`} value={section.body} onChange={(event) => setSection(section.sectionId, event.target.value)} /><p className="memo-print-body">{caveat ? `${caveat} ` : ""}{section.body}</p>{section.sourceBody ? <details><summary>Original source text</summary><p>{section.sourceBody}</p></details> : null}</article>;})}{acceptedDrafts.length ? <aside className="accepted-drafts"><h3>Accepted proposals ready for the memo</h3>{acceptedDrafts.map((proposal) => <div key={proposal.proposalId}><p>{proposal.body}</p><button type="button" onClick={() => addProposal(proposal)} disabled={!namedHumanEditor}>Add with provenance</button></div>)}</aside> : null}<footer>Working draft · IC decision pending · Illustrative public data</footer></section><div className="memo-actions"><button className="primary-button" type="button" onClick={() => window.print()}>Export IC memo</button><p>Model language enters only after named human acceptance and a named editor adds it.</p></div></div>;
+    return <div className="memo-workspace"><section className="memo-editor"><header><div><span>Investment committee working draft</span><h2>{title}</h2><p>{subtitle}</p></div><label><span>Editor</span><input value={editor} maxLength={120} aria-describedby={!namedHumanEditor && editor.trim() ? "memo-editor-notice" : undefined} onChange={(event) => setEditor(event.target.value)} placeholder="Named editor required to revise" />{!namedHumanEditor && editor.trim() ? <small id="memo-editor-notice" role="status">Enter a person rather than a system label.</small> : null}</label></header><section className="memo-scenario-summary" aria-label="Scenario represented in this memo"><div><span>{scenarioSummary.state}</span><h3>{scenarioSummary.label}</h3></div><strong>{scenarioSummary.returnLine}</strong><p>{scenarioSummary.detail}</p></section>{staleSections.length ? <section className="memo-reconciliation" role="alert"><div><strong>Memo review required</strong><p>{staleSections.length} {staleSections.length === 1 ? "section was" : "sections were"} prepared against another scenario. Export is blocked until a named editor reconciles them.</p></div><button type="button" onClick={reconcileCoreSections} disabled={!namedHumanEditor}>Reconcile core sections to {scenarioSummary.label}</button></section> : <p className="memo-ready" role="status">All memo sections are bound to {scenarioSummary.label}.</p>}{state.memoSections.map((section) => {const caveat = importedProposalCaveat(section); const stale = section.scenarioSnapshotId !== scenarioSummary.snapshotId; return <article key={section.sectionId} data-stale={stale || undefined}><div className="memo-section-heading"><div><h3>{section.title}</h3><small>{provenanceLabel(section)}{stale ? " · review required" : " · current scenario"}</small></div><span>{section.updatedBy} · {formatHumanDate(section.updatedAt)}</span></div>{caveat ? <p className="proposal-import-caveat">{caveat}</p> : null}<textarea className="memo-screen-editor" maxLength={8000} disabled={!namedHumanEditor} aria-label={`${section.title} memo section`} value={section.body} onChange={(event) => setSection(section.sectionId, event.target.value)} /><p className="memo-print-body">{caveat ? `${caveat} ` : ""}{section.body}</p>{section.sourceBody ? <details><summary>Original source text</summary><p>{section.sourceBody}</p></details> : null}</article>;})}{acceptedDrafts.length ? <aside className="accepted-drafts"><h3>Accepted proposals ready for the memo</h3>{acceptedDrafts.map((proposal) => <div key={proposal.proposalId}><p>{proposal.body}</p><button type="button" onClick={() => addProposal(proposal)} disabled={!namedHumanEditor}>Add with provenance</button></div>)}</aside> : null}<footer>Working draft · IC decision pending · Illustrative public data</footer></section><div className="memo-actions"><button className="primary-button" type="button" onClick={downloadMemo} disabled={!exportReady}>Download IC memo</button><button type="button" onClick={() => window.print()} disabled={!exportReady}>Print or save PDF</button>{exportNotice ? <p role="status">{exportNotice}</p> : <p>Export is available only when every section matches the selected scenario.</p>}</div></div>;
 }

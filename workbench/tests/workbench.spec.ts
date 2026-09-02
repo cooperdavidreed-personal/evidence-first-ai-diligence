@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import {mkdtempSync, rmSync} from "node:fs";
+import {mkdtempSync, readFileSync, rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {resolve} from "node:path";
 import {spawnSync} from "node:child_process";
@@ -7,6 +7,7 @@ import {expect, test, type Page, type TestInfo} from "@playwright/test";
 import {captureVisualEvidence, writeAccessibilityEvidence} from "./visual-evidence";
 
 const packagePaths = ["manifest.json", "deal.json", "monthly_financials.csv", "customer_arr.csv"].map((name) => resolve(import.meta.dirname, `../public/sample-package/${name}`));
+const atlasgridRevisionPath = resolve(import.meta.dirname, "../public/change-packages/atlasgrid-v2-retention-revision.json");
 const views = ["Overview", "Financials", "Diligence", "Documents", "IC Memo"] as const;
 
 async function settleAtTop(page: Page) {
@@ -196,6 +197,125 @@ test("scenario, observation, issue, assumption, and memo changes persist as huma
   await expect(page.getByText("Original source text")).toBeVisible();
 });
 
+test("memo export fails closed and downloads one reconciled scenario snapshot", async ({page}) => {
+  const scenarios = [
+    {button: "Seller ask", label: "Seller ask", expected: ["17.6%", "2.25x"], excluded: ["23.3%", "2.80x"]},
+    {button: "Canonical selected terms", label: "Selected terms", expected: ["23.3%", "2.80x"], excluded: ["17.6%", "2.25x"]},
+    {button: "Downside", label: "Downside", expected: ["6.2%", "1.35x"], excluded: ["23.3%", "2.80x"]},
+  ];
+  await page.goto("/#/v3/atlasgrid/financials", {waitUntil: "networkidle"});
+  for (const scenario of scenarios) {
+    await page.getByRole("button", {name: scenario.button, exact: true}).click();
+    await (await visibleDealNavigation(page)).getByRole("button", {name: "IC Memo"}).click();
+    const summary = page.getByRole("region", {name: "Scenario represented in this memo"});
+    await expect(summary).toContainText(scenario.label);
+    await expect(page.getByRole("button", {name: "Download IC memo"})).toBeDisabled();
+    await expect(page.getByRole("alert")).toContainText("Export is blocked");
+    await page.getByRole("textbox", {name: "Editor"}).fill("Avery Chen");
+    await page.getByRole("button", {name: `Reconcile core sections to ${scenario.label}`}).click();
+    await expect(page.getByRole("button", {name: "Download IC memo"})).toBeEnabled();
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", {name: "Download IC memo"}).click(),
+    ]);
+    const path = await download.path();
+    expect(path).toBeTruthy();
+    const html = readFileSync(path!, "utf8");
+    for (const value of scenario.expected) expect(html).toContain(value);
+    for (const value of scenario.excluded) expect(html).not.toContain(value);
+    expect(html).toContain(`${scenario.label} ·`);
+    expect(html).toContain("IC decision pending");
+    await (await visibleDealNavigation(page)).getByRole("button", {name: "Financials"}).click();
+  }
+});
+
+test("every retained-case and Northstar public source opens from the running build", async ({page}) => {
+  const checked = new Set<string>();
+  let displayedSources = 0;
+  for (const caseId of ["atlasgrid", "helios"] as const) {
+    await page.goto(`/#/v3/${caseId}/documents`, {waitUntil: "networkidle"});
+    const sources = page.locator(".source-list button");
+    const sourceCount = await sources.count();
+    displayedSources += sourceCount;
+    for (let index = 0; index < sourceCount; index += 1) {
+      await sources.nth(index).click();
+      const link = page.locator('.document-preview a[href^="source-pack/"]');
+      await expect(link).toBeVisible();
+      const href = await link.getAttribute("href");
+      expect(href).toBeTruthy();
+      const absolute = new URL(href!, page.url()).href;
+      if (checked.has(absolute)) continue;
+      const response = await page.request.get(absolute);
+      expect(response.status(), absolute).toBe(200);
+      expect((await response.body()).byteLength, absolute).toBeGreaterThan(0);
+      checked.add(absolute);
+    }
+  }
+  await page.goto("/", {waitUntil: "networkidle"});
+  await page.getByRole("button", {name: "New deal"}).click();
+  for (const link of await page.locator('.sample-downloads a[download]').all()) {
+    const href = await link.getAttribute("href");
+    const response = await page.request.get(new URL(href!, page.url()).href);
+    expect(response.status()).toBe(200);
+    expect((await response.body()).byteLength).toBeGreaterThan(0);
+  }
+  expect(checked.size).toBe(displayedSources);
+  expect(displayedSources).toBeGreaterThanOrEqual(10);
+});
+
+test("portable state export downloads and imports its validated scenario ownership", async ({page}) => {
+  await page.goto("/#/v3/helios/memo", {waitUntil: "networkidle"});
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", {name: "Export state"}).click(),
+  ]);
+  const path = await download.path();
+  expect(path).toBeTruthy();
+  const exported = JSON.parse(readFileSync(path!, "utf8"));
+  expect(exported.caseId).toBe("helios");
+  expect(exported.memoSections.every((section: {scenarioSnapshotId?: string}) => Boolean(section.scenarioSnapshotId))).toBe(true);
+  await page.locator('.workspace-transfer input[type="file"]').setInputFiles({name: "helios-underwriting-workspace.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(exported))});
+  await expect(page.getByText(/Workspace imported and validated/)).toBeVisible();
+  await expect(page.getByText("All memo sections are bound to Milestone funded.")).toBeVisible();
+});
+
+test("Version 2 evidence propagates through returns, stale state, diligence, and human disposition", async ({page}) => {
+  await page.goto("/#/v3/atlasgrid/overview", {waitUntil: "networkidle"});
+  await expect(page.getByRole("heading", {name: "What changed?"})).toBeVisible();
+  const tamperedRevision = JSON.parse(readFileSync(atlasgridRevisionPath, "utf8"));
+  tamperedRevision.base_customer_month_sha256 = "0".repeat(64);
+  await page.locator('.change-control input[type="file"]').setInputFiles({name: "atlasgrid-v2-tampered.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(tamperedRevision))});
+  await expect(page.getByRole("status")).toContainText("does not match the approved AtlasGrid V1 retention evidence");
+  await page.locator('.change-control input[type="file"]').setInputFiles(atlasgridRevisionPath);
+  await expect(page.getByRole("status")).toContainText("Version 2 validated");
+  const change = page.locator(".change-control");
+  await expect(change).toContainText("99.9%");
+  await expect(change).toContainText("98.0%");
+  await expect(change).toContainText("23.3%");
+  await expect(change).toContainText("18.4%");
+  await expect(change).toContainText("2.80x");
+  await expect(change).toContainText("2.32x");
+  await expect(change).toContainText("$16.4M");
+  await expect(change).toContainText("$30.5M");
+  await expect(change).toContainText("Memo sections stale");
+  await expect(change).toContainText("Reopen diligence");
+  await expect(change).toContainText("Pending");
+  await page.getByPlaceholder("Named human reviewer").fill("Avery Chen");
+  await page.getByPlaceholder(/Why should the revised evidence/).fill("Accept the corrected cancellation schedule and reopen commercial diligence.");
+  await page.getByRole("button", {name: "Accept change"}).click();
+  await expect(change).toContainText("accepted");
+  await expect(change).toContainText("Avery Chen");
+  await (await visibleDealNavigation(page)).getByRole("button", {name: "Diligence"}).click();
+  await expect(page.getByText("Reconcile the V2 cancellation schedule")).toBeVisible();
+  await (await visibleDealNavigation(page)).getByRole("button", {name: "IC Memo"}).click();
+  await expect(page.getByRole("button", {name: "Download IC memo"})).toBeDisabled();
+  await expect(page.getByRole("alert")).toContainText("prepared against another scenario");
+  await page.reload({waitUntil: "networkidle"});
+  await (await visibleDealNavigation(page)).getByRole("button", {name: "Overview"}).click();
+  await expect(page.locator(".change-control")).toContainText("1 disposition event");
+  await expect(page.locator(".change-control")).toContainText("accepted");
+});
+
 test("decision rail keeps canonical conditions separate from worklist resolutions", async ({page}) => {
   await page.goto("/#/v3/atlasgrid/diligence", {waitUntil: "networkidle"});
   const issue = page.locator("details.worklist-row").filter({hasText: "Validate cancellation rights"});
@@ -221,10 +341,10 @@ test("Helios policy sensitivity is an unapproved what-if and follows the memo", 
   await (await visibleDealNavigation(page)).getByRole("button", {name: "IC Memo"}).click();
   const summary = page.getByRole("region", {name: "Scenario represented in this memo"});
   await expect(summary).toContainText("Unapproved what-if");
-  await expect(summary).toContainText("selected 20.0% catastrophe prior");
-  await expect(summary).toContainText("Every catastrophe path loses");
-  await expect(summary).toContainText("generator check, not an independent estimate");
-  await expect(summary).toContainText("ceiling");
+  await expect(summary).toContainText("selected 20.0% loss-case probability");
+  await expect(summary).toContainText("Every severe-loss path loses");
+  await expect(summary).toContainText("replay checks the scenario generator rather than estimating the probability");
+  await expect(summary).toContainText("8.0% Desk maximum");
 });
 
 test("print export uses complete memo text instead of a clipped textarea", async ({page}) => {
@@ -246,7 +366,7 @@ test("portable state rejects a fabricated accepted-proposal citation", async ({p
   raw.proposals.push({proposalId: "proposal-tampered", kind: "MEMO_DRAFT", state: "ACCEPTED", title: "Draft conclusion", body: "Fabricated evidence claim.", evidenceRefs: ["fabricated-metric"], dealId: "atlasgrid", origin: "PORTABLE_IMPORT_UNVERIFIED", requestEvidence, requestDigestSha256, humanActor: "Avery Chen", reviewedAt: "2026-09-01T12:00:00.000Z"});
   raw.memoSections.push({sectionId: "proposal-tampered", title: "Draft conclusion", body: "Fabricated evidence claim.", provenance: "HUMAN_ACCEPTED_MODEL_PROPOSAL", sourceProposalId: "proposal-tampered", updatedBy: "Avery Chen", updatedAt: "2026-09-01T12:00:00.000Z"});
   await page.locator('.workspace-transfer input[type="file"]').setInputFiles({name: "tampered-workspace.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(raw))});
-  await expect(page.getByRole("status")).toContainText("canonical registry");
+  await expect(page.getByRole("status").filter({hasText: "canonical registry"})).toBeVisible();
   await expect(page.getByText("Fabricated evidence claim.")).toHaveCount(0);
 });
 

@@ -6,9 +6,22 @@ const readableLabel = (value: string) => ({json_values: "Matched source values",
 function readableValue(value: unknown, key = ""): string {
   if (value === null || value === undefined) return "Not reported";
   if (typeof value === "number" && key.endsWith("_cents")) return money(value);
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) return new Intl.DateTimeFormat("en-US", {month: "short", day: "numeric", year: "numeric", timeZone: "UTC"}).format(date);
+  }
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value).replaceAll("_", " ");
   if (Array.isArray(value)) return value.map((item) => readableValue(item, key)).join(" · ");
   return Object.entries(value as Record<string, unknown>).map(([nestedKey, item]) => `${readableLabel(nestedKey)}: ${readableValue(item, nestedKey)}`).join(" · ");
+}
+
+function investorRawValue(value: string, unit: string) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return `${value} ${unit.replaceAll("_", " ")}`;
+  if (unit === "percentage_points") return `${Math.abs(numeric).toFixed(2)} percentage-point ${numeric < 0 ? "decrease" : numeric > 0 ? "increase" : "change"}`;
+  if (unit === "basis_points") return `${Math.abs(numeric).toFixed(2)} basis-point ${numeric < 0 ? "decrease" : numeric > 0 ? "increase" : "change"}`;
+  if (unit === "log_points") return `${Math.abs(Math.expm1(numeric) * 100).toFixed(1)}% multiplicative ${numeric < 0 ? "decrease" : numeric > 0 ? "increase" : "change"} (${numeric.toFixed(4)} log points)`;
+  return `${value} ${unit.replaceAll("_", " ")}`;
 }
 
 function locatorSummary(locator: SourceLocator) {
@@ -39,6 +52,6 @@ export function LineageDrawer({caseData, metric, onClose}: {caseData: CaseData; 
     <section className="lineage-business"><h3>What this number means</h3><p>{metric.detail}</p><dl><div><dt>Period</dt><dd>{registered?.period ?? "Declared scenario"}</dd></div><div><dt>Evidence class</dt><dd>{(registered?.classification ?? metric.classification).toLowerCase().replaceAll("_", " ")}</dd></div><div><dt>Decision use</dt><dd>{registered?.downstream_ids.join(", ") || "Context only unless a declared decision test references it."}</dd></div></dl></section>
     <section><div className="drawer-section-heading"><h3>Supporting evidence</h3><span>{locators.length} source {locators.length === 1 ? "selection" : "selections"}</span></div>{locators.length ? <div className="evidence-excerpts">{locators.map((locator) => <article key={locator.locator_id}><div><strong>{locator.artifact_path.split("/").at(-1)}</strong><span>{locatorSummary(locator)}</span></div><dl>{Object.entries(locator.retained_excerpt).map(([key, value]) => <div key={key}><dt>{readableLabel(key)}</dt><dd>{readableValue(value, key)}</dd></div>)}</dl><a href={locator.published_path} target="_blank" rel="noreferrer">Open complete synthetic source</a></article>)}</div> : <p className="empty-copy">This displayed value has no granular source locator. Treat it as an assumption or contextual output.</p>}</section>
     <details onToggle={(event) => setShowCalculation(event.currentTarget.open)}><summary>Calculation and methodology{formula ? ` · ${operands.length.toLocaleString()} inputs` : ""}</summary>{showCalculation ? formula ? <div className="formula-block"><p><strong>{formula.operation.replaceAll("_", " ")}</strong> · all {operands.length.toLocaleString()} registered inputs are included below.</p><ol>{operands.map((operand) => <li key={operand!.metric_id}><span>{operand!.label}</span><strong>{operand!.display_value}</strong><small>{operand!.period}</small></li>)}</ol></div> : <p>Direct observation or declared assumption; no formula is registered.</p> : null}</details>
-    <details className="technical-record"><summary>Audit detail</summary><dl>{registered ? <><div><dt>Metric</dt><dd><code>{registered.metric_id}</code></dd></div><div><dt>Raw value</dt><dd>{registered.value} {registered.unit}</dd></div><div><dt>Receipt</dt><dd><code>{registered.governing_receipt_sha256}</code></dd></div></> : null}</dl></details>
+    <details className="technical-record"><summary>Audit detail</summary><dl>{registered ? <><div><dt>Metric</dt><dd><code>{registered.metric_id}</code></dd></div><div><dt>Recorded value</dt><dd>{investorRawValue(registered.value, registered.unit)}</dd></div><div><dt>Receipt</dt><dd><code>{registered.governing_receipt_sha256}</code></dd></div></> : null}</dl></details>
   </dialog>;
 }

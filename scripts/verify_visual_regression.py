@@ -86,10 +86,17 @@ def _verify_cross_platform_accessibility(baseline: Path, candidate: Path) -> Non
 
 def main() -> int:
     manifest = json.loads((ROOT / "verification" / "visual-evidence.json").read_text())
-    manifest_paths = [entry["path"] for entry in [*manifest["files"], *manifest["print_files"]] if entry["path"].endswith(".png")]
+    # v0.2.1 deliberately gates the desktop product only. Retained mobile
+    # evidence remains historical and is not silently presented as current QA.
+    manifest_paths = [
+        entry["path"]
+        for entry in [*manifest["files"], *manifest["print_files"]]
+        if entry["path"].endswith(".png")
+        and Path(entry["path"]).name.startswith("desktop-")
+    ]
     baseline_pngs = [ROOT / relative for relative in manifest_paths]
-    if len(baseline_pngs) != 40:
-        raise SystemExit(f"visual-regression FAIL: expected 40 manifest-bound baselines, got {len(baseline_pngs)}")
+    if len(baseline_pngs) != 22:
+        raise SystemExit(f"visual-regression FAIL: expected 22 desktop manifest-bound baselines, got {len(baseline_pngs)}")
     failures: list[str] = []
     reference_comparable = sys.platform == "darwin"
     for baseline in baseline_pngs:
@@ -123,9 +130,13 @@ def main() -> int:
                 failures.append(f"pdf_byte_regression:{file_name}")
             else:
                 pdf_matches += 1
-    accessibility_paths = [entry["path"] for entry in manifest.get("accessibility_files", [])]
+    accessibility_paths = [
+        entry["path"]
+        for entry in manifest.get("accessibility_files", [])
+        if Path(entry["path"]).name.startswith("desktop-")
+    ]
     accessibility_baselines = [ROOT / relative for relative in accessibility_paths]
-    if len(accessibility_baselines) != 8:
+    if len(accessibility_baselines) != 4:
         failures.append(
             f"accessibility_baseline_count:{len(accessibility_baselines)}"
         )
@@ -147,14 +158,14 @@ def main() -> int:
             "visual-regression=PASS reference_platform=darwin "
             f"pngs={len(baseline_pngs)} changed_pixel_limit={MAX_CHANGED_PIXEL_RATIO:.2%} "
             f"rms_limit={MAX_RMS_CHANNEL_DELTA:.1f} localized_focus_limit={MAX_LOCALIZED_FOCUS_DRIFT_RATIO:.2%} pdf_byte_matches={pdf_matches}/6"
-            f" accessibility_matches={len(accessibility_baselines)}/8"
+            f" accessibility_matches={len(accessibility_baselines)}/4"
         )
     else:
         print(
             "visual-regression=NOT_COMPARABLE "
             f"platform={sys.platform} candidates={len(baseline_pngs)} dimensions=PASS "
             f"pdf_candidates={pdf_matches}/6; browser, overflow, and axe flows remain enforced"
-            f" accessibility_matches={len(accessibility_baselines)}/8"
+            f" accessibility_matches={len(accessibility_baselines)}/4"
         )
     return 0
 

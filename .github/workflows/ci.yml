@@ -63,6 +63,7 @@ jobs:
       - run: npm install --global pnpm@11.19.0
       - run: sudo apt-get update && sudo apt-get install --yes poppler-utils
       - run: uv sync --locked --extra dev
+      - run: cd workbench && pnpm exec playwright install --with-deps chromium webkit
       - run: bash scripts/verify-underwriting.sh
         env:
           UNDERWRITING_SKIP_PYTEST: "1"

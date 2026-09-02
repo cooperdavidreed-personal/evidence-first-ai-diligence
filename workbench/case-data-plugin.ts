@@ -1,11 +1,48 @@
-import {readFileSync} from "node:fs";
+import {readFileSync, readdirSync, statSync} from "node:fs";
 import {fileURLToPath} from "node:url";
+import {extname, join, relative, resolve, sep} from "node:path";
 import type {Plugin} from "vite";
 
 const INDEX_ID = "virtual:underwriting-case-index";
 const CASE_IDS = ["atlasgrid", "helios"] as const;
 const virtualIds = new Set([INDEX_ID, ...CASE_IDS.map((id) => `virtual:underwriting-case-${id}`)]);
 const dataPath = fileURLToPath(new URL("./src/data/cases.json", import.meta.url));
+const portfolioPath = fileURLToPath(new URL("../portfolio", import.meta.url));
+
+function sourcePackFiles(caseId: typeof CASE_IDS[number]) {
+  const root = join(portfolioPath, caseId, "data-room");
+  const files: string[] = [];
+  const visit = (directory: string) => {
+    for (const entry of readdirSync(directory)) {
+      const path = join(directory, entry);
+      if (statSync(path).isDirectory()) visit(path);
+      else files.push(path);
+    }
+  };
+  visit(root);
+  return files.map((path) => ({
+    path,
+    publishedPath: `source-pack/${caseId}/${relative(root, path).split(sep).join("/")}`,
+  }));
+}
+
+function sourcePackMiddleware(request: {url?: string}, response: {statusCode: number; setHeader(name: string, value: string): void; end(value?: Buffer | string): void}, next: () => void) {
+  const match = request.url?.split("?")[0].match(/^\/source-pack\/(atlasgrid|helios)\/(.+)$/);
+  if (!match) return next();
+  const caseId = match[1] as typeof CASE_IDS[number];
+  const root = resolve(portfolioPath, caseId, "data-room");
+  const path = resolve(root, decodeURIComponent(match[2]));
+  if (!path.startsWith(`${root}${sep}`) || !statSafe(path)) { response.statusCode = 404; response.end("Not found"); return; }
+  const mime: Record<string, string> = {".csv": "text/csv; charset=utf-8", ".json": "application/json; charset=utf-8", ".md": "text/markdown; charset=utf-8"};
+  response.statusCode = 200;
+  response.setHeader("Content-Type", mime[extname(path)] ?? "application/octet-stream");
+  response.end(readFileSync(path));
+}
+
+function statSafe(path: string) {
+  try { return statSync(path).isFile(); }
+  catch { return false; }
+}
 
 type RawCase = {caseId?: unknown; company?: unknown; caseType?: unknown; dealContext?: {investment_question?: unknown}};
 type RawDocument = {schema_version?: unknown; cases?: unknown};
@@ -105,7 +142,21 @@ export function underwritingCaseDataPlugin(): Plugin {
     name: "underwriting-case-data",
     buildStart() {
       this.addWatchFile(dataPath);
+      for (const caseId of CASE_IDS) for (const file of sourcePackFiles(caseId)) this.addWatchFile(file.path);
       readCases();
+    },
+    generateBundle() {
+      for (const caseId of CASE_IDS) {
+        for (const file of sourcePackFiles(caseId)) {
+          this.emitFile({type: "asset", fileName: file.publishedPath, source: readFileSync(file.path)});
+        }
+      }
+    },
+    configureServer(server) {
+      server.middlewares.use(sourcePackMiddleware);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(sourcePackMiddleware);
     },
     resolveId(source) {
       return virtualIds.has(source) ? `\0${source}` : null;

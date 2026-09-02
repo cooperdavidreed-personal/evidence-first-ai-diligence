@@ -52,6 +52,7 @@ export interface MemoSectionState {
   sourceProposalId?: string;
   sourceProvenance?: "DETERMINISTIC_ANALYSIS" | "ANALYST_JUDGMENT" | "HUMAN_ACCEPTED_MODEL_PROPOSAL";
   sourceBody?: string;
+  scenarioSnapshotId?: string;
   updatedBy: string;
   updatedAt: string;
 }
@@ -67,6 +68,44 @@ export interface PolicyOverrideState {
   supersedesEventId?: string;
 }
 
+export type ChangeDisposition = "PENDING" | "ACCEPTED" | "REJECTED" | "DEFERRED";
+export interface ChangeDispositionEvent {
+  eventId: string;
+  changeId: string;
+  disposition: Exclude<ChangeDisposition, "PENDING">;
+  actor: string;
+  rationale: string;
+  recordedAt: string;
+}
+export interface PackageChangeImpact {
+  impactId: string;
+  label: string;
+  before: string;
+  after: string;
+  consequence: string;
+  rank: number;
+}
+export interface PackageChangeControlState {
+  changeSetId: string;
+  fromVersion: string;
+  toVersion: string;
+  packageDigestSha256: string;
+  importedAt: string;
+  sourcePath: string;
+  sourceLocator: string;
+  changeId: string;
+  changeTitle: string;
+  beforeValue: string;
+  afterValue: string;
+  deterministicReceiptSha256: string;
+  decisionConsequence: string;
+  affectedAssumptionIds: string[];
+  affectedIssueIds: string[];
+  affectedMemoSectionIds: string[];
+  impacts: PackageChangeImpact[];
+  dispositionEvents: ChangeDispositionEvent[];
+}
+
 export interface DealWorkspaceState {
   schemaVersion: typeof WORKSPACE_SCHEMA;
   caseId: string;
@@ -80,6 +119,7 @@ export interface DealWorkspaceState {
   memoSections: MemoSectionState[];
   scenarioValues: Record<string, string>;
   policyOverrides: PolicyOverrideState[];
+  changeControl: PackageChangeControlState | null;
   updatedAt: string;
 }
 
@@ -158,6 +198,7 @@ export function createWorkspace(seed: WorkspaceSeed, now = new Date().toISOStrin
     memoSections: seed.memoSections.map((section) => ({...section, updatedAt: now})),
     scenarioValues: {...seed.scenarioValues},
     policyOverrides: [],
+    changeControl: null,
     updatedAt: now,
   };
 }
@@ -292,7 +333,7 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
     const sourceProvenance = item.sourceProvenance === undefined ? undefined : ["DETERMINISTIC_ANALYSIS", "ANALYST_JUDGMENT", "HUMAN_ACCEPTED_MODEL_PROPOSAL"].includes(String(item.sourceProvenance)) ? item.sourceProvenance as MemoSectionState["provenance"] : (() => {throw new Error(`memoSections[${index}].sourceProvenance is invalid`);})();
     const updatedBy = boundedString(item.updatedBy, `memoSections[${index}].updatedBy`, 120);
     if (item.provenance !== "DETERMINISTIC_ANALYSIS" && ["financial model", "underwriting desk"].includes(updatedBy.trim().toLowerCase())) throw new Error(`memoSections[${index}].updatedBy must name a human reviewer`);
-    return {sectionId: boundedString(item.sectionId, `memoSections[${index}].sectionId`, 120), title: boundedString(item.title, `memoSections[${index}].title`, 200), body: boundedString(item.body, `memoSections[${index}].body`), provenance: item.provenance as MemoSectionState["provenance"], sourceProposalId: item.sourceProposalId === undefined ? undefined : boundedString(item.sourceProposalId, `memoSections[${index}].sourceProposalId`, 160), sourceProvenance, sourceBody: item.sourceBody === undefined ? undefined : boundedString(item.sourceBody, `memoSections[${index}].sourceBody`), updatedBy, updatedAt: timestamp(item.updatedAt, `memoSections[${index}].updatedAt`)};
+    return {sectionId: boundedString(item.sectionId, `memoSections[${index}].sectionId`, 120), title: boundedString(item.title, `memoSections[${index}].title`, 200), body: boundedString(item.body, `memoSections[${index}].body`), provenance: item.provenance as MemoSectionState["provenance"], sourceProposalId: item.sourceProposalId === undefined ? undefined : boundedString(item.sourceProposalId, `memoSections[${index}].sourceProposalId`, 160), sourceProvenance, sourceBody: item.sourceBody === undefined ? undefined : boundedString(item.sourceBody, `memoSections[${index}].sourceBody`), scenarioSnapshotId: item.scenarioSnapshotId === undefined ? undefined : boundedString(item.scenarioSnapshotId, `memoSections[${index}].scenarioSnapshotId`, 240), updatedBy, updatedAt: timestamp(item.updatedAt, `memoSections[${index}].updatedAt`)};
   });
   assertUnique(memoSections.map((item) => item.sectionId), "Memo section");
   if (integrityContract) {
@@ -361,7 +402,28 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
       if (event.actorRole !== requiredRole) throw new Error(`Policy override for ${event.gateId} requires the ${requiredRole} role`);
     }
   }
-  return {schemaVersion: WORKSPACE_SCHEMA, caseId, revision: Number(raw.revision), privateNote, observations, assumptionReviews, assumptionReviewEvents, issues, proposals, memoSections, scenarioValues: raw.scenarioValues as Record<string, string>, policyOverrides, updatedAt: timestamp(raw.updatedAt, "updatedAt")};
+  const rawChangeControl = raw.changeControl === undefined ? null : raw.changeControl;
+  let changeControl: PackageChangeControlState | null = null;
+  if (rawChangeControl !== null) {
+    if (!record(rawChangeControl) || !Array.isArray(rawChangeControl.impacts) || rawChangeControl.impacts.length < 1 || rawChangeControl.impacts.length > 20 || !Array.isArray(rawChangeControl.dispositionEvents) || rawChangeControl.dispositionEvents.length > 50) throw new Error("Workspace change-control record is invalid");
+    const changeId = requiredString(rawChangeControl.changeId, "changeControl.changeId", 120);
+    const impacts = rawChangeControl.impacts.map((item, index): PackageChangeImpact => {
+      if (!record(item) || !Number.isSafeInteger(item.rank) || Number(item.rank) < 1) throw new Error(`changeControl.impacts[${index}] is invalid`);
+      return {impactId: requiredString(item.impactId, `changeControl.impacts[${index}].impactId`, 120), label: requiredString(item.label, `changeControl.impacts[${index}].label`, 200), before: requiredString(item.before, `changeControl.impacts[${index}].before`, 120), after: requiredString(item.after, `changeControl.impacts[${index}].after`, 120), consequence: requiredString(item.consequence, `changeControl.impacts[${index}].consequence`, 1200), rank: Number(item.rank)};
+    });
+    assertUnique(impacts.map((item) => item.impactId), "Change impact");
+    const dispositionEvents = rawChangeControl.dispositionEvents.map((item, index): ChangeDispositionEvent => {
+      if (!record(item) || !["ACCEPTED", "REJECTED", "DEFERRED"].includes(String(item.disposition))) throw new Error(`changeControl.dispositionEvents[${index}] is invalid`);
+      if (requiredString(item.changeId, `changeControl.dispositionEvents[${index}].changeId`, 120) !== changeId) throw new Error("Change disposition belongs to a different change");
+      return {eventId: requiredString(item.eventId, `changeControl.dispositionEvents[${index}].eventId`, 120), changeId, disposition: item.disposition as ChangeDispositionEvent["disposition"], actor: namedHuman(item.actor, `changeControl.dispositionEvents[${index}].actor`), rationale: requiredString(item.rationale, `changeControl.dispositionEvents[${index}].rationale`, 1200), recordedAt: timestamp(item.recordedAt, `changeControl.dispositionEvents[${index}].recordedAt`)};
+    });
+    assertUnique(dispositionEvents.map((item) => item.eventId), "Change disposition event");
+    const digest = requiredString(rawChangeControl.packageDigestSha256, "changeControl.packageDigestSha256", 64);
+    const receipt = requiredString(rawChangeControl.deterministicReceiptSha256, "changeControl.deterministicReceiptSha256", 64);
+    if (!/^[a-f0-9]{64}$/.test(digest) || !/^[a-f0-9]{64}$/.test(receipt)) throw new Error("Change-control receipt is invalid");
+    changeControl = {changeSetId: requiredString(rawChangeControl.changeSetId, "changeControl.changeSetId", 120), fromVersion: requiredString(rawChangeControl.fromVersion, "changeControl.fromVersion", 80), toVersion: requiredString(rawChangeControl.toVersion, "changeControl.toVersion", 80), packageDigestSha256: digest, importedAt: timestamp(rawChangeControl.importedAt, "changeControl.importedAt"), sourcePath: requiredString(rawChangeControl.sourcePath, "changeControl.sourcePath", 240), sourceLocator: requiredString(rawChangeControl.sourceLocator, "changeControl.sourceLocator", 240), changeId, changeTitle: requiredString(rawChangeControl.changeTitle, "changeControl.changeTitle", 240), beforeValue: requiredString(rawChangeControl.beforeValue, "changeControl.beforeValue", 120), afterValue: requiredString(rawChangeControl.afterValue, "changeControl.afterValue", 120), deterministicReceiptSha256: receipt, decisionConsequence: requiredString(rawChangeControl.decisionConsequence, "changeControl.decisionConsequence", 1200), affectedAssumptionIds: stringArray(rawChangeControl.affectedAssumptionIds, "changeControl.affectedAssumptionIds", 20), affectedIssueIds: stringArray(rawChangeControl.affectedIssueIds, "changeControl.affectedIssueIds", 20), affectedMemoSectionIds: stringArray(rawChangeControl.affectedMemoSectionIds, "changeControl.affectedMemoSectionIds", 20), impacts, dispositionEvents};
+  }
+  return {schemaVersion: WORKSPACE_SCHEMA, caseId, revision: Number(raw.revision), privateNote, observations, assumptionReviews, assumptionReviewEvents, issues, proposals, memoSections, scenarioValues: raw.scenarioValues as Record<string, string>, policyOverrides, changeControl, updatedAt: timestamp(raw.updatedAt, "updatedAt")};
 }
 
 export function sanitizePortableWorkspaceImport(raw: unknown, expectedCaseId: string, allowedEvidenceRefs?: ReadonlySet<string>, scenarioContract?: WorkspaceScenarioContract, integrityContract?: WorkspaceIntegrityContract) {

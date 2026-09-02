@@ -141,7 +141,13 @@ function LocalDocuments({result}: {result: IntakeResult}) {
 
 function localScenarioMemoSummary(result: IntakeResult, state: DealWorkspaceState) {
   const {growth, multipleValue, changed, output} = normalizedLocalScenario(result, state);
-  return {state: changed ? "Unapproved what-if" as const : "Canonical case" as const, label: changed ? `${percent(growth)} growth · ${multipleValue.toFixed(1)}x exit` : "Admitted package case", returnLine: `${percent(output.annualizedGrossReturn)} annualized gross return · ${output.grossMoic.toFixed(2)}x gross multiple`, detail: `${money(output.terminalRevenueCents)} terminal revenue · ${money(output.exitEquityCents)} exit equity value. The working scenario does not overwrite the admitted package case.`};
+  const label = changed ? `${percent(growth)} growth · ${multipleValue.toFixed(1)}x exit` : "Admitted package case";
+  const returnLine = `${percent(output.annualizedGrossReturn)} annualized gross return · ${output.grossMoic.toFixed(2)}x gross multiple`;
+  return {state: changed ? "Unapproved what-if" as const : "Canonical case" as const, label, returnLine, detail: `${money(output.terminalRevenueCents)} terminal revenue · ${money(output.exitEquityCents)} exit equity value. The working scenario does not overwrite the admitted package case.`, snapshotId: `local:${growth}:${multipleValue}:${output.annualizedGrossReturn}:${output.grossMoic}`, sectionBodies: {
+    screening: `${result.posture}. ${label} produces ${returnLine}. Advancement still requires fund-owned policy, completed diligence, and human IC review.`,
+    economics: `${label}: ${returnLine}, ${money(output.terminalRevenueCents)} terminal revenue, and ${money(output.exitEquityCents)} exit equity value.`,
+    diligence: "Validate retention interval and cohort quality, cost classification, customer concentration, committed costs, cap table, financing terms, and assumption provenance before any IC advancement.",
+  }};
 }
 
 function LocalDecisionRail({result, state, view}: {result: IntakeResult; state: DealWorkspaceState; view: DealView}) {

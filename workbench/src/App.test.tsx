@@ -256,7 +256,7 @@ describe("Underwriting Desk investor workspace", () => {
     expect(screen.getByText("Investment committee working draft")).toBeInTheDocument();
     expect(screen.getByRole("heading", {name: "Recommendation and rationale"})).toBeInTheDocument();
     expect(screen.getByRole("heading", {name: "Downside and what must be true"})).toBeInTheDocument();
-    expect(screen.getAllByText("Calculated baseline").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Calculated baseline/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/IC decision pending/).length).toBeGreaterThan(0);
   });
 
