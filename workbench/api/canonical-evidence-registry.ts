@@ -27,7 +27,7 @@ export const HOSTED_EVIDENCE_REGISTRY: Record<string, readonly CanonicalEvidence
   "local-northstar-metrics-00a75b14db10": [
     {id: "ltm-revenue", title: "LTM revenue", displayValue: "$15.9M", summary: "Revenue recognized across the latest twelve eligible monthly rows."},
     {id: "gross-margin", title: "Gross margin", displayValue: "70.0%", summary: "Revenue remaining after declared cost of revenue."},
-    {id: "ordinary-nrr", title: "Ordinary-cohort NRR", displayValue: "83.6%", summary: "ARR retained from customers present in 2025-07, measured at 2026-06."},
+    {id: "ordinary-nrr", title: "Cohort retention proxy", displayValue: "83.6%", summary: "ARR retained from customers present in 2025-07, measured 11 months later at 2026-06; this is not annual NRR."},
     {id: "runway", title: "Recent runway", displayValue: "19.1 mo", summary: "Cash divided by average signed net burn over the latest three months."},
     {id: "ownership", title: "Post-money ownership", displayValue: "33.3%", summary: "New investment divided by declared pre-money value plus new investment."},
     {id: "gross-moic", title: "Gross multiple", displayValue: "3.23x", summary: "Illustrative exit equity proceeds divided by the proposed investment."},

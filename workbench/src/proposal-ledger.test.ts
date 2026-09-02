@@ -30,6 +30,13 @@ describe("MCP proposal ledger import", () => {
     expect(result.proposals).toEqual([]); expect(result.dropped).toBe(4);
   });
 
+  it("rejects a ledger proposal broader than the eight-item human-review boundary", () => {
+    const refs = atlasgrid.metricRegistry.slice(0, 9).map((item) => item.metric_id);
+    const result = importProposalLedger(line({proposal_id: "too-broad", evidence_refs: refs}), atlasgrid);
+    expect(result.proposals).toEqual([]);
+    expect(result.reasons[0]).toMatch(/eight-item review boundary/i);
+  });
+
   it("continues after malformed lines and never mutates canonical case data", () => {
     const before = JSON.stringify(atlasgrid);
     const result = importProposalLedger(`not-json\n${line({proposal_id: "valid-after-error", kind: "OBSERVATION", text: "Recheck concentration."})}`, atlasgrid);

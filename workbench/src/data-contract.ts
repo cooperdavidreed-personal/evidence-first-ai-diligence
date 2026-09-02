@@ -324,12 +324,12 @@ export function assertWorkbenchCase(candidate: unknown): asserts candidate is Ca
       const continuousPaths = Number(decomposition.continuous_paths);
       const lossPaths = Number(decomposition.catastrophe_loss_paths) + Number(decomposition.continuous_loss_paths);
       if (catastrophePaths + continuousPaths !== draws || Math.abs(Number(cell.probability_below_one) - lossPaths / draws) > 0.000051) throw new Error("vc_risk_sensitivity_decomposition_invalid");
-      const expectedCellStatus = Number(cell.probability_below_one) <= Number(deskPolicy.thresholds.maximum_probability_below_one) ? "CLEARS" : "MISSES";
+      const expectedCellStatus = Number(cell.catastrophe_probability) <= Number(deskPolicy.thresholds.maximum_probability_below_one) ? "CLEARS" : "MISSES";
       if (cell.canonical_policy_status !== expectedCellStatus) throw new Error("vc_risk_sensitivity_status_invalid");
     }
     const lossPair = issues.find((item) => item.issue_id === "HX-H01");
     if (!lossPair || !array(candidate.decision.metric_pairs)) throw new Error("vc_risk_policy_decision_missing");
-    const decisionPair = (candidate.decision.metric_pairs as Array<Record<string, unknown>>).find((item) => item.metric_id === "helios-hx-09-probability_below_1x");
+    const decisionPair = (candidate.decision.metric_pairs as Array<Record<string, unknown>>).find((item) => item.metric_id === "helios-selected-catastrophe-prior");
     if (!decisionPair || decisionPair.operator !== "<=" || Number(decisionPair.threshold_value) !== Number(deskPolicy.thresholds.maximum_probability_below_one) * 100) throw new Error("vc_desk_policy_decision_mismatch");
   }
   const locators = new Set(sourceLocators.map((item) => item.locator_id));

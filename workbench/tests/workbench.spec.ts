@@ -206,8 +206,9 @@ test("Helios policy sensitivity is an unapproved what-if and follows the memo", 
   await (await visibleDealNavigation(page)).getByRole("button", {name: "IC Memo"}).click();
   const summary = page.getByRole("region", {name: "Scenario represented in this memo"});
   await expect(summary).toContainText("Unapproved what-if");
-  await expect(summary).toContainText("selected analyst prior implies");
-  await expect(summary).toContainText("returning less than 1.0x");
+  await expect(summary).toContainText("selected 20.0% catastrophe prior");
+  await expect(summary).toContainText("Every catastrophe path loses");
+  await expect(summary).toContainText("generator check, not an independent estimate");
   await expect(summary).toContainText("ceiling");
 });
 
@@ -378,7 +379,7 @@ test("ordinary multi-file intake produces a governed local deal that survives re
   writeAccessibilityEvidence(`${testInfo.project.name}-northstar-intake.json`, {boundary: "Ordinary browser file selection through all five local-deal views; uploaded bytes were not observed leaving localhost. Automated evidence only.", project: testInfo.project.name, scans, viewport: page.viewportSize()});
   await page.reload({waitUntil: "networkidle"});
   await expect(page.getByRole("heading", {name: "Northstar Metrics", level: 1})).toBeVisible();
-  await expect(page.getByRole("textbox", {name: "Economics memo section"})).toHaveValue(/ordinary-cohort NRR 83.6%/);
+  await expect(page.getByRole("textbox", {name: "Economics memo section"})).toHaveValue(/11-month cohort retention proxy 83.6%/);
 });
 
 test("missing required input fails closed before return conclusions", async ({page}, testInfo: TestInfo) => {

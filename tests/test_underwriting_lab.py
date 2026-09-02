@@ -244,10 +244,28 @@ def test_helios_contract_gates(generated: dict[str, tuple[Path, dict]]) -> None:
     pairs = {item["metric"]: item for item in case["decision"]["metric_pairs"]}
     assert pairs["Milestone · Series C gross XIRR"]["status"] == "CLEARS"
     assert pairs["Series C gross MOIC"]["status"] == "CLEARS"
-    assert pairs["Modeled loss probability"]["status"] == "MISSES"
-    assert pairs["Modeled loss probability"]["designation"] == "BINDING"
+    assert pairs["Selected catastrophe prior"]["status"] == "MISSES"
+    assert pairs["Selected catastrophe prior"]["designation"] == "BINDING"
+    assert pairs["Selected catastrophe prior"]["metric_id"] == "helios-selected-catastrophe-prior"
     probability = Decimal(case["vcEngine"]["distribution"]["probability_below_one"])
     priors = case["vcEngine"]["distribution"]["priors"]
+    prior_metric = next(
+        item
+        for item in case["metricRegistry"]
+        if item["metric_id"] == "helios-selected-catastrophe-prior"
+    )
+    replay_metric = next(
+        item
+        for item in case["metricRegistry"]
+        if item["metric_id"] == "helios-hx-09-probability_below_1x"
+    )
+    assert prior_metric["value"] == "20.00"
+    assert prior_metric["assumption_ids"] == [
+        "vc-distribution-priors.catastrophe_probability"
+    ]
+    assert prior_metric["source_locator_ids"] == []
+    assert replay_metric["formula_id"] == "vc-formula-distribution-probability-below-one"
+    assert replay_metric["label"] == "Probability Below 1X"
     assert Decimal(priors["loss_probability_band_low"]) <= probability <= Decimal(priors["loss_probability_band_high"])
     assert pairs["Post-close runway"]["observed"].startswith(">=60")
     package_policy = case["vcEngine"]["risk_policy"]
@@ -257,7 +275,7 @@ def test_helios_contract_gates(generated: dict[str, tuple[Path, dict]]) -> None:
     desk_policy = case["vcEngine"]["desk_policy"]
     assert desk_policy["classification"] == "DESK_OWNED_DRAFT_POLICY_OUTSIDE_DATA_ROOM"
     assert desk_policy["status"] == "DRAFT"
-    assert Decimal(pairs["Modeled loss probability"]["threshold_value"]) == Decimal(desk_policy["thresholds"]["maximum_probability_below_one"]) * 100
+    assert Decimal(pairs["Selected catastrophe prior"]["threshold_value"]) == Decimal(desk_policy["thresholds"]["maximum_probability_below_one"]) * 100
     assert Decimal(pairs["Ordinary-cohort NRR"]["threshold_value"]) == Decimal(desk_policy["thresholds"]["ordinary_cohort_nrr"]) * 100
     assert Decimal(pairs["Milestone · Series C gross XIRR"]["threshold_value"]) == Decimal(desk_policy["thresholds"]["gross_xirr"])
     assert Decimal(package_policy["operating_hurdles"]["ordinary_cohort_nrr"]) != Decimal(desk_policy["thresholds"]["ordinary_cohort_nrr"])

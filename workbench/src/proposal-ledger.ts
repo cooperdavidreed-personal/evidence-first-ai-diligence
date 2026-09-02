@@ -24,7 +24,7 @@ export function importProposalLedger(source: string, caseData: CaseData): Import
     if (item.deal_id !== caseData.caseId || item.manifest_sha256 !== caseData.manifest_sha256 || item.analysis_sha256 !== caseData.analysis_sha256) { reasons.push(`Line ${index + 1}: deal or retained-package digest mismatch`); continue; }
     const sourceRequestDigestSha256 = text(item.request_digest_sha256, 64);
     if (!sourceRequestDigestSha256 || !/^[a-f0-9]{64}$/.test(sourceRequestDigestSha256)) { reasons.push(`Line ${index + 1}: request digest is missing or invalid`); continue; }
-    if (!Array.isArray(item.evidence_refs) || item.evidence_refs.length < 1 || item.evidence_refs.length > 20 || item.evidence_refs.some((ref) => typeof ref !== "string" || !knownRefs.has(ref))) { reasons.push(`Line ${index + 1}: evidence reference is not canonical`); continue; }
+    if (!Array.isArray(item.evidence_refs) || item.evidence_refs.length < 1 || item.evidence_refs.length > 8 || item.evidence_refs.some((ref) => typeof ref !== "string" || !knownRefs.has(ref))) { reasons.push(`Line ${index + 1}: evidence reference is not canonical or exceeds the eight-item review boundary`); continue; }
     const evidenceRefs = [...new Set(item.evidence_refs as string[])]; let kind: ProposalKind; let title: string | null; let body: string | null; const extras: Partial<ModelProposal> = {};
     let sourcePayload: Record<string, unknown>;
     if (item.kind === "OBSERVATION") { kind = "CHALLENGE"; title = "Model observation"; body = text(item.text, 1200); sourcePayload = {kind: item.kind, deal_id: caseData.caseId, evidence_refs: evidenceRefs, text: body}; }

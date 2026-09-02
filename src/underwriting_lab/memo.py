@@ -270,7 +270,7 @@ def _vc_memo_markdown(packet: dict[str, Any]) -> str:
     loss_hurdle = next(
         item
         for item in decision["metric_pairs"]
-        if item["metric_id"] == "helios-hx-09-probability_below_1x"
+        if item["metric_id"] == "helios-selected-catastrophe-prior"
     )
     risk_context = _vc_risk_context(packet, loss_hurdle)
     close_event = next(
@@ -761,7 +761,7 @@ def _memo_html(
     if in_table:
         paragraphs.append("</tbody></table>")
     style = """
-    @page{size:letter;margin:.48in .5in .62in;@bottom-left{content:"Underwriting Intelligence Lab";font:7.5px Arial,sans-serif;color:#657078}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:7.5px Arial,sans-serif;color:#657078}}
+    @page{size:letter;margin:.48in .5in .62in;@bottom-left{content:"Underwriting Desk";font:7.5px Arial,sans-serif;color:#657078}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:7.5px Arial,sans-serif;color:#657078}}
     *{box-sizing:border-box}body{margin:0;color:#20272d;font:10px/1.32 Arial,sans-serif;font-variant-numeric:tabular-nums}h1,h2,h3{font-family:Georgia,serif;font-weight:500;break-after:avoid-page}h1{font-size:25px;line-height:1.08;border-bottom:2px solid #20272d;padding-bottom:9px;margin:0 0 8px}h2{font-size:16px;line-height:1.15;margin:17px 0 6px;border-bottom:1px solid #aeb4b7;padding-bottom:4px}h3{font-size:11.5px;line-height:1.2;margin:10px 0 4px;color:#315f8b}aside{border:1px solid #9b3f31;color:#87382d;padding:5px 8px;font:700 7.5px Arial,sans-serif;letter-spacing:.55px;break-inside:avoid;margin-bottom:6px}p{margin:4px 0;orphans:3;widows:3}p:has(+table),h2:has(+p),h3:has(+p){break-after:avoid-page}.bullet{padding-left:10px}.receipt-title{margin-top:14px}.receipt-row{display:inline-block;width:50%;margin:2px 0;padding-right:8px;font-size:7.5px;line-height:1.2;vertical-align:top}code{font:8px monospace;color:#315f8b;overflow-wrap:anywhere}.receipt-row code{font-size:6.6px}table{width:100%;border-collapse:collapse;margin:6px 0 10px;break-inside:avoid-page;table-layout:fixed}thead{display:table-header-group}th,td{border-bottom:1px solid #ccd0d2;padding:4px;text-align:left;vertical-align:top;overflow-wrap:anywhere;word-break:normal}th{font:700 7.4px Arial,sans-serif;text-transform:uppercase;letter-spacing:.35px;color:#59646b;background:#f3f4f4}td{font-size:8.4px;line-height:1.25}tr{break-inside:avoid}footer{display:block;clear:both;margin-top:8px;border-top:1px solid #20272d;padding-top:4px;font:7.5px Arial,sans-serif;color:#657078;break-inside:avoid}.packet>p:first-of-type{font-weight:600}.atlasgrid-memo.packet,.helios-memo.packet{font-size:9.4px;line-height:1.29}.packet h1{font-size:25px}.packet h2{font-size:15px;margin-top:14px}.packet h3{font-size:11px;margin-top:8px}.packet p{margin:3.5px 0}.packet table{margin:5px 0 8px}.packet th,.packet td{padding:3.5px}.packet td{font-size:7.9px}.technical{font-size:8.3px;line-height:1.23}.technical h1{font-size:22px}.technical h2{font-size:14px;margin-top:13px}.technical h3{font-size:10.5px}.technical table{margin:5px 0 8px}.technical th,.technical td{padding:3px;font-size:6.8px}.technical code{font-size:6.3px;word-break:break-all}@media print{footer{display:none}}@media screen{body{max-width:900px;margin:36px auto;padding:38px;background:#fbf9f4}}
     """
     style += """
@@ -893,7 +893,7 @@ def _snapshot_markdown(case: dict[str, Any]) -> str:
         loss_hurdle = next(
             item
             for item in decision["metric_pairs"]
-            if item["metric_id"] == "helios-hx-09-probability_below_1x"
+            if item["metric_id"] == "helios-selected-catastrophe-prior"
         )
         package_policy = (
             engine.get("risk_policy")
@@ -914,9 +914,9 @@ def _snapshot_markdown(case: dict[str, Any]) -> str:
         )
         headline_metrics = [
             (
-                "Loss probability",
+                "Selected catastrophe prior",
                 f"{_percent_number(loss_hurdle['observed_value'], Decimal('20')):.1f}%",
-                f"maximum {risk_context['threshold_percent']:.1f}%",
+                f"Desk loss ceiling {risk_context['threshold_percent']:.1f}%",
             ),
             ("First close", "$25M", "13.51% ownership"),
             ("Conditional tranche", "$15M", "month 12; evidence gated"),
@@ -962,7 +962,9 @@ def _snapshot_markdown(case: dict[str, Any]) -> str:
             for item in issues["issues"][:3]
         ],
         "",
-        f"**Path to reconsideration:** {' '.join(decision['path_to_yes'][:3])}",
+        "## Path to reconsideration",
+        "",
+        *[f"- {item}" for item in decision["path_to_yes"][:3]],
         "",
         "**Authority:** Requires investment committee approval. No capital action is authorized.",
         "",
@@ -1066,7 +1068,7 @@ def _snapshot_html(case: dict[str, Any], packet: dict[str, Any]) -> str:
         loss_hurdle = next(
             item
             for item in decision["metric_pairs"]
-            if item["metric_id"] == "helios-hx-09-probability_below_1x"
+            if item["metric_id"] == "helios-selected-catastrophe-prior"
         )
         risk_context = _vc_risk_context(packet, loss_hurdle)
         observed_loss = _percent_number(loss_hurdle["observed_value"], Decimal("20"))
@@ -1077,8 +1079,9 @@ def _snapshot_html(case: dict[str, Any], packet: dict[str, Any]) -> str:
             "IC review of the risk specification and new evidence."
         )
         hero_gate = (
-            f"Modeled probability below 1.0x is {observed_loss:.1f}% versus a "
-            f"{threshold:.1f}% maximum. Conditional upside does not override the failed gate."
+            f"The selected analyst catastrophe prior is {observed_loss:.1f}% versus a "
+            f"{threshold:.1f}% Desk loss ceiling. Every catastrophe path loses in this retained structure; "
+            "the replay checks the generator rather than estimating the input."
         )
         close_event = next(
             item
@@ -1089,8 +1092,8 @@ def _snapshot_html(case: dict[str, Any], packet: dict[str, Any]) -> str:
             close_event["ownership_denominator"]
         )
         cards = [
-            ("Modeled loss risk", f"{observed_loss:.1f}%", f"Maximum {threshold:.1f}%"),
-            ("First close", "$25M", f"{first_close_ownership * 100:.2f}% ownership"),
+            ("Selected catastrophe prior", f"{observed_loss:.1f}%", f"Desk ceiling {threshold:.1f}%"),
+            ("First close", "$25M", f"{first_close_ownership * 100:.2f}% after close and pool refresh"),
             (
                 "Conditional tranche",
                 _money(packet["milestone_contract"]["amount_cents"]),
@@ -1106,13 +1109,13 @@ def _snapshot_html(case: dict[str, Any], packet: dict[str, Any]) -> str:
         marker = max(Decimal("0"), min(Decimal("100"), threshold / meter_max * 100))
         chart_one = (
             "<div class=visual data-visual='loss-policy' role=img "
-            f"aria-label='Modeled probability below 1.0x is {observed_loss:.1f} percent versus a maximum of {threshold:.1f} percent.'>"
-            "<div class=visual-head><div><h2>The Desk-owned draft gate fails</h2>"
+            f"aria-label='Selected analyst catastrophe prior is {observed_loss:.1f} percent versus a Desk loss ceiling of {threshold:.1f} percent.'>"
+            "<div class=visual-head><div><h2>The selected prior exceeds the Desk ceiling</h2>"
             f"<p>{escape(str(risk_context['label']))}; {escape(str(risk_context['approval']))}</p></div>"
             f"<span class=legend>Maximum {threshold:.1f}%</span></div>"
             f"<div class=meter-body><div class=risk-meter><span class=risk-fill style='width:{min(Decimal('100'), observed_loss / meter_max * 100):.2f}%'></span>"
             f"<span class=policy-marker style='left:{marker:.2f}%'></span></div>"
-            f"<div class=meter-scale><span>0%</span><strong>Current {observed_loss:.1f}%</strong><span>{meter_max:.0f}%</span></div></div></div>"
+            f"<div class=meter-scale><span>0%</span><strong>Selected input {observed_loss:.1f}%</strong><span>{meter_max:.0f}%</span></div></div></div>"
         )
         scenario_rows = [
             (
@@ -1177,9 +1180,9 @@ def _snapshot_html(case: dict[str, Any], packet: dict[str, Any]) -> str:
         f"<p>{escape(item['consequence'])}</p></li>"
         for item in issues
     )
-    path = "; ".join(item.rstrip(".") for item in decision["path_to_yes"][:3]) + "."
+    path = "".join(f"<li>{escape(item)}</li>" for item in decision["path_to_yes"][:3])
     style = """
-    @page{size:letter;margin:.42in .48in .58in;@bottom-left{content:"Underwriting Intelligence Lab";font:7.5px Arial,sans-serif;color:#657078}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:7.5px Arial,sans-serif;color:#657078}}
+    @page{size:letter;margin:.42in .48in .58in;@bottom-left{content:"Underwriting Desk";font:7.5px Arial,sans-serif;color:#657078}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:7.5px Arial,sans-serif;color:#657078}}
     *{box-sizing:border-box}body{margin:0;color:#20272d;font:10.15px/1.28 Arial,sans-serif;font-variant-numeric:tabular-nums;background:#fff}h1,h2,p{margin:0}h1{font:500 24px/1.03 Georgia,serif;letter-spacing:-.25px}h2{font:600 12px/1.15 Arial,sans-serif}.brief{display:grid;gap:11px;min-height:9.15in;grid-template-rows:auto auto auto minmax(210px,1fr) auto auto}.brief-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-bottom:2px solid #20272d;padding-bottom:8px}.eyebrow{font:700 7.5px/1.2 Arial,sans-serif;text-transform:uppercase;letter-spacing:1px;color:#3a5f8a;margin-bottom:4px}.metadata{text-align:right;min-width:175px}.disclosure{display:inline-block;border:1px solid #9b3f31;color:#87382d;padding:4px 7px;font:700 7px/1.15 Arial,sans-serif;letter-spacing:.5px}.as-of{display:block;margin-top:5px;color:#657078;font-size:8px}.decision-band{display:grid;grid-template-columns:1.28fr .72fr;border-left:7px solid #9b3f31;background:#f3f0e9;break-inside:avoid}.decision-copy{padding:10px 12px}.decision-label{font:700 7.5px/1.2 Arial,sans-serif;text-transform:uppercase;letter-spacing:1px;color:#657078}.decision{font:600 26px/1 Georgia,serif;margin:2px 0 5px;color:#87382d}.rationale{font-size:10.5px;line-height:1.3}.decision-request{padding:10px 12px;border-left:1px solid #d5d0c6;background:#faf8f3}.decision-request strong{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.7px;color:#3a5f8a;margin-bottom:4px}.decision-request p{font-weight:600;line-height:1.3}.hero-gate{margin-top:5px;color:#4d565d;font-size:8.5px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;break-inside:avoid}.stat{border-top:3px solid #3a5f8a;background:#f7f8f8;padding:7px 8px;min-height:55px}.stat>span{display:block;color:#657078;font-size:7.5px;text-transform:uppercase;letter-spacing:.45px}.stat>strong{display:block;font:600 17px/1.08 Georgia,serif;margin:3px 0 2px}.stat small{display:block;color:#4d565d;font-size:7.5px;line-height:1.15}.visuals{display:grid;grid-template-columns:1fr 1fr;gap:8px;break-inside:avoid}.visual{border:1px solid #cbd0d2;padding:10px 11px;min-height:210px;display:flex;flex-direction:column}.visual-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:8px}.visual-head p{color:#657078;font-size:8px;margin-top:3px}.legend{font-size:8px;color:#87382d;border-bottom:2px solid #87382d;white-space:nowrap}.bar-chart{position:relative;flex:1;display:flex;flex-direction:column;justify-content:space-around}.bar-row{margin:6px 0}.bar-label{display:flex;justify-content:space-between;font-size:8.5px;margin-bottom:3px}.bar-track{height:8px;background:#e3e6e7;overflow:hidden}.bar-fill{display:block;height:100%;background:#6c7d89}.bar-row.good .bar-fill{background:#315f8b}.bar-row.warn .bar-fill{background:#a17632}.bar-row.risk .bar-fill{background:#9b3f31}.hurdle{position:absolute;top:0;bottom:0;border-left:1.5px dashed #87382d;z-index:2}.compare-row{display:grid;grid-template-columns:.78fr 1fr 14px 1.15fr;gap:5px;align-items:center;border-top:1px solid #e1dfd9;padding:6px 0;font-size:8.2px;flex:1}.compare-row:first-child{border-top:0}.compare-row>b{text-align:center;color:#657078}.compare-row .underwritten{font-weight:700;color:#244d75}.meter-body{margin:auto 0}.risk-meter{height:30px;background:#e3e6e7;position:relative;margin:0 0 6px}.risk-fill{height:100%;display:block;background:#9b3f31}.policy-marker{position:absolute;top:-8px;bottom:-8px;border-left:3px solid #20272d}.meter-scale{display:flex;justify-content:space-between;font-size:8.5px}.meter-scale strong{color:#87382d}.gates{display:grid;grid-template-columns:1fr .62fr;gap:10px;border-top:2px solid #20272d;padding-top:8px;break-inside:avoid}.gates h2{margin-bottom:5px}.gate-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.gate-list li{border-left:3px solid #a17632;padding-left:7px}.gate-list strong,.gate-list span{display:block}.gate-list strong{font-size:8.7px}.gate-list span{font-size:7.6px;color:#657078;margin:2px 0}.gate-list p{font-size:7.8px;line-height:1.2}.path{border-left:1px solid #cbd0d2;padding-left:11px}.path p{font-size:8.4px;line-height:1.25}.boundary{border-top:1px solid #cbd0d2;padding-top:6px;color:#657078;font-size:7.7px;display:flex;justify-content:space-between;gap:12px}.boundary strong{color:#20272d}@media screen{body{max-width:8.5in;margin:24px auto;padding:.42in .48in;background:#fff;box-shadow:0 2px 18px #0002}}@media print{footer{display:none}}
     @media screen{body{margin:0 auto;padding:10px .48in}}
     """
@@ -1206,7 +1209,7 @@ def _snapshot_html(case: dict[str, Any], packet: dict[str, Any]) -> str:
         f"<section class=stats aria-label='Decision economics'>{cards_html}</section>"
         f"<section class=visuals aria-label='Decision visuals'>{chart_one}{chart_two}</section>"
         f"<section class=gates><div><h2>What must be true before advancement</h2><ol class=gate-list>{issue_html}</ol></div>"
-        f"<div class=path><h2>Path to reconsideration</h2><p>{escape(path)}</p></div></section>"
+        f"<div class=path><h2>Path to reconsideration</h2><ol>{path}</ol></div></section>"
         f"<section class=boundary><span>{escape(qualifier)}</span><strong>Human IC approval required. No capital action is authorized.</strong></section>"
         "</main></body></html>"
     )

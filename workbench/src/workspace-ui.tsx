@@ -199,7 +199,7 @@ export function WorkspaceTransfer({state, replace, allowedEvidenceRefs, scenario
       if (file.size > 2_000_000) throw new Error("Workspace import exceeds the 2 MB local limit.");
       const parsed = JSON.parse(await file.text()) as unknown;
       replace(sanitizePortableWorkspaceImport(parsed, state.caseId, allowedEvidenceRefs, scenarioContract, integrityContract));
-      setNotice("Workspace imported and validated. Proposal text and human decisions were preserved; external model identity was not authenticated by the portable file.");
+      setNotice("Workspace imported and validated. Proposal text and human decisions were preserved, but external model identity was not authenticated and imported policy exceptions were not applied.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Workspace import failed.");
     }

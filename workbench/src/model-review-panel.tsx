@@ -29,9 +29,9 @@ function proposalReceiptLabel(proposal: ModelProposal) {
   return proposal.responseDigestSha256 ? `Response ${proposal.responseDigestSha256.slice(0, 12)}` : "Local ledger";
 }
 
-export function ModelReviewPanel({dealId, evidence, referenceLabels = {}, transport, connection, proposals: controlledProposals, onProposalsChange}: {dealId: string; evidence: SelectedEvidence[]; referenceLabels?: Record<string, string>; transport?: ModelTransport; connection?: ConnectionState | null; proposals?: ModelProposal[]; onProposalsChange?: (proposals: ProposalUpdater) => void}) {
+export function ModelReviewPanel({dealId, evidence, referenceLabels = {}, transport, connection, hostedEligible = true, unavailableReason, proposals: controlledProposals, onProposalsChange}: {dealId: string; evidence: SelectedEvidence[]; referenceLabels?: Record<string, string>; transport?: ModelTransport; connection?: ConnectionState | null; hostedEligible?: boolean; unavailableReason?: string; proposals?: ModelProposal[]; onProposalsChange?: (proposals: ProposalUpdater) => void}) {
   const configured = useMemo(() => configuredTransport(), []);
-  const runtimeTransport = transport ?? configured;
+  const runtimeTransport = hostedEligible ? transport ?? configured : undefined;
   const providerLabel = transport
     ? connection?.channel === "API_ADAPTER" ? connection.label : "Test review adapter"
     : configured ? "Server-side review adapter" : "No review provider";
@@ -49,7 +49,9 @@ export function ModelReviewPanel({dealId, evidence, referenceLabels = {}, transp
     else setInternalProposals(next);
   }
 
-  const unavailableMessage = connection?.channel === "LOCAL_MCP" ? `${connection.label} setup is prepared for work outside the Desk. In-desk review still requires a compatible server-side adapter.` : connection?.channel === "REMOTE_MCP" ? `${connection.label} still requires a hosted, authenticated MCP server. No live connection is claimed.` : "Model review unavailable — no runtime credentials configured. Every deterministic workflow remains functional.";
+  const unavailableMessage = !hostedEligible
+    ? unavailableReason ?? "Hosted review is limited to the retained synthetic cases and the included Northstar sample. This package remains available for deterministic analysis and human work."
+    : connection?.channel === "LOCAL_MCP" ? `${connection.label} setup is prepared for work outside the Desk. In-desk review still requires a compatible server-side adapter.` : connection?.channel === "REMOTE_MCP" ? `${connection.label} still requires a hosted, authenticated MCP server. No live connection is claimed.` : "Model review unavailable — no runtime credentials configured. Every deterministic workflow remains functional.";
 
   async function run() {
     setRunning(true);

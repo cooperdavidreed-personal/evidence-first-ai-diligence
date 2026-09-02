@@ -29,6 +29,9 @@ test("proposal tools return PROPOSED and never change canonical case bytes", asy
 test("unknown evidence and forbidden tools fail closed", async () => {
   const handlers = createToolHandlers();
   await assert.rejects(() => handlers.callTool("propose_memo_section", {deal_id: "helios", section: "downside", draft_text: "Draft", evidence_refs: ["unknown"]}), /evidence_reference_not_canonical/);
+  const atlasgrid = JSON.parse(readFileSync(canonicalCasePath, "utf8")).cases.find((item) => item.caseId === "atlasgrid");
+  const nineCanonicalRefs = atlasgrid.metricRegistry.slice(0, 9).map((item) => item.metric_id);
+  await assert.rejects(() => handlers.callTool("propose_observation", {deal_id: "atlasgrid", text: "Too broad.", evidence_refs: nineCanonicalRefs}), /evidence_refs_invalid/);
   await assert.rejects(() => handlers.callTool("set_decision", {deal_id: "helios", decision: "INVEST"}), /tool_not_found/);
 });
 

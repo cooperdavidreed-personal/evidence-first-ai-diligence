@@ -46,23 +46,24 @@ def build(
     include_demo: bool = False,
     canonical_url: str | None = None,
 ) -> None:
-    index = workbench_dist / "index.html"
-    if not index.is_file():
-        raise FileNotFoundError(f"missing built v2 workbench: {index}")
     if destination.exists() and any(destination.iterdir()):
         raise RuntimeError(f"pages destination must be empty: {destination}")
     destination.mkdir(parents=True, exist_ok=True)
 
     staged: list[tuple[Path, str]] = []
-    for source in sorted(path for path in workbench_dist.rglob("*") if path.is_file()):
-        relative = source.relative_to(workbench_dist)
-        if relative.parts[:1] == ("source-pack",):
-            continue
-        target = destination / relative
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, target)
-        staged.append((target, "v2-workbench"))
-    if canonical_url is not None:
+    if canonical_url is None:
+        index = workbench_dist / "index.html"
+        if not index.is_file():
+            raise FileNotFoundError(f"missing built workbench: {index}")
+        for source in sorted(path for path in workbench_dist.rglob("*") if path.is_file()):
+            relative = source.relative_to(workbench_dist)
+            if relative.parts[:1] == ("source-pack",):
+                continue
+            target = destination / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+            staged.append((target, "legacy-workbench"))
+    else:
         parsed = urlparse(canonical_url)
         if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
             raise ValueError("canonical redirect URL must be an absolute HTTPS URL")
@@ -74,7 +75,9 @@ def build(
             f"<link rel=canonical href='{safe_url}'><title>Underwriting Desk</title></head>"
             f"<body><main><h1>Underwriting Desk has moved</h1><p><a href='{safe_url}'>Open the canonical application</a>.</p></main></body></html>"
         )
-        (destination / "index.html").write_text(redirect, encoding="utf-8")
+        redirect_path = destination / "index.html"
+        redirect_path.write_text(redirect, encoding="utf-8")
+        staged.append((redirect_path, "canonical-redirect"))
     (destination / ".nojekyll").write_text("", encoding="utf-8")
     staged.append((destination / ".nojekyll", "pages-control"))
 

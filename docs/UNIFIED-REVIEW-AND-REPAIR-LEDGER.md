@@ -1,6 +1,6 @@
 # Unified review and repair ledger
 
-Status: `FINAL RE-REVIEW PENDING`
+Status: `POST-REPAIR CLEAN-COMMIT REVIEW PENDING`
 
 This ledger records independent criticism of candidate `36060ec4bd94e3dfea189aa4046f5c594e119c8c` and the product decisions made before the final clean-commit review. Review agreement is advisory; tests, source replay, deterministic recomputation, rendered evidence, and named human judgment remain the acceptance basis.
 
@@ -30,6 +30,33 @@ This ledger records independent criticism of candidate `36060ec4bd94e3dfea189aa4
 ## ChatGPT / hiring-decision review
 
 The final package will be sent to Cooper's personal ChatGPT only after the canonical URL, exact commit, refreshed PDFs, and final demonstration agree. It will be asked to inspect the public product as a practitioner and hiring decision-maker. Its response will be treated as advisory input, not fabricated practitioner evidence or financial validation.
+
+## Claude Fable 5.1 — exact-commit re-review at `0ed9a57`
+
+The native Claude review was read-only, began and ended with a clean worktree, and returned `QUALITY_SHORT`. The following findings were treated as release defects rather than as a model-vote exercise.
+
+| Severity | Finding | Decision | Repair or retained limitation |
+|---|---|---|---|
+| `HIGH` | The local verification receipt was bound to an earlier source commit. | `ACCEPT` | Regenerated the entire deterministic release surface after the repairs. The next immutable candidate commit and this receipt are rebound before final re-review; GitHub CI must still bind the public merge commit. |
+| `HIGH` | Helios displayed a seeded 20% loss frequency as if it independently validated the selected 20% catastrophe prior. | `ACCEPT` | Created separate typed metrics. The selected catastrophe prior is an analyst-owned scenario input; the replay loss frequency remains a formula-backed generator check. Only the selected prior is screened against the separate Desk loss ceiling. The UI, decision record, PDFs, metric contract, and tests now state the structural relationship. |
+| `MEDIUM` | The local MCP accepted 20 evidence references while the canonical workspace accepted eight. | `ACCEPT` | Both interfaces now enforce the same maximum of eight and fail closed on nine. |
+| `MEDIUM` | Northstar's 83.6% eleven-month ratio was labeled annual NRR. | `ACCEPT` | Relabeled it `Cohort retention proxy`, states the 11-month interval in the default view, and explicitly says it is not annual NRR. It still creates a concern against the separate annual-NRR screen. |
+| `MEDIUM` | GitHub Pages could republish a second live application. | `ACCEPT` | Pages now publishes a canonical redirect plus evidence artifacts; it no longer builds or copies a second workbench application. |
+| `MEDIUM` | Hosted review appeared available for any valid imported package although the server registry supported only retained cases and one exact sample. | `ACCEPT` | The product now enables hosted review only for registered retained cases and the exact supported Northstar sample. Other browser-local packages receive an honest unavailable state rather than a failing control. |
+| `MEDIUM` | Imported portable state could carry policy exceptions as if they retained local authority. | `ACCEPT` | Portable imports strip policy overrides and demote imported proposal provenance. A new local human action is required for any authoritative exception. |
+| `LOW` | System labels could appear as named human actors; AtlasGrid type and Helios ownership wording were imprecise; residual Lab branding remained in PDFs. | `ACCEPT` | System identities are rejected as human names, AtlasGrid is labeled buyout, Helios ownership is described after close and pool refresh, and current PDF footers use Underwriting Desk. |
+
+### Post-repair deterministic evidence
+
+- Python/kernel: `188/188 PASS`.
+- Mutation gates: `16/16 declared`, including 13 dynamic and one static gate; whole-program mutation score remains `NOT_CLAIMED`.
+- React/API: `107/107 PASS`; MCP: `9/9 PASS`.
+- Browser: `38 passed`, `8 intentional skips`, `46 discovered` across desktop and mobile.
+- Visual baselines: `40/40 PASS`; accessibility evidence: `8/8 PASS` for the declared automated checks.
+- PDFs: `6/6 PASS`, 36 pages total, tagged and metadata normalized.
+- Public scan: `PASS` over 414 candidate files.
+
+The deployed hosted-inference roundtrip, Git-backed Vercel deployment, final film, and observed practitioner usability remain external release gates and are not inferred from these local results.
 
 ## Release rule
 

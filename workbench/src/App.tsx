@@ -108,8 +108,8 @@ function assumptionsFor(caseData: CaseData): AssumptionDefinition[] {
   return [
     {id: "growth", label: "Annual revenue growth", value: percent(bridge.annual_revenue_growth), owner: "Management representation", basis: "Financing-plan scenario", consequence: "Changes terminal revenue and the operating exit bridge.", status: "UNREVIEWED"},
     {id: "exit-multiple", label: "Exit revenue multiple", value: `${Number(bridge.exit_revenue_multiple).toFixed(1)}x`, owner: "Management representation", basis: "Financing-plan scenario", consequence: "Changes enterprise value and investor proceeds.", status: "UNREVIEWED"},
-    {id: "catastrophe-prior", label: "Catastrophe-state prior", value: percent(engine.distribution.priors.catastrophe_probability), owner: engine.distribution.priors.owner, basis: "Synthetic analyst prior", consequence: "Changes modeled loss frequency; it is not an empirical forecast.", status: engine.distribution.priors.approval_status},
-    {id: "loss-ceiling", label: "Maximum probability below 1.0x", value: percent(HELIOS_SCREEN_POLICY.thresholds.find((item) => item.metric === "probability_below_one")!.value), owner: HELIOS_SCREEN_POLICY.owner, basis: "Desk-owned draft policy", consequence: "Screens loss frequency. A sensitivity edit never rewrites the canonical policy.", status: HELIOS_SCREEN_POLICY.status},
+    {id: "catastrophe-prior", label: "Catastrophe-state prior", value: percent(engine.distribution.priors.catastrophe_probability), owner: engine.distribution.priors.owner, basis: "Synthetic analyst input", consequence: "Directly determines the loss-policy screen in this retained structure; the seeded replay is a generator check, not an independent estimate.", status: engine.distribution.priors.approval_status},
+    {id: "loss-ceiling", label: "Maximum probability below 1.0x", value: percent(HELIOS_SCREEN_POLICY.thresholds.find((item) => item.metric === "probability_below_one")!.value), owner: HELIOS_SCREEN_POLICY.owner, basis: "Desk-owned draft policy", consequence: "Screens the selected catastrophe prior because every catastrophe path loses in this retained structure. A sensitivity edit never rewrites the canonical policy.", status: HELIOS_SCREEN_POLICY.status},
   ];
 }
 
@@ -191,7 +191,7 @@ function EconometricTest({caseData, openMetric}: {caseData: CaseData; openMetric
 
 function DecisionRail({caseData, view, state}: {caseData: CaseData; view: DealView; state: ReturnType<typeof useDealWorkspace>["state"]}) {
   const unresolved = state.issues.filter((issue) => issue.status !== "RESOLVED");
-  const policy = caseData.caseId === "helios" ? HELIOS_SCREEN_POLICY : null;
+  const policy = caseData.caseId === "helios" ? HELIOS_SCREEN_POLICY : ATLAS_SCREEN_POLICY;
   const working = caseData.peEngine
     ? (state.scenarioValues.peScenario ?? "selected") !== "selected"
     : (state.scenarioValues.vcScenario ?? "milestone") !== "milestone"
@@ -201,7 +201,7 @@ function DecisionRail({caseData, view, state}: {caseData: CaseData; view: DealVi
   const requiredAction = isHold
     ? "Maintain HOLD while the binding screen and open diligence remain unresolved."
     : caseData.decision.path_to_yes[0];
-  return <aside className="decision-rail" aria-label="Decision status"><header><span>Current posture</span><strong>{caseData.decision.decision}</strong><p>Analytical posture · IC decision pending</p></header><dl><div><dt>View</dt><dd>{viewLabels[view]}</dd></div><div><dt>Scenario</dt><dd>{working ? "Unapproved what-if" : "Canonical case"}</dd></div><div><dt>Open blockers</dt><dd>{unresolved.length}</dd></div><div><dt>Policy state</dt><dd>{policy ? `${policy.status.toLowerCase()} · ${policy.lastReviewed ?? "not reviewed"}` : "Retained decision tests · IC review pending"}</dd></div></dl><section><span>Primary blocker</span><strong>{unresolved[0]?.title ?? "No unresolved issue"}</strong><p>{unresolved[0]?.decisionImpact ?? "All recorded issues are resolved."}</p></section><section><span>{isHold ? "Required next action" : "Next committee action"}</span><strong>{requiredAction}</strong></section>{isHold ? <section><span>Path to reconsideration</span><strong>{caseData.decision.path_to_yes[0]}</strong><p>Illustrative terms only; not authority to fund or advance.</p></section> : null}<footer>IC decision pending</footer></aside>;
+  return <aside className="decision-rail" aria-label="Decision status" tabIndex={0}><header><span>Current posture</span><strong>{caseData.decision.decision}</strong><p>Analytical posture · IC decision pending</p></header><dl><div><dt>View</dt><dd>{viewLabels[view]}</dd></div><div><dt>Scenario</dt><dd>{working ? "Unapproved what-if" : "Canonical case"}</dd></div><div><dt>Open blockers</dt><dd>{unresolved.length}</dd></div><div><dt>Policy state</dt><dd>{policy.status.toLowerCase()} · {policy.lastReviewed ?? "not reviewed"}</dd></div></dl><section><span>Primary blocker</span><strong>{unresolved[0]?.title ?? "No unresolved issue"}</strong><p>{unresolved[0]?.decisionImpact ?? "All recorded issues are resolved."}</p></section><section><span>{isHold ? "Required next action" : "Next committee action"}</span><strong>{requiredAction}</strong></section>{isHold ? <section><span>Path to reconsideration</span><strong>{caseData.decision.path_to_yes[0]}</strong><p>Illustrative terms only; not authority to fund or advance.</p></section> : null}<footer>IC decision pending</footer></aside>;
 }
 
 function Diligence({caseData, state, update, modelTransport, connection, openMetric}: {caseData: CaseData; state: ReturnType<typeof useDealWorkspace>["state"]; update: ReturnType<typeof useDealWorkspace>["update"]; modelTransport?: ModelTransport; connection: ConnectionState | null; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {

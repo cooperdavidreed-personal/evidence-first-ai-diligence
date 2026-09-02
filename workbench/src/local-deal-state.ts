@@ -72,7 +72,7 @@ export function localWorkspaceSeed(result: IntakeResult): WorkspaceSeed {
     })),
     memoSections: [
       {sectionId: "screening", title: "Screening posture and rationale", body: result.rationale, provenance: "DETERMINISTIC_ANALYSIS", updatedBy: "Underwriting Desk"},
-      {sectionId: "economics", title: "Economics", body: `LTM revenue ${compactMoney(analysis.ltmRevenueCents)} · gross margin ${compactPercent(analysis.grossMargin)} · ordinary-cohort NRR ${compactPercent(analysis.ordinaryNrr)} · gross multiple ${analysis.grossMoic.toFixed(2)}x.`, provenance: "DETERMINISTIC_ANALYSIS", updatedBy: "Underwriting Desk"},
+      {sectionId: "economics", title: "Economics", body: `LTM revenue ${compactMoney(analysis.ltmRevenueCents)} · gross margin ${compactPercent(analysis.grossMargin)} · ${analysis.cohortElapsedMonths}-month cohort retention proxy ${compactPercent(analysis.ordinaryNrr)} · gross multiple ${analysis.grossMoic.toFixed(2)}x. The retention ratio is not annual NRR.`, provenance: "DETERMINISTIC_ANALYSIS", updatedBy: "Underwriting Desk"},
       {sectionId: "diligence", title: "Required diligence", body: "Validate retention interval and cohort quality, cost classification, customer concentration, committed costs, cap table and assumption provenance before any IC advancement.", provenance: "ANALYST_JUDGMENT", updatedBy: "Deal team"},
     ],
   };

@@ -35,7 +35,7 @@ The browser never asks for a Claude, OpenAI, or xAI API key. Provider credential
 
 The endpoint has no tool capable of changing calculations, package inputs, policy, assumption dispositions, issues, recommendation, or approval. The public route is synthetic-only and does not imply confidential-data readiness.
 
-Portable JSON is not a provider attestation. On import, proposal text and recorded human disposition are preserved, but provider/model identity is deliberately relabeled as unverified. The current public slice does not claim cryptographically signed model provenance.
+Portable JSON is not a provider or policy-authority attestation. On import, proposal text and recorded human disposition are preserved, provider/model identity is deliberately relabeled as unverified, and policy exceptions are not applied. The receiving browser requires a new named policy-owner action. The current public slice does not claim cryptographically signed model or human-authority provenance.
 
 ## Local proposal handoff
 

@@ -29,7 +29,11 @@ The asking price does not compensate for definition quality, concentration, full
 - **Reconcile parent concentration** - Commercial diligence lead. Re-underwrite concentration and price if master agreements reveal greater parent exposure.
 - **Support seller EBITDA add-backs** - QoE lead. Remove unsupported EBITDA and rerun leverage, covenants, maximum bid, and returns.
 
-**Path to reconsideration:** Counter at a $210M fixed-value cap Retain the $120M debt cap Give no pricing upside credit
+## Path to reconsideration
+
+- Counter at a $210M fixed-value cap
+- Retain the $120M debt cap
+- Give no pricing upside credit
 
 **Authority:** Requires investment committee approval. No capital action is authorized.
 

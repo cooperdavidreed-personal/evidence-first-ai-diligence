@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://cooperdavidreed-personal.github.io/evidence-first-ai-diligence/"
+Homepage = "https://underwriting-desk-delta.vercel.app/"
 Repository = "https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence"
 Issues = "https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence/issues"
 

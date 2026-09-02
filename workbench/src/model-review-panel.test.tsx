@@ -48,4 +48,10 @@ describe("model review panel", () => {
     expect(screen.getByText(/Portable import/)).toBeInTheDocument();
     expect(screen.queryByText(/claude|grok|chatgpt/i)).not.toBeInTheDocument();
   });
+
+  it("does not offer a fake hosted control for an unregistered uploaded package", () => {
+    render(<ModelReviewPanel dealId="local-other-package" evidence={evidence} transport={async () => ({})} hostedEligible={false} unavailableReason="Hosted review is enabled for the included Northstar sample only." />);
+    expect(screen.getByText(/included Northstar sample only/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", {name: "Challenge evidence"})).not.toBeInTheDocument();
+  });
 });

@@ -217,13 +217,14 @@ def test_helios_ic_packet_reconciles_engine_terms_and_receipts(tmp_path: Path) -
     assert "gross XIRR" in markdown
     snapshot = artifacts["snapshot_markdown"].read_text(encoding="utf-8")
     assert "## HOLD" in snapshot
-    assert "20.00% of retained paths fall below 1.0x" in snapshot
-    assert "illustrative 10.00% policy maximum" in snapshot
+    assert "selected unreviewed synthetic catastrophe prior is 20.00%" in snapshot
+    assert "10.00% Desk loss ceiling" in snapshot
+    assert "seeded replay frequency of 20.00% is a generator check" in snapshot
     assert "SHA-256" not in snapshot
     snapshot_html = artifacts["snapshot_html"].read_text(encoding="utf-8")
     assert snapshot_html.count("data-visual=") == 2
-    assert "The Desk-owned draft gate fails" in snapshot_html
-    assert "Conditional upside does not override the failed gate" in snapshot_html
+    assert "The selected prior exceeds the Desk ceiling" in snapshot_html
+    assert "the replay checks the generator rather than estimating the input" in snapshot_html
     assert "not approval" in snapshot_html
     technical = artifacts["technical_markdown"].read_text(encoding="utf-8")
     assert "Monte Carlo SE" in technical

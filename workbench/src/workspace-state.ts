@@ -119,6 +119,12 @@ function requiredString(value: unknown, field: string, max = MAX_TEXT) {
   return validated;
 }
 
+function namedHuman(value: unknown, field: string) {
+  const validated = requiredString(value, field, 120);
+  if (["financial model", "underwriting desk"].includes(validated.trim().toLowerCase())) throw new Error(`${field} must name a human reviewer`);
+  return validated;
+}
+
 function assertUnique(values: string[], field: string) {
   if (new Set(values).size !== values.length) throw new Error(`${field} identifiers must be unique`);
 }
@@ -231,7 +237,7 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
   const proposals = raw.proposals.map((item, index): ModelProposal => {
     if (!record(item) || !["CHALLENGE", "DILIGENCE_GAP", "MEMO_DRAFT"].includes(String(item.kind)) || !["PROPOSED", "ACCEPTED", "REJECTED"].includes(String(item.state))) throw new Error(`proposals[${index}] is invalid`);
     const state = item.state as ModelProposal["state"];
-    const humanActor = item.humanActor === undefined ? undefined : boundedString(item.humanActor, `proposals[${index}].humanActor`, 120);
+    const humanActor = item.humanActor === undefined ? undefined : namedHuman(item.humanActor, `proposals[${index}].humanActor`);
     const reviewedAt = item.reviewedAt === undefined ? undefined : timestamp(item.reviewedAt, `proposals[${index}].reviewedAt`);
     if (state !== "PROPOSED" && (!humanActor?.trim() || !reviewedAt)) throw new Error(`proposals[${index}] requires a named, timestamped human disposition`);
     const requestDigestSha256 = boundedString(item.requestDigestSha256, `proposals[${index}].requestDigestSha256`, 64);
@@ -284,7 +290,9 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
   const memoSections = raw.memoSections.map((item, index): MemoSectionState => {
     if (!record(item) || !["DETERMINISTIC_ANALYSIS", "ANALYST_JUDGMENT", "HUMAN_ACCEPTED_MODEL_PROPOSAL"].includes(String(item.provenance))) throw new Error(`memoSections[${index}] is invalid`);
     const sourceProvenance = item.sourceProvenance === undefined ? undefined : ["DETERMINISTIC_ANALYSIS", "ANALYST_JUDGMENT", "HUMAN_ACCEPTED_MODEL_PROPOSAL"].includes(String(item.sourceProvenance)) ? item.sourceProvenance as MemoSectionState["provenance"] : (() => {throw new Error(`memoSections[${index}].sourceProvenance is invalid`);})();
-    return {sectionId: boundedString(item.sectionId, `memoSections[${index}].sectionId`, 120), title: boundedString(item.title, `memoSections[${index}].title`, 200), body: boundedString(item.body, `memoSections[${index}].body`), provenance: item.provenance as MemoSectionState["provenance"], sourceProposalId: item.sourceProposalId === undefined ? undefined : boundedString(item.sourceProposalId, `memoSections[${index}].sourceProposalId`, 160), sourceProvenance, sourceBody: item.sourceBody === undefined ? undefined : boundedString(item.sourceBody, `memoSections[${index}].sourceBody`), updatedBy: boundedString(item.updatedBy, `memoSections[${index}].updatedBy`, 120), updatedAt: timestamp(item.updatedAt, `memoSections[${index}].updatedAt`)};
+    const updatedBy = boundedString(item.updatedBy, `memoSections[${index}].updatedBy`, 120);
+    if (item.provenance !== "DETERMINISTIC_ANALYSIS" && ["financial model", "underwriting desk"].includes(updatedBy.trim().toLowerCase())) throw new Error(`memoSections[${index}].updatedBy must name a human reviewer`);
+    return {sectionId: boundedString(item.sectionId, `memoSections[${index}].sectionId`, 120), title: boundedString(item.title, `memoSections[${index}].title`, 200), body: boundedString(item.body, `memoSections[${index}].body`), provenance: item.provenance as MemoSectionState["provenance"], sourceProposalId: item.sourceProposalId === undefined ? undefined : boundedString(item.sourceProposalId, `memoSections[${index}].sourceProposalId`, 160), sourceProvenance, sourceBody: item.sourceBody === undefined ? undefined : boundedString(item.sourceBody, `memoSections[${index}].sourceBody`), updatedBy, updatedAt: timestamp(item.updatedAt, `memoSections[${index}].updatedAt`)};
   });
   assertUnique(memoSections.map((item) => item.sectionId), "Memo section");
   if (integrityContract) {
@@ -364,7 +372,10 @@ export function sanitizePortableWorkspaceImport(raw: unknown, expectedCaseId: st
     modelFamily: undefined,
     limitations: "Imported portable state preserves the proposal and named human disposition, but does not authenticate the original model or provider.",
   }));
-  return validateWorkspace({...validated, proposals}, expectedCaseId, allowedEvidenceRefs, scenarioContract, integrityContract);
+  // A portable file can preserve work product, but it cannot authenticate the
+  // model provider or a policy owner's authority. Policy exceptions therefore
+  // require a fresh, named action in the receiving browser.
+  return validateWorkspace({...validated, proposals, policyOverrides: []}, expectedCaseId, allowedEvidenceRefs, scenarioContract, integrityContract);
 }
 
 export function loadWorkspaceResult(caseId: string, fallback: DealWorkspaceState, allowedEvidenceRefs?: ReadonlySet<string>, scenarioContract?: WorkspaceScenarioContract, integrityContract?: WorkspaceIntegrityContract) {

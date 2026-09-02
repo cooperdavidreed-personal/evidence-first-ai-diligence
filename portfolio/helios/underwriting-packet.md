@@ -8,7 +8,7 @@
 
 ## Recommendation and executable terms
 
-Hold because, under the canonical unreviewed synthetic prior, 20.00% of retained paths fall below 1.0x versus the illustrative 10.00% policy maximum. This result is driven by the explicit catastrophe-state assumption; the proposed milestone financing is a path to reconsideration, not a current investment recommendation.
+Hold because the selected unreviewed synthetic catastrophe prior is 20.00% versus the separate 10.00% Desk loss ceiling. In this retained structure every catastrophe path falls below 1.0x, while the seeded replay frequency of 20.00% is a generator check rather than an independent estimate. The proposed milestone financing is a path to reconsideration, not a current investment recommendation.
 **Binding loss hurdle:** 20.0% versus <= 10.0%; status Misses. The conditional posture is not funding approval while this test and the diligence gates remain open.
 
 | Term | Exact selected-case position |
@@ -136,7 +136,7 @@ Combined full-model impact: **$3M minimum cash**, **$3.4M Series C proceeds**, *
 - FALSIFIER: Pipeline conversion below 20.00%
 - FALSIFIER: Gross margin below 65.00%
 - FALSIFIER: Runway below 12 months post-close
-- **Loss hurdle exceeds policy maximum** Owner: Illustrative investment committee. If unresolved: Hold under the canonical synthetic prior. Do not revise the prior or policy after observing the result; alternative values remain unreviewed what-if sensitivities.
+- **Selected catastrophe prior exceeds policy maximum** Owner: Illustrative investment committee. If unresolved: Hold because the selected analyst catastrophe prior exceeds the separate Desk loss ceiling. In this retained structure every catastrophe path loses; the seeded replay checks the path generator rather than estimating the input. Do not revise the prior or policy after observing the result; alternatives remain unreviewed what-if sensitivities.
 - **Reconcile pipeline stage history** Owner: Revenue operations diligence lead. If unresolved: Do not credit forecast conversion until the complete opportunity history is reconciled.
 - **Test ordinary-customer transferability** Owner: Commercial diligence lead. If unresolved: Remove pooled-retention credit if design-partner and ordinary-customer terms are not comparable.
 - **Reconcile provider unit costs** Owner: Technical and financial diligence leads. If unresolved: Do not release milestone capital until margin improvement ties to invoices and telemetry.

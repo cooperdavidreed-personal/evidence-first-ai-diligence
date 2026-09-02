@@ -223,7 +223,6 @@ def build_case_metric_contract(
         "helios-hx-01-gross_margin": "Gross margin",
         "helios-hx-02-ordinary_nrr": "Ordinary-cohort NRR",
         "helios-hx-03-post_close_runway_floor": "Post-close runway",
-        "helios-hx-09-probability_below_1x": "Modeled loss probability",
     }
     decision_metric_displays = {
         item["metric_id"]: item["observed"]
@@ -1092,6 +1091,25 @@ def build_case_metric_contract(
             vc_path_moic_ids,
             "percent",
             f"{(Decimal(distribution['probability_below_one']) * 100).quantize(Decimal('0.01'))}%",
+        )
+        selected_prior_pct = (
+            Decimal(distribution["priors"]["catastrophe_probability"])
+            * Decimal(100)
+        ).quantize(Decimal("0.01"))
+        add(
+            render=False,
+            metric_id="helios-selected-catastrophe-prior",
+            label="Selected catastrophe prior",
+            value=selected_prior_pct,
+            display_value=f"{selected_prior_pct}%",
+            unit="percent",
+            quantum="0.01",
+            period="canonical synthetic scenario specification",
+            classification="SCENARIO",
+            locator_ids=[],
+            receipt_sha256=distribution["priors"]["receipt_sha256"],
+            assumption_ids=["vc-distribution-priors.catastrophe_probability"],
+            downstream_ids=["decision"],
         )
         for cell in vc_engine["sensitivities"]["cells"]:
             common = {

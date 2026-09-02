@@ -6,7 +6,7 @@ This release unifies the former Underwriting Intelligence Lab and Underwriting D
 
 ## What changed
 
-- Northstar intake can no longer authorize itself through uploaded thresholds. Its reproducible 83.6% ordinary-cohort NRR is a visible policy breach and keeps the complete package at `SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED`.
+- Northstar intake can no longer authorize itself through uploaded thresholds. Its reproducible 83.6% opening-cohort retention proxy spans 11 months and is not annual NRR; it remains an explicit concern against the separate annual NRR screen and keeps the complete package at `SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED`.
 - Missing or changed required files fail closed with `NO CALL — PACKAGE INCOMPLETE` and no return conclusion.
 - Source facts, deal terms, analyst assumptions, fund policy, deterministic calculations, model proposals, and named human decisions remain separate.
 - Editable scenarios update returns and decision consequences without overwriting the canonical case.

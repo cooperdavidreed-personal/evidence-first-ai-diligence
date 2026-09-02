@@ -57,6 +57,19 @@ describe("portable deal workspace", () => {
     expect(restored.proposals[0].limitations).toMatch(/does not authenticate/i);
   });
 
+  it("does not apply a policy-owner exception asserted only by a portable file", () => {
+    const state = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
+    state.policyOverrides.push({eventId: "override-1", gateId: "issue-1", disposition: "OVERRIDDEN", actor: "Avery Chen", actorRole: "Policy owner", rationale: "A portable exception must be re-recorded in the receiving browser.", recordedAt: "2026-09-01T01:00:00.000Z"});
+    const contract = createWorkspaceIntegrityContract(seed, {"issue-1": "Policy owner"});
+    expect(sanitizePortableWorkspaceImport(state, "atlasgrid", new Set(["AG-01"]), undefined, contract).policyOverrides).toEqual([]);
+  });
+
+  it("rejects system labels that impersonate a human reviewer", () => {
+    const state = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
+    state.memoSections[0] = {...state.memoSections[0], body: "Analyst revision.", provenance: "ANALYST_JUDGMENT", sourceProvenance: "DETERMINISTIC_ANALYSIS", sourceBody: "Reprice.", updatedBy: "Financial Model"};
+    expect(() => validateWorkspace(state, "atlasgrid", new Set(["AG-01"]), undefined, createWorkspaceIntegrityContract(seed))).toThrow(/must name a human reviewer/i);
+  });
+
   it("rejects a claimed human edit that does not preserve the distinct model draft", () => {
     const state = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
     const requestEvidence = seed.canonicalEvidence;
