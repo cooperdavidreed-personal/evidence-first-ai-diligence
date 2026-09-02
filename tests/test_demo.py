@@ -12,7 +12,7 @@ SOURCE = ROOT / "demo" / "final"
 
 def test_release_storyboard_is_current_contiguous_and_source_bound() -> None:
     storyboard, transcript, caption_counts = verify_storyboard(SOURCE)
-    assert storyboard["status"] == "SOURCE_TEMPLATE_READY_RENDER_NOT_RUN"
+    assert storyboard["status"] == "SOURCE_CONTRACT_READY_FOR_RENDER"
     assert storyboard["capture"] == "REAL_PUBLIC_WORKBENCH_INTERACTIONS"
     assert storyboard["resolution"] == "1920x1080"
     assert storyboard["fps"] == 30
@@ -33,6 +33,8 @@ def test_release_storyboard_covers_decision_exports_controls_and_boundaries() ->
         "further diligence",
         "83.6",
         "95 percent",
+        "95.0%",
+        "+ exit cash",
         "unapproved what-if",
         "proposed language",
         "named human",

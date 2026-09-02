@@ -313,7 +313,7 @@ def main() -> int:
             (
                 f"[0:v]tpad=stop_mode=clone:stop_duration={target},"
                 f"trim=duration={target},fps={FPS},format=yuv420p[v];"
-                f"[1:a]loudnorm=I=-16:TP=-1:LRA=7,apad=pad_dur={target},"
+                f"[1:a]loudnorm=I=-16:TP=-1:LRA=7,alimiter=limit=0.891251:attack=5:release=50,apad=pad_dur={target},"
                 f"atrim=duration={target},aresample=48000[a]"
             ),
             "-map",

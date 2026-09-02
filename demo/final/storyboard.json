@@ -1,6 +1,6 @@
 {
   "schema_version": "underwriting.demo-storyboard/v3",
-  "status": "SOURCE_TEMPLATE_READY_RENDER_NOT_RUN",
+  "status": "SOURCE_CONTRACT_READY_FOR_RENDER",
   "capture": "REAL_PUBLIC_WORKBENCH_INTERACTIONS",
   "resolution": "1920x1080",
   "fps": 30,
@@ -14,7 +14,10 @@
     "REPRICE",
     "23.3%",
     "17.6%",
+    "+ Exit cash",
+    "$3.9M",
     "83.6%",
+    "95.0%",
     "Unapproved what-if",
     "Confirm selected evidence transfer",
     "proposed",

@@ -88,6 +88,20 @@ describe("Underwriting Desk investor workspace", () => {
     expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
   });
 
+  it("shows a complete AtlasGrid exit equity bridge including cash", async () => {
+    window.history.replaceState(null, "", "/#/v3/atlasgrid/financials");
+    render(<App />);
+    const bridge = await screen.findByRole("group", {name: "Exit equity bridge"});
+    expect(within(bridge).getByText("Exit enterprise value")).toBeInTheDocument();
+    expect(within(bridge).getByText("$311.2M")).toBeInTheDocument();
+    expect(within(bridge).getByText("− Debt")).toBeInTheDocument();
+    expect(within(bridge).getByText("$16.4M")).toBeInTheDocument();
+    expect(within(bridge).getByText("+ Exit cash")).toBeInTheDocument();
+    expect(within(bridge).getByText("$3.9M")).toBeInTheDocument();
+    expect(within(bridge).getByText("= Exit equity value")).toBeInTheDocument();
+    expect(within(bridge).getByText("$298.7M")).toBeInTheDocument();
+  });
+
   it("stays usable and tells the analyst when browser-local saving is unavailable", async () => {
     Object.defineProperty(window, "localStorage", {configurable: true, value: {
       getItem: () => null,
