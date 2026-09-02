@@ -2,11 +2,13 @@
 
 Evidence-linked private-markets underwriting where deterministic finance, firm policy, analyst assumptions, model proposals, and human decisions remain separate.
 
-> **Status: PUBLIC PRODUCT VERIFIED — FINAL FILM REPAIR AND RELEASE PACKAGING IN PROGRESS**
+> **Status: PUBLIC PRACTITIONER-TEST CANDIDATE — v0.2.0 VERIFIED**
 >
 > Every company, source record, policy, and output in the public demonstration is fictional and synthetic. This project is not investment advice, real-company diligence, investment-performance evidence, confidential-data-ready software, autonomous investment authority, or evidence of firm adoption.
 
 Public application: [underwriting-desk-delta.vercel.app](https://underwriting-desk-delta.vercel.app/)
+
+Release: [v0.2.0](https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence/releases/tag/v0.2.0) · [88-second demonstration](https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence/releases/download/v0.2.0/underwriting-desk-demo-1080p.mp4) · [captions](https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence/releases/download/v0.2.0/underwriting-desk-demo-captions.vtt)
 
 ## What it demonstrates
 
@@ -79,7 +81,7 @@ The release candidate includes three distinct artifacts for each retained case:
 
 They are available in [`output/pdf`](output/pdf). Technical identifiers, formulas, and receipts stay in the appendix rather than the partner-facing decision pages.
 
-The first source-bound film passed Claude and ChatGPT review but received a Grok `QUALITY_SHORT` verdict: it overemphasized model review and did not show enough deterministic PE/VC depth. The replacement film contract now opens with AtlasGrid's selected structure versus seller ask, preserves the resulting `REPRICE` consequence, and frames model review as a secondary governed step. Publication remains blocked until the replacement film passes all three exact-artifact reviews.
+The final 88-second film opens with AtlasGrid's selected structure versus seller ask, preserves the resulting `REPRICE` consequence, then demonstrates fail-closed Northstar intake, exact evidence inspection, named human judgment, a bounded model proposal, human disposition, and memo output. Its exact MP4 is bound to product-source commit `5faeb1432be54d0b9a9eb3eca9a70014414e359c` and SHA-256 `06d2805e73dc6cc75c433fd2a81eb6b75eff95740e9cc92baf54e815315bcbed`. Claude, ChatGPT, and Grok each returned `PASS` with no critical or high finding; their machine-readable reviews and aggregate findings ship with the release.
 
 ## Run and verify locally
 
