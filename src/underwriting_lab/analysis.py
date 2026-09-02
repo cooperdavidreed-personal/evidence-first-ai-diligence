@@ -2738,7 +2738,6 @@ def _helios(
                     prior_classification=venture_scenarios["prior_classification"],
                 )
             )
-            cell_loss_probability = Decimal(distribution["probability_below_one"])
             path_records = distribution["path_records"]
             catastrophe_paths = [
                 item for item in path_records if item["prior_state"] == "CATASTROPHE"
