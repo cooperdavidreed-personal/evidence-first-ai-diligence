@@ -63,6 +63,11 @@ def test_capture_script_uses_current_routes_and_declared_stable_controls() -> No
     assert "REAL_PUBLIC_WORKBENCH_INTERACTIONS" in script
     assert 'underwriting.demo-capture-receipt/v2' in script
     assert "capture-receipt.json" in script
+    renderer = (ROOT / "scripts" / "render_demo.py").read_text()
+    verifier = (ROOT / "scripts" / "verify_demo.py").read_text()
+    for required in ("workbench/api/challenge.ts", "workbench/vercel.json"):
+        assert required in renderer
+        assert required in verifier
 
 
 def test_render_pipeline_requires_governed_elevenlabs_audio_and_builds_aac() -> None:

@@ -217,7 +217,9 @@ def verify_source_closure(repo: Path, manifest: dict[str, Any]) -> int:
         "demo/final/transcript.txt",
         "output/pdf/atlasgrid-underwriting-packet-letter.pdf",
         "output/pdf/helios-underwriting-packet-letter.pdf",
+        "workbench/api/challenge.ts",
         "workbench/src/data/cases.json",
+        "workbench/vercel.json",
     ):
         require(required in observed, f"required source omitted: {required}")
     return len(observed)

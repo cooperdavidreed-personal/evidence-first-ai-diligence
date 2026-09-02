@@ -52,6 +52,7 @@ def source_closure(repo: Path) -> list[dict[str, str]]:
         "workbench/tsconfig.app.json",
         "workbench/tsconfig.json",
         "workbench/tsconfig.node.json",
+        "workbench/vercel.json",
         "workbench/vite.config.ts",
         "workbench/scripts/render-demo.mjs",
     }
@@ -61,6 +62,7 @@ def source_closure(repo: Path) -> list[dict[str, str]]:
         if path in exact
         or path.startswith("demo/final/")
         or path.startswith("output/pdf/")
+        or path.startswith("workbench/api/")
         or path.startswith("workbench/src/")
     )
     required = {
@@ -71,7 +73,9 @@ def source_closure(repo: Path) -> list[dict[str, str]]:
         "demo/final/thumbnail-spec.json",
         "output/pdf/atlasgrid-underwriting-packet-letter.pdf",
         "output/pdf/helios-underwriting-packet-letter.pdf",
+        "workbench/api/challenge.ts",
         "workbench/src/data/cases.json",
+        "workbench/vercel.json",
     }
     missing = sorted(required - set(selected))
     if missing:
