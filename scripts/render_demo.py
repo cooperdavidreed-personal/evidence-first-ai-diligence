@@ -17,7 +17,15 @@ VIDEO_NAME = "underwriting-desk-demo-1080p.mp4"
 
 
 def run(command: list[str], *, cwd: Path | None = None) -> None:
-    subprocess.run(command, check=True, cwd=cwd, capture_output=True, text=True)
+    result = subprocess.run(command, cwd=cwd, capture_output=True, text=True)
+    if result.returncode:
+        detail = "\n".join(
+            part.strip() for part in (result.stdout, result.stderr) if part.strip()
+        )
+        raise RuntimeError(
+            f"command failed with exit {result.returncode}: {' '.join(command)}"
+            + (f"\n{detail}" if detail else "")
+        )
 
 
 def command_output(command: list[str], *, cwd: Path) -> str:
