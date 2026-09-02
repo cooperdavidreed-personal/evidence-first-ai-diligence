@@ -114,10 +114,12 @@ were assigned bounded advisory or review roles. Provider prose never became
 case evidence, and model agreement was never treated as acceptance. Deterministic
 tests, source replay, visual inspection, and human review remain authoritative.
 
-### What does the hosted model workflow prove?
+### What does the hosted model workflow demonstrate?
 
-It proves a narrow synthetic-only pattern: the user selects evidence, confirms
-the transfer, receives cited proposals, and must make a named human disposition.
+The implemented contract demonstrates a narrow synthetic-only pattern: the user
+selects evidence, confirms the transfer, and must make a named human disposition
+if the hosted provider successfully returns a cited proposal. A live proposal is
+not claimed without an exact deployment receipt.
 It does not prove confidential-data readiness, remote MCP, identity, role-based
 authority, cost governance at firm scale, or model accuracy.
 

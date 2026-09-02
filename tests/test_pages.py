@@ -156,6 +156,8 @@ def test_pages_can_redirect_stale_root_to_the_canonical_https_product(tmp_path: 
     roles = {entry["role"] for entry in json.loads((destination / "candidate-artifacts.json").read_text())["artifacts"]}
     assert "canonical-redirect" in roles
     assert "legacy-workbench" not in roles
+    assert "release-demo" not in roles
+    assert not (destination / "demo").exists()
 
 
 @pytest.mark.parametrize("unsafe", ["http://desk.example/", "javascript:alert(1)", "https://user:pass@desk.example/"])

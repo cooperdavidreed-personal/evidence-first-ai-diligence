@@ -1,4 +1,4 @@
-# Underwriting Desk v0.1.0 — practitioner-test candidate
+# Underwriting Desk v0.2.0 — practitioner-test candidate
 
 Status: `PRODUCT SOURCE VERIFIED — FINAL PUBLIC REBIND IN PROGRESS`
 

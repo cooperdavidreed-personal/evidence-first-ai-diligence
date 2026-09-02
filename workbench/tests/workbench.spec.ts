@@ -108,7 +108,8 @@ test("model connection center separates governed MCP from in-desk inference", as
   await page.getByRole("button", {name: "Continue"}).click();
   await expect(page.getByRole("heading", {name: "Keep provider credentials out of the browser"})).toBeVisible();
   await page.getByRole("button", {name: "Continue"}).click();
-  await expect(page.getByRole("heading", {name: "Run a bounded challenge from Diligence"})).toBeVisible();
+  await expect(page.getByRole("heading", {name: "Attempt a bounded challenge from Diligence"})).toBeVisible();
+  await expect(page.getByText(/proposal is not claimed until the server returns it successfully/i)).toBeVisible();
   await expect(page.getByText(/No provider keys are collected/)).toBeVisible();
   scan = await accessibilitySnapshot(page);
   await captureVisualEvidence(page, `${testInfo.project.name}-model-connection-governed-review.png`, true);

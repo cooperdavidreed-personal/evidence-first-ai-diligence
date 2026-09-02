@@ -71,7 +71,7 @@ The local stdio MCP surface is documented in [`workbench/mcp-server/README.md`](
 
 ## Decision materials
 
-The public release includes three distinct artifacts for each retained case:
+The release candidate includes three distinct artifacts for each retained case:
 
 - one-page IC snapshot;
 - partner-facing underwriting packet; and

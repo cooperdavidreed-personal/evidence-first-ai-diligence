@@ -210,7 +210,10 @@ def main() -> int:
         repo,
         destination,
         workbench_dist,
-        include_demo=True,
+        # The retired release-fix film is historical evidence, not a current
+        # Desk release artifact. The final film is distributed from its
+        # source-bound GitHub release once independent review passes.
+        include_demo=False,
         canonical_url=args.canonical_url,
     )
     print(json.dumps({"status": "PRODUCED", "path": str(destination)}, sort_keys=True))
