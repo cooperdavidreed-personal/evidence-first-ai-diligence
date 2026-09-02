@@ -1,6 +1,6 @@
 # Unified review and repair ledger
 
-Status: `CLAUDE FINAL RE-REVIEW PENDING — GROK HELD_PROVIDER`
+Status: `CLAUDE SOURCE ACCEPTED — LOCAL REPAIRS VERIFIED — EXTERNAL RELEASE GATES OPEN`
 
 This ledger records independent criticism of candidate `36060ec4bd94e3dfea189aa4046f5c594e119c8c` and the product decisions made before the final clean-commit review. Review agreement is advisory; tests, source replay, deterministic recomputation, rendered evidence, and named human judgment remain the acceptance basis.
 
@@ -87,6 +87,20 @@ Additional accepted repairs place an explicit source-identity caveat in printed 
 ## Grok — final exact-candidate attempt
 
 The bounded native Grok Build attempt against the clean candidate ended `HELD_PROVIDER` because the signed-in free usage allowance was exhausted. No API key, paid route, identity change, or fallback was used. Grok returned no final verdict, so no acceptance credit is claimed. This provider hold does not replace deterministic verification or the required practitioner test.
+
+## Claude Fable 5.1 — final source acceptance and retained repairs
+
+Claude reviewed exact clean commit `4d964c99753a5f9b27348c90c8864066fe415e91`, made no writes, and returned `PORTFOLIO_CANDIDATE_READY` with no unresolved critical or high source defect. It scored finance, econometrics, decision integrity, visual presentation, and career signal at 4/5; investor usability, differentiation, and security/claims discipline at 3/5. The two external highs were correctly retained as release gates: a successful anonymous hosted proposal roundtrip and a Git-backed public deployment bound to the default-branch commit.
+
+Claude also identified six medium or release-hygiene items. The source repairs were accepted and completed in `c974440489f96875e4eaf0c0259a635854654c1b`:
+
+- The root vertical-slice receipt and legacy film documents are explicitly marked superseded; `demo/final/` is the current production contract.
+- The Helios 18.0-month policy screen is explicitly a post-close modeled-runway floor, separate from the 17.3-month recent pre-financing runway.
+- The decision rail now separates immutable canonical conditions from editable worklist items; closing a task cannot make an investment condition disappear.
+- A complete uploaded package that misses deterministic return screens receives `HOLD` rather than a generic screening-complete posture.
+- The final film remains blocked until the same live source, hosted proposal, PDFs, and exact public commit can be captured honestly.
+
+The exact-candidate replay at `c974440` passed 113 React/API tests, 9 MCP tests, 40 active browser journeys, 40 visual baselines, 8 accessibility evidence checks, all six PDFs, and the 415-file public scan. The Python/kernel surface is byte-identical to `ebb2b8c`, where the complete 189/189 run passed.
 
 ## Release rule
 

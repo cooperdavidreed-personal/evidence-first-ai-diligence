@@ -15,10 +15,13 @@ This release unifies the former Underwriting Intelligence Lab and Underwriting D
 - The hosted adapter sends only a confirmed evidence subset, validates cited output, creates `PROPOSED` language, and requires a named human to accept, reject, or edit it.
 - The interface uses a compact institutional shell, full analytical workspace, persistent decision rail, split source preview, plain-language analytical interpretation, and responsive mobile behavior.
 - The reported mobile scroll-position defect has a dedicated passing browser regression.
+- Canonical decision conditions remain visible even when a human closes a corresponding worklist task; editable issue status cannot rewrite the investment record.
+- Complete imported packages that miss deterministic MOIC or annualized-return screens now receive `HOLD` rather than a generic screening-complete posture.
+- Helios' 18.0-month policy threshold is explicitly a post-close modeled-runway floor, separate from the 17.3-month recent pre-financing runway shown in the case.
 
 ## Verified locally
 
-Exact product source `ebb2b8c4fe4db33224613e22ff4ccfd7f2fa2874` passed 189 Python/kernel tests, 111 frontend/API tests, 9 MCP tests, 38 active browser journeys, 40 visual baselines, six normalized PDFs, and the 414-file public/security scan. A production-equivalent Vercel build emitted only `api/challenge`. See [`LOCAL-VERIFICATION.md`](LOCAL-VERIFICATION.md).
+Exact product source `c974440489f96875e4eaf0c0259a635854654c1b` passed 113 frontend/API tests, 9 MCP tests, 40 active browser journeys, 40 visual baselines, six normalized PDFs, and the 415-file public/security scan. Its unchanged Python/kernel surface remains bound to the 189/189 full run at `ebb2b8c`; exact diff verification confirms no Python source, dependency, or lockfile byte changed. A production-equivalent Vercel build emitted only `api/challenge`. See [`LOCAL-VERIFICATION.md`](LOCAL-VERIFICATION.md).
 
 ## Release gates still open
 
