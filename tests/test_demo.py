@@ -22,7 +22,7 @@ def test_release_storyboard_is_current_contiguous_and_source_bound() -> None:
     assert len(storyboard["expected_review_frames"]) == 9
     assert storyboard["required_test_ids"] == ["deal-package-input"]
     assert caption_counts == {"captions.srt": 16, "captions.vtt": 16}
-    assert len(normalized_text(transcript).split()) == 222
+    assert len(normalized_text(transcript).split()) == 223
 
 
 def test_release_storyboard_covers_decision_exports_controls_and_boundaries() -> None:

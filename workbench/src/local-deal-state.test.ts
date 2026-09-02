@@ -1,6 +1,8 @@
 import {File as NodeFile} from "node:buffer";
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
+import {createElement} from "react";
+import {render, within} from "@testing-library/react";
 import {beforeEach, describe, expect, it} from "vitest";
 import {processDealPackage} from "./intake";
 import {digestChallengePayloadSync} from "./model-workflow";
@@ -15,7 +17,7 @@ import {
   validateAdmittedDealBundle,
 } from "./local-deal-state";
 import {createWorkspace, createWorkspaceIntegrityContract, loadWorkspace, validateWorkspace} from "./workspace-state";
-import {localPostureCopy} from "./local-deal";
+import {LocalDealShell, localPostureCopy} from "./local-deal";
 
 const TestFile = NodeFile as unknown as typeof File;
 const packageRoot = resolve(process.cwd(), "public/sample-package");
@@ -59,7 +61,7 @@ describe("portable admitted deal state", () => {
     expect(loadWorkspace(caseId, workspace).issues[0].owner).toBeTruthy();
   });
 
-  it("binds local overview and rail copy to the deterministic posture", () => {
+  it("binds the rendered local overview and rail to the deterministic posture", async () => {
     expect(localPostureCopy("HOLD")).toEqual({
       heading: "HOLD",
       detail: "Return screens miss; no IC advancement",
@@ -70,6 +72,22 @@ describe("portable admitted deal state", () => {
       detail: "Screening complete; no IC advancement",
       icState: "Further diligence required",
     });
+
+    const admitted = await admittedNorthstar();
+    const result = {...admitted, posture: "HOLD" as const, rationale: "The deterministic return screens miss."};
+    const rendered = render(createElement(LocalDealShell, {
+      result,
+      view: "overview",
+      onNavigate: () => undefined,
+      onDeals: () => undefined,
+      onConnect: () => undefined,
+      connection: null,
+    }));
+    const rail = within(rendered.container).getByRole("complementary", {name: "Decision status"});
+    expect(within(rail).getByText("HOLD")).toBeTruthy();
+    expect(within(rail).getByText("Return screens miss; no IC advancement")).toBeTruthy();
+    expect(within(rendered.container).getByText("HOLD — deterministic return screens miss")).toBeTruthy();
+    rendered.unmount();
   });
 
   it("rejects incomplete results, cross-deal workspaces, and oversized bundles", async () => {
