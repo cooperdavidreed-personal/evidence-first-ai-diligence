@@ -37,7 +37,7 @@ describe("model review panel", () => {
     await user.click(accept);
     expect(screen.getByText("accepted")).toBeInTheDocument();
     expect(screen.getByText((_, node) => node?.tagName === "FOOTER" && Boolean(node.textContent?.includes("Edited and accepted by Avery Chen")))).toBeInTheDocument();
-    await user.click(screen.getByText("Compare accepted edit to model draft"));
+    await user.click(screen.getByText("Compare human-reviewed text to model draft"));
     expect(screen.getByText("Which committed costs are absent?")).toBeInTheDocument();
     expect(screen.getAllByText("Reconcile committed costs against the signed plan.")).toHaveLength(2);
   });

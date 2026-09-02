@@ -108,6 +108,7 @@ describe("Underwriting Desk investor workspace", () => {
     window.history.replaceState(null, "", "/#/v3/atlasgrid/overview");
     render(<App />);
     expect(await screen.findByText(/Saved workspace failed validation and was not loaded/)).toBeInTheDocument();
+    expect(window.localStorage.getItem("underwriting-desk.workspace.v2.atlasgrid")).toBe("{not-valid-json");
     expect(screen.getByRole("heading", {name: "AtlasGrid Systems"})).toBeInTheDocument();
   });
 
@@ -123,8 +124,8 @@ describe("Underwriting Desk investor workspace", () => {
     expect(screen.getByText("What it does not establish")).toBeInTheDocument();
     expect(screen.getByText("Method and uncertainty").closest("details")).not.toHaveAttribute("open");
     await user.click(screen.getByText("Method and uncertainty"));
-    expect(screen.getByText(/6.2% to 11.2% lower unit compute cost/)).toBeInTheDocument();
-    expect(screen.getByText(/About 1.4 percentage points on the log-cost scale/)).toBeInTheDocument();
+    expect(screen.getByText(/6.1% to 11.2% lower unit compute cost/)).toBeInTheDocument();
+    expect(screen.getByText(/0.0141 log points \(roughly 1.4%\)/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", {name: "Inspect evidence and calculation"}));
     expect(screen.getByRole("dialog", {name: "Optimizer test effect"})).toBeInTheDocument();
   });

@@ -77,6 +77,15 @@ test("Deals is a calm product root with no critical accessibility or overflow fi
   writeAccessibilityEvidence(`${testInfo.project.name}-deals.json`, {boundary: "Automated route evidence only; not comprehensive WCAG or observed usability proof.", project: testInfo.project.name, scans: [{view: "Deals", ...scan}], viewport: page.viewportSize()});
 });
 
+test("invalid saved workspace remains preserved behind a visible recovery warning", async ({page}) => {
+  const key = "underwriting-desk.workspace.v2.atlasgrid";
+  const rejected = "{not-valid-json";
+  await page.addInitScript(({storageKey, value}) => window.localStorage.setItem(storageKey, value), {storageKey: key, value: rejected});
+  await page.goto("/#/v3/atlasgrid/overview", {waitUntil: "networkidle"});
+  await expect(page.getByRole("status").filter({hasText: "Saved workspace failed validation and was not loaded"})).toBeVisible();
+  expect(await page.evaluate((storageKey) => window.localStorage.getItem(storageKey), key)).toBe(rejected);
+});
+
 test("model connection center separates governed MCP from in-desk inference", async ({page}, testInfo: TestInfo) => {
   await page.goto("/", {waitUntil: "networkidle"});
   await page.getByRole("button", {name: "Model options"}).click();

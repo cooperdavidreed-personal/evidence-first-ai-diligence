@@ -169,15 +169,20 @@ function EconometricTest({caseData, openMetric}: {caseData: CaseData; openMetric
     : caseData.caseId === "helios"
       ? `${Math.abs(effect * 100).toFixed(1)}% estimated ${measuredDirection === "negative" ? "reduction" : "increase"}`
       : `${Math.abs(estimate).toFixed(1)}-point estimated ${measuredDirection === "negative" ? "reduction" : "increase"}`;
-  const confidenceInterval = analysis.diagnostics.find((item) => item.name === "confidence_interval")?.value.match(/-?\d+(?:\.\d+)?/g)?.map(Number);
-  const intervalText = confidenceInterval?.length === 2
-    ? caseData.caseId === "helios"
-      ? `${[...confidenceInterval].map((value) => Math.abs(Math.expm1(value) * 100)).sort((a, b) => a - b).map((value) => value.toFixed(1)).join("% to ")}% lower unit compute cost in this planted sample`
-      : `${[...confidenceInterval].map(Math.abs).sort((a, b) => a - b).map((value) => value.toFixed(1)).join(" to ")} percentage points lower renewal conversion in this planted sample`
+  const intervalDiagnostic = caseData.caseId === "helios" ? "unadjusted_confidence_interval" : "confidence_interval";
+  const standardErrorDiagnostic = caseData.caseId === "helios" ? "unadjusted_standard_error" : "standard_error";
+  const confidenceInterval = analysis.diagnostics.find((item) => item.name === intervalDiagnostic)?.value.match(/-?\d+(?:\.\d+)?/g)?.map(Number);
+  const scaledInterval = confidenceInterval?.length === 2 ? confidenceInterval.map((value) => caseData.caseId === "helios" ? Math.expm1(value) * 100 : value).sort((a, b) => a - b) : null;
+  const intervalText = scaledInterval
+    ? scaledInterval[1] < 0
+      ? caseData.caseId === "helios" ? `${Math.abs(scaledInterval[1]).toFixed(1)}% to ${Math.abs(scaledInterval[0]).toFixed(1)}% lower unit compute cost in this planted sample` : `${Math.abs(scaledInterval[1]).toFixed(1)} to ${Math.abs(scaledInterval[0]).toFixed(1)} percentage points lower renewal conversion in this planted sample`
+      : scaledInterval[0] > 0
+        ? caseData.caseId === "helios" ? `${scaledInterval[0].toFixed(1)}% to ${scaledInterval[1].toFixed(1)}% higher unit compute cost in this planted sample` : `${scaledInterval[0].toFixed(1)} to ${scaledInterval[1].toFixed(1)} percentage points higher renewal conversion in this planted sample`
+        : caseData.caseId === "helios" ? `${Math.abs(scaledInterval[0]).toFixed(1)}% lower to ${scaledInterval[1].toFixed(1)}% higher unit compute cost in this planted sample` : `${Math.abs(scaledInterval[0]).toFixed(1)} points lower to ${scaledInterval[1].toFixed(1)} points higher renewal conversion in this planted sample`
     : "Interval unavailable";
-  const standardError = Number(analysis.diagnostics.find((item) => item.name === "standard_error")?.value);
+  const standardError = Number(analysis.diagnostics.find((item) => item.name === standardErrorDiagnostic)?.value);
   const uncertaintyText = Number.isFinite(standardError)
-    ? caseData.caseId === "helios" ? `About ${(standardError * 100).toFixed(1)} percentage points on the log-cost scale` : `${standardError.toFixed(1)} percentage points`
+    ? caseData.caseId === "helios" ? `${standardError.toFixed(4)} log points (roughly ${(standardError * 100).toFixed(1)}%)` : `${standardError.toFixed(1)} percentage points`
     : "Not reported";
   const consequence = caseData.caseId === "helios" ? "No base-case savings credit until the result replicates against production provider invoices." : "No pricing upside credit in the selected buyout structure.";
   const metric = registry ? {metric_id: registry.metric_id, label: caseData.caseId === "helios" ? "Optimizer test effect" : "Renewal-pricing test effect", value: registry.display_value, detail: finding, classification: registry.classification, lineage: registry.source_locator_ids, registry} as Metric : caseData.summaryMetrics[0];
@@ -226,6 +231,7 @@ function DealShell({caseData, view, onNavigate, onChooseDeal, onDeals, onConnect
   const allowedEvidenceRefs = useMemo(() => new Set([...caseData.metricRegistry.map((item) => item.metric_id), ...caseData.analyses.map((item) => item.analysis_id), ...caseData.artifacts.map((item) => item.artifact_id)]), [caseData]);
   const scenarioContract = useMemo(() => scenarioContractFor(caseData), [caseData]);
   const {state, update, replace, storageNotice, integrityContract} = useDealWorkspace(seed, allowedEvidenceRefs, scenarioContract);
+  const storageAlert = storageNotice === "Saved locally" ? "" : storageNotice;
   const [lineage, setLineage] = useState<{metric: Metric; trigger: HTMLElement} | null>(null);
   const openLineage = (metric: Metric, trigger: HTMLElement) => setLineage({metric, trigger});
   const closeLineage = () => {
@@ -243,10 +249,10 @@ function DealShell({caseData, view, onNavigate, onChooseDeal, onDeals, onConnect
           ? <DocumentsWorkspace caseData={caseData} openMetric={openLineage} />
           : <><EditableMemo state={state} update={update} title={caseData.company} subtitle={caseData.dealContext.investment_question} scenarioSummary={scenarioMemoSummary(caseData, state)} /><WorkspaceTransfer state={state} replace={replace} allowedEvidenceRefs={allowedEvidenceRefs} scenarioContract={scenarioContract} integrityContract={integrityContract} /></>;
   return <div className="product-shell">
-    <aside className="sidebar"><button type="button" className="wordmark" onClick={onDeals} aria-label="Underwriting Desk deals"><span>U</span><strong>Underwriting Desk</strong></button><nav aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}>{viewLabels[item]}</button>)}</nav><div className="sidebar-foot"><button type="button" onClick={onConnect}>Model settings</button><span>{storageNotice}</span></div></aside>
+    <aside className="sidebar"><button type="button" className="wordmark" onClick={onDeals} aria-label="Underwriting Desk deals"><span>U</span><strong>Underwriting Desk</strong></button><nav aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}>{viewLabels[item]}</button>)}</nav><div className="sidebar-foot"><button type="button" onClick={onConnect}>Model settings</button><span>{storageAlert ? "Workspace attention required" : storageNotice}</span></div></aside>
     <div className="shell-main"><header className="deal-topbar"><button type="button" className="mobile-wordmark" onClick={onDeals}>Underwriting Desk</button><label><span>Deal</span><select aria-label="Deal" value={caseData.caseId} onChange={(event) => onChooseDeal(event.target.value as CaseId)}>{caseCatalog.map((item) => <option value={item.caseId} key={item.caseId}>{item.company}</option>)}</select></label><div className="topbar-meta"><span>{caseData.caseType}</span><span>As of {formatHumanDate(caseData.decision.as_of ?? `${caseData.temporalScan.cutoff.slice(0, 10)}T12:00:00Z`)}</span></div><button className="topbar-model" type="button" onClick={onConnect}>Model settings</button></header>
       <nav className="mobile-nav" aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}>{viewLabels[item]}</button>)}</nav>
-      <div className="workspace-layout"><main id="main-content" className="deal-main"><header className="deal-heading"><div><p className="eyebrow">{viewLabels[view]}</p><h1>{caseData.company}</h1><p>{caseData.dealContext.company_one_liner}</p></div><p className="ic-question"><span>Investment question</span>{caseData.dealContext.investment_question}</p></header><RetainedEvidenceBoundary key={`${caseData.caseId}:${view}`} onReset={onDeals}>{content}</RetainedEvidenceBoundary><footer className="deal-boundary">Fictional company and synthetic records · Not investment advice · Browser-local workspace is not suitable for confidential information</footer></main><DecisionRail caseData={caseData} view={view} state={state} /></div>
+      <div className="workspace-layout"><main id="main-content" className="deal-main">{storageAlert ? <p className="persistence-warning" role="status">{storageAlert}</p> : null}<header className="deal-heading"><div><p className="eyebrow">{viewLabels[view]}</p><h1>{caseData.company}</h1><p>{caseData.dealContext.company_one_liner}</p></div><p className="ic-question"><span>Investment question</span>{caseData.dealContext.investment_question}</p></header><RetainedEvidenceBoundary key={`${caseData.caseId}:${view}`} onReset={onDeals}>{content}</RetainedEvidenceBoundary><footer className="deal-boundary">Fictional company and synthetic records · Not investment advice · Browser-local workspace is not suitable for confidential information</footer></main><DecisionRail caseData={caseData} view={view} state={state} /></div>
     </div>
     {lineage ? <LineageDrawer caseData={caseData} metric={lineage.metric} onClose={closeLineage} /> : null}
   </div>;

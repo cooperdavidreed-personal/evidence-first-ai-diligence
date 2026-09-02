@@ -49,8 +49,9 @@ export function useDealWorkspace(seed: WorkspaceSeed, allowedEvidenceRefs: Reado
 
   useEffect(() => {const loaded = loadWorkspaceResult(seed.caseId, fallback, allowedEvidenceRefs, scenarioContract, integrityContract); setState(loaded.state); setLoadNotice(loaded.notice);}, [seed.caseId, fallback, allowedEvidenceRefs, scenarioContract, integrityContract]);
   useEffect(() => {
+    if (loadNotice) return;
     setSaveNotice(persistWorkspace(state, allowedEvidenceRefs, scenarioContract, integrityContract) ? "Saved locally" : "In memory · local save unavailable");
-  }, [allowedEvidenceRefs, scenarioContract, integrityContract, state]);
+  }, [allowedEvidenceRefs, scenarioContract, integrityContract, loadNotice, state]);
 
   const update: WorkspaceUpdate = (patch) => {
     setLoadNotice(null);
