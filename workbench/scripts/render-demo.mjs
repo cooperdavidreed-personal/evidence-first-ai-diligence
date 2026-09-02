@@ -45,6 +45,11 @@ try {
     viewport: {width: WIDTH, height: HEIGHT},
     recordVideo: {dir: dirname(output), size: {width: WIDTH, height: HEIGHT}},
     reducedMotion: "reduce",
+    // Capture-only instrumentation adds a visible focus ring and disables
+    // motion. Bypass CSP inside this isolated browser context; the deployed
+    // application's production headers remain unchanged and are verified
+    // separately.
+    bypassCSP: true,
   });
   const page = await context.newPage();
   await page.goto(baseUrl.href, {waitUntil: "networkidle"});
@@ -108,9 +113,13 @@ try {
 
   const evidence = sceneAt("evidence");
   await dealNavigation().getByRole("button", {name: "Documents"}).click();
-  const customerSource = page.getByRole("button", {name: /Customer ARR/i}).first();
-  await customerSource.click();
-  await visibleText("Exact source rows", evidence.id);
+  // The admitted Northstar room intentionally opens on its customer ARR
+  // evidence by default. Assert the exact retained-row preview directly; the
+  // source-list button's accessible name is the analytical preview title, not
+  // the raw filename.
+  const sourceRows = page.locator('.source-row-table[aria-label="Exact admitted source rows"]');
+  await sourceRows.waitFor({state: "visible", timeout: 30_000});
+  await center(sourceRows);
   await shot(3, "evidence", evidence.id);
   await until(evidence.end);
 
@@ -148,7 +157,7 @@ try {
 
   const disposition = sceneAt("human-disposition");
   await page.getByRole("textbox", {name: "Human reviewer"}).fill("Avery Chen");
-  await page.getByRole("button", {name: "Accept proposal"}).click();
+  await proposal.getByRole("button", {name: "Accept proposal"}).click();
   await visibleText("accepted by Avery Chen", disposition.id);
   await shot(7, "accepted", disposition.id);
   await until(disposition.end);
@@ -158,7 +167,12 @@ try {
   await page.getByRole("textbox", {name: "Editor"}).fill("Avery Chen");
   const addButton = page.getByRole("button", {name: "Add with provenance"});
   if (await addButton.count()) await addButton.first().click();
-  await visibleText("IC decision pending", memo.id);
+  const memoFooter = page.locator(".memo-editor footer");
+  await memoFooter.waitFor({state: "attached", timeout: 30_000});
+  const memoFooterText = (await memoFooter.textContent())?.trim() ?? "";
+  if (!memoFooterText.includes("IC decision pending")) throw new Error("IC memo pending-decision boundary is missing");
+  receipt.observed_claims.push({scene: memo.id, text: "IC decision pending", url: page.url()});
+  await center(memoFooter);
   await shot(8, "memo", memo.id);
   await until(memo.end);
 
