@@ -30,7 +30,7 @@ toolkit = [
 ]
 dev = ["pytest==9.0.3", "Pillow==12.3.0"]
 demo = ["Pillow==12.3.0"]
-quality = ["bandit==1.8.6", "pip-audit==2.9.0", "ruff==0.12.12"]
+quality = ["bandit==1.8.6", "pip-audit==2.9.0", "ruff==0.16.5"]
 
 [project.scripts]
 ic-evidence-lab = "ic_evidence_lab.cli:main"
