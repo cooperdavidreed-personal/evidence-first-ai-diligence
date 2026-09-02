@@ -51,7 +51,7 @@
       "id": "scenario",
       "start": 31,
       "end": 42,
-      "narration": "A bounded scenario changes growth and immediately recomputes ownership and returns with deterministic math. The interface marks it as an unapproved what-if; the canonical package case remains unchanged."
+      "narration": "A bounded scenario changes growth and immediately recomputes terminal value and returns with deterministic math. The interface marks it as an unapproved what-if; the canonical package case remains unchanged."
     },
     {
       "id": "judgment",
