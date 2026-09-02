@@ -17,6 +17,12 @@ def test_ic_packet_reconciles_to_the_same_case_receipts(tmp_path: Path) -> None:
     case = json.loads(analysis_path.read_text(encoding="utf-8"))
     artifacts = build_ic_packet_from_case(case, tmp_path / "packet")
     repeated = build_ic_packet_from_case(case, tmp_path / "packet-repeat")
+    assert "AtlasGrid Systems IC memorandum" in artifacts[
+        "packet_html"
+    ].read_text(encoding="utf-8")
+    assert "AtlasGrid Systems technical appendix" in artifacts[
+        "technical_html"
+    ].read_text(encoding="utf-8")
     for artifact_name in artifacts:
         assert (
             artifacts[artifact_name].read_bytes()
@@ -170,6 +176,12 @@ def test_helios_ic_packet_reconciles_engine_terms_and_receipts(tmp_path: Path) -
     case = json.loads(analysis_path.read_text(encoding="utf-8"))
     artifacts = build_ic_packet_from_case(case, tmp_path / "packet")
     repeated = build_ic_packet_from_case(case, tmp_path / "packet-repeat")
+    assert "Helios Compute Control IC memorandum" in artifacts[
+        "packet_html"
+    ].read_text(encoding="utf-8")
+    assert "Helios Compute Control technical appendix" in artifacts[
+        "technical_html"
+    ].read_text(encoding="utf-8")
     for artifact_name in artifacts:
         assert (
             artifacts[artifact_name].read_bytes()

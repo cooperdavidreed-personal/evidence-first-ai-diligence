@@ -769,7 +769,10 @@ def _memo_html(
     aside{border:0;border-top:1px solid #cbd0d2;border-bottom:1px solid #cbd0d2;color:#657078;padding:5px 0;font-weight:600;letter-spacing:.25px}
     """
     body_class = f"{escape(packet['case_id'])}-memo {escape(artifact_kind)}"
-    rendered = f"<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>{escape(packet['company'])} IC memorandum</title><style>{style}</style></head><body class='{body_class}'>{''.join(paragraphs)}<footer>Packet {packet['packet_sha256']} · {escape(packet['disclosure'])}</footer></body></html>"
+    document_label = (
+        "technical appendix" if artifact_kind == "technical" else "IC memorandum"
+    )
+    rendered = f"<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>{escape(packet['company'])} {document_label}</title><style>{style}</style></head><body class='{body_class}'>{''.join(paragraphs)}<footer>Packet {packet['packet_sha256']} · {escape(packet['disclosure'])}</footer></body></html>"
     return "\n".join(line.rstrip() for line in rendered.splitlines())
 
 
