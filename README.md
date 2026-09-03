@@ -56,7 +56,7 @@ The application allows a user to:
 
 ## Supported deal intake
 
-Use **New deal** with the five files in [`workbench/public/sample-package-v2`](workbench/public/sample-package-v2):
+Use **New deal** and drop the five files in [`workbench/public/sample-package-v2`](workbench/public/sample-package-v2) — as separate files, a folder, or a ZIP archive — or press **Load the complete synthetic sample**. Selections add to the package; each checklist item can be replaced or removed, and analysis stays blocked until the minimum package is present:
 
 - `manifest.json`
 - `deal.json`

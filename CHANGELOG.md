@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## Unreleased — 2026-09-03 — Desktop design rebuild candidate
+
+- Redesigned the desktop Underwriting Desk around the practitioner question order: current view, supporting and contradicting evidence, base/downside/upside returns, drivers, decision-changing screens, remaining diligence, version changes, and IC readiness, with a contextual decision rail on every view.
+- Fixed New Deal intake: sequential file selections, folder and ZIP drops now add to the package instead of replacing it; added a five-item checklist with per-file replace/remove, a one-click synthetic sample, and plain-language blocking before analysis.
+- Added retained value-creation bridges, SVG debt/cash schedules, scenario returns tables, and readable evidence excerpts in the lineage drawer.
+- Renamed "Human context" to "Analyst notes & observations"; removed repeated disclosures, decorative badges, and all-caps posture centrepieces.
+- Rewrote the stylesheet as one warm-neutral, graphite-ink, cobalt-accent system with tabular numerals and a 12px minimum text size. Phone layouts remain out of scope.
+
 ## 0.2.0 — 2026-09-02 — Underwriting Desk practitioner-test candidate
 
 - Unified prior Lab and Desk capabilities into one finance-native decision workspace.

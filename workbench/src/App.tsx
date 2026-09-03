@@ -28,14 +28,15 @@ import {
   useDealWorkspace,
   type AssumptionDefinition,
 } from "./workspace-ui";
-import {createWorkspaceIntegrityContract, storageKey, validateWorkspace, type WorkspaceScenarioContract, type WorkspaceSeed} from "./workspace-state";
+import {createWorkspaceIntegrityContract, storageKey, validateWorkspace, type DealWorkspaceState, type WorkspaceScenarioContract, type WorkspaceSeed} from "./workspace-state";
 
 export const dealViews = ["overview", "financials", "diligence", "documents", "memo"] as const;
 export type DealView = (typeof dealViews)[number];
 export type RouteView = DealView | "deals" | "public-record";
 export interface RouteState { caseId: CaseId | "local" | "public-record"; view: RouteView }
 
-const viewLabels: Record<DealView, string> = {overview: "Overview", financials: "Financials", diligence: "Diligence", documents: "Documents", memo: "IC Memo"};
+export const viewLabels: Record<DealView, string> = {overview: "Overview", financials: "Financials", diligence: "Diligence", documents: "Documents", memo: "IC Memo"};
+export const viewQuestions: Record<DealView, string> = {overview: "What is the current view, and why?", financials: "What are the returns, and what drives them?", diligence: "What remains, and who owns it?", documents: "What evidence supports each number?", memo: "Is this ready for the next IC step?"};
 const legacyViews: Record<string, DealView> = {risks: "diligence", thesis: "overview", "value-creation": "financials", explore: "documents", sources: "documents", methodology: "diligence", audit: "documents", underwriting: "financials"};
 
 export function parseRoute(): RouteState {
@@ -49,11 +50,11 @@ export function parseRoute(): RouteState {
 }
 
 function routePath(caseId: string, view: DealView) { return `#/v3/${caseId}/${view}`; }
-function statusLabel(value: string) { return value.toLowerCase().replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase()); }
 function money(cents: number) { return new Intl.NumberFormat("en-US", {style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1}).format(cents / 100); }
 function percent(value: string | number) { return `${(Number(value) * 100).toFixed(1)}%`; }
 function sentence(value: string) { return /[.!?]$/.test(value.trim()) ? value.trim() : `${value.trim()}.`; }
-function investorLanguage(value: string) {
+function multiple(value: string | number) { return `${Number(value).toFixed(2)}x`; }
+export function investorLanguage(value: string) {
   return value
     .replace(/catastrophe[- ]state prior/gi, "severe-loss probability assumption")
     .replace(/catastrophe prior/gi, "severe-loss assumption")
@@ -63,6 +64,22 @@ function investorLanguage(value: string) {
     .replace(/Desk loss ceiling/gi, "working maximum loss probability")
     .replace(/path generator/gi, "scenario mechanics");
 }
+const postureHeadline: Record<string, string> = {
+  REPRICE: "Reprice rather than meet the ask",
+  HOLD: "Hold; do not deploy capital on the current record",
+  "REOPEN DILIGENCE": "Reopen diligence on the revised evidence",
+  CONDITIONAL_INVEST: "Invest, subject to named conditions",
+  INVEST: "Invest on the selected terms",
+  PASS: "Pass on the opportunity",
+};
+const stageLabel: Record<string, string> = {PRE_IC: "Before IC", PRE_SIGNING: "Before signing", PRE_DEBT_COMMITMENT: "Before debt commitment", POST_CLOSE: "After close"};
+
+/** The single persistent disclosure for a deal workspace. */
+export function BoundaryNote({synthetic = true}: {synthetic?: boolean}) {
+  return <p className="rail-boundary">{synthetic ? "Fictional company and synthetic records." : "Public demonstration."} Not investment advice. Browser-local workspace; not for confidential information.</p>;
+}
+
+export function NavIcon({view}: {view: DealView}) { return <i aria-hidden="true" data-icon={view} />; }
 
 class RetainedEvidenceBoundary extends Component<{children: ReactNode; onReset: () => void}, {error: Error | null}> {
   state = {error: null as Error | null};
@@ -96,14 +113,17 @@ function DealList({onOpen, onNew, onConnect, connection, localDeal, onOpenLocal,
     const summary = summaries[deal.caseId];
     const blockers = summary?.openIssues ?? deal.blockerCount;
     const next = summary?.nextAction ?? `${deal.posture === "HOLD" ? "Maintain HOLD; address" : "Address"}: ${deal.primaryBlocker}`;
-    return <button type="button" className="deal-row" key={deal.caseId} aria-label={`Open ${deal.company} — ${deal.posture}; ${blockers} open issues; next: ${next}`} onClick={() => onOpen(deal.caseId)}><span><strong>{deal.company}</strong><small>{deal.investmentQuestion}</small></span><span>{deal.caseType}</span><span>{deal.owner}</span><span>{summary?.working ? "What-if open" : deal.stage}</span><span className={`posture posture-${deal.posture.toLowerCase()}`}>{deal.posture}</span><span>{blockers}</span><span>{formatHumanDate(summary?.lastActivity ?? deal.asOf)}</span><span>{next}</span></button>;
+    return <button type="button" className="deal-row" key={deal.caseId} aria-label={`Open ${deal.company} — ${deal.posture}; ${blockers} open issues; next: ${next}`} onClick={() => onOpen(deal.caseId)}><span><strong>{deal.company}</strong><small>{deal.investmentQuestion}</small></span><span>{deal.caseType}</span><span>{deal.owner}</span><span>{summary?.working ? "What-if open" : deal.stage}</span><span className={`posture posture-${deal.posture.toLowerCase()}`}>{deal.posture}</span><span className="num">{blockers}</span><span>{formatHumanDate(summary?.lastActivity ?? deal.asOf)}</span><span>{next}</span></button>;
   };
   return <main className="deals-page" id="main-content">
-    <header className="deals-header"><div><div className="brand-lockup"><span>U</span><strong>Underwriting Desk</strong></div><p>Evidence-linked underwriting where deterministic finance, policy and human judgment remain separate.</p></div><div><ModelConnectionButton connection={connection} onClick={onConnect} /><label className="file-button">Import deal<input type="file" accept="application/json,.json" onChange={(event) => onImportLocal(event.target.files?.[0])} /></label><button className="primary-button" type="button" data-testid="new-deal-button" onClick={onNew}>New deal</button></div></header>
+    <header className="deals-header"><div><div className="brand-lockup"><span>U</span><strong>Underwriting Desk</strong></div><p>Deterministic finance, source-linked evidence, fund policy, and named human decisions, kept separate.</p></div><div><ModelConnectionButton connection={connection} onClick={onConnect} /><label className="file-button">Import deal<input type="file" accept="application/json,.json" onChange={(event) => onImportLocal(event.target.files?.[0])} /></label><button className="primary-button" type="button" data-testid="new-deal-button" onClick={onNew}>New deal</button></div></header>
     {importNotice ? <p className="import-notice" role="status">{importNotice}</p> : null}
-    <section className="deal-index" aria-labelledby="active-deals-heading"><div className="section-heading"><div><p className="eyebrow">Decision workspaces</p><h1 id="active-deals-heading">Deals</h1></div><span>{caseCatalog.length} retained synthetic cases{localDeal ? " · 1 admitted local case" : ""}</span></div><div className="deal-table" aria-label="Deal decision workspaces"><div className="deal-table-head" aria-hidden="true"><span>Company</span><span>Strategy</span><span>Owner</span><span>Stage</span><span>Posture</span><span>Open issues</span><span>Last activity</span><span>Next action</span></div>{localDeal ? <button type="button" className="deal-row" aria-label={`Open ${localDeal.deal?.company} — ${localDeal.posture}; ${localDeal.analysis?.tests.filter((test) => test.blocksAdvancement).length ?? "unknown"} blockers`} onClick={onOpenLocal}><span><strong>{localDeal.deal?.company}</strong><small>Supported Quick Package</small></span><span>Growth</span><span>{localDeal.deal?.analystOwner}</span><span>Screening</span><span className={`posture posture-${localDeal.posture === "HOLD" ? "hold" : "screening"}`}>{localDeal.posture === "HOLD" ? "HOLD" : "Screening"}</span><span>{localDeal.analysis?.tests.filter((test) => test.blocksAdvancement).length ?? "—"}</span><span>{formatHumanDate(`${localDeal.deal?.cutoff}T12:00:00Z`)}</span><span>{localDeal.posture}</span></button> : null}{caseCatalog.map(dealButton)}</div></section>
-    <section className="deal-index public-record-index" aria-labelledby="public-record-heading"><div className="section-heading"><div><p className="eyebrow">Historical cutoff proof</p><h2 id="public-record-heading">Public-record retrospective</h2></div><span>Real company · SEC filings</span></div><button type="button" className="deal-row" onClick={onOpenPublicRecord}><span><strong>Snowflake pre-IPO screen</strong><small>Evidence available through September 14, 2020</small></span><span>Growth</span><span>Public record</span><span>Retrospective</span><span className="posture posture-hold">NO CALL</span><span>3 gaps</span><span>Sep 14, 2020</span><span>Inspect cutoff and excluded hindsight</span></button></section>
-    <section className="intake-callout"><div><p className="eyebrow">Test with your own package</p><h2>Growth SaaS evidence package</h2><p>Upload declared Excel, CSV, PDF, and deal files. Validation and calculations stay in the browser. Uploaded thresholds never become fund policy.</p></div><button className="secondary-button" type="button" onClick={onNew}>Open intake</button></section>
+    <section className="deal-index" aria-labelledby="active-deals-heading"><div className="section-heading"><div><p className="eyebrow">Decision workspaces</p><h1 id="active-deals-heading">Deals</h1></div><span>{caseCatalog.length} retained synthetic cases{localDeal ? " · 1 admitted local case" : ""}</span></div><div className="deal-table" aria-label="Deal decision workspaces"><div className="deal-table-head" aria-hidden="true"><span>Company</span><span>Strategy</span><span>Owner</span><span>Stage</span><span>Posture</span><span>Open issues</span><span>Last activity</span><span>Next action</span></div>{localDeal ? <button type="button" className="deal-row" aria-label={`Open ${localDeal.deal?.company} — ${localDeal.posture}; ${localDeal.analysis?.tests.filter((test) => test.blocksAdvancement).length ?? "unknown"} blockers`} onClick={onOpenLocal}><span><strong>{localDeal.deal?.company}</strong><small>Admitted company package · {localDeal.baselineApproval?.version ?? "unapproved"}</small></span><span>Growth</span><span>{localDeal.deal?.analystOwner}</span><span>Screening</span><span className={`posture posture-${localDeal.posture === "HOLD" ? "hold" : "screening"}`}>{localDeal.posture === "HOLD" ? "HOLD" : "Screening"}</span><span className="num">{localDeal.analysis?.tests.filter((test) => test.blocksAdvancement).length ?? "—"}</span><span>{formatHumanDate(`${localDeal.deal?.cutoff}T12:00:00Z`)}</span><span>{localDeal.posture === "HOLD" ? "Return screens miss; resolve before IC" : "Complete further diligence before IC"}</span></button> : null}{caseCatalog.map(dealButton)}</div></section>
+    <div className="deals-secondary">
+      <section className="deal-index public-record-index" aria-labelledby="public-record-heading"><div className="section-heading"><div><p className="eyebrow">Historical cutoff proof</p><h2 id="public-record-heading">Public-record retrospective</h2></div><span>Real company · SEC filings only</span></div><div className="deal-table"><div className="deal-table-head" aria-hidden="true"><span>Company</span><span>Posture</span><span>Evidence cutoff</span><span>Next action</span></div><button type="button" className="deal-row" onClick={onOpenPublicRecord}><span><strong>Snowflake pre-IPO screen</strong><small>Only filings available through September 14, 2020 are admitted</small></span><span className="posture posture-no-call">NO CALL</span><span>Sep 14, 2020</span><span>Inspect the cutoff and excluded hindsight</span></button></div></section>
+      <section className="intake-callout" aria-labelledby="intake-callout-heading"><p className="eyebrow">Bring your own package</p><h2 id="intake-callout-heading">Screen a company package</h2><p>Drop the operating model, customer data, management update, deal terms, and package declaration. Every byte is validated and calculated in this browser; nothing is sent anywhere.</p><ul><li>Uploaded thresholds never become fund policy.</li><li>Every number keeps its source rows and formulas.</li><li>A named analyst approves Version 1 before the workspace opens.</li></ul><button className="secondary-button" type="button" onClick={onNew}>Open intake</button></section>
+    </div>
+    <section className="desk-principles" aria-label="How the Desk works"><article><strong>Deterministic math</strong><p>Returns, debt, and waterfalls are retained calculations with a formula and inputs behind every figure.</p></article><article><strong>Versioned deal state</strong><p>Evidence versions, scenarios, approvals, and memo sections are recorded; nothing overwrites the canonical case silently.</p></article><article><strong>Owned policy and assumptions</strong><p>Fund thresholds and analyst assumptions carry a named owner, a review state, and an exception history.</p></article><article><strong>Governed model proposals</strong><p>A model may challenge evidence or draft a section. It cannot change a number, a threshold, or the recommendation.</p></article></section>
     <footer className="public-boundary">Public demonstration with fictional companies and synthetic records. Not investment advice. Do not upload confidential information.</footer>
   </main>;
 }
@@ -129,7 +149,6 @@ function assumptionsFor(caseData: CaseData): AssumptionDefinition[] {
 
 function workspaceSeed(caseData: CaseData): WorkspaceSeed {
   const issues = caseData.decision.issue_summary.issues.map((issue) => ({id: issue.issue_id, title: investorLanguage(issue.title), description: investorLanguage(issue.consequence), owner: issue.owner, priority: issue.materiality, status: issue.state === "CLEARED" ? "RESOLVED" as const : "OPEN" as const, dueDate: null, decisionImpact: investorLanguage(issue.consequence), evidenceRefs: [...issue.evidence_metric_ids, ...issue.analysis_ids], resolution: issue.state === "CLEARED" ? "Cleared in the retained canonical case." : null}));
-  const blocker = caseData.decision.issue_summary.issues.find((issue) => issue.blocks_advancement);
   const scenarioValues: Record<string, string> = caseData.peEngine ? {peScenario: "selected", peCompare: "downside", peAxis: caseData.peEngine.sensitivities.axis_order[0], peCell: caseData.peEngine.sensitivities.one_way.filter((item) => item.axis === caseData.peEngine!.sensitivities.axis_order[0])[1]?.cell_id ?? ""} : {vcScenario: "milestone", vcCompare: "downside", vcAxis: caseData.vcEngine!.sensitivities.default_axis, vcCell: caseData.vcEngine!.sensitivities.default_cell_id, vcRiskCell: caseData.vcEngine!.risk_sensitivity.canonical_cell_id, vcLossPolicy: caseData.vcEngine!.risk_sensitivity.canonical_policy_threshold};
   const memo = scenarioMemoSummary(caseData, {scenarioValues});
   return {caseId: caseData.caseId, issues, lockedIssueIds: caseData.decision.issue_summary.issues.filter((issue) => issue.kind === "QUANTITATIVE_HURDLE").map((issue) => issue.issue_id), canonicalEvidence: canonicalEvidenceForCase(caseData), memoSections: [
@@ -156,31 +175,176 @@ function scenarioContractFor(caseData: CaseData): WorkspaceScenarioContract {
   }};
 }
 
-function MetricStrip({caseData, openMetric}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
-  return <section className="overview-metrics" aria-label="Headline financial measures">{caseData.summaryMetrics.slice(0, 5).map((metric) => <button type="button" key={metric.metric_id} onClick={(event) => openMetric(metric, event.currentTarget)}><span>{metric.label}</span><strong>{metric.value}</strong><small>Trace source</small></button>)}</section>;
+/** Plain-language decision relevance for each headline measure. */
+function metricRelevance(caseData: CaseData, metric: Metric) {
+  const label = metric.label.toLowerCase();
+  if (/return/.test(label)) return caseData.peEngine ? "Against the 22.0% declared return screen at selected terms." : "Point return before the loss-probability screen.";
+  if (/nrr|retention/.test(label)) return "Fixed-cohort view, not the management active-only view.";
+  if (/concentration/.test(label)) return "Parent-level exposure; entity view understates it.";
+  if (/margin/.test(label)) return "Includes implementation and support burden.";
+  if (/ebitda/.test(label)) return "Before unsupported seller add-backs.";
+  if (/ownership/.test(label)) return "Fully funded, after the contingent tranche.";
+  if (/runway/.test(label)) return "Months of cash before contingent financing.";
+  if (/spend|market/.test(label)) return "Modeled range; not an externally verified market size.";
+  return metric.detail;
 }
 
-function DecisionScreenTable({caseData}: {caseData: CaseData}) {
+function MetricStrip({caseData, openMetric}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
+  return <section className="overview-metrics" aria-label="Headline financial measures">{caseData.summaryMetrics.slice(0, 5).map((metric) => <button type="button" key={metric.metric_id} onClick={(event) => openMetric(metric, event.currentTarget)}><span>{metric.label}</span><strong>{metric.value}</strong><small>{metricRelevance(caseData, metric)}</small><em>Trace source</em></button>)}</section>;
+}
+
+function screenContext(metricId: string) {
+  const value = metricId.toUpperCase();
+  if (value.includes("MAX_BID_DOWNSIDE")) return "Max-bid downside";
+  if (value.includes("SELECTED")) return value.includes("PRIOR") ? "Selected risk case" : "Selected terms";
+  if (value.includes("ASK")) return "Seller ask";
+  if (value.includes("MILESTONE")) return "Milestone case";
+  return "Canonical case";
+}
+
+function DecisionScreenTable({caseData, compact = false}: {caseData: CaseData; compact?: boolean}) {
   const rows = caseData.decision.metric_pairs ?? [];
   if (!rows.length) return null;
-  const context = (metricId: string) => {
-    const value = metricId.toUpperCase();
-    if (value.includes("MAX_BID_DOWNSIDE")) return "Max-bid downside";
-    if (value.includes("SELECTED")) return value.includes("PRIOR") ? "Selected risk case" : "Selected terms";
-    if (value.includes("ASK")) return "Seller ask";
-    if (value.includes("MILESTONE")) return "Milestone case";
-    return "Canonical case";
-  };
-  return <section className="decision-screen-table" aria-labelledby="decision-screens-heading"><div className="section-heading"><div><p className="eyebrow">Investment screens</p><h2 id="decision-screens-heading">Observed performance against the working policy</h2></div><span>Policy requires human approval</span></div><table><thead><tr><th>Case</th><th>Measure</th><th>Observed</th><th>Required</th><th>State</th></tr></thead><tbody>{rows.map((row) => <tr key={row.metric_id}><td>{context(row.metric_id)}</td><th>{investorLanguage(row.metric)}</th><td>{row.observed}</td><td>{row.threshold}</td><td><span className={`screen-state screen-${row.status.toLowerCase()}`}>{row.status.toLowerCase().replaceAll("_", " ")}</span></td></tr>)}</tbody></table></section>;
+  const table = <div className="table-wrap" tabIndex={0} aria-label="Scrollable investment screens"><table className="screens-table"><thead><tr><th>Case</th><th>Measure</th><th className="num">Observed</th><th className="num">Required</th><th>State</th></tr></thead><tbody>{rows.map((row) => <tr key={row.metric_id}><td>{screenContext(row.metric_id)}</td><th>{investorLanguage(row.metric)}{row.designation === "INFORMATIONAL" ? <small> · informational</small> : null}</th><td className="num">{row.observed}</td><td className="num">{row.threshold}</td><td><span className={`screen-state screen-${row.status.toLowerCase()}`}>{row.status.toLowerCase().replaceAll("_", " ")}</span></td></tr>)}</tbody></table></div>;
+  if (compact) return table;
+  return <section className="decision-screen-table" aria-labelledby="decision-screens-heading"><div className="section-heading"><div><p className="eyebrow">Investment screens</p><h2 id="decision-screens-heading">Observed performance against the working policy</h2></div><span>Policy requires human approval</span></div>{table}</section>;
 }
 
-function Overview({caseData, state, update, openMetric}: {caseData: CaseData; state: ReturnType<typeof useDealWorkspace>["state"]; update: ReturnType<typeof useDealWorkspace>["update"]; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
-  const blocker = state.issues.find((issue) => issue.status !== "RESOLVED");
-  const decisive = caseData.caseId === "helios" ? caseData.summaryMetrics.find((metric) => /retention|nrr/i.test(metric.label)) ?? caseData.summaryMetrics[0] : caseData.summaryMetrics[0];
+interface DriverSwing {label: string; low: string; high: string; range: number; lowLabel: string; highLabel: string}
+
+function driverSwings(caseData: CaseData): DriverSwing[] {
+  const axisLabels: Record<string, string> = {entry_enterprise_value_cents: "Entry enterprise value", full_cohort_nrr: "Complete-cohort NRR", gross_margin: "Gross margin", annual_cash_rate: "Cash interest rate", funded_term_face_cents: "Funded debt", exit_multiple: "Exit multiple"};
+  if (caseData.peEngine) {
+    return caseData.peEngine.sensitivities.axis_order.map((axis) => {
+      const cells = caseData.peEngine!.sensitivities.one_way.filter((item) => item.axis === axis).map((item) => ({label: item.assumption_label, irr: Number(item.gross_xirr)})).sort((a, b) => a.irr - b.irr);
+      const low = cells[0], high = cells.at(-1)!;
+      return {label: axisLabels[axis] ?? axis, low: percent(low.irr), high: percent(high.irr), range: high.irr - low.irr, lowLabel: low.label, highLabel: high.label};
+    }).sort((a, b) => b.range - a.range);
+  }
+  const engine = caseData.vcEngine!;
+  return engine.sensitivities.axis_definitions.map((definition) => {
+    const cells = engine.sensitivities.cells.filter((item) => item.axis === definition.axis).map((item) => ({label: item.assumption_label, irr: Number(item.gross_xirr)})).sort((a, b) => a.irr - b.irr);
+    const low = cells[0], high = cells.at(-1)!;
+    return {label: definition.label, low: percent(low.irr), high: percent(high.irr), range: high.irr - low.irr, lowLabel: low.label, highLabel: high.label};
+  }).sort((a, b) => b.range - a.range);
+}
+
+function DriverList({caseData, onOpenFinancials}: {caseData: CaseData; onOpenFinancials: () => void}) {
+  const swings = driverSwings(caseData);
+  const maximum = Math.max(...swings.map((item) => item.range), 0.0001);
+  return <section className="workspace-card" aria-labelledby="drivers-heading"><div className="section-heading"><div><p className="eyebrow">Which assumptions drive the result</p><h2 id="drivers-heading">Return swing across retained sensitivities</h2></div><button type="button" className="text-button" onClick={onOpenFinancials}>Open Financials</button></div><ul className="driver-list">{swings.map((item) => <li key={item.label}><div><strong>{item.label}</strong><small>{item.lowLabel} → {item.highLabel}</small></div><div className="swing" aria-hidden="true"><i style={{width: `${Math.max(3, item.range / maximum * 100)}%`}} /></div><span className="num">{item.low} – {item.high}</span></li>)}</ul></section>;
+}
+
+function conditionState(caseData: CaseData, text: string) {
+  return caseData.decision.condition_states.find((item) => item.text === text)?.state ?? "OPEN_DILIGENCE";
+}
+
+function WhatMustBeTrue({caseData}: {caseData: CaseData}) {
+  const stateLabel: Record<string, string> = {CLEARS_QUANTITATIVELY: "clears", MISSES_HURDLE: "misses", OPEN_DILIGENCE: "open", INFORMATIONAL: "informational"};
+  return <section className="workspace-card what-must-be-true" aria-labelledby="what-must-be-true-heading"><div className="section-heading"><div><p className="eyebrow">What changes the recommendation</p><h2 id="what-must-be-true-heading">What must be true</h2></div><span>{caseData.decision.conditions.length} binding conditions</span></div><ol>{caseData.decision.conditions.map((condition) => {const state = conditionState(caseData, condition); return <li key={condition}><span>{investorLanguage(condition)}</span><span className={`screen-state screen-${state.toLowerCase()}`}>{stateLabel[state] ?? state.toLowerCase()}</span></li>;})}</ol></section>;
+}
+
+function RemainingWork({state, onOpenDiligence}: {state: DealWorkspaceState; onOpenDiligence: () => void}) {
+  const open = state.issues.filter((issue) => issue.status !== "RESOLVED");
+  return <section className="workspace-card remaining-work" aria-labelledby="remaining-work-heading"><div className="section-heading"><div><p className="eyebrow">What diligence remains</p><h2 id="remaining-work-heading">{open.length} open {open.length === 1 ? "item" : "items"} on the worklist</h2></div><button type="button" className="text-button" onClick={onOpenDiligence}>Open Diligence</button></div>{open.length ? <ul>{open.slice(0, 5).map((issue) => <li key={issue.id}><div><strong>{issue.title}</strong><small>{issue.decisionImpact}</small></div><span className="owner">{issue.owner}</span><span className={`priority priority-${issue.priority.toLowerCase()}`}>{issue.priority.toLowerCase()}</span></li>)}</ul> : <p className="empty-copy">Every worklist item is resolved. The canonical conditions still require human IC review.</p>}</section>;
+}
+
+function ReturnsTable({caseData, state}: {caseData: CaseData; state: DealWorkspaceState}) {
+  if (caseData.peEngine) {
+    const engine = caseData.peEngine;
+    const current = (["ask", "selected", "downside"] as const).includes(state.scenarioValues.peScenario as "ask") ? state.scenarioValues.peScenario : "selected";
+    const hurdle = Number((caseData.decision.metric_pairs ?? []).find((item) => item.metric_id === "atlasgrid-SELECTED-gross-irr")?.threshold_value ?? "0.22");
+    const rows = [
+      {key: "selected", label: "Selected terms", role: "Base case · illustrative $210M", result: engine.selected},
+      {key: "downside", label: "Downside", role: "Retained downside", result: engine.downside},
+      {key: "ask", label: "Seller ask", role: "Upside for the seller · $240M", result: engine.ask},
+    ];
+    return <section className="workspace-card" aria-labelledby="returns-heading"><div className="section-heading"><div><p className="eyebrow">Base, downside and upside</p><h2 id="returns-heading">Returns across retained scenarios</h2></div><span>{percent(hurdle)} declared return screen</span></div><div className="table-wrap" tabIndex={0} aria-label="Scrollable returns table"><table className="returns-table"><thead><tr><th>Scenario</th><th className="num">Annualized return</th><th className="num">Gross multiple</th><th className="num">Exit debt</th><th className="num">Minimum liquidity</th><th>Covenant</th><th>Screen</th></tr></thead><tbody>{rows.map((row) => <tr key={row.key} data-current={row.key === current || undefined}><th>{row.label}<small>{row.role}</small></th><td className="num">{percent(row.result.gross_xirr)}</td><td className="num">{multiple(row.result.gross_moic)}</td><td className="num">{money(row.result.debt_schedule.ending_debt_cents)}</td><td className="num">{money(row.result.debt_schedule.minimum_liquidity_cents)}</td><td>{row.result.debt_schedule.first_covenant_breach_month ? `Breach in month ${row.result.debt_schedule.first_covenant_breach_month}` : "No modeled breach"}</td><td><span className={`screen-state screen-${Number(row.result.gross_xirr) >= hurdle ? "clears" : "misses"}`}>{Number(row.result.gross_xirr) >= hurdle ? "clears" : "misses"}</span></td></tr>)}</tbody></table></div></section>;
+  }
+  const engine = caseData.vcEngine!;
+  const keys = ["milestone", "base", "downside", "financing_shortfall"] as const;
+  const labels = {milestone: ["Milestone funded", "Base case · both tranches"], base: ["Tranche withheld", "Second tranche not released"], downside: ["Down round", "Retained downside"], financing_shortfall: ["Financing shortfall", "No contingent financing"]} as const;
+  const current = keys.includes(state.scenarioValues.vcScenario as typeof keys[number]) ? state.scenarioValues.vcScenario : "milestone";
+  const hurdle = 0.25;
+  return <section className="workspace-card" aria-labelledby="returns-heading"><div className="section-heading"><div><p className="eyebrow">Base, downside and upside</p><h2 id="returns-heading">Returns across retained financing scenarios</h2></div><span>Point return screen only; the loss screen is evaluated separately</span></div><div className="table-wrap" tabIndex={0} aria-label="Scrollable returns table"><table className="returns-table"><thead><tr><th>Scenario</th><th className="num">Annualized return</th><th className="num">Gross multiple</th><th className="num">Ownership</th><th className="num">Minimum cash</th><th>Runway</th><th>Screen</th></tr></thead><tbody>{keys.map((key) => {const result = engine[key]; return <tr key={key} data-current={key === current || undefined}><th>{labels[key][0]}<small>{labels[key][1]}</small></th><td className="num">{percent(result.gross_xirr)}</td><td className="num">{multiple(result.gross_moic)}</td><td className="num">{percent(result.target_ownership)}</td><td className="num">{money(result.minimum_cash_cents)}</td><td>{result.first_cash_exhaustion_month_without_contingent_financing ? `Cash out in month ${result.first_cash_exhaustion_month_without_contingent_financing} without contingent financing` : "Funded through exit"}</td><td><span className={`screen-state screen-${Number(result.gross_xirr) >= hurdle ? "clears" : "misses"}`}>{Number(result.gross_xirr) >= hurdle ? "clears" : "misses"}</span></td></tr>;})}</tbody></table></div></section>;
+}
+
+function Readiness({caseData, state}: {caseData: CaseData; state: DealWorkspaceState}) {
+  const pairs = (caseData.decision.metric_pairs ?? []).filter((item) => item.designation === "BINDING");
+  const misses = pairs.filter((item) => /MISS/.test(item.status));
+  const policy = caseData.caseId === "helios" ? HELIOS_SCREEN_POLICY : ATLAS_SCREEN_POLICY;
+  const assumptions = assumptionsFor(caseData);
+  const approved = assumptions.filter((item) => state.assumptionReviews[item.id]?.disposition === "APPROVED").length;
+  const open = state.issues.filter((issue) => issue.status !== "RESOLVED").length;
+  const memo = scenarioMemoSummary(caseData, state);
+  const stale = state.memoSections.filter((section) => section.scenarioSnapshotId !== memo.snapshotId).length;
+  const change = state.changeControl;
+  const disposition = change?.dispositionEvents.at(-1)?.disposition;
+  const items = [
+    {label: "Binding return screens", state: misses.length ? "blocked" : "done", detail: misses.length ? `${misses.length} of ${pairs.length} binding screens miss` : `${pairs.length} binding screens clear at selected terms`},
+    {label: "Fund policy reviewed", state: policy.status === "APPROVED" ? "done" : "open", detail: `${policy.name} is ${policy.status.toLowerCase()} · ${policy.lastReviewed ? formatHumanDate(policy.lastReviewed) : "not yet reviewed"}`},
+    {label: "Material assumptions approved", state: approved === assumptions.length ? "done" : "open", detail: `${approved} of ${assumptions.length} approved by a named reviewer`},
+    {label: "Diligence worklist", state: open ? "open" : "done", detail: open ? `${open} open ${open === 1 ? "item" : "items"} with named owners` : "All items resolved"},
+    {label: "Evidence version", state: change ? disposition === "ACCEPTED" || disposition === "REJECTED" ? "done" : "blocked" : "done", detail: change ? `${change.toVersion} ${disposition ? disposition.toLowerCase() : "awaiting disposition"}` : "Version 1 is the approved evidence state"},
+    {label: "IC memo bound to scenario", state: stale ? "blocked" : "done", detail: stale ? `${stale} ${stale === 1 ? "section" : "sections"} prepared against another scenario` : `Every section matches ${memo.label}`},
+  ];
+  return <section className="workspace-card" aria-labelledby="readiness-heading"><div className="section-heading"><div><p className="eyebrow">Ready for the next IC step?</p><h2 id="readiness-heading">{items.some((item) => item.state === "blocked") ? "Not ready: blocked items remain" : items.some((item) => item.state === "open") ? "Not ready: open items remain" : "Ready for named human IC review"}</h2></div><span>Committee decision is recorded by people, not by the Desk</span></div><ul className="readiness-list">{items.map((item) => <li key={item.label} data-state={item.state}><div><strong>{item.label}</strong><small>{item.detail}</small></div></li>)}</ul></section>;
+}
+
+function Overview({caseData, state, update, openMetric, onNavigate}: {caseData: CaseData; state: DealWorkspaceState; update: ReturnType<typeof useDealWorkspace>["update"]; openMetric: (metric: Metric, trigger: HTMLElement) => void; onNavigate: (view: DealView) => void}) {
+  const open = state.issues.filter((issue) => issue.status !== "RESOLVED");
+  const blocker = open[0];
   const changeDisposition = state.changeControl?.dispositionEvents.at(-1)?.disposition;
-  const posture = state.changeControl && changeDisposition !== "REJECTED" ? "REOPEN DILIGENCE" : caseData.decision.decision;
-  const nextAction = state.changeControl && !changeDisposition ? "Disposition the revised evidence through a named human review." : posture === "HOLD" ? `Maintain HOLD; resolve ${blocker?.title.toLowerCase() ?? "the binding screen and open diligence"}.` : caseData.decision.path_to_yes[0];
-  return <div className="view-stack"><section className="decision-brief"><div><p className="eyebrow">Provisional analytical posture</p><h2>{posture}</h2><p>{investorLanguage(state.changeControl && changeDisposition !== "REJECTED" ? state.changeControl.decisionConsequence : caseData.decision.rationale)}</p></div><dl><div><dt>Price or terms</dt><dd>{caseData.decision.terms?.[0] ?? "Terms remain subject to diligence"}</dd></div><div><dt>Primary blocker</dt><dd>{blocker?.title ?? "No unresolved issue"}</dd></div><div><dt>Next committee action</dt><dd>{nextAction}</dd></div></dl></section><MetricStrip caseData={caseData} openMetric={openMetric} /><DecisionScreenTable caseData={caseData} /><section className="what-must-be-true"><div><p className="eyebrow">Decision logic</p><h2>What must be true</h2></div><div>{caseData.decision.conditions.map((condition, index) => <article key={condition}><span>{String(index + 1).padStart(2, "0")}</span><p>{investorLanguage(condition)}</p></article>)}</div></section>{caseData.caseId === "atlasgrid" ? <ChangeControlWorkspace caseData={caseData} state={state} update={update} /> : null}<section className="driver-grid"><article><p className="eyebrow">Decisive evidence</p><h3>{decisive.label}</h3><strong>{decisive.value}</strong><p>{decisive.detail}</p><button type="button" onClick={(event) => openMetric(decisive, event.currentTarget)}>Inspect evidence</button></article><article><p className="eyebrow">Counterthesis</p><h3>Why the current call may be wrong</h3><p>{caseData.thesis.counterthesis}</p></article><article><p className="eyebrow">Downside</p><h3>{blocker?.title}</h3><p>{blocker?.decisionImpact}</p></article></section><ObservationComposer state={state} update={update} /></div>;
+  const activeChange = state.changeControl && changeDisposition !== "REJECTED" ? state.changeControl : null;
+  const posture = activeChange ? "REOPEN DILIGENCE" : caseData.decision.decision;
+  const nextAction = activeChange && !changeDisposition ? "A named reviewer dispositions the revised evidence before any conclusion moves." : posture === "HOLD" ? `Maintain HOLD; resolve ${blocker?.title.toLowerCase() ?? "the binding screen and open diligence"}.` : caseData.decision.path_to_yes[0];
+  const supporting = caseData.summaryMetrics.slice(0, 3);
+  const swings = driverSwings(caseData).slice(0, 3);
+  const clearing = (caseData.decision.metric_pairs ?? []).filter((item) => item.designation === "BINDING" && /CLEAR/.test(item.status));
+  const missing = (caseData.decision.metric_pairs ?? []).filter((item) => /MISS/.test(item.status));
+  const context = caseData.dealContext;
+  return <div className="view-stack">
+    <section className="current-view" aria-labelledby="current-view-heading">
+      <div>
+        <p className="eyebrow">Current view · {activeChange ? "revised evidence" : "canonical case"}</p>
+        <h2 id="current-view-heading">{postureHeadline[posture] ?? posture}</h2>
+        <p className="view-lead">{investorLanguage(activeChange ? activeChange.decisionConsequence : caseData.decision.rationale)}</p>
+        <ol className="reasoned-list">
+          <li><span>Supporting evidence</span><div><ul>{supporting.map((metric) => <li key={metric.metric_id}>{metric.label} of <b>{metric.value}</b> — {metricRelevance(caseData, metric)} <button type="button" className="text-button" onClick={(event) => openMetric(metric, event.currentTarget)}>Trace</button></li>)}</ul></div></li>
+          <li><span>Concerns</span><div><ul><li>{caseData.thesis.counterthesis}</li>{blocker ? <li>{blocker.title}: {blocker.decisionImpact}</li> : null}{missing.length ? <li>{missing.map((item) => `${screenContext(item.metric_id)} ${investorLanguage(item.metric)} of ${item.observed} misses the ${item.threshold} screen`).join("; ")}.</li> : null}</ul></div></li>
+          <li><span>Decision-changing variables</span><div>{swings.map((item, index) => <span key={item.label}>{index ? "; " : ""}{item.label} ({item.low} to {item.high} across {item.lowLabel} → {item.highLabel})</span>)}. <button type="button" className="text-button" onClick={() => onNavigate("financials")}>Test scenarios</button></div></li>
+          <li><span>Remaining work</span><div>{open.length ? <>{open.length} open diligence {open.length === 1 ? "item" : "items"}: {open.slice(0, 3).map((issue) => issue.title).join("; ")}{open.length > 3 ? "; and more" : ""}. </> : "No open diligence items. "}<button type="button" className="text-button" onClick={() => onNavigate("diligence")}>Open worklist</button></div></li>
+          <li><span>Next committee step</span><div>{sentence(nextAction)} Committee decision pending; {clearing.length ? `${clearing.length} binding screens clear at selected terms` : "no binding screen clears"}.</div></li>
+        </ol>
+      </div>
+      <div>
+        <p className="eyebrow">Company and transaction</p>
+        <dl className="fact-table">
+          <div><dt>Strategy</dt><dd>{caseData.caseType}</dd></div>
+          <div><dt>Transaction</dt><dd>{context.process}</dd></div>
+          <div><dt>Terms tested</dt><dd>{(caseData.decision.terms ?? ["Terms remain subject to diligence"]).join(" · ")}</dd></div>
+          <div><dt>Customers</dt><dd>{context.customer}</dd></div>
+          <div><dt>Evidence as of</dt><dd className="num">{formatHumanDate(caseData.decision.as_of ?? `${caseData.temporalScan.cutoff.slice(0, 10)}T12:00:00Z`)}</dd></div>
+        </dl>
+        <details className="fact-more"><summary>Product, market and team</summary><dl className="fact-table"><div><dt>Product</dt><dd>{context.product}</dd></div><div><dt>Market</dt><dd>{context.market}</dd></div><div><dt>Team</dt><dd>{context.team}</dd></div><div><dt>Go to market</dt><dd>{context.go_to_market}</dd></div></dl></details>
+      </div>
+    </section>
+    <MetricStrip caseData={caseData} openMetric={openMetric} />
+    <div className="evidence-split">
+      <section aria-labelledby="supports-heading"><p className="eyebrow">What supports the thesis</p><h2 id="supports-heading">{caseData.thesis.statement}</h2><ul>{caseData.thesis.drivers.map((driver) => <li key={driver}><div>{investorLanguage(driver)}<small>Thesis driver</small></div></li>)}{clearing.slice(0, 3).map((item) => <li key={item.metric_id}><div>{screenContext(item.metric_id)} {investorLanguage(item.metric)} of {item.observed} clears the {item.threshold} screen</div></li>)}</ul></section>
+      <section aria-labelledby="contradicts-heading" data-tone="contra"><p className="eyebrow">What contradicts it</p><h2 id="contradicts-heading">{caseData.thesis.counterthesis}</h2><ul>{caseData.thesis.falsifiers.map((falsifier) => <li key={falsifier}><div>{investorLanguage(falsifier)}<small>Falsifier: would overturn the thesis if observed</small></div></li>)}{missing.map((item) => <li key={item.metric_id}><div>{screenContext(item.metric_id)} {investorLanguage(item.metric)} of {item.observed} misses the {item.threshold} screen</div></li>)}</ul></section>
+    </div>
+    <ReturnsTable caseData={caseData} state={state} />
+    <div className="two-up">
+      <DriverList caseData={caseData} onOpenFinancials={() => onNavigate("financials")} />
+      <section className="workspace-card" aria-labelledby="screens-heading"><div className="section-heading"><div><p className="eyebrow">What changes the recommendation</p><h2 id="screens-heading">Investment screens against the working policy</h2></div><span>Policy requires human approval</span></div><DecisionScreenTable caseData={caseData} compact /></section>
+    </div>
+    <WhatMustBeTrue caseData={caseData} />
+    {caseData.caseId === "atlasgrid" ? <ChangeControlWorkspace caseData={caseData} state={state} update={update} /> : null}
+    <RemainingWork state={state} onOpenDiligence={() => onNavigate("diligence")} />
+    <Readiness caseData={caseData} state={state} />
+    <ObservationComposer state={state} update={update} />
+  </div>;
 }
 
 function EconometricTest({caseData, openMetric}: {caseData: CaseData; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
@@ -222,7 +386,7 @@ function EconometricTest({caseData, openMetric}: {caseData: CaseData; openMetric
   return <section className="workspace-card empirical-test" aria-labelledby="empirical-test-heading"><div className="section-heading"><div><p className="eyebrow">Assumption test</p><h2 id="empirical-test-heading">{caseData.caseId === "helios" ? heliosHeading : atlasHeading}</h2></div><span>{decisionSignal === "favorable" ? "Supports the assumption" : decisionSignal === "adverse" ? "Adverse signal" : "No measured effect"}</span></div><div className="empirical-summary"><article><span>What it found</span><p>{finding}</p></article><article><span>How it changes underwriting</span><p>{consequence}</p></article><article><span>What it does not establish</span><p>A planted effect in fictional records does not establish a real-company effect, forecast or investment outcome.</p></article></div><button type="button" className="secondary-button" onClick={(event) => openMetric(metric, event.currentTarget)}>Inspect evidence and calculation</button><details><summary>Method and uncertainty</summary><dl><div><dt>Business question</dt><dd>{analysis.question}</dd></div><div><dt>Population</dt><dd>{analysis.population}</dd></div><div><dt>Method</dt><dd>{analysis.method}</dd></div><div><dt>Point estimate</dt><dd>{pointEstimate}</dd></div><div><dt>95% interval</dt><dd>{intervalText}</dd></div><div><dt>Typical estimation uncertainty</dt><dd>{uncertaintyText}</dd></div><div><dt>Technical diagnostics</dt><dd><details><summary>Show retained diagnostics</summary><p>{analysis.diagnostics.map((item) => `${item.name.replaceAll("_", " ")}: ${item.value}`).join(" · ")}</p></details></dd></div></dl></details></section>;
 }
 
-function DecisionRail({caseData, view, state}: {caseData: CaseData; view: DealView; state: ReturnType<typeof useDealWorkspace>["state"]}) {
+function DecisionRail({caseData, view, state}: {caseData: CaseData; view: DealView; state: DealWorkspaceState}) {
   const unresolved = state.issues.filter((issue) => issue.status !== "RESOLVED");
   const canonicalBlockers = caseData.decision.issue_summary.issues.filter((issue) => issue.blocks_advancement);
   const canonicalPrimary = canonicalBlockers[0];
@@ -255,17 +419,36 @@ function DecisionRail({caseData, view, state}: {caseData: CaseData; view: DealVi
     : isHold
     ? "Maintain HOLD while the binding screen and open diligence remain unresolved."
     : caseData.decision.path_to_yes[0];
-  return <aside className="decision-rail" aria-label="Decision status" tabIndex={0}><header><span>Current posture</span><strong>{activeChange ? "REOPEN DILIGENCE" : caseData.decision.decision}</strong><p>{activeChange ? "Revised evidence changed the selected-case screen" : "Analytical posture · IC decision pending"}</p></header><dl><div><dt>View</dt><dd>{viewLabels[view]}</dd></div><div><dt>Scenario</dt><dd>{activeChange ? `${activeChange.toVersion} · ${changeDisposition?.toLowerCase() ?? "pending"}` : working ? "Unapproved what-if" : "Canonical case"}</dd></div><div><dt>Canonical conditions</dt><dd>{canonicalBlockers.length}</dd></div><div><dt>Worklist open</dt><dd>{unresolved.length}</dd></div><div><dt>Policy state</dt><dd>{policy.status.toLowerCase()} · {policy.lastReviewed ?? "not reviewed"}</dd></div></dl><section><span>Primary decision condition</span><strong>{primaryCondition.title}</strong><p>{primaryCondition.consequence}</p></section><section><span>{isHold || activeChange ? "Required next action" : "Next committee action"}</span><strong>{requiredAction}</strong></section>{isHold && !activeChange ? <section><span>Path to reconsideration</span><strong>{caseData.decision.path_to_yes[0]}</strong><p>Illustrative terms only; not authority to fund or advance.</p></section> : null}<footer>IC decision pending</footer></aside>;
+  const posture = activeChange ? "REOPEN DILIGENCE" : caseData.decision.decision;
+  const memo = scenarioMemoSummary(caseData, state);
+  const viewNote: Record<DealView, ReactNode> = {
+    overview: null,
+    financials: <section><span>Scenario consequence</span><strong>{memo.returnLine}</strong><p>{working ? "Unapproved what-if. The canonical case and the recommendation are unchanged until a named reviewer acts." : "Canonical case. Change a scenario to see the return consequence without touching the books."}</p></section>,
+    diligence: <section><span>Ownership</span><strong>{unresolved.length} open {unresolved.length === 1 ? "item" : "items"} · {new Set(unresolved.map((issue) => issue.owner)).size} named {new Set(unresolved.map((issue) => issue.owner)).size === 1 ? "owner" : "owners"}</strong><p>Quantitative hurdles clear only through evidence or a recorded policy-owner exception.</p></section>,
+    documents: <section><span>Evidence lineage</span><strong>{caseData.artifacts.length} sources · {caseData.metricRegistry.length} registered figures</strong><p>Every displayed figure links to retained rows, fields, or excerpts and a formula with its inputs.</p></section>,
+    memo: <section><span>Memo state</span><strong>{memo.state} · {memo.label}</strong><p>{memo.reconciliationBlockedReason ?? "Export is available only when every section matches the selected scenario."}</p></section>,
+  };
+  return <aside className="decision-rail" aria-label="Decision status" tabIndex={0}>
+    <header><span>Current posture</span><h2 data-posture={posture}>{posture}</h2><strong>{postureHeadline[posture] ?? posture}</strong><p>{activeChange ? "Revised evidence changed the selected-case screen" : "Analytical posture · committee decision pending"}</p></header>
+    <dl><div><dt>View</dt><dd>{viewLabels[view]}</dd></div><div><dt>Scenario</dt><dd>{activeChange ? `${activeChange.toVersion} · ${changeDisposition?.toLowerCase() ?? "pending"}` : working ? "Unapproved what-if" : "Canonical case"}</dd></div><div><dt>Canonical conditions</dt><dd>{canonicalBlockers.length}</dd></div><div><dt>Worklist open</dt><dd>{unresolved.length}</dd></div><div><dt>Policy state</dt><dd>{policy.status.toLowerCase()} · {policy.lastReviewed ?? "not reviewed"}</dd></div></dl>
+    {viewNote[view]}
+    <section><span>Primary decision condition</span><strong>{primaryCondition.title}</strong><p>{primaryCondition.consequence}</p></section>
+    <section><span>{isHold || activeChange ? "Required next action" : "Next committee action"}</span><strong>{requiredAction}</strong></section>
+    {isHold && !activeChange ? <section><span>Path to reconsideration</span><strong>{caseData.decision.path_to_yes[0]}</strong><p>Illustrative terms only; not authority to fund or advance.</p></section> : null}
+    <footer>IC decision pending</footer>
+    <BoundaryNote />
+  </aside>;
 }
 
-function Diligence({caseData, state, update, modelTransport, connection, openMetric}: {caseData: CaseData; state: ReturnType<typeof useDealWorkspace>["state"]; update: ReturnType<typeof useDealWorkspace>["update"]; modelTransport?: ModelTransport; connection: ConnectionState | null; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
+function Diligence({caseData, state, update, modelTransport, connection, openMetric}: {caseData: CaseData; state: DealWorkspaceState; update: ReturnType<typeof useDealWorkspace>["update"]; modelTransport?: ModelTransport; connection: ConnectionState | null; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
   const [section, setSection] = useState<"issues" | "assumptions" | "policy" | "test" | "model">("issues");
   const referenceLabels = Object.fromEntries([...caseData.metricRegistry.map((metric) => [metric.metric_id, metric.label]), ...caseData.analyses.map((analysis) => [analysis.analysis_id, analysis.question]), ...caseData.artifacts.map((artifact) => [artifact.artifact_id, artifact.path.split("/").at(-1) ?? artifact.path])]);
   const evidence = modelEvidenceForCase(caseData);
   const profile = caseData.caseId === "helios" ? HELIOS_SCREEN_POLICY : ATLAS_SCREEN_POLICY;
   const tabs = [{id: "issues", label: `Issues · ${state.issues.filter((issue) => issue.status !== "RESOLVED").length}`}, {id: "assumptions", label: "Assumptions"}, {id: "policy", label: "Policy"}, {id: "test", label: "Assumption test"}, {id: "model", label: "Model review"}] as const;
+  const stages = new Map<string, string>(caseData.decision.issue_summary.issues.map((issue) => [issue.issue_id, stageLabel[issue.stage] ?? issue.stage]));
   const content = section === "issues"
-    ? <DiligenceWorklist state={state} update={update} lockedIssueIds={new Set(workspaceSeed(caseData).lockedIssueIds ?? [])} />
+    ? <DiligenceWorklist state={state} update={update} lockedIssueIds={new Set(workspaceSeed(caseData).lockedIssueIds ?? [])} stages={stages} />
     : section === "assumptions"
       ? <AssumptionRegistry assumptions={assumptionsFor(caseData)} state={state} update={update} staleAssumptionIds={state.changeControl?.affectedAssumptionIds} staleSince={state.changeControl?.importedAt} />
       : section === "policy"
@@ -274,10 +457,13 @@ function Diligence({caseData, state, update, modelTransport, connection, openMet
           ? <EconometricTest caseData={caseData} openMetric={openMetric} />
           : <><ModelReviewPanel dealId={caseData.caseId} connection={connection} transport={modelTransport} proposals={state.proposals} onProposalsChange={(next) => update((current) => ({proposals: typeof next === "function" ? next(current.proposals) : next}))} evidence={evidence} referenceLabels={referenceLabels} /><details className="advanced-handoff"><summary>Advanced local model handoff</summary><ProposalLedgerImport caseData={caseData} onImport={(proposals) => update((current) => ({proposals: [...current.proposals, ...proposals].filter((proposal, index, items) => items.findIndex((candidate) => candidate.proposalId === proposal.proposalId) === index)}))} /></details></>;
   return <div className="view-stack">
-    <label className="mobile-workspace-selector"><span>Diligence workspace</span><select value={section} onChange={(event) => setSection(event.target.value as typeof section)}>{tabs.map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}</select></label>
     <nav className="workspace-tabs" aria-label="Diligence workspace">{tabs.map((tab) => <button type="button" key={tab.id} aria-pressed={section === tab.id} onClick={() => setSection(tab.id)}>{tab.label}</button>)}</nav>
     {content}
   </div>;
+}
+
+export function DealSidebar({company, caseId, onDeals, onNavigate, view, onConnect, storageNotice, attention, switcher, footNote}: {company: string; caseId: string; onDeals: () => void; onNavigate: (view: DealView) => void; view: DealView; onConnect: () => void; storageNotice: string; attention: boolean; switcher?: ReactNode; footNote?: string}) {
+  return <aside className="sidebar"><button type="button" className="wordmark" onClick={onDeals} aria-label="Underwriting Desk deals"><span>U</span><strong>Underwriting Desk</strong></button><div className="sidebar-deal"><span>Deal</span>{switcher ?? <strong>{company}</strong>}<small>{caseId === "local" ? "Admitted company package" : "Retained synthetic case"}</small></div><nav aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}><NavIcon view={item} />{viewLabels[item]}</button>)}</nav><div className="sidebar-questions"><span>Each view answers</span><ol>{dealViews.map((item) => <li key={item}>{viewQuestions[item]}</li>)}</ol></div><div className="sidebar-foot"><button type="button" onClick={onConnect}>Model settings</button><span data-attention={attention || undefined}>{attention ? "Workspace attention required" : storageNotice}</span>{footNote ? <small>{footNote}</small> : null}</div></aside>;
 }
 
 function DealShell({caseData, view, onNavigate, onChooseDeal, onDeals, onConnect, connection, modelTransport}: {caseData: CaseData; view: DealView; onNavigate: (view: DealView) => void; onChooseDeal: (caseId: CaseId) => void; onDeals: () => void; onConnect: () => void; connection: ConnectionState | null; modelTransport?: ModelTransport}) {
@@ -293,8 +479,9 @@ function DealShell({caseData, view, onNavigate, onChooseDeal, onDeals, onConnect
     setLineage(null);
     window.requestAnimationFrame(() => { if (trigger?.isConnected) trigger.focus(); });
   };
+  const catalogEntry = caseCatalog.find((item) => item.caseId === caseData.caseId);
   const content = view === "overview"
-    ? <Overview caseData={caseData} state={state} update={update} openMetric={openLineage} />
+    ? <Overview caseData={caseData} state={state} update={update} openMetric={openLineage} onNavigate={onNavigate} />
     : view === "financials"
       ? <FinancialWorkspace caseData={caseData} state={state} update={update} openMetric={openLineage} />
       : view === "diligence"
@@ -302,11 +489,12 @@ function DealShell({caseData, view, onNavigate, onChooseDeal, onDeals, onConnect
         : view === "documents"
           ? <DocumentsWorkspace caseData={caseData} openMetric={openLineage} />
           : <><EditableMemo state={state} update={update} title={caseData.company} subtitle={caseData.dealContext.investment_question} scenarioSummary={scenarioMemoSummary(caseData, state)} /><WorkspaceTransfer state={state} replace={replace} allowedEvidenceRefs={allowedEvidenceRefs} scenarioContract={scenarioContract} integrityContract={integrityContract} /></>;
+  const switcher = <select aria-label="Deal" value={caseData.caseId} onChange={(event) => onChooseDeal(event.target.value as CaseId)}>{caseCatalog.map((item) => <option value={item.caseId} key={item.caseId}>{item.company}</option>)}</select>;
   return <div className="product-shell">
-    <aside className="sidebar"><button type="button" className="wordmark" onClick={onDeals} aria-label="Underwriting Desk deals"><span>U</span><strong>Underwriting Desk</strong></button><nav aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}>{viewLabels[item]}</button>)}</nav><div className="sidebar-foot"><button type="button" onClick={onConnect}>Model settings</button><span>{storageAlert ? "Workspace attention required" : storageNotice}</span></div></aside>
-    <div className="shell-main"><header className="deal-topbar"><button type="button" className="mobile-wordmark" onClick={onDeals}>Underwriting Desk</button><label><span>Deal</span><select aria-label="Deal" value={caseData.caseId} onChange={(event) => onChooseDeal(event.target.value as CaseId)}>{caseCatalog.map((item) => <option value={item.caseId} key={item.caseId}>{item.company}</option>)}</select></label><div className="topbar-meta"><span>{caseData.caseType}</span><span>As of {formatHumanDate(caseData.decision.as_of ?? `${caseData.temporalScan.cutoff.slice(0, 10)}T12:00:00Z`)}</span></div><button className="topbar-model" type="button" onClick={onConnect}>Model settings</button></header>
-      <nav className="mobile-nav" aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}>{viewLabels[item]}</button>)}</nav>
-      <div className={`workspace-layout ${view === "overview" || view === "diligence" ? "" : "workspace-layout-wide"}`}><main id="main-content" className="deal-main">{storageAlert ? <p className="persistence-warning" role="status">{storageAlert}</p> : null}{recovery ? <WorkspaceRecovery recovery={recovery} onStartFresh={discardRejectedState} /> : null}<header className="deal-heading"><div><p className="eyebrow">{viewLabels[view]}</p><h1>{caseData.company}</h1><p>{caseData.dealContext.company_one_liner}</p></div><p className="ic-question"><span>Investment question</span>{caseData.dealContext.investment_question}</p></header><RetainedEvidenceBoundary key={`${caseData.caseId}:${view}`} onReset={onDeals}>{content}</RetainedEvidenceBoundary><footer className="deal-boundary">Fictional company and synthetic records · Not investment advice · Browser-local workspace is not suitable for confidential information</footer></main>{view === "overview" || view === "diligence" ? <DecisionRail caseData={caseData} view={view} state={state} /> : null}</div>
+    <DealSidebar company={caseData.company} caseId={caseData.caseId} onDeals={onDeals} onNavigate={onNavigate} view={view} onConnect={onConnect} storageNotice={storageNotice} attention={Boolean(storageAlert)} switcher={switcher} />
+    <div className="shell-main">
+      <header className="deal-topbar"><div className="topbar-company"><strong>{viewLabels[view]}</strong><small>{viewQuestions[view]}</small></div><div className="topbar-meta"><span><b>{caseData.caseType}</b></span><span>{catalogEntry?.stage ?? "Underwriting"}</span><span>As of {formatHumanDate(caseData.decision.as_of ?? `${caseData.temporalScan.cutoff.slice(0, 10)}T12:00:00Z`)}</span><span className={`posture posture-${caseData.decision.decision.toLowerCase()}`}>{caseData.decision.decision}</span></div><button className="topbar-model" type="button" onClick={onConnect}>Model settings</button></header>
+      <div className="workspace-layout"><main id="main-content" className="deal-main">{storageAlert ? <p className="persistence-warning" role="status">{storageAlert}</p> : null}{recovery ? <WorkspaceRecovery recovery={recovery} onStartFresh={discardRejectedState} /> : null}<header className="deal-heading"><div><p className="eyebrow">{caseData.caseType} · {catalogEntry?.owner ?? "Deal team"}</p><h1>{caseData.company}</h1><p>{caseData.dealContext.company_one_liner}</p></div><p className="ic-question"><span>Investment question</span>{caseData.dealContext.investment_question}</p></header><RetainedEvidenceBoundary key={`${caseData.caseId}:${view}`} onReset={onDeals}>{content}</RetainedEvidenceBoundary></main><DecisionRail caseData={caseData} view={view} state={state} /></div>
     </div>
     {lineage ? <LineageDrawer caseData={caseData} metric={lineage.metric} onClose={closeLineage} /> : null}
   </div>;

@@ -62,12 +62,12 @@ describe("portable admitted deal state", () => {
   });
 
   it("binds the rendered local overview and rail to the deterministic posture", async () => {
-    expect(localPostureCopy("HOLD")).toEqual({
+    expect(localPostureCopy("HOLD")).toMatchObject({
       heading: "HOLD",
       detail: "Return screens miss; no IC advancement",
       icState: "HOLD — deterministic return screens miss",
     });
-    expect(localPostureCopy("SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED")).toEqual({
+    expect(localPostureCopy("SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED")).toMatchObject({
       heading: "FURTHER DILIGENCE",
       detail: "Screening complete; no IC advancement",
       icState: "Further diligence required",

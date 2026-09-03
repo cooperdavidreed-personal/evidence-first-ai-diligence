@@ -547,16 +547,47 @@ test("ordinary multi-file intake produces a governed local deal that survives re
   await expect(page.getByRole("textbox", {name: "Economics memo section"})).toHaveValue(/11-month cohort retention proxy 83.6%/);
 });
 
-test("missing required input fails closed before return conclusions", async ({page}, testInfo: TestInfo) => {
+test("missing required input is explained and blocks analysis before return conclusions", async ({page}, testInfo: TestInfo) => {
   await page.goto("/", {waitUntil: "networkidle"});
   await page.getByRole("button", {name: "New deal"}).click();
   await page.getByTestId("deal-package-input").setInputFiles(packagePaths.filter((path) => !path.endsWith("customer_arr.csv")));
-  await page.getByRole("button", {name: "Validate and analyze"}).click();
-  await expect(page.getByRole("heading", {name: "NO CALL — PACKAGE INCOMPLETE"})).toBeVisible();
   await expect(page.getByText("customer_arr.csv is required").first()).toBeVisible();
+  await expect(page.getByText(/Analysis is blocked until one required file is added: Customer data/)).toBeVisible();
+  await expect(page.getByRole("button", {name: "Validate and analyze"})).toBeDisabled();
   await expect(page.getByRole("button", {name: "Approve Version 1 and open workspace"})).toHaveCount(0);
   await expect(page.getByText(/Gross multiple/)).toHaveCount(0);
   await captureVisualEvidence(page, `${testInfo.project.name}-northstar-package-incomplete.png`, true);
+});
+
+test("sequential selections add to the package, and per-file remove and replace work", async ({page}) => {
+  await page.goto("/", {waitUntil: "networkidle"});
+  await page.getByRole("button", {name: "New deal"}).click();
+  const input = page.getByTestId("deal-package-input");
+  await input.setInputFiles(evidencePackagePaths.slice(0, 2));
+  await expect(page.getByText("2 files in the package", {exact: false})).toBeVisible();
+  await input.setInputFiles(evidencePackagePaths.slice(2, 4));
+  await expect(page.getByText("4 files in the package", {exact: false})).toBeVisible();
+  await expect(page.getByRole("button", {name: "Validate and analyze"})).toBeDisabled();
+  await input.setInputFiles(evidencePackagePaths.slice(4));
+  await expect(page.getByText("5 files in the package", {exact: false})).toBeVisible();
+  await expect(page.getByRole("button", {name: "Validate and analyze"})).toBeEnabled();
+  await page.getByRole("button", {name: "Remove customer_arr.csv"}).click();
+  await expect(page.getByRole("button", {name: "Validate and analyze"})).toBeDisabled();
+  await page.getByLabel("Replace deal.json").setInputFiles(evidencePackagePaths[1]);
+  await input.setInputFiles(evidencePackagePaths.slice(3, 4));
+  await expect(page.getByRole("button", {name: "Validate and analyze"})).toBeEnabled();
+  await page.getByRole("button", {name: "Validate and analyze"}).click();
+  await expect(page.getByRole("heading", {name: "SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED"})).toBeVisible();
+});
+
+test("one click loads the complete synthetic sample package", async ({page}) => {
+  await page.goto("/", {waitUntil: "networkidle"});
+  await page.getByRole("button", {name: "New deal"}).click();
+  await page.getByTestId("load-sample-package").click();
+  await expect(page.getByText("5 files in the package", {exact: false})).toBeVisible();
+  await expect(page.getByRole("button", {name: "Validate and analyze"})).toBeEnabled();
+  await page.getByRole("button", {name: "Validate and analyze"}).click();
+  await expect(page.getByRole("heading", {name: "SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED"})).toBeVisible();
 });
 
 test("mixed Excel CSV PDF package is parsed, reviewed, approved, and replayable", async ({page}, testInfo: TestInfo) => {

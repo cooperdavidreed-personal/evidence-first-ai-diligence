@@ -44,7 +44,7 @@ describe("Underwriting Desk investor workspace", () => {
     expect(screen.getByRole("heading", {name: "Deals"})).toBeInTheDocument();
     expect(screen.getByRole("button", {name: "New deal"})).toBeInTheDocument();
     expect(screen.getByText(/Public demonstration with fictional companies/)).toBeInTheDocument();
-    expect(screen.getByRole("heading", {name: "Growth SaaS evidence package"})).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "Screen a company package"})).toBeInTheDocument();
     expect(screen.queryByText(/Evidence → economics → action/)).not.toBeInTheDocument();
     expect(screen.getByText("Decision workspaces")).toBeInTheDocument();
     expect(screen.getByText("Open issues")).toBeInTheDocument();
@@ -64,7 +64,7 @@ describe("Underwriting Desk investor workspace", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("button", {name: "New deal"}));
-    expect(screen.getByRole("heading", {name: "Growth SaaS evidence package"})).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "Screen a company package"})).toBeInTheDocument();
     expect(screen.getByText(/bytes stay in this browser tab/)).toBeInTheDocument();
     expect(screen.getByTestId("deal-package-input")).toHaveAttribute("multiple");
     expect(screen.getByRole("button", {name: "Validate and analyze"})).toBeDisabled();
@@ -162,14 +162,16 @@ describe("Underwriting Desk investor workspace", () => {
     expect(screen.getByText("Maximum probability below 1.0x")).toBeInTheDocument();
   });
 
-  it("explains Helios loss risk in investor language without a contradictory permanent rail", async () => {
+  it("explains Helios loss risk in investor language with a rail that tracks the working scenario", async () => {
     window.history.replaceState(null, "", "/#/v3/helios/financials");
     render(<App />);
     expect((await screen.findAllByText("Assumed severe-loss probability")).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Maximum acceptable loss probability").length).toBeGreaterThan(0);
     expect(screen.getByText(/Point return is not enough while the severe-loss assumption breaches the selected ceiling/)).toBeInTheDocument();
     expect(screen.getByRole("heading", {name: "What must be true to avoid a capital-loss outcome?"})).toBeInTheDocument();
-    expect(screen.queryByRole("complementary", {name: "Decision status"})).not.toBeInTheDocument();
+    const rail = screen.getByRole("complementary", {name: "Decision status"});
+    expect(within(rail).getByText("Canonical case")).toBeInTheDocument();
+    expect(within(rail).getByText("Scenario consequence")).toBeInTheDocument();
     expect(screen.queryByText("Selected catastrophe prior")).not.toBeInTheDocument();
   });
 
