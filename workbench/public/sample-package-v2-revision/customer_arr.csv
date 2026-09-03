@@ -1,0 +1,8 @@
+customer_id,period,arr_cents
+customer-a,2025-07,300000000
+customer-b,2025-07,250000000
+customer-c,2025-07,150000000
+customer-a,2026-06,340000000
+customer-b,2026-06,210000000
+customer-c,2026-06,0
+customer-d,2026-06,200000000

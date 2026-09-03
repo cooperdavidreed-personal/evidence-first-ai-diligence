@@ -3,6 +3,7 @@ import {dealViews, type DealView} from "./App";
 import {compareDecimalStrings} from "./data-contract";
 import {approveBaseline, calculateQuickScenario, processDealPackage, type IntakeResult, type QuickAnalysis} from "./intake";
 import {localCaseId, localScenarioContract, localWorkspaceSeed, serializeAdmittedDealBundle} from "./local-deal-state";
+import {LocalChangeControl} from "./local-change-control";
 import {ModelReviewPanel} from "./model-review-panel";
 import type {ConnectionState} from "./model-connection";
 import {ModelConnectionButton} from "./model-connection-dialog";
@@ -142,19 +143,24 @@ function LocalDiligence({result, state, update, modelTransport, connection}: {re
 }
 
 function SourceAttachments({result}: {result: IntakeResult}) {
-  const downloadable = (result.sourcePayloads ?? []).filter((payload) => "encoding" in payload && payload.encoding === "BASE64");
+  const versions = [
+    ...(result.versionHistory ?? []).map((archive) => ({version: archive.approval.version, payloads: archive.sourcePayloads})),
+    {version: result.baselineApproval?.version ?? "Current", payloads: result.sourcePayloads ?? []},
+  ];
+  const downloadable = versions.flatMap(({version, payloads}) => payloads.filter((payload) => "encoding" in payload && payload.encoding === "BASE64").map((payload) => ({version, payload})));
   if (!downloadable.length) return null;
-  function download(payload: typeof downloadable[number]) {
+  function download(item: typeof downloadable[number]) {
+    const {payload} = item;
     if (!("encoding" in payload)) return;
     const bytes = Uint8Array.from(atob(payload.content), (character) => character.charCodeAt(0));
     const url = URL.createObjectURL(new Blob([bytes], {type: payload.mediaType}));
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = payload.name;
+    anchor.download = `${item.version}-${payload.name}`;
     anchor.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  return <section className="source-attachments" aria-label="Original source attachments"><div><span>Original evidence</span><strong>Source bytes preserved</strong><small>Download the exact workbook or PDF admitted into Version 1.</small></div>{downloadable.map((payload) => <button type="button" key={payload.name} onClick={() => download(payload)}>{payload.name}</button>)}</section>;
+  return <section className="source-attachments" aria-label="Original source attachments"><div><span>Original evidence</span><strong>Source bytes preserved</strong><small>Download the exact workbook or PDF for every accepted evidence version.</small></div>{downloadable.map((item) => <button type="button" key={`${item.version}-${item.payload.name}`} onClick={() => download(item)}>{item.version} · {item.payload.name}</button>)}</section>;
 }
 
 function LocalDocuments({result}: {result: IntakeResult}) {
@@ -196,14 +202,14 @@ function LocalDecisionRail({result, state, view}: {result: IntakeResult; state: 
 function BaselineApprovalRecord({result}: {result: IntakeResult}) {
   const approval = result.baselineApproval;
   if (!approval) return null;
-  return <section className="baseline-record" aria-label="Version 1 evidence approval">
-    <div><span>Canonical evidence</span><strong>Version 1 approved</strong><small>{approval.actor} · {formatHumanDate(approval.approvedAt)}</small></div>
+  return <section className="baseline-record" aria-label="Evidence version approval">
+    <div><span>Canonical evidence</span><strong>{approval.version} approved</strong><small>{approval.actor} · {formatHumanDate(approval.approvedAt)}</small></div>
     <p>{approval.rationale}</p>
     <small>Approval covers recognized mappings and exclusions only. Company claims, assumptions, policy, and the investment decision remain separately governed.</small>
   </section>;
 }
 
-export function LocalDealShell({result, view, onNavigate, onDeals, onConnect, connection, modelTransport, persistenceNotice = ""}: {result: IntakeResult; view: DealView; onNavigate: (view: DealView) => void; onDeals: () => void; onConnect: () => void; connection: ConnectionState | null; modelTransport?: ModelTransport; persistenceNotice?: string}) {
+export function LocalDealShell({result, view, onNavigate, onDeals, onConnect, onPromote, connection, modelTransport, persistenceNotice = ""}: {result: IntakeResult; view: DealView; onNavigate: (view: DealView) => void; onDeals: () => void; onConnect: () => void; onPromote?: (result: IntakeResult) => void; connection: ConnectionState | null; modelTransport?: ModelTransport; persistenceNotice?: string}) {
   const deal = result.deal!;
   const seed = useMemo(() => localWorkspaceSeed(result), [result]);
   const allowedEvidenceRefs = useMemo(() => new Set(result.analysis!.metrics.map((item) => item.id)), [result]);
@@ -211,7 +217,7 @@ export function LocalDealShell({result, view, onNavigate, onDeals, onConnect, co
   const {state, update, replace, storageNotice, recovery, discardRejectedState, integrityContract} = useDealWorkspace(seed, allowedEvidenceRefs, scenarioContract, LOCAL_POLICY_OVERRIDE_ROLES);
   const storageAlert = storageNotice === "Saved locally" ? "" : storageNotice;
   const content = view === "overview"
-    ? <><BaselineApprovalRecord result={result} /><LocalOverview result={result} state={state} update={update} /></>
+    ? <><BaselineApprovalRecord result={result} />{onPromote ? <LocalChangeControl result={result} state={state} update={update} onPromote={onPromote} /> : null}<LocalOverview result={result} state={state} update={update} /></>
     : view === "financials"
       ? <LocalFinancials result={result} state={state} update={update} />
       : view === "diligence"

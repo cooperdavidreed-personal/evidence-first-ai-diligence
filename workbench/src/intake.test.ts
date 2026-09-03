@@ -1,6 +1,6 @@
 import {File as NodeFile} from "node:buffer";
 import {describe, expect, it, vi} from "vitest";
-import {approveBaseline, PACKAGE_VERSION, processDealPackage, sha256} from "./intake";
+import {approveBaseline, PACKAGE_VERSION, processDealPackage, promoteEvidenceVersion, sha256} from "./intake";
 import {GROWTH_SCREEN_POLICY} from "./policy";
 
 const deal = JSON.stringify({
@@ -216,5 +216,17 @@ customer-a,2026-06,96000000`;
     const approved = approveBaseline(result, "Avery Chen", "Reviewed the declared mappings, exclusions, and package boundaries for screening.", "2026-09-01T12:00:00.000Z");
     expect(approved.baselineApproval).toMatchObject({version: "V1", actor: "Avery Chen", approvedAt: "2026-09-01T12:00:00.000Z", packageDigest: expect.stringMatching(/^[a-f0-9]{64}$/)});
     expect(result.baselineApproval).toBeNull();
+  });
+
+  it("promotes Version 2 while preserving the complete Version 1 evidence archive", async () => {
+    const versionOne = approveBaseline(await processDealPackage(await packageFiles()), "Avery Chen", "Reviewed the declared mappings, exclusions, and package boundaries for screening.", "2026-09-01T12:00:00.000Z");
+    const versionTwoCandidate = await processDealPackage(await packageFiles({customers: customers.replace("customer-b,2026-06,225000000", "customer-b,2026-06,210000000")}));
+    const promoted = promoteEvidenceVersion(versionOne, versionTwoCandidate, "Avery Chen", "Confirmed the revised cohort rows and their deterministic impact on the screening record.", "2026-09-02T12:00:00.000Z");
+    expect(promoted.baselineApproval?.version).toBe("V2");
+    expect(promoted.dealLineageId).toBe(versionOne.dealLineageId);
+    expect(promoted.versionHistory).toHaveLength(1);
+    expect(promoted.versionHistory?.[0].approval.version).toBe("V1");
+    expect(promoted.versionHistory?.[0].sourcePayloads).toEqual(versionOne.sourcePayloads);
+    expect(promoted.analysis?.ordinaryNrr).not.toBe(versionOne.analysis?.ordinaryNrr);
   });
 });

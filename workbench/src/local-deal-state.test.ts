@@ -98,13 +98,13 @@ describe("portable admitted deal state", () => {
     await expect(validateAdmittedDealBundle(`${" ".repeat(13_000_001)}{}`)).rejects.toThrow(/13 MB/i);
   });
 
-  it("does not reuse workspace identity when the same company has different admitted bytes", async () => {
+  it("preserves the approved deal lineage across later evidence versions", async () => {
     const result = await admittedNorthstar();
     const changed = structuredClone(result);
     const customerSource = changed.files.find((file) => file.name === "customer_arr.csv")!;
     customerSource.sha256 = `${customerSource.sha256!.slice(0, -1)}${customerSource.sha256!.endsWith("0") ? "1" : "0"}`;
     changed.files.find((file) => file.name === "manifest.json")!.sha256 = undefined;
-    expect(localCaseId(changed)).not.toBe(localCaseId(result));
+    expect(localCaseId(changed)).toBe(localCaseId(result));
   });
 
   it("recomputes imported economics and rejects edited calculated outputs", async () => {

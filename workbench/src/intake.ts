@@ -28,11 +28,17 @@ export interface IntakeFileStatus {
 }
 
 export interface BaselineApproval {
-  version: "V1";
+  version: `V${number}`;
   actor: string;
   rationale: string;
   approvedAt: string;
   packageDigest: string;
+}
+
+export interface EvidenceVersionArchive {
+  approval: BaselineApproval;
+  files: IntakeFileStatus[];
+  sourcePayloads: SourcePayload[] | Array<{name: typeof REQUIRED_FILES[number]; text: string}>;
 }
 
 export interface SourcePayload {
@@ -117,6 +123,8 @@ export interface IntakeResult {
   analysis: QuickAnalysis | null;
   sourcePayloads?: SourcePayload[] | Array<{name: typeof REQUIRED_FILES[number]; text: string}>;
   baselineApproval?: BaselineApproval | null;
+  dealLineageId?: string;
+  versionHistory?: EvidenceVersionArchive[];
   processedLocally: true;
 }
 
@@ -524,5 +532,18 @@ export function approveBaseline(result: IntakeResult, actor: string, rationale: 
   if (Number.isNaN(Date.parse(approvedAt))) throw new Error("Baseline approval time is invalid");
   const packageDigest = result.files.find((file) => file.name === "manifest.json")?.sha256;
   if (!packageDigest) throw new Error("Manifest identity is missing");
-  return structuredClone({...result, baselineApproval: {version: "V1", actor: namedActor, rationale: statedRationale, approvedAt, packageDigest}});
+  return structuredClone({...result, dealLineageId: packageDigest, versionHistory: result.versionHistory ?? [], baselineApproval: {version: "V1", actor: namedActor, rationale: statedRationale, approvedAt, packageDigest}});
+}
+
+export function promoteEvidenceVersion(current: IntakeResult, candidate: IntakeResult, actor: string, rationale: string, approvedAt = new Date().toISOString()): IntakeResult {
+  if (!current.baselineApproval || !current.sourcePayloads || !candidate.sourcePayloads || current.packageState !== "READY" || candidate.packageState !== "READY" || current.deal?.company !== candidate.deal?.company) throw new Error("A complete revision for the same approved deal is required");
+  const match = current.baselineApproval.version.match(/^V(\d+)$/);
+  if (!match) throw new Error("Current evidence version is invalid");
+  const namedActor = actor.trim(); const statedRationale = rationale.trim();
+  if (namedActor.length < 2 || namedActor.length > 120) throw new Error("A named human analyst is required");
+  if (statedRationale.length < 20 || statedRationale.length > 1200) throw new Error("Explain why the revised evidence should replace the canonical version");
+  const packageDigest = candidate.files.find((file) => file.name === "manifest.json")?.sha256;
+  if (!packageDigest || Number.isNaN(Date.parse(approvedAt))) throw new Error("Revision identity or approval time is invalid");
+  const archive: EvidenceVersionArchive = {approval: current.baselineApproval, files: current.files, sourcePayloads: current.sourcePayloads};
+  return structuredClone({...candidate, dealLineageId: current.dealLineageId ?? current.baselineApproval.packageDigest, versionHistory: [...(current.versionHistory ?? []), archive], baselineApproval: {version: `V${Number(match[1]) + 1}` as `V${number}`, actor: namedActor, rationale: statedRationale, approvedAt, packageDigest}});
 }

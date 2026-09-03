@@ -8,6 +8,7 @@ import {captureVisualEvidence, writeAccessibilityEvidence} from "./visual-eviden
 
 const packagePaths = ["manifest.json", "deal.json", "monthly_financials.csv", "customer_arr.csv"].map((name) => resolve(import.meta.dirname, `../public/sample-package/${name}`));
 const evidencePackagePaths = ["manifest.json", "deal.json", "operating_model.xlsx", "customer_arr.csv", "management_update.pdf"].map((name) => resolve(import.meta.dirname, `../public/sample-package-v2/${name}`));
+const evidenceRevisionPaths = ["manifest.json", "deal.json", "operating_model.xlsx", "customer_arr.csv", "management_update.pdf"].map((name) => resolve(import.meta.dirname, `../public/sample-package-v2-revision/${name}`));
 const atlasgridRevisionPath = resolve(import.meta.dirname, "../public/change-packages/atlasgrid-v2-retention-revision.json");
 const views = ["Overview", "Financials", "Diligence", "Documents", "IC Memo"] as const;
 
@@ -580,13 +581,49 @@ test("mixed Excel CSV PDF package is parsed, reviewed, approved, and replayable"
   await page.getByRole("textbox", {name: "Approval rationale"}).fill("Confirmed the mapped operating rows, future-period exclusion, rejected add-back, and PDF classification.");
   await approveButton.click();
   await expect(page.getByRole("heading", {name: "Northstar Metrics", level: 1})).toBeVisible();
-  await expect(page.getByRole("region", {name: "Version 1 evidence approval"})).toContainText("Avery Chen");
-  await expect(page.getByRole("region", {name: "Version 1 evidence approval"})).toContainText("mappings and exclusions only");
+  await expect(page.getByRole("region", {name: "Evidence version approval"})).toContainText("Avery Chen");
+  await expect(page.getByRole("region", {name: "Evidence version approval"})).toContainText("mappings and exclusions only");
   await (await visibleDealNavigation(page)).getByRole("button", {name: "Documents"}).click();
   await expect(page.getByText("Management update")).toBeVisible();
   await captureVisualEvidence(page, `${testInfo.project.name}-mixed-package-documents.png`, true);
   await page.reload({waitUntil: "networkidle"});
   await expect(page.getByRole("heading", {name: "Northstar Metrics", level: 1})).toBeVisible();
+});
+
+test("local Version 2 changes propagate and require explicit accept reject or defer", async ({page}, testInfo: TestInfo) => {
+  await page.goto("/", {waitUntil: "networkidle"});
+  await page.getByRole("button", {name: "New deal"}).click();
+  await page.getByTestId("deal-package-input").setInputFiles(evidencePackagePaths);
+  await page.getByRole("button", {name: "Validate and analyze"}).click();
+  await page.getByRole("textbox", {name: "Analyst name"}).fill("Avery Chen");
+  await page.getByRole("textbox", {name: "Approval rationale"}).fill("Confirmed the mappings, exclusions, formula preservation, and source classifications for Version 1.");
+  await page.getByRole("button", {name: "Approve Version 1 and open workspace"}).click();
+  await expect(page.getByRole("region", {name: "Evidence version approval"})).toContainText("V1 approved");
+  await page.getByTestId("local-revision-input").setInputFiles(evidenceRevisionPaths);
+  await expect(page.getByRole("status")).toContainText("Version 2 validated");
+  const changeControl = page.getByRole("region", {name: "Compare a revised delivery"});
+  await expect(changeControl).toContainText("83.6%");
+  await expect(changeControl).toContainText("78.6%");
+  await expect(changeControl).toContainText("3 memo sections stale");
+  await captureVisualEvidence(page, `${testInfo.project.name}-local-version-2-change-control.png`, true);
+  await accessibilitySnapshot(page);
+  await page.getByRole("textbox", {name: "Reviewer"}).fill("Avery Chen");
+  await page.getByRole("textbox", {name: "Rationale"}).fill("Rejecting this delivery until management reconciles the revised customer rows.");
+  await page.getByRole("button", {name: "Reject change"}).click();
+  await expect(page.getByRole("status")).toContainText("V1 remains canonical");
+  await expect(page.getByRole("region", {name: "Evidence version approval"})).toContainText("V1 approved");
+  await page.getByRole("textbox", {name: "Rationale"}).fill("Deferring the revision while the commercial diligence owner verifies the cancellation schedule.");
+  await page.getByRole("button", {name: "Defer"}).click();
+  await expect(page.getByRole("status")).toContainText("V1 remains canonical");
+  await page.getByRole("textbox", {name: "Rationale"}).fill("Accepting the revised customer evidence after confirming the changed cohort rows and downstream screening impact.");
+  await page.getByRole("button", {name: "Accept and promote"}).click();
+  await expect(page.getByRole("region", {name: "Evidence version approval"})).toContainText("V2 approved");
+  await (await visibleDealNavigation(page)).getByRole("button", {name: "Documents"}).click();
+  const sources = page.getByRole("region", {name: "Original source attachments"});
+  await expect(sources).toContainText("V1 · operating_model.xlsx");
+  await expect(sources).toContainText("V2 · operating_model.xlsx");
+  await page.reload({waitUntil: "networkidle"});
+  await expect(page.getByRole("region", {name: "Original source attachments"})).toContainText("V1 · management_update.pdf");
 });
 
 test("deep links still load only the selected retained case chunk", async ({page}) => {

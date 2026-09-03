@@ -21,7 +21,7 @@ export function localCaseId(result: IntakeResult) {
   if (!result.deal) throw new Error("Admitted deal is missing its deal terms");
   const slug = result.deal.company.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "deal";
   const manifestDigest = result.files.find((file) => file.name === "manifest.json" && file.sha256)?.sha256;
-  const contentDigest = manifestDigest ?? result.files.filter((file) => file.sha256).sort((left, right) => left.name.localeCompare(right.name)).map((file) => file.sha256).join("");
+  const contentDigest = result.dealLineageId ?? manifestDigest ?? result.files.filter((file) => file.sha256).sort((left, right) => left.name.localeCompare(right.name)).map((file) => file.sha256).join("");
   if (!contentDigest || !/^[a-f0-9]{64}/.test(contentDigest)) throw new Error("Admitted deal is missing its package identity");
   return `local-${slug}-${contentDigest.slice(0, 12)}`;
 }
@@ -113,9 +113,14 @@ export function validateAdmittedDeal(raw: unknown): IntakeResult {
   if (!hasLegacyPackage && !hasEvidencePackage) throw new Error("Admitted source package is incomplete");
   if (raw.baselineApproval !== null && raw.baselineApproval !== undefined) {
     const approval = raw.baselineApproval;
-    if (!record(approval) || approval.version !== "V1" || typeof approval.actor !== "string" || approval.actor.trim().length < 2 || typeof approval.rationale !== "string" || approval.rationale.trim().length < 20 || typeof approval.approvedAt !== "string" || Number.isNaN(Date.parse(approval.approvedAt)) || typeof approval.packageDigest !== "string" || !/^[a-f0-9]{64}$/.test(approval.packageDigest)) throw new Error("Version 1 approval record is invalid");
+    if (!record(approval) || typeof approval.version !== "string" || !/^V[1-9]\d*$/.test(approval.version) || typeof approval.actor !== "string" || approval.actor.trim().length < 2 || typeof approval.rationale !== "string" || approval.rationale.trim().length < 20 || typeof approval.approvedAt !== "string" || Number.isNaN(Date.parse(approval.approvedAt)) || typeof approval.packageDigest !== "string" || !/^[a-f0-9]{64}$/.test(approval.packageDigest)) throw new Error("Evidence-version approval record is invalid");
     const manifestDigest = raw.files.find((file) => record(file) && file.name === "manifest.json")?.sha256;
     if (manifestDigest !== approval.packageDigest) throw new Error("Version 1 approval does not match the admitted package");
+  }
+  if (raw.dealLineageId !== undefined && (typeof raw.dealLineageId !== "string" || !/^[a-f0-9]{64}$/.test(raw.dealLineageId))) throw new Error("Deal evidence lineage is invalid");
+  if (raw.versionHistory !== undefined) {
+    if (!Array.isArray(raw.versionHistory) || raw.versionHistory.length > 10) throw new Error("Evidence version history is invalid");
+    for (const [index, archive] of raw.versionHistory.entries()) if (!record(archive) || !record(archive.approval) || typeof archive.approval.version !== "string" || !/^V[1-9]\d*$/.test(archive.approval.version) || !Array.isArray(archive.files) || !Array.isArray(archive.sourcePayloads)) throw new Error(`Evidence version archive ${index} is invalid`);
   }
   localCaseId(raw as unknown as IntakeResult);
   return structuredClone(raw) as unknown as IntakeResult;
