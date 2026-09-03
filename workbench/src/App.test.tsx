@@ -150,10 +150,37 @@ describe("Underwriting Desk investor workspace", () => {
     render(<App />);
     await user.click(screen.getByRole("button", {name: "Assumptions"}));
     expect(screen.getByRole("heading", {name: "Material assumptions"})).toBeInTheDocument();
-    expect(screen.getByText("Catastrophe-state prior")).toBeInTheDocument();
+    expect(screen.getByText("Severe-loss probability assumption")).toBeInTheDocument();
     expect(screen.queryByText("Maximum probability below 1.0x")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", {name: "Policy"}));
     expect(screen.getByText("Maximum probability below 1.0x")).toBeInTheDocument();
+  });
+
+  it("explains Helios loss risk in investor language without a contradictory permanent rail", async () => {
+    window.history.replaceState(null, "", "/#/v3/helios/financials");
+    render(<App />);
+    expect((await screen.findAllByText("Assumed severe-loss probability")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Maximum acceptable loss probability").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Point return is not enough while the severe-loss assumption breaches the selected ceiling/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "What must be true to avoid a capital-loss outcome?"})).toBeInTheDocument();
+    expect(screen.queryByRole("complementary", {name: "Decision status"})).not.toBeInTheDocument();
+    expect(screen.queryByText("Selected catastrophe prior")).not.toBeInTheDocument();
+  });
+
+  it("keeps catastrophe and generator jargon out of the Helios partner overview", async () => {
+    window.history.replaceState(null, "", "/#/v3/helios/overview");
+    render(<App />);
+    expect(await screen.findByRole("heading", {name: "Helios Compute Control"})).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/catastrophe|generator check/i);
+    expect(screen.getAllByText("Ordinary-cohort NRR").length).toBeGreaterThan(0);
+  });
+
+  it("makes diligence row actions explicit on the default desktop worklist", async () => {
+    window.history.replaceState(null, "", "/#/v3/atlasgrid/diligence");
+    render(<App />);
+    expect(await screen.findByText("Action")).toBeInTheDocument();
+    expect(screen.getAllByText("Review").length).toBeGreaterThan(0);
+    expect(screen.getByRole("complementary", {name: "Decision status"})).toBeInTheDocument();
   });
 
   it("opens the pricing-test lineage rather than an unrelated return metric", async () => {
