@@ -310,6 +310,27 @@ test("Version 2 evidence propagates through returns, stale state, diligence, and
   await (await visibleDealNavigation(page)).getByRole("button", {name: "IC Memo"}).click();
   await expect(page.getByRole("button", {name: "Download IC memo"})).toBeDisabled();
   await expect(page.getByRole("alert")).toContainText("prepared against another scenario");
+  await expect(page.getByRole("region", {name: "Scenario represented in this memo"})).toContainText("Accepted revision");
+  await expect(page.getByRole("region", {name: "Scenario represented in this memo"})).toContainText("18.4%");
+  await page.getByRole("textbox", {name: "Editor"}).fill("Avery Chen");
+  await page.getByRole("button", {name: "Reconcile core sections to AtlasGrid V2 retention revision"}).click();
+  await expect(page.getByRole("button", {name: "Download IC memo"})).toBeEnabled();
+  const [memoDownload] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", {name: "Download IC memo"}).click(),
+  ]);
+  const memoPath = await memoDownload.path();
+  expect(memoPath).toBeTruthy();
+  const revisedMemo = readFileSync(memoPath!, "utf8");
+  expect(revisedMemo).toContain("18.4%");
+  expect(revisedMemo).toContain("2.32x");
+  expect(revisedMemo).toContain("REOPEN DILIGENCE");
+  expect(revisedMemo).not.toContain("23.3%");
+  await (await visibleDealNavigation(page)).getByRole("button", {name: "Financials"}).click();
+  const revisedScreen = page.getByRole("region", {name: "Buyout decision screen"});
+  await expect(revisedScreen).toContainText("REOPEN DILIGENCE");
+  await expect(revisedScreen).toContainText("18.4%");
+  await expect(revisedScreen).not.toContainText("23.3%");
   await page.reload({waitUntil: "networkidle"});
   await (await visibleDealNavigation(page)).getByRole("button", {name: "Overview"}).click();
   await expect(page.locator(".change-control")).toContainText("1 disposition event");
@@ -332,12 +353,13 @@ test("decision rail keeps canonical conditions separate from worklist resolution
 
 test("Helios policy sensitivity is an unapproved what-if and follows the memo", async ({page}) => {
   await page.goto("/#/v3/helios/financials", {waitUntil: "networkidle"});
-  const policy = page.getByLabel("Maximum probability below 1.0x");
+  const policy = page.getByLabel("Maximum acceptable loss probability");
   const canonical = await policy.inputValue();
   const alternate = await policy.locator("option").evaluateAll((options, selected) => options.map((option) => (option as HTMLOptionElement).value).find((value) => value !== selected), canonical);
   expect(alternate).toBeTruthy();
   await policy.selectOption(String(alternate));
-  await expect(page.getByRole("complementary", {name: "Decision status"})).toContainText("Unapproved what-if");
+  await expect(policy).toHaveValue(String(alternate));
+  await expect(page.getByRole("heading", {name: "What must be true to avoid a capital-loss outcome?"})).toBeVisible();
   await (await visibleDealNavigation(page)).getByRole("button", {name: "IC Memo"}).click();
   const summary = page.getByRole("region", {name: "Scenario represented in this memo"});
   await expect(summary).toContainText("Unapproved what-if");
