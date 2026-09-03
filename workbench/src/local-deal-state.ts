@@ -1,4 +1,4 @@
-import {processDealPackage, REQUIRED_FILES, type IntakeResult} from "./intake";
+import {EVIDENCE_REQUIRED_FILES, processDealPackage, REQUIRED_FILES, type IntakeResult, type SourcePayload} from "./intake";
 import {assertRegisteredPolicyProfile} from "./policy";
 import {createWorkspaceIntegrityContract, sanitizePortableWorkspaceImport, storageKey, validateWorkspace, type DealWorkspaceState, type WorkspaceScenarioContract, type WorkspaceSeed} from "./workspace-state";
 
@@ -85,7 +85,7 @@ function localIntegrityContract(result: IntakeResult) {
 
 export function validateAdmittedDeal(raw: unknown): IntakeResult {
   const size = new TextEncoder().encode(JSON.stringify(raw)).byteLength;
-  if (size > 3_000_000 || !record(raw) || raw.processedLocally !== true || raw.packageState !== "READY" || !record(raw.deal) || !record(raw.analysis) || !Array.isArray(raw.files) || !Array.isArray(raw.errors)) throw new Error("Admitted deal bundle is invalid");
+  if (size > 12_000_000 || !record(raw) || raw.processedLocally !== true || raw.packageState !== "READY" || !record(raw.deal) || !record(raw.analysis) || !Array.isArray(raw.files) || !Array.isArray(raw.errors)) throw new Error("Admitted deal bundle is invalid");
   if (typeof raw.posture !== "string" || !["SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED", "HOLD"].includes(raw.posture)) throw new Error("Admitted deal posture is invalid");
   const deal = raw.deal;
   if (typeof deal.company !== "string" || !deal.company.trim() || deal.company.length > 200 || typeof deal.analystOwner !== "string" || !deal.analystOwner.trim() || deal.analystOwner.length > 200) throw new Error("Admitted deal identity is invalid");
@@ -100,21 +100,38 @@ export function validateAdmittedDeal(raw: unknown): IntakeResult {
     if (!record(file) || typeof file.name !== "string" || file.name.length > 240 || typeof file.state !== "string") throw new Error("Admitted source receipt is invalid");
     if (file.sha256 !== undefined && (typeof file.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(file.sha256))) throw new Error("Admitted source digest is invalid");
   }
-  if (!Array.isArray(raw.sourcePayloads) || raw.sourcePayloads.length !== REQUIRED_FILES.length) throw new Error("Admitted deal is missing its replayable source package");
+  if (!Array.isArray(raw.sourcePayloads) || raw.sourcePayloads.length < REQUIRED_FILES.length) throw new Error("Admitted deal is missing its replayable source package");
   const sourceNames = new Set<string>();
   for (const [index, payload] of raw.sourcePayloads.entries()) {
-    if (!record(payload) || !REQUIRED_FILES.includes(payload.name as typeof REQUIRED_FILES[number]) || sourceNames.has(String(payload.name)) || typeof payload.text !== "string" || new TextEncoder().encode(payload.text).byteLength > 750 * 1024) throw new Error(`Admitted source payload ${index} is invalid`);
+    const legacy = record(payload) && typeof payload.text === "string";
+    const current = record(payload) && typeof payload.name === "string" && typeof payload.mediaType === "string" && ["UTF8", "BASE64"].includes(String(payload.encoding)) && typeof payload.content === "string";
+    if ((!legacy && !current) || sourceNames.has(String(payload.name)) || new TextEncoder().encode(JSON.stringify(payload)).byteLength > 7_000_000) throw new Error(`Admitted source payload ${index} is invalid`);
     sourceNames.add(String(payload.name));
   }
-  if (REQUIRED_FILES.some((name) => !sourceNames.has(name))) throw new Error("Admitted source package is incomplete");
+  const hasLegacyPackage = REQUIRED_FILES.every((name) => sourceNames.has(name));
+  const hasEvidencePackage = EVIDENCE_REQUIRED_FILES.every((name) => sourceNames.has(name));
+  if (!hasLegacyPackage && !hasEvidencePackage) throw new Error("Admitted source package is incomplete");
+  if (raw.baselineApproval !== null && raw.baselineApproval !== undefined) {
+    const approval = raw.baselineApproval;
+    if (!record(approval) || approval.version !== "V1" || typeof approval.actor !== "string" || approval.actor.trim().length < 2 || typeof approval.rationale !== "string" || approval.rationale.trim().length < 20 || typeof approval.approvedAt !== "string" || Number.isNaN(Date.parse(approval.approvedAt)) || typeof approval.packageDigest !== "string" || !/^[a-f0-9]{64}$/.test(approval.packageDigest)) throw new Error("Version 1 approval record is invalid");
+    const manifestDigest = raw.files.find((file) => record(file) && file.name === "manifest.json")?.sha256;
+    if (manifestDigest !== approval.packageDigest) throw new Error("Version 1 approval does not match the admitted package");
+  }
   localCaseId(raw as unknown as IntakeResult);
   return structuredClone(raw) as unknown as IntakeResult;
 }
 
 async function replayAdmittedDeal(result: IntakeResult) {
   const files = result.sourcePayloads!.map((payload) => {
-    const bytes = new TextEncoder().encode(payload.text);
-    return {name: payload.name, size: bytes.byteLength, text: async () => payload.text, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)} as File;
+    const legacyText = "text" in payload ? payload.text : null;
+    const current = payload as SourcePayload;
+    const bytes = legacyText !== null
+      ? new TextEncoder().encode(legacyText)
+      : current.encoding === "BASE64"
+        ? Uint8Array.from(atob(current.content), (character) => character.charCodeAt(0))
+        : new TextEncoder().encode(current.content);
+    const sourceText = legacyText ?? (current.encoding === "UTF8" ? current.content : "");
+    return {name: payload.name, type: "mediaType" in payload ? payload.mediaType : "text/plain", size: bytes.byteLength, text: async () => sourceText, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)} as File;
   });
   const replayed = await processDealPackage(files);
   if (replayed.packageState !== "READY") throw new Error(`Portable deal source package does not replay to a complete result: ${replayed.errors.join("; ")}`);
@@ -127,6 +144,7 @@ async function replayAdmittedDeal(result: IntakeResult) {
 export function persistAdmittedDeal(result: IntakeResult) {
   try {
     const validated = validateAdmittedDeal(result);
+    if (!validated.baselineApproval) throw new Error("A named analyst must approve Version 1 before persistence");
     if (!window.localStorage) return false;
     const serialized = JSON.stringify(validated);
     window.localStorage.setItem(LOCAL_DEAL_KEY, serialized);
@@ -147,6 +165,7 @@ export async function loadAdmittedDeal() {
 
 export function serializeAdmittedDealBundle(result: IntakeResult, workspace: DealWorkspaceState, includePrivateNote = false) {
   const admittedDeal = validateAdmittedDeal(result);
+  if (!admittedDeal.baselineApproval) throw new Error("A named analyst must approve Version 1 before export");
   const allowedEvidenceRefs = new Set(admittedDeal.analysis!.metrics.map((item) => item.id));
   const validatedWorkspace = validateWorkspace(workspace, localCaseId(admittedDeal), allowedEvidenceRefs, localScenarioContract(), localIntegrityContract(admittedDeal));
   const portableWorkspace = includePrivateNote ? validatedWorkspace : {...validatedWorkspace, privateNote: ""};

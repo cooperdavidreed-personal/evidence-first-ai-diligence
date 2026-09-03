@@ -4,7 +4,7 @@ import {resolve} from "node:path";
 import {createElement} from "react";
 import {render, within} from "@testing-library/react";
 import {beforeEach, describe, expect, it} from "vitest";
-import {processDealPackage} from "./intake";
+import {approveBaseline, processDealPackage} from "./intake";
 import {digestChallengePayloadSync} from "./model-workflow";
 import {
   installAdmittedDealBundle,
@@ -28,7 +28,7 @@ async function admittedNorthstar() {
   );
   const result = await processDealPackage(files);
   expect(result.packageState).toBe("READY");
-  return result;
+  return approveBaseline(result, "Avery Chen", "Reviewed the declared mappings, exclusions, and source boundaries for this screening baseline.", "2026-09-01T11:55:00.000Z");
 }
 
 function localScenario(result: Awaited<ReturnType<typeof admittedNorthstar>>) {

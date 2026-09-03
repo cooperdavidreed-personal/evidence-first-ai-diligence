@@ -1,6 +1,6 @@
 import {File as NodeFile} from "node:buffer";
 import {describe, expect, it, vi} from "vitest";
-import {PACKAGE_VERSION, processDealPackage, sha256} from "./intake";
+import {approveBaseline, PACKAGE_VERSION, processDealPackage, sha256} from "./intake";
 import {GROWTH_SCREEN_POLICY} from "./policy";
 
 const deal = JSON.stringify({
@@ -207,5 +207,14 @@ customer-a,2026-06,96000000`;
     await processDealPackage(await packageFiles());
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
+  });
+
+  it("requires a named human and rationale before creating Version 1", async () => {
+    const result = await processDealPackage(await packageFiles());
+    expect(() => approveBaseline(result, "", "Reviewed mappings and exclusions.")).toThrow(/named human analyst/i);
+    expect(() => approveBaseline(result, "Avery Chen", "Too short")).toThrow(/Explain why/i);
+    const approved = approveBaseline(result, "Avery Chen", "Reviewed the declared mappings, exclusions, and package boundaries for screening.", "2026-09-01T12:00:00.000Z");
+    expect(approved.baselineApproval).toMatchObject({version: "V1", actor: "Avery Chen", approvedAt: "2026-09-01T12:00:00.000Z", packageDigest: expect.stringMatching(/^[a-f0-9]{64}$/)});
+    expect(result.baselineApproval).toBeNull();
   });
 });

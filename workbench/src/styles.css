@@ -509,6 +509,10 @@ dd { margin: 5px 0 0; }
 .proposal-diff span { display: block; margin-bottom: 6px; color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
 .search-field { display: grid; grid-template-columns: 150px minmax(240px, 560px); gap: 14px; align-items: center; margin-bottom: 18px; color: var(--muted); font-size: 12px; }
 .search-field input { border: 1px solid var(--line-dark); border-radius: 5px; padding: 9px 10px; background: white; color: var(--ink); }
+.source-attachments { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; background: white; }
+.source-attachments > div { display: grid; min-width: 0; margin-right: auto; }
+.source-attachments span, .source-attachments small { color: var(--muted); font-size: 12px; }
+.source-attachments button { border: 1px solid var(--line-dark); border-radius: 5px; padding: 7px 9px; background: white; color: var(--cobalt); font-size: 12px; font-weight: 600; cursor: pointer; }
 .document-list { display: grid; }
 .document-list > article { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 20px; border-top: 1px solid var(--line); padding: 15px 2px; }
 .document-list h3 { margin-bottom: 2px; }
@@ -560,6 +564,20 @@ code { overflow-wrap: anywhere; font-family: "SFMono-Regular", Consolas, monospa
 .intake-result > p { margin-bottom: 18px; }
 .intake-result > .primary-button { margin-top: 18px; }
 .mapping-list { margin: 7px 0 0; padding-left: 18px; color: var(--muted); font-size: 12px; }
+.intake-detail { margin-top: 9px; color: var(--muted); font-size: 12px; }
+.intake-detail strong { display: block; color: var(--ink); }
+.intake-detail ul, .intake-result td details ul { margin: 5px 0 0; padding-left: 18px; }
+.intake-result td > small { display: block; margin-top: 5px; color: var(--muted); }
+.baseline-approval { display: grid; grid-template-columns: minmax(220px, .8fr) minmax(180px, .55fr) minmax(280px, 1fr) auto; gap: 14px; align-items: end; margin-top: 22px; border-top: 1px solid var(--line); padding-top: 20px; }
+.baseline-approval h3 { margin: 2px 0 4px; }
+.baseline-approval p { color: var(--muted); font-size: 12px; }
+.baseline-approval label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 600; }
+.baseline-approval input, .baseline-approval textarea { width: 100%; border: 1px solid var(--line-dark); border-radius: 5px; padding: 9px 10px; background: white; color: var(--ink); font: inherit; }
+.baseline-approval textarea { min-height: 70px; resize: vertical; }
+.baseline-approval .primary-button { align-self: stretch; }
+.baseline-record { display: grid; grid-template-columns: minmax(190px, .65fr) minmax(260px, 1fr) minmax(280px, 1.1fr); gap: 22px; align-items: start; border: 1px solid var(--line); border-left: 3px solid var(--green); border-radius: 6px; padding: 15px 18px; background: white; }
+.baseline-record div { display: grid; gap: 2px; }
+.baseline-record span, .baseline-record small { color: var(--muted); font-size: 12px; }
 .error-summary { margin-top: 16px; border-left: 3px solid var(--rust); padding: 12px 14px; background: var(--rust-soft); color: #65372f; }
 .error-summary ul { margin: 7px 0 0; padding-left: 18px; }
 

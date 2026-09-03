@@ -44,7 +44,7 @@ describe("Underwriting Desk investor workspace", () => {
     expect(screen.getByRole("heading", {name: "Deals"})).toBeInTheDocument();
     expect(screen.getByRole("button", {name: "New deal"})).toBeInTheDocument();
     expect(screen.getByText(/Public demonstration with fictional companies/)).toBeInTheDocument();
-    expect(screen.getByRole("heading", {name: "Growth SaaS Quick Package"})).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "Growth SaaS evidence package"})).toBeInTheDocument();
     expect(screen.queryByText(/Evidence → economics → action/)).not.toBeInTheDocument();
     expect(screen.getByText("Decision workspaces")).toBeInTheDocument();
     expect(screen.getByText("Open issues")).toBeInTheDocument();
@@ -64,7 +64,7 @@ describe("Underwriting Desk investor workspace", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("button", {name: "New deal"}));
-    expect(screen.getByRole("heading", {name: "Growth SaaS Quick Package"})).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "Growth SaaS evidence package"})).toBeInTheDocument();
     expect(screen.getByText(/bytes stay in this browser tab/)).toBeInTheDocument();
     expect(screen.getByTestId("deal-package-input")).toHaveAttribute("multiple");
     expect(screen.getByRole("button", {name: "Validate and analyze"})).toBeDisabled();

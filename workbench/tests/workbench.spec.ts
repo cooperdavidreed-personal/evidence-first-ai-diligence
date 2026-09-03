@@ -7,6 +7,7 @@ import {expect, test, type Page, type TestInfo} from "@playwright/test";
 import {captureVisualEvidence, writeAccessibilityEvidence} from "./visual-evidence";
 
 const packagePaths = ["manifest.json", "deal.json", "monthly_financials.csv", "customer_arr.csv"].map((name) => resolve(import.meta.dirname, `../public/sample-package/${name}`));
+const evidencePackagePaths = ["manifest.json", "deal.json", "operating_model.xlsx", "customer_arr.csv", "management_update.pdf"].map((name) => resolve(import.meta.dirname, `../public/sample-package-v2/${name}`));
 const atlasgridRevisionPath = resolve(import.meta.dirname, "../public/change-packages/atlasgrid-v2-retention-revision.json");
 const views = ["Overview", "Financials", "Diligence", "Documents", "IC Memo"] as const;
 
@@ -512,9 +513,13 @@ test("ordinary multi-file intake produces a governed local deal that survives re
   await expect(page.getByRole("heading", {name: "SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED"})).toBeVisible();
   await expect(page.getByText(/cannot authorize advancement/i)).toBeVisible();
   await expect(page.getByText("Hash mismatch")).toHaveCount(0);
-  await expect(page.getByRole("button", {name: "Open decision review"})).toBeVisible();
+  const approveButton = page.getByRole("button", {name: "Approve Version 1 and open workspace"});
+  await expect(approveButton).toBeDisabled();
+  await page.getByRole("textbox", {name: "Analyst name"}).fill("Avery Chen");
+  await page.getByRole("textbox", {name: "Approval rationale"}).fill("Reviewed the declared mappings, exclusions, source boundaries, and reconciliation results for screening.");
+  await expect(approveButton).toBeEnabled();
   await captureVisualEvidence(page, `${testInfo.project.name}-northstar-package-ready.png`, true);
-  await page.getByRole("button", {name: "Open decision review"}).click();
+  await approveButton.click();
   await expect(page.getByRole("heading", {name: "Northstar Metrics", level: 1})).toBeVisible();
   await expect((await visibleDealNavigation(page)).getByRole("button")).toHaveCount(5);
   await expect(page.getByRole("heading", {name: "SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED", exact: true})).toHaveCount(1);
@@ -548,9 +553,40 @@ test("missing required input fails closed before return conclusions", async ({pa
   await page.getByRole("button", {name: "Validate and analyze"}).click();
   await expect(page.getByRole("heading", {name: "NO CALL — PACKAGE INCOMPLETE"})).toBeVisible();
   await expect(page.getByText("customer_arr.csv is required").first()).toBeVisible();
-  await expect(page.getByRole("button", {name: "Open decision review"})).toHaveCount(0);
+  await expect(page.getByRole("button", {name: "Approve Version 1 and open workspace"})).toHaveCount(0);
   await expect(page.getByText(/Gross multiple/)).toHaveCount(0);
   await captureVisualEvidence(page, `${testInfo.project.name}-northstar-package-incomplete.png`, true);
+});
+
+test("mixed Excel CSV PDF package is parsed, reviewed, approved, and replayable", async ({page}, testInfo: TestInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Desktop admission proof");
+  test.setTimeout(60_000);
+  await page.goto("/", {waitUntil: "networkidle"});
+  await page.getByRole("button", {name: "New deal"}).click();
+  await page.getByTestId("deal-package-input").setInputFiles(evidencePackagePaths);
+  await page.getByRole("button", {name: "Validate and analyze"}).click();
+  await expect(page.getByRole("heading", {name: "SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED"})).toBeVisible();
+  const modelRow = page.getByRole("row").filter({hasText: "operating_model.xlsx"});
+  await expect(modelRow).toContainText("Operating Model!");
+  await expect(modelRow).toContainText("preserved formulas");
+  await expect(modelRow).toContainText("2026-07 — after the declared cutoff");
+  await expect(modelRow).toContainText("Gross profit: Ties");
+  const pdfRow = page.getByRole("row").filter({hasText: "management_update.pdf"});
+  await expect(pdfRow).toContainText("1 pages recognized");
+  await expect(pdfRow).toContainText("Pages 1-1");
+  const approveButton = page.getByRole("button", {name: "Approve Version 1 and open workspace"});
+  await expect(approveButton).toBeDisabled();
+  await page.getByRole("textbox", {name: "Analyst name"}).fill("Avery Chen");
+  await page.getByRole("textbox", {name: "Approval rationale"}).fill("Confirmed the mapped operating rows, future-period exclusion, rejected add-back, and PDF classification.");
+  await approveButton.click();
+  await expect(page.getByRole("heading", {name: "Northstar Metrics", level: 1})).toBeVisible();
+  await expect(page.getByRole("region", {name: "Version 1 evidence approval"})).toContainText("Avery Chen");
+  await expect(page.getByRole("region", {name: "Version 1 evidence approval"})).toContainText("mappings and exclusions only");
+  await (await visibleDealNavigation(page)).getByRole("button", {name: "Documents"}).click();
+  await expect(page.getByText("Management update")).toBeVisible();
+  await captureVisualEvidence(page, `${testInfo.project.name}-mixed-package-documents.png`, true);
+  await page.reload({waitUntil: "networkidle"});
+  await expect(page.getByRole("heading", {name: "Northstar Metrics", level: 1})).toBeVisible();
 });
 
 test("deep links still load only the selected retained case chunk", async ({page}) => {

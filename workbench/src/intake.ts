@@ -1,10 +1,13 @@
 import {compareDecimalStrings} from "./data-contract";
 import {GROWTH_SCREEN_POLICY, assertRegisteredPolicyProfile, policyThreshold, type GateState, type PolicyProfile} from "./policy";
+import {parseOperatingModel, parsePdfEvidence} from "./source-parsers";
 
 export const PACKAGE_VERSION = "growth-saas-quick-package/v1";
 export const REQUIRED_FILES = ["manifest.json", "deal.json", "monthly_financials.csv", "customer_arr.csv"] as const;
-const MAX_FILE_BYTES = 750 * 1024;
-const MAX_PACKAGE_BYTES = 1024 * 1024;
+export const EVIDENCE_PACKAGE_VERSION = "growth-saas-evidence-package/v2";
+export const EVIDENCE_REQUIRED_FILES = ["manifest.json", "deal.json", "operating_model.xlsx", "customer_arr.csv", "management_update.pdf"] as const;
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_PACKAGE_BYTES = 8 * 1024 * 1024;
 
 export type IntakeFileState = "RECOGNIZED" | "MISSING" | "INVALID" | "UNSUPPORTED" | "EXCLUDED" | "READY";
 export interface ColumnMapping { from: string; to: string }
@@ -17,6 +20,26 @@ export interface IntakeFileStatus {
   rows?: number;
   mappings?: ColumnMapping[];
   sha256?: string;
+  recognizedScope?: string[];
+  exclusions?: string[];
+  rejectedFields?: Array<{field: string; reason: string}>;
+  reconciliations?: Array<{label: string; state: "TIES" | "DISCREPANCY"; detail: string}>;
+  formulaCount?: number;
+}
+
+export interface BaselineApproval {
+  version: "V1";
+  actor: string;
+  rationale: string;
+  approvedAt: string;
+  packageDigest: string;
+}
+
+export interface SourcePayload {
+  name: string;
+  mediaType: string;
+  encoding: "UTF8" | "BASE64";
+  content: string;
 }
 
 export interface DealInput {
@@ -92,12 +115,13 @@ export interface IntakeResult {
   errors: string[];
   deal: DealInput | null;
   analysis: QuickAnalysis | null;
-  sourcePayloads?: Array<{name: typeof REQUIRED_FILES[number]; text: string}>;
+  sourcePayloads?: SourcePayload[] | Array<{name: typeof REQUIRED_FILES[number]; text: string}>;
+  baselineApproval?: BaselineApproval | null;
   processedLocally: true;
 }
 
 interface ManifestEntry { name: string; role: string; required: true; bytes: number; sha256: string }
-interface Manifest { package_version: string; files: ManifestEntry[] }
+interface Manifest { package_version: typeof PACKAGE_VERSION | typeof EVIDENCE_PACKAGE_VERSION; files: ManifestEntry[] }
 interface MonthlyRow { sourceRow: number; period: string; revenueCents: number; costOfRevenueCents: number; operatingExpenseCents: number }
 interface CustomerRow { sourceRow: number; customerId: string; period: string; arrCents: number }
 
@@ -147,8 +171,11 @@ export async function sha256(bytes: ArrayBuffer) {
 
 function parseManifest(raw: string): Manifest {
   const candidate: unknown = JSON.parse(raw);
-  if (!record(candidate) || candidate.package_version !== PACKAGE_VERSION || !Array.isArray(candidate.files)) throw new Error("Manifest version or file list is invalid");
-  const expectedRoles: Record<string, string> = {"deal.json": "deal", "monthly_financials.csv": "monthly_financials", "customer_arr.csv": "customer_arr"};
+  if (!record(candidate) || ![PACKAGE_VERSION, EVIDENCE_PACKAGE_VERSION].includes(candidate.package_version as never) || !Array.isArray(candidate.files)) throw new Error("Manifest version or file list is invalid");
+  const evidencePackage = candidate.package_version === EVIDENCE_PACKAGE_VERSION;
+  const expectedRoles: Record<string, string> = evidencePackage
+    ? {"deal.json": "deal", "operating_model.xlsx": "operating_model", "customer_arr.csv": "customer_arr", "management_update.pdf": "management_update"}
+    : {"deal.json": "deal", "monthly_financials.csv": "monthly_financials", "customer_arr.csv": "customer_arr"};
   const seen = new Set<string>();
   const files = candidate.files.map((item): ManifestEntry => {
     if (!record(item) || typeof item.name !== "string" || typeof item.role !== "string" || item.required !== true || typeof item.bytes !== "number" || !Number.isSafeInteger(item.bytes) || item.bytes < 1 || typeof item.sha256 !== "string" || !/^[0-9a-f]{64}$/.test(item.sha256)) throw new Error("Manifest contains an invalid file declaration");
@@ -158,8 +185,8 @@ function parseManifest(raw: string): Manifest {
     return {name: item.name, role: item.role, required: true, bytes: item.bytes, sha256: item.sha256};
   });
   for (const name of Object.keys(expectedRoles)) if (!seen.has(name)) throw new Error(`Manifest is missing ${name}`);
-  if (files.length !== 3) throw new Error("Manifest may declare only the three supported analysis files");
-  return {package_version: PACKAGE_VERSION, files};
+  if (files.length !== Object.keys(expectedRoles).length) throw new Error(`Manifest must declare only the ${Object.keys(expectedRoles).length} supported evidence files`);
+  return {package_version: candidate.package_version as Manifest["package_version"], files};
 }
 
 function parseCsv(raw: string) {
@@ -253,9 +280,9 @@ function parseCustomers(raw: string, cutoff: string) {
   return {rows, mappings, excluded};
 }
 
-function parseDeal(raw: string): DealInput {
+function parseDeal(raw: string, packageVersion: Manifest["package_version"] = PACKAGE_VERSION): DealInput {
   const candidate: unknown = JSON.parse(raw);
-  if (!record(candidate) || candidate.package_version !== PACKAGE_VERSION || !record(candidate.proposed_financing) || !record(candidate.return_assumptions) || !record(candidate.thresholds)) throw new Error("Deal file does not match the supported package contract");
+  if (!record(candidate) || candidate.package_version !== packageVersion || !record(candidate.proposed_financing) || !record(candidate.return_assumptions) || !record(candidate.thresholds)) throw new Error("Deal file does not match the supported package contract");
   const cutoff = text(candidate.cutoff, "cutoff");
   if (!/^\d{4}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(cutoff) || Number.isNaN(Date.parse(`${cutoff}T00:00:00Z`))) throw new Error("cutoff must be a valid YYYY-MM-DD date");
   const years = safeInteger(candidate.return_assumptions.years, "return_assumptions.years");
@@ -369,13 +396,31 @@ export function calculateQuickScenario(analysis: Pick<QuickAnalysis, "ltmRevenue
 }
 
 function incomplete(files: IntakeFileStatus[], errors: string[], deal: DealInput | null = null): IntakeResult {
-  return {packageState: "INCOMPLETE", posture: "NO CALL — PACKAGE INCOMPLETE", rationale: errors[0] ?? "Required package evidence is incomplete.", files, errors, deal, analysis: null, processedLocally: true};
+  return {packageState: "INCOMPLETE", posture: "NO CALL — PACKAGE INCOMPLETE", rationale: errors[0] ?? "Required package evidence is incomplete.", files, errors, deal, analysis: null, baselineApproval: null, processedLocally: true};
 }
 
 function analysisErrorTarget(detail: string) {
   if (/Customer ARR|customer|ARR|cohort/i.test(detail)) return "customer_arr.csv";
+  if (/operating model|workbook|XLSX/i.test(detail)) return "operating_model.xlsx";
+  if (/management document|PDF/i.test(detail)) return "management_update.pdf";
   if (/monthly financials|LTM revenue|cost of revenue|net burn|CSV|period/i.test(detail)) return "monthly_financials.csv";
   return "deal.json";
+}
+
+function bytesToBase64(bytes: Uint8Array) {
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+  return btoa(binary);
+}
+
+async function sourcePayload(file: File): Promise<SourcePayload> {
+  const binary = /\.(xlsx|pdf)$/i.test(file.name);
+  return {
+    name: file.name,
+    mediaType: file.type || (file.name.endsWith(".xlsx") ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : file.name.endsWith(".pdf") ? "application/pdf" : "text/plain"),
+    encoding: binary ? "BASE64" : "UTF8",
+    content: binary ? bytesToBase64(new Uint8Array(await file.arrayBuffer())) : await file.text(),
+  };
 }
 
 export async function processDealPackage(input: File[], policyProfile: PolicyProfile = GROWTH_SCREEN_POLICY): Promise<IntakeResult> {
@@ -387,8 +432,8 @@ export async function processDealPackage(input: File[], policyProfile: PolicyPro
     if (byName.has(name)) { statuses.push({name, role: "duplicate", state: "INVALID", detail: "Duplicate filename; package stopped", bytes: file.size}); errors.push(`Duplicate filename ${name}`); }
     else byName.set(name, file);
   }
-  if (totalBytes > MAX_PACKAGE_BYTES) errors.push("Package exceeds the 1 MB browser-local limit");
-  for (const [name, file] of byName) if (file.size > MAX_FILE_BYTES) { statuses.push({name, role: "file", state: "INVALID", detail: "File exceeds the 750 KB browser-local limit", bytes: file.size}); errors.push(`${name} is oversize`); }
+  if (totalBytes > MAX_PACKAGE_BYTES) errors.push("Package exceeds the 8 MB browser-local limit");
+  for (const [name, file] of byName) if (file.size > MAX_FILE_BYTES) { statuses.push({name, role: "file", state: "INVALID", detail: "File exceeds the 5 MB browser-local limit", bytes: file.size}); errors.push(`${name} is oversize`); }
   const manifestFile = byName.get("manifest.json");
   if (!manifestFile) {
     statuses.push({name: "manifest.json", role: "manifest", state: "MISSING", detail: "Required package declaration is missing"}); errors.push("manifest.json is required");
@@ -426,30 +471,58 @@ export async function processDealPackage(input: File[], policyProfile: PolicyPro
     const isExperiment = name === "experiment.csv";
     statuses.push({name, role: isExperiment ? "experiment" : "supporting_document", state: isExperiment ? "EXCLUDED" : "UNSUPPORTED", detail: isExperiment ? "Listed but not retained or analyzed by the Quick Package" : ["pdf", "docx", "pptx", "xlsx", "csv", "txt"].includes(extension ?? "") ? "Listed but not parsed by the Quick Package" : "Unsupported file type", bytes: file.size});
   }
-  if (errors.length > 0 || recognized.size !== 3) return incomplete(statuses, errors);
+  if (errors.length > 0 || recognized.size !== manifest.files.length) return incomplete(statuses, errors);
   let deal: DealInput | null = null;
   try {
-    deal = parseDeal(await recognized.get("deal.json")!.text());
-    const monthly = parseMonthly(await recognized.get("monthly_financials.csv")!.text(), deal.cutoff);
+    deal = parseDeal(await recognized.get("deal.json")!.text(), manifest.package_version);
+    const evidencePackage = manifest.package_version === EVIDENCE_PACKAGE_VERSION;
+    const operatingModel = evidencePackage ? await parseOperatingModel(await recognized.get("operating_model.xlsx")!.arrayBuffer(), deal.cutoff) : null;
+    const monthly = operatingModel ?? parseMonthly(await recognized.get("monthly_financials.csv")!.text(), deal.cutoff);
     const customers = parseCustomers(await recognized.get("customer_arr.csv")!.text(), deal.cutoff);
-    for (const [name, parsed] of [["monthly_financials.csv", monthly], ["customer_arr.csv", customers]] as const) {
+    for (const [name, parsed] of [[evidencePackage ? "operating_model.xlsx" : "monthly_financials.csv", monthly], ["customer_arr.csv", customers]] as const) {
       const status = statuses.find((item) => item.name === name)!; status.rows = parsed.rows.length; status.mappings = parsed.mappings;
-      status.detail = `${parsed.rows.length} eligible rows${parsed.excluded ? `; ${parsed.excluded} post-cutoff rows excluded` : ""}${parsed.mappings.length ? "; explicit alias mapping required" : ""}`;
+      const excludedCount = typeof parsed.excluded === "number" ? parsed.excluded : parsed.excluded.length;
+      status.detail = `${parsed.rows.length} eligible periods or rows${excludedCount ? `; ${excludedCount} records or ranges excluded` : ""}${parsed.mappings.length ? "; explicit alias mapping required — human confirmation pending" : ""}`;
+      if (operatingModel && name === "operating_model.xlsx") Object.assign(status, {recognizedScope: operatingModel.recognizedScope, exclusions: operatingModel.excluded, rejectedFields: operatingModel.rejectedFields, reconciliations: operatingModel.reconciliations, formulaCount: operatingModel.formulaCount});
+    }
+    let pdfEvidence = null;
+    if (evidencePackage) {
+      pdfEvidence = await parsePdfEvidence(await recognized.get("management_update.pdf")!.arrayBuffer());
+      const status = statuses.find((item) => item.name === "management_update.pdf")!;
+      Object.assign(status, {rows: pdfEvidence.pageCount, detail: `${pdfEvidence.pageCount} pages recognized; text excerpts available for evidence review`, recognizedScope: pdfEvidence.recognizedScope, exclusions: pdfEvidence.excluded});
     }
     const analysis = analyze(deal, monthly.rows, customers.rows, policyProfile);
+    if (evidencePackage) {
+      for (const metric of analysis.metrics) metric.sourceFiles = metric.sourceFiles.map((name) => name === "monthly_financials.csv" ? "operating_model.xlsx" : name);
+      for (const preview of analysis.sourcePreviews) if (preview.sourceFile === "monthly_financials.csv") preview.sourceFile = "operating_model.xlsx";
+      analysis.sourcePreviews.push({sourceFile: "management_update.pdf", classification: "MANAGEMENT_REPRESENTATION", title: "Management update", period: deal.cutoff, excerpt: pdfEvidence!.excerpts.slice(0, 3).map((item) => ({label: `Page ${item.page}`, value: item.text}))});
+    }
     const blockers = analysis.tests.filter((test) => test.blocksAdvancement);
     const returnScreenMisses = blockers.filter((test) => test.gateId === "returns-moic" || test.gateId === "returns-annualized");
     const posture: IntakeResult["posture"] = returnScreenMisses.length ? "HOLD" : "SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED";
     for (const status of statuses) if (status.state === "RECOGNIZED") status.state = "READY";
-    const sourcePayloads = await Promise.all(REQUIRED_FILES.map(async (name) => ({name, text: await byName.get(name)!.text()})));
+    const sourceNames = ["manifest.json", ...manifest.files.map((file) => file.name)];
+    const sourcePayloads = await Promise.all(sourceNames.map((name) => sourcePayload(byName.get(name)!)));
     const rationale = returnScreenMisses.length
       ? `${returnScreenMisses.length} deterministic return screen${returnScreenMisses.length === 1 ? "" : "s"} miss and ${blockers.length} policy or diligence gates remain unresolved. HOLD is a screening posture, not an investment recommendation.`
       : `${blockers.length} policy or diligence gates remain unresolved. The package is complete enough for screening, but uploaded thresholds and assumptions cannot authorize advancement.`;
-    return {packageState: "READY", posture, rationale, files: statuses, errors: [], deal, analysis, sourcePayloads, processedLocally: true};
+    return {packageState: "READY", posture, rationale, files: statuses, errors: [], deal, analysis, sourcePayloads, baselineApproval: null, processedLocally: true};
   } catch (error) {
     const detail = error instanceof Error ? error.message : "Package analysis failed"; errors.push(detail);
     const target = analysisErrorTarget(detail);
     const status = statuses.find((item) => item.name === target); if (status) { status.state = "INVALID"; status.detail = detail; }
     return incomplete(statuses, errors, deal);
   }
+}
+
+export function approveBaseline(result: IntakeResult, actor: string, rationale: string, approvedAt = new Date().toISOString()): IntakeResult {
+  if (result.packageState !== "READY" || !result.analysis || !result.deal) throw new Error("Only a complete, recalculable package can become Version 1");
+  const namedActor = actor.trim();
+  const statedRationale = rationale.trim();
+  if (namedActor.length < 2 || namedActor.length > 120) throw new Error("A named human analyst is required");
+  if (statedRationale.length < 20 || statedRationale.length > 1200) throw new Error("Explain why the recognized mappings and exclusions are acceptable");
+  if (Number.isNaN(Date.parse(approvedAt))) throw new Error("Baseline approval time is invalid");
+  const packageDigest = result.files.find((file) => file.name === "manifest.json")?.sha256;
+  if (!packageDigest) throw new Error("Manifest identity is missing");
+  return structuredClone({...result, baselineApproval: {version: "V1", actor: namedActor, rationale: statedRationale, approvedAt, packageDigest}});
 }
