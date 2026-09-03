@@ -21,6 +21,7 @@ import {
   EditableMemo,
   ObservationComposer,
   PolicyRegistry,
+  WorkspaceRecovery,
   WorkspaceTransfer,
   formatHumanDate,
   useDealWorkspace,
@@ -280,7 +281,7 @@ function DealShell({caseData, view, onNavigate, onChooseDeal, onDeals, onConnect
   const seed = useMemo(() => workspaceSeed(caseData), [caseData]);
   const allowedEvidenceRefs = useMemo(() => new Set([...caseData.metricRegistry.map((item) => item.metric_id), ...caseData.analyses.map((item) => item.analysis_id), ...caseData.artifacts.map((item) => item.artifact_id)]), [caseData]);
   const scenarioContract = useMemo(() => scenarioContractFor(caseData), [caseData]);
-  const {state, update, replace, storageNotice, integrityContract} = useDealWorkspace(seed, allowedEvidenceRefs, scenarioContract);
+  const {state, update, replace, storageNotice, recovery, discardRejectedState, integrityContract} = useDealWorkspace(seed, allowedEvidenceRefs, scenarioContract);
   const storageAlert = storageNotice === "Saved locally" ? "" : storageNotice;
   const [lineage, setLineage] = useState<{metric: Metric; trigger: HTMLElement} | null>(null);
   const openLineage = (metric: Metric, trigger: HTMLElement) => setLineage({metric, trigger});
@@ -302,7 +303,7 @@ function DealShell({caseData, view, onNavigate, onChooseDeal, onDeals, onConnect
     <aside className="sidebar"><button type="button" className="wordmark" onClick={onDeals} aria-label="Underwriting Desk deals"><span>U</span><strong>Underwriting Desk</strong></button><nav aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}>{viewLabels[item]}</button>)}</nav><div className="sidebar-foot"><button type="button" onClick={onConnect}>Model settings</button><span>{storageAlert ? "Workspace attention required" : storageNotice}</span></div></aside>
     <div className="shell-main"><header className="deal-topbar"><button type="button" className="mobile-wordmark" onClick={onDeals}>Underwriting Desk</button><label><span>Deal</span><select aria-label="Deal" value={caseData.caseId} onChange={(event) => onChooseDeal(event.target.value as CaseId)}>{caseCatalog.map((item) => <option value={item.caseId} key={item.caseId}>{item.company}</option>)}</select></label><div className="topbar-meta"><span>{caseData.caseType}</span><span>As of {formatHumanDate(caseData.decision.as_of ?? `${caseData.temporalScan.cutoff.slice(0, 10)}T12:00:00Z`)}</span></div><button className="topbar-model" type="button" onClick={onConnect}>Model settings</button></header>
       <nav className="mobile-nav" aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}>{viewLabels[item]}</button>)}</nav>
-      <div className={`workspace-layout ${view === "overview" || view === "diligence" ? "" : "workspace-layout-wide"}`}><main id="main-content" className="deal-main">{storageAlert ? <p className="persistence-warning" role="status">{storageAlert}</p> : null}<header className="deal-heading"><div><p className="eyebrow">{viewLabels[view]}</p><h1>{caseData.company}</h1><p>{caseData.dealContext.company_one_liner}</p></div><p className="ic-question"><span>Investment question</span>{caseData.dealContext.investment_question}</p></header><RetainedEvidenceBoundary key={`${caseData.caseId}:${view}`} onReset={onDeals}>{content}</RetainedEvidenceBoundary><footer className="deal-boundary">Fictional company and synthetic records · Not investment advice · Browser-local workspace is not suitable for confidential information</footer></main>{view === "overview" || view === "diligence" ? <DecisionRail caseData={caseData} view={view} state={state} /> : null}</div>
+      <div className={`workspace-layout ${view === "overview" || view === "diligence" ? "" : "workspace-layout-wide"}`}><main id="main-content" className="deal-main">{storageAlert ? <p className="persistence-warning" role="status">{storageAlert}</p> : null}{recovery ? <WorkspaceRecovery recovery={recovery} onStartFresh={discardRejectedState} /> : null}<header className="deal-heading"><div><p className="eyebrow">{viewLabels[view]}</p><h1>{caseData.company}</h1><p>{caseData.dealContext.company_one_liner}</p></div><p className="ic-question"><span>Investment question</span>{caseData.dealContext.investment_question}</p></header><RetainedEvidenceBoundary key={`${caseData.caseId}:${view}`} onReset={onDeals}>{content}</RetainedEvidenceBoundary><footer className="deal-boundary">Fictional company and synthetic records · Not investment advice · Browser-local workspace is not suitable for confidential information</footer></main>{view === "overview" || view === "diligence" ? <DecisionRail caseData={caseData} view={view} state={state} /> : null}</div>
     </div>
     {lineage ? <LineageDrawer caseData={caseData} metric={lineage.metric} onClose={closeLineage} /> : null}
   </div>;

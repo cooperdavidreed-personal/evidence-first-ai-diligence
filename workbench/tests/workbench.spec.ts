@@ -89,7 +89,7 @@ test("mobile deal navigation resets a previously scrolled Deals page", async ({p
 });
 
 test("invalid saved workspace remains preserved behind a visible recovery warning", async ({page}) => {
-  const key = "underwriting-desk.workspace.v2.atlasgrid";
+  const key = "underwriting-desk.workspace.v3.atlasgrid";
   const rejected = "{not-valid-json";
   await page.addInitScript(({storageKey, value}) => window.localStorage.setItem(storageKey, value), {storageKey: key, value: rejected});
   await page.goto("/#/v3/atlasgrid/overview", {waitUntil: "networkidle"});
@@ -382,7 +382,7 @@ test("print export uses complete memo text instead of a clipped textarea", async
 
 test("portable state rejects a fabricated accepted-proposal citation", async ({page}) => {
   await page.goto("/#/v3/atlasgrid/memo", {waitUntil: "networkidle"});
-  const raw = await page.evaluate(() => JSON.parse(localStorage.getItem("underwriting-desk.workspace.v2.atlasgrid")!));
+  const raw = await page.evaluate(() => JSON.parse(localStorage.getItem("underwriting-desk.workspace.v3.atlasgrid")!));
   const requestEvidence = [{id: "fabricated-metric", title: "Fabricated", displayValue: "1.0x", summary: "Fabricated evidence."}];
   const requestDigestSha256 = await page.evaluate(async (evidence) => { const payload = JSON.stringify({job: "challenge_selected_evidence", deal_id: "atlasgrid", evidence, output_contract: "underwriting-evidence-challenge/v1"}); const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload)); return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join(""); }, requestEvidence);
   raw.proposals.push({proposalId: "proposal-tampered", kind: "MEMO_DRAFT", state: "ACCEPTED", title: "Draft conclusion", body: "Fabricated evidence claim.", evidenceRefs: ["fabricated-metric"], dealId: "atlasgrid", origin: "PORTABLE_IMPORT_UNVERIFIED", requestEvidence, requestDigestSha256, humanActor: "Avery Chen", reviewedAt: "2026-09-01T12:00:00.000Z"});

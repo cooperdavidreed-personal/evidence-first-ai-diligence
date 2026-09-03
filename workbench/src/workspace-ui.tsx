@@ -16,6 +16,7 @@ import {
   type IssuePriority,
   type IssueStatus,
   type WorkspaceScenarioContract,
+  type WorkspaceRecoveryPreview,
   type WorkspaceSeed,
 } from "./workspace-state";
 
@@ -46,15 +47,17 @@ export function useDealWorkspace(seed: WorkspaceSeed, allowedEvidenceRefs: Reado
   const initialLoad = useMemo(() => loadWorkspaceResult(seed.caseId, fallback, allowedEvidenceRefs, scenarioContract, integrityContract), [seed.caseId, fallback, allowedEvidenceRefs, scenarioContract, integrityContract]);
   const [state, setState] = useState<DealWorkspaceState>(() => initialLoad.state);
   const [loadNotice, setLoadNotice] = useState<string | null>(() => initialLoad.notice);
+  const [recovery, setRecovery] = useState<WorkspaceRecoveryPreview | null>(() => initialLoad.recovery);
   const [saveNotice, setSaveNotice] = useState("Saved locally");
 
-  useEffect(() => {const loaded = loadWorkspaceResult(seed.caseId, fallback, allowedEvidenceRefs, scenarioContract, integrityContract); setState(loaded.state); setLoadNotice(loaded.notice);}, [seed.caseId, fallback, allowedEvidenceRefs, scenarioContract, integrityContract]);
+  useEffect(() => {const loaded = loadWorkspaceResult(seed.caseId, fallback, allowedEvidenceRefs, scenarioContract, integrityContract); setState(loaded.state); setLoadNotice(loaded.notice); setRecovery(loaded.recovery);}, [seed.caseId, fallback, allowedEvidenceRefs, scenarioContract, integrityContract]);
   useEffect(() => {
     if (loadNotice) return;
     setSaveNotice(persistWorkspace(state, allowedEvidenceRefs, scenarioContract, integrityContract) ? "Saved locally" : "In memory · local save unavailable");
   }, [allowedEvidenceRefs, scenarioContract, integrityContract, loadNotice, state]);
 
   const update: WorkspaceUpdate = (patch) => {
+    if (recovery) return;
     setLoadNotice(null);
     setState((current) => {
       const next = touchWorkspace(current, typeof patch === "function" ? patch(current) : patch);
@@ -64,28 +67,52 @@ export function useDealWorkspace(seed: WorkspaceSeed, allowedEvidenceRefs: Reado
   const replace = (next: DealWorkspaceState) => {
     setState(validateWorkspace(next, seed.caseId, allowedEvidenceRefs, scenarioContract, integrityContract));
     setLoadNotice(null);
+    setRecovery(null);
     setSaveNotice("Imported and saved locally");
   };
-  return {state, update, replace, storageNotice: loadNotice ?? saveNotice, integrityContract};
+  const discardRejectedState = () => {
+    if (recovery) window.localStorage?.removeItem(recovery.storageKey);
+    setState(fallback);
+    setRecovery(null);
+    setLoadNotice(null);
+    setSaveNotice("Fresh workspace created locally");
+  };
+  return {state, update, replace, storageNotice: loadNotice ?? saveNotice, recovery, discardRejectedState, integrityContract};
+}
+
+export function WorkspaceRecovery({recovery, onStartFresh}: {recovery: WorkspaceRecoveryPreview; onStartFresh: () => void}) {
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([recovery.raw], {type: "application/json"}));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "underwriting-desk-rejected-workspace.json";
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  return <section className="workspace-recovery" aria-labelledby="workspace-recovery-heading"><div><p className="eyebrow">Recovery preview</p><h2 id="workspace-recovery-heading">The saved workspace was not changed</h2><p>The Desk rejected {recovery.bytes.toLocaleString()} bytes declared as <strong>{recovery.declaredSchema}</strong>. Download the original state for inspection, or start a clean workspace from the unchanged canonical case.</p></div><div><button type="button" onClick={download}>Download rejected state</button><button type="button" className="secondary-button" onClick={onStartFresh}>Start fresh</button></div></section>;
 }
 
 export function ObservationComposer({state, update}: {state: DealWorkspaceState; update: WorkspaceUpdate}) {
   const [draft, setDraft] = useState("");
   const [author, setAuthor] = useState("");
-  const [kind, setKind] = useState<"INVESTMENT_OBSERVATION" | "MANAGEMENT_MEETING_NOTE">("INVESTMENT_OBSERVATION");
+  const [kind, setKind] = useState<DealWorkspaceState["observations"][number]["kind"]>("ANALYST_OBSERVATION");
+  const [relatedQuestion, setRelatedQuestion] = useState("General investment thesis");
+  const [visibility, setVisibility] = useState<DealWorkspaceState["observations"][number]["visibility"]>("PRIVATE");
+  const [reviewStatus, setReviewStatus] = useState<DealWorkspaceState["observations"][number]["reviewStatus"]>("UNREVIEWED");
+  const [thesisEffect, setThesisEffect] = useState<DealWorkspaceState["observations"][number]["thesisEffect"]>("CONTEXT_ONLY");
   const add = () => {
-    const text = draft.trim(), namedAuthor = author.trim();
-    if (!text || !namedAuthor) return;
-    update({observations: [...state.observations, {id: crypto.randomUUID(), text, kind, author: namedAuthor, createdAt: new Date().toISOString()}]});
+    const text = draft.trim(), namedAuthor = author.trim(), question = relatedQuestion.trim();
+    if (!text || !namedAuthor || !question) return;
+    update({observations: [...state.observations, {id: crypto.randomUUID(), text, kind, author: namedAuthor, createdAt: new Date().toISOString(), classification: kind === "COMMERCIAL_REFERENCE" ? "EXTERNAL_REFERENCE" : "HUMAN_OBSERVATION", relatedQuestion: question, visibility, reviewStatus, thesisEffect}]});
     setDraft("");
   };
   return <section className="workspace-card observation-workspace" aria-labelledby="observations-heading">
     <div className="section-heading"><div><p className="eyebrow">Human context</p><h2 id="observations-heading">Notes and observations</h2></div><span>{state.observations.length} recorded</span></div>
     <label><span>Private analyst note</span><textarea maxLength={8000} value={state.privateNote} onChange={(event) => update({privateNote: event.target.value})} placeholder="Record the unresolved judgment or contradiction that matters." /></label>
-    <div className="observation-form"><label><span>Entry type</span><select value={kind} onChange={(event) => setKind(event.target.value as typeof kind)}><option value="INVESTMENT_OBSERVATION">Investment observation</option><option value="MANAGEMENT_MEETING_NOTE">Management meeting note</option></select></label><label><span>Author</span><input value={author} maxLength={120} onChange={(event) => setAuthor(event.target.value)} placeholder="Your name" /></label></div>
+    <div className="observation-form"><label><span>Entry type</span><select value={kind} onChange={(event) => setKind(event.target.value as typeof kind)}><option value="ANALYST_OBSERVATION">Analyst observation</option><option value="MANAGEMENT_MEETING_NOTE">Management meeting note</option><option value="EXPERT_CALL_NOTE">Expert call note</option><option value="FOUNDER_BEHAVIOR_OBSERVATION">Founder or CEO observation</option><option value="COMMERCIAL_REFERENCE">Commercial reference</option><option value="NEGOTIATION_UPDATE">Negotiation update</option></select></label><label><span>Author</span><input value={author} maxLength={120} onChange={(event) => setAuthor(event.target.value)} placeholder="Your name" /></label><label><span>Related question or issue</span><input value={relatedQuestion} maxLength={400} onChange={(event) => setRelatedQuestion(event.target.value)} /></label><label><span>Visibility</span><select value={visibility} onChange={(event) => setVisibility(event.target.value as typeof visibility)}><option value="PRIVATE">Private</option><option value="SHARED">Shared</option></select></label><label><span>Review status</span><select value={reviewStatus} onChange={(event) => setReviewStatus(event.target.value as typeof reviewStatus)}><option value="UNREVIEWED">Unreviewed</option><option value="REVIEWED">Reviewed</option><option value="DISPUTED">Disputed</option></select></label><label><span>Effect on thesis</span><select value={thesisEffect} onChange={(event) => setThesisEffect(event.target.value as typeof thesisEffect)}><option value="CONTEXT_ONLY">Context only</option><option value="SUPPORTS">Supports</option><option value="CHALLENGES">Challenges</option><option value="NO_CHANGE">No change</option></select></label></div>
     <label><span>New observation</span><textarea maxLength={8000} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="What did the model or source record miss?" /></label>
-    <button className="secondary-button" type="button" onClick={add} disabled={!draft.trim() || !author.trim()}>Add observation</button>
-    {state.observations.length ? <ol className="activity-list">{[...state.observations].reverse().map((item) => <li key={item.id}><p>{item.text}</p><small>{item.kind === "MANAGEMENT_MEETING_NOTE" ? "Meeting note" : "Investment observation"} · {item.author} · {formatHumanDate(item.createdAt)}</small></li>)}</ol> : <p className="empty-copy">No qualitative observations recorded yet.</p>}
+    <button className="secondary-button" type="button" onClick={add} disabled={!draft.trim() || !author.trim() || !relatedQuestion.trim()}>Add observation</button>
+    {state.observations.length ? <ol className="activity-list">{[...state.observations].reverse().map((item) => <li key={item.id}><p>{item.text}</p><small>{item.kind.toLowerCase().replaceAll("_", " ")} · {item.author} · {formatHumanDate(item.createdAt)}</small><small>{item.relatedQuestion} · {item.visibility.toLowerCase()} · {item.reviewStatus.toLowerCase()} · {item.thesisEffect.toLowerCase().replaceAll("_", " ")}</small></li>)}</ol> : <p className="empty-copy">No qualitative observations recorded yet.</p>}
   </section>;
 }
 

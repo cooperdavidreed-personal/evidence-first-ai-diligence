@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vitest";
 import {digestChallengePayloadSync} from "./model-workflow";
-import {createWorkspace, createWorkspaceIntegrityContract, sanitizePortableWorkspaceImport, serializeWorkspace, touchWorkspace, validateWorkspace} from "./workspace-state";
+import {WORKSPACE_SCHEMA, createWorkspace, createWorkspaceIntegrityContract, migrateWorkspaceCandidate, sanitizePortableWorkspaceImport, serializeWorkspace, touchWorkspace, validateWorkspace} from "./workspace-state";
 
 const seed = {
   caseId: "atlasgrid",
@@ -17,6 +17,19 @@ describe("portable deal workspace", () => {
     expect(restored.revision).toBe(2);
     expect(restored.privateNote).toMatch(/needs support/);
     expect(restored.issues[0].status).toBe("OPEN");
+  });
+
+  it("migrates the supported v2 observation contract without inventing quantitative confidence", () => {
+    const current = createWorkspace(seed, "2026-09-01T00:00:00.000Z");
+    const legacy = {
+      ...current,
+      schemaVersion: "underwriting.deal-workspace/v2",
+      observations: [{id: "legacy-note", text: "Management avoided the churn bridge.", kind: "INVESTMENT_OBSERVATION", author: "Avery Chen", createdAt: "2026-09-01T01:00:00.000Z"}],
+    };
+    const migrated = validateWorkspace(migrateWorkspaceCandidate(legacy), "atlasgrid");
+    expect(migrated.schemaVersion).toBe(WORKSPACE_SCHEMA);
+    expect(migrated.observations[0]).toMatchObject({kind: "ANALYST_OBSERVATION", relatedQuestion: "General investment thesis", visibility: "PRIVATE", reviewStatus: "UNREVIEWED", thesisEffect: "CONTEXT_ONLY"});
+    expect(JSON.stringify(migrated.observations[0])).not.toMatch(/confidence/i);
   });
 
   it("rejects cross-deal imports", () => {

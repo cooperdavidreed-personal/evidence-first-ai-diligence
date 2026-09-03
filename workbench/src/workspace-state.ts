@@ -1,6 +1,7 @@
 import {digestChallengePayloadSync, validateSelectedEvidence, type ModelProposal, type SelectedEvidence} from "./model-workflow";
 
-export const WORKSPACE_SCHEMA = "underwriting.deal-workspace/v2" as const;
+export const WORKSPACE_SCHEMA = "underwriting.deal-workspace/v3" as const;
+export const LEGACY_WORKSPACE_SCHEMA = "underwriting.deal-workspace/v2" as const;
 const MAX_TEXT = 8_000;
 const MAX_ITEMS = 200;
 
@@ -11,9 +12,14 @@ export type IssuePriority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 export interface Observation {
   id: string;
   text: string;
-  kind: "INVESTMENT_OBSERVATION" | "MANAGEMENT_MEETING_NOTE";
+  kind: "ANALYST_OBSERVATION" | "MANAGEMENT_MEETING_NOTE" | "EXPERT_CALL_NOTE" | "FOUNDER_BEHAVIOR_OBSERVATION" | "COMMERCIAL_REFERENCE" | "NEGOTIATION_UPDATE";
   author: string;
   createdAt: string;
+  classification: "HUMAN_OBSERVATION" | "EXTERNAL_REFERENCE";
+  relatedQuestion: string;
+  visibility: "PRIVATE" | "SHARED";
+  reviewStatus: "UNREVIEWED" | "REVIEWED" | "DISPUTED";
+  thesisEffect: "SUPPORTS" | "CHALLENGES" | "CONTEXT_ONLY" | "NO_CHANGE";
 }
 
 export interface AssumptionReview {
@@ -181,6 +187,10 @@ function stringArray(value: unknown, field: string, maxItems = 32) {
 }
 
 export function storageKey(caseId: string) {
+  return `underwriting-desk.workspace.v3.${caseId}`;
+}
+
+export function legacyStorageKey(caseId: string) {
   return `underwriting-desk.workspace.v2.${caseId}`;
 }
 
@@ -225,8 +235,10 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
   const privateNote = boundedString(raw.privateNote, "privateNote");
   if (!Array.isArray(raw.observations) || raw.observations.length > MAX_ITEMS) throw new Error("Workspace observations are invalid");
   const observations = raw.observations.map((item, index): Observation => {
-    if (!record(item) || !["INVESTMENT_OBSERVATION", "MANAGEMENT_MEETING_NOTE"].includes(String(item.kind))) throw new Error(`observations[${index}] is invalid`);
-    return {id: requiredString(item.id, `observations[${index}].id`, 120), text: requiredString(item.text, `observations[${index}].text`), kind: item.kind as Observation["kind"], author: requiredString(item.author, `observations[${index}].author`, 120), createdAt: timestamp(item.createdAt, `observations[${index}].createdAt`)};
+    const kinds: Observation["kind"][] = ["ANALYST_OBSERVATION", "MANAGEMENT_MEETING_NOTE", "EXPERT_CALL_NOTE", "FOUNDER_BEHAVIOR_OBSERVATION", "COMMERCIAL_REFERENCE", "NEGOTIATION_UPDATE"];
+    if (!record(item) || !kinds.includes(item.kind as Observation["kind"])) throw new Error(`observations[${index}] is invalid`);
+    if (!["HUMAN_OBSERVATION", "EXTERNAL_REFERENCE"].includes(String(item.classification)) || !["PRIVATE", "SHARED"].includes(String(item.visibility)) || !["UNREVIEWED", "REVIEWED", "DISPUTED"].includes(String(item.reviewStatus)) || !["SUPPORTS", "CHALLENGES", "CONTEXT_ONLY", "NO_CHANGE"].includes(String(item.thesisEffect))) throw new Error(`observations[${index}] review metadata is invalid`);
+    return {id: requiredString(item.id, `observations[${index}].id`, 120), text: requiredString(item.text, `observations[${index}].text`), kind: item.kind as Observation["kind"], author: requiredString(item.author, `observations[${index}].author`, 120), createdAt: timestamp(item.createdAt, `observations[${index}].createdAt`), classification: item.classification as Observation["classification"], relatedQuestion: requiredString(item.relatedQuestion, `observations[${index}].relatedQuestion`, 400), visibility: item.visibility as Observation["visibility"], reviewStatus: item.reviewStatus as Observation["reviewStatus"], thesisEffect: item.thesisEffect as Observation["thesisEffect"]};
   });
   assertUnique(observations.map((item) => item.id), "Observation");
   if (!record(raw.assumptionReviews) || Object.keys(raw.assumptionReviews).length > MAX_ITEMS) throw new Error("Workspace assumption reviews are invalid");
@@ -426,8 +438,26 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
   return {schemaVersion: WORKSPACE_SCHEMA, caseId, revision: Number(raw.revision), privateNote, observations, assumptionReviews, assumptionReviewEvents, issues, proposals, memoSections, scenarioValues: raw.scenarioValues as Record<string, string>, policyOverrides, changeControl, updatedAt: timestamp(raw.updatedAt, "updatedAt")};
 }
 
+export function migrateWorkspaceCandidate(raw: unknown): unknown {
+  if (!record(raw) || raw.schemaVersion !== LEGACY_WORKSPACE_SCHEMA) return raw;
+  const observations = Array.isArray(raw.observations) ? raw.observations.map((item) => {
+    if (!record(item)) return item;
+    const kind = item.kind === "INVESTMENT_OBSERVATION" ? "ANALYST_OBSERVATION" : item.kind;
+    return {
+      ...item,
+      kind,
+      classification: kind === "COMMERCIAL_REFERENCE" ? "EXTERNAL_REFERENCE" : "HUMAN_OBSERVATION",
+      relatedQuestion: "General investment thesis",
+      visibility: "PRIVATE",
+      reviewStatus: "UNREVIEWED",
+      thesisEffect: "CONTEXT_ONLY",
+    };
+  }) : raw.observations;
+  return {...raw, schemaVersion: WORKSPACE_SCHEMA, observations};
+}
+
 export function sanitizePortableWorkspaceImport(raw: unknown, expectedCaseId: string, allowedEvidenceRefs?: ReadonlySet<string>, scenarioContract?: WorkspaceScenarioContract, integrityContract?: WorkspaceIntegrityContract) {
-  const validated = validateWorkspace(raw, expectedCaseId, allowedEvidenceRefs, scenarioContract, integrityContract);
+  const validated = validateWorkspace(migrateWorkspaceCandidate(raw), expectedCaseId, allowedEvidenceRefs, scenarioContract, integrityContract);
   const proposals = validated.proposals.map((proposal): ModelProposal => ({
     ...proposal,
     origin: "PORTABLE_IMPORT_UNVERIFIED",
@@ -441,12 +471,42 @@ export function sanitizePortableWorkspaceImport(raw: unknown, expectedCaseId: st
 }
 
 export function loadWorkspaceResult(caseId: string, fallback: DealWorkspaceState, allowedEvidenceRefs?: ReadonlySet<string>, scenarioContract?: WorkspaceScenarioContract, integrityContract?: WorkspaceIntegrityContract) {
+  let rejectedRaw: string | null = null;
+  let rejectedKey = storageKey(caseId);
   try {
-    const raw = window.localStorage?.getItem(storageKey(caseId));
-    return {state: raw ? validateWorkspace(JSON.parse(raw) as unknown, caseId, allowedEvidenceRefs, scenarioContract, integrityContract) : fallback, notice: null as string | null};
+    const current = window.localStorage?.getItem(storageKey(caseId));
+    if (current) {
+      rejectedRaw = current;
+      return {state: validateWorkspace(JSON.parse(current) as unknown, caseId, allowedEvidenceRefs, scenarioContract, integrityContract), notice: null as string | null, recovery: null as WorkspaceRecoveryPreview | null};
+    }
+    const legacy = window.localStorage?.getItem(legacyStorageKey(caseId));
+    if (!legacy) return {state: fallback, notice: null as string | null, recovery: null as WorkspaceRecoveryPreview | null};
+    rejectedRaw = legacy;
+    rejectedKey = legacyStorageKey(caseId);
+    const migrated = validateWorkspace(migrateWorkspaceCandidate(JSON.parse(legacy) as unknown), caseId, allowedEvidenceRefs, scenarioContract, integrityContract);
+    window.localStorage?.setItem(storageKey(caseId), JSON.stringify(migrated));
+    return {state: migrated, notice: null as string | null, recovery: null as WorkspaceRecoveryPreview | null};
   } catch {
-    return {state: fallback, notice: "Saved workspace failed validation and was not loaded. The canonical case remains unchanged; import a valid portable state to recover prior work."};
+    return {state: fallback, notice: "Saved workspace failed validation and was not loaded. Review or download the rejected state before starting fresh.", recovery: rejectedRaw ? recoveryPreview(rejectedKey, rejectedRaw) : null};
   }
+}
+
+export interface WorkspaceRecoveryPreview {
+  storageKey: string;
+  bytes: number;
+  declaredSchema: string;
+  raw: string;
+}
+
+function recoveryPreview(key: string, raw: string): WorkspaceRecoveryPreview {
+  let declaredSchema = "Unreadable JSON";
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (record(parsed) && typeof parsed.schemaVersion === "string") declaredSchema = parsed.schemaVersion;
+  } catch {
+    // The raw bytes remain downloadable even when JSON parsing fails.
+  }
+  return {storageKey: key, bytes: new TextEncoder().encode(raw).byteLength, declaredSchema, raw};
 }
 
 export function loadWorkspace(caseId: string, fallback: DealWorkspaceState, allowedEvidenceRefs?: ReadonlySet<string>, scenarioContract?: WorkspaceScenarioContract, integrityContract?: WorkspaceIntegrityContract) {

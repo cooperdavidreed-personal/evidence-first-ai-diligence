@@ -118,12 +118,18 @@ describe("Underwriting Desk investor workspace", () => {
   });
 
   it("surfaces rejected saved state instead of silently resetting it", async () => {
+    const user = userEvent.setup();
     window.localStorage.setItem("underwriting-desk.workspace.v2.atlasgrid", "{not-valid-json");
     window.history.replaceState(null, "", "/#/v3/atlasgrid/overview");
     render(<App />);
     expect(await screen.findByText(/Saved workspace failed validation and was not loaded/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "The saved workspace was not changed"})).toBeInTheDocument();
+    expect(screen.getByText(/Unreadable JSON/)).toBeInTheDocument();
     expect(window.localStorage.getItem("underwriting-desk.workspace.v2.atlasgrid")).toBe("{not-valid-json");
     expect(screen.getByRole("heading", {name: "AtlasGrid Systems"})).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: "Start fresh"}));
+    expect(window.localStorage.getItem("underwriting-desk.workspace.v2.atlasgrid")).toBeNull();
+    expect(screen.queryByRole("heading", {name: "The saved workspace was not changed"})).not.toBeInTheDocument();
   });
 
   it("puts plain-language decision evidence before methods", async () => {
@@ -295,7 +301,8 @@ describe("Underwriting Desk investor workspace", () => {
     await user.type(screen.getByRole("textbox", {name: "New observation"}), "Validate cancellation rights before crediting booked ARR.");
     await user.click(screen.getByRole("button", {name: "Add observation"}));
     expect(screen.getByText("Validate cancellation rights before crediting booked ARR.")).toBeInTheDocument();
-    expect(screen.getByText(/Investment observation · Avery Chen/)).toBeInTheDocument();
+    expect(screen.getByText(/analyst observation · Avery Chen/i)).toBeInTheDocument();
+    expect(screen.getByText(/General investment thesis · private · unreviewed · context only/i)).toBeInTheDocument();
     expect(JSON.stringify(rawData)).toBe(before);
   });
 

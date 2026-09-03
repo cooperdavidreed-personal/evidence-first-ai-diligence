@@ -621,6 +621,10 @@ code { overflow-wrap: anywhere; font-family: "SFMono-Regular", Consolas, monospa
 .memo-sheet .source-tag { font-size: 13px; }
 .ledger-result { margin-top: 12px; color: var(--green); }
 .persistence-warning { margin: 0 0 18px; border-left: 3px solid var(--amber); padding: 11px 14px; background: var(--amber-soft); color: #62471c; font-size: 12px; line-height: 1.45; }
+.workspace-recovery { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: center; margin: 0 0 18px; border: 1px solid #d9b56f; border-left: 3px solid var(--amber); padding: 16px 18px; background: var(--amber-soft); }
+.workspace-recovery h2 { margin: 2px 0 5px; font-size: 16px; }
+.workspace-recovery p { margin: 0; color: #62471c; font-size: 13px; }
+.workspace-recovery > div:last-child { display: flex; gap: 8px; }
 .change-control { border: 1px solid var(--line-dark); border-radius: 7px; padding: 22px; background: #fff; }
 .change-control > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--line); padding-bottom: 18px; }
 .change-control > header h2 { margin: 2px 0 5px; font-size: 24px; }
