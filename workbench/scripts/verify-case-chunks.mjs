@@ -6,7 +6,11 @@ const root = resolve(import.meta.dirname, "..");
 const dist = resolve(root, "dist");
 const manifest = JSON.parse(readFileSync(resolve(dist, ".vite/manifest.json"), "utf8"));
 const entry = manifest["index.html"];
-const expected = ["virtual:underwriting-case-atlasgrid", "virtual:underwriting-case-helios"];
+const expected = [
+  "node_modules/.pnpm/pdfjs-dist@6.3.289/node_modules/pdfjs-dist/legacy/build/pdf.mjs",
+  "virtual:underwriting-case-atlasgrid",
+  "virtual:underwriting-case-helios",
+];
 if (!entry || JSON.stringify(entry.dynamicImports?.slice().sort()) !== JSON.stringify(expected)) throw new Error("case_chunk_manifest_invalid");
 
 const shell = readFileSync(resolve(dist, entry.file));

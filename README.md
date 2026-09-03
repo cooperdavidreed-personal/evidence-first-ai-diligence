@@ -4,7 +4,7 @@ Evidence-linked private-markets underwriting where deterministic finance, firm p
 
 > **Status: PUBLIC PRACTITIONER-TEST CANDIDATE — v0.2.1 RELEASE CANDIDATE**
 >
-> Every company, source record, policy, and output in the public demonstration is fictional and synthetic. This project is not investment advice, real-company diligence, investment-performance evidence, confidential-data-ready software, autonomous investment authority, or evidence of firm adoption.
+> AtlasGrid, Helios, Northstar, and their records are fictional and synthetic. The Snowflake retrospective uses linked SEC filings through a declared historical cutoff and is explicitly incomplete. This project is not investment advice, full real-company diligence, investment-performance evidence, confidential-data-ready software, autonomous investment authority, or evidence of firm adoption.
 
 Public application: [underwriting-desk-delta.vercel.app](https://underwriting-desk-delta.vercel.app/)
 
@@ -16,7 +16,8 @@ Underwriting Desk combines a governed Python analytical kernel with a React deci
 
 - **AtlasGrid Systems** — a control-buyout case with accounting normalization, debt and covenant mechanics, scenario returns, sensitivities, synthetic causal tests, and a value-creation plan.
 - **Helios Compute Control** — a growth-investment case with cohort economics, staged financing, ownership and dilution, preference waterfalls, runway, sensitivities, and milestone gates.
-- **Northstar Metrics** — an ordinary browser-local intake using the supported Growth SaaS Quick Package v1.
+- **Northstar Metrics** — browser-local intake of a source-preserved Excel model, customer CSV, management PDF, deal terms, and manifest; named V1 approval; V2 change control; controlled Excel output; and accepted-state IC export.
+- **Snowflake pre-IPO** — a real-company public-record retrospective frozen at September 14, 2020. It admits only eligible SEC filings, excludes the later final price and operating results, and makes no private-market return call from incomplete evidence.
 
 Each deal has five destinations: **Overview**, **Financials**, **Diligence**, **Documents**, and **IC Memo**. The persistent decision rail keeps posture, blockers, policy state, and next action visible while the user works.
 
@@ -55,14 +56,17 @@ The application allows a user to:
 
 ## Supported deal intake
 
-Use **New deal** with the four files in [`workbench/public/sample-package`](workbench/public/sample-package):
+Use **New deal** with the five files in [`workbench/public/sample-package-v2`](workbench/public/sample-package-v2):
 
 - `manifest.json`
 - `deal.json`
-- `monthly_financials.csv`
+- `operating_model.xlsx`
 - `customer_arr.csv`
+- `management_update.pdf`
 
-The browser verifies declared roles, sizes, SHA-256 digests, cutoff behavior, and supported fields. A complete Northstar package reproduces $15.9M LTM revenue, 70.0% gross margin, an 83.6% opening-cohort retention proxy over an 11-month interval, 33.3% post-money ownership, 3.23x gross MOIC, and 26.5% annualized gross return. The proxy is not annual NRR; it is compared directionally with the separate 95% annual NRR screen while cohort completeness remains blocked. That concern and six other diligence or policy gates keep the posture at `SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED`; clearing an illustrative return screen does not make the deal IC-ready. Removing or modifying a required source produces `NO CALL — PACKAGE INCOMPLETE` and suppresses return conclusions.
+The browser verifies declared roles, sizes, SHA-256 digests, cutoff behavior, supported Excel mappings and formulas, gross-profit reconciliation, customer rows, and page-level PDF text. A named human approves recognized mappings and exclusions—not the claims or investment. A complete Northstar package reproduces $15.9M LTM revenue, 70.0% gross margin, an 83.6% opening-cohort retention proxy over an 11-month interval, 33.3% post-money ownership, 3.23x gross MOIC, and 26.5% annualized gross return. The proxy is not annual NRR; it is compared directionally with the separate 95% annual NRR screen while cohort completeness remains blocked. That concern and six other diligence or policy gates keep the posture at `SCREENING COMPLETE — FURTHER DILIGENCE REQUIRED`; clearing an illustrative return screen does not make the deal IC-ready. Removing or modifying a required source produces `NO CALL — PACKAGE INCOMPLETE` and suppresses return conclusions.
+
+The included [`sample-package-v2-revision`](workbench/public/sample-package-v2-revision) changes the admitted customer evidence and lowers the cohort proxy to 78.6%. The Desk reruns deterministic outputs, marks affected assumptions, diligence, and memo sections stale, and requires a named accept, reject, or defer action. Acceptance archives V1 source and analysis state; rejection preserves V1. The controlled workbook export adds one reserved results sheet to a copy and proves on re-import that all original worksheet bytes and all 28 formulas are unchanged.
 
 Uploaded raw files are not retained as an unrestricted data room. The admitted parsed deal, its bounded replay sources, and the human workspace persist locally and can be exported and re-imported through a validated bundle. This is not encrypted, shared, authenticated, or appropriate for confidential information.
 
@@ -121,7 +125,7 @@ The v0.2.1 workbench gate covers frontend and model contracts, MCP, TypeScript/V
 - Observed practitioner testing remains `NOT RUN`; give participants the [20-minute test card](docs/PRACTITIONER-TEST-CARD.md), use the [moderator and scoring protocol](docs/PRACTITIONER-TESTING-PACKAGE.md), and retain results in the [feedback template](docs/practitioner-feedback-template.csv) without fabricating outcomes.
 - Passing tests do not establish investment accuracy, performance improvement, production adoption, or model superiority.
 
-The current release receipt identifies the exact public product commit, deployment, tests, independent reviews, and remaining limitations. Historical mission receipts remain preserved as prior-state evidence rather than current release claims.
+The release receipt is finalized only after the candidate commit is deployed and verified against the canonical URL. Historical mission receipts remain preserved as prior-state evidence rather than current release claims.
 
 ## Authorship and license
 

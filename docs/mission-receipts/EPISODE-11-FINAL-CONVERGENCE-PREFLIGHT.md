@@ -4,9 +4,9 @@ State: `VERIFIED`
 
 ## Identity
 
-- Mission: `/Users/bots/Dev/ic-underwriting-final-convergence-mission-20260903/mission.json`
+- Mission: external local mission capsule `ic-underwriting-final-convergence-mission-20260903/mission.json` (not published)
 - Mission SHA-256: `d7bbb99ae4d65900dee116b5d76255e11542404eede4cf5df51df2dc14c702a1`
-- Worktree: `/Users/bots/Dev/evidence-first-ai-diligence-final-convergence-20260903`
+- Worktree: isolated local checkout on `codex/underwriting-final-convergence` (host path not published)
 - Branch: `codex/underwriting-final-convergence`
 - Exact base: `f248ce27283318b3f3b3605781d8e17bd844dd63`
 - Writer: Codex

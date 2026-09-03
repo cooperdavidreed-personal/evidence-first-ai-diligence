@@ -133,6 +133,33 @@ def reviewed_demo_allowlist(root: Path) -> set[str]:
     return reviewed
 
 
+def reviewed_sample_package_binaries(root: Path) -> set[str]:
+    """Admit only manifest-bound binary fixtures in the public sample packages."""
+
+    reviewed: set[str] = set()
+    for package in ("sample-package-v2", "sample-package-v2-revision"):
+        package_root = root / "workbench" / "public" / package
+        manifest = json.loads((package_root / "manifest.json").read_text(encoding="utf-8"))
+        declarations = manifest.get("files")
+        if not isinstance(declarations, list):
+            raise ValueError(f"sample_package_manifest_invalid:{package}")
+        for declaration in declarations:
+            if not isinstance(declaration, dict) or not isinstance(declaration.get("name"), str):
+                raise ValueError(f"sample_package_entry_invalid:{package}")
+            relative_name = Path(declaration["name"])
+            if relative_name.is_absolute() or len(relative_name.parts) != 1 or ".." in relative_name.parts:
+                raise ValueError(f"sample_package_path_unsafe:{package}")
+            path = package_root / relative_name
+            if not path.is_file() or path.is_symlink():
+                raise ValueError(f"sample_package_file_missing:{package}:{relative_name}")
+            data = path.read_bytes()
+            if len(data) != declaration.get("bytes") or hashlib.sha256(data).hexdigest() != declaration.get("sha256"):
+                raise ValueError(f"sample_package_digest_mismatch:{package}:{relative_name}")
+            if relative_name.suffix.lower() in {".xlsx", ".pdf"}:
+                reviewed.add(path.relative_to(root).as_posix())
+    return reviewed
+
+
 def validate_source_room(root: Path, case_id: str, relative_root: str) -> set[str]:
     """Return the exact publishable inventory for one synthetic source room.
 
@@ -371,6 +398,10 @@ def main() -> int:
         reviewed_binaries.update(reviewed_demo_allowlist(ROOT))
     except (OSError, ValueError, json.JSONDecodeError) as error:
         failures.append(f"demo/release/manifest.json: {error}")
+    try:
+        reviewed_binaries.update(reviewed_sample_package_binaries(ROOT))
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        failures.append(f"workbench public sample packages: {error}")
     try:
         reviewed_source_files = source_room_allowlist(ROOT)
     except (OSError, ValueError, json.JSONDecodeError) as error:
