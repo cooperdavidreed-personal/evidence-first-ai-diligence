@@ -648,3 +648,20 @@ test("deep links still load only the selected retained case chunk", async ({page
   await expect(page.getByRole("heading", {name: "AtlasGrid Systems"})).toBeVisible();
   expect(requests.filter((url) => url.includes("atlasgrid"))).toHaveLength(1);
 });
+
+test("public-record retrospective enforces the historical cutoff without hindsight", async ({page}, testInfo: TestInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Desktop public-record proof");
+  await page.goto("/#/public-record/snowflake", {waitUntil: "networkidle"});
+  await expect(page.getByRole("heading", {name: "Snowflake pre-IPO screen"})).toBeVisible();
+  await expect(page.getByText("September 14, 2020 · 11:59 PM UTC")).toBeVisible();
+  await expect(page.getByText("2 filings admitted · 2 later filings excluded")).toBeVisible();
+  const ledger = page.locator(".filing-ledger");
+  await expect(ledger).toContainText("Final prospectus");
+  await expect(ledger).toContainText("Contains the final $120 offer price; prohibited hindsight");
+  await expect(page.getByText("NO CALL")).toBeVisible();
+  await expect(page.getByText(/does not support a complete ownership, dilution, downside or return model/)).toBeVisible();
+  await accessibilitySnapshot(page);
+  await captureVisualEvidence(page, `${testInfo.project.name}-snowflake-public-record-package-cutoff.png`);
+  await page.reload({waitUntil: "networkidle"});
+  await expect(page.getByRole("heading", {name: "Snowflake pre-IPO screen"})).toBeVisible();
+});

@@ -194,6 +194,36 @@ table, .overview-metrics strong, .finance-kpi strong, .canonical-comparison stro
 .empirical-summary p { margin-top: 5px; }
 
 .documents-workspace { min-width: 0; display: grid; grid-template-columns: 340px minmax(0,1fr); gap: 18px; margin-top: 24px; }
+.public-record-index { margin-top: 24px; }
+.public-record-page { min-height: 100vh; padding: 34px max(32px,calc((100vw - 1240px)/2)); background: var(--canvas); color: var(--ink); }
+.public-record-header { display: grid; grid-template-columns: auto minmax(0,1fr) 280px; gap: 24px; align-items: start; border-bottom: 2px solid var(--ink); padding-bottom: 24px; }
+.public-record-header > button { border: 0; padding: 4px 0; background: transparent; color: var(--cobalt); cursor: pointer; }
+.public-record-header h1 { margin: 5px 0 8px; font-size: 34px; }
+.public-record-header > div > p:last-child { max-width: 760px; color: var(--muted); font-size: 16px; }
+.public-record-header aside { border-left: 1px solid var(--line-dark); padding-left: 20px; }
+.public-record-header aside span, .cutoff-command span { display: block; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.public-record-header aside strong { display: block; margin: 7px 0; font-size: 26px; }
+.cutoff-command { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); margin: 22px 0; border: 1px solid var(--line); background: var(--line); gap: 1px; }
+.cutoff-command > div { padding: 15px 17px; background: white; }
+.cutoff-command strong, .cutoff-command small { display: block; margin-top: 4px; }
+.cutoff-command small { color: var(--muted); }
+.public-record-grid { display: grid; grid-template-columns: minmax(0,1.7fr) minmax(320px,1fr); gap: 18px; }
+.public-fact-table { border-top: 1px solid var(--line); }
+.public-fact-table article { display: grid; grid-template-columns: minmax(220px,1fr) 100px minmax(220px,1fr) 120px; gap: 14px; align-items: center; border-bottom: 1px solid var(--line); padding: 13px 0; }
+.public-fact-table article div { display: grid; gap: 3px; }
+.public-fact-table small, .public-fact-table p { color: var(--muted); font-size: 12px; }
+.public-fact-table b { font-variant-numeric: tabular-nums; }
+.public-fact-table a, .filing-ledger a { color: var(--cobalt); text-decoration: none; }
+.public-record-judgment h2 { margin: 5px 0 10px; }
+.public-record-judgment h3 { margin: 18px 0 7px; font-size: 14px; }
+.public-record-judgment ul { padding-left: 19px; color: var(--muted); }
+.public-record-judgment li { margin: 6px 0; }
+.public-record-boundary { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 14px; font-size: 12px; }
+.filing-ledger { margin-top: 18px; }
+.filing-ledger article { display: grid; grid-template-columns: 90px minmax(0,1fr) 120px 100px; gap: 14px; align-items: center; border-top: 1px solid var(--line); padding: 13px 0; }
+.filing-ledger article p { color: var(--muted); }
+.filing-ledger article[data-state="EXCLUDED_POST_CUTOFF"] { background: #faf7f5; }
+.public-record-page > footer { margin-top: 22px; color: var(--muted); font-size: 12px; text-align: center; }
 .excel-round-trip { display: grid; grid-template-columns: minmax(320px,1fr) auto; gap: 16px 24px; align-items: center; border: 1px solid var(--line); padding: 18px 20px; background: #fff; }
 .excel-round-trip h2 { margin: 3px 0 6px; font-size: 18px; }
 .excel-round-trip p { color: var(--muted); }

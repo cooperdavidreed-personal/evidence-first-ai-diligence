@@ -11,6 +11,7 @@ import {LineageDrawer} from "./lineage-drawer";
 import {createAdapterTransport, type ConnectionState} from "./model-connection";
 import {ModelConnectionButton, ModelConnectionDialog} from "./model-connection-dialog";
 import {ModelReviewPanel} from "./model-review-panel";
+import {PublicRecordCase} from "./public-record-case";
 import {ProposalLedgerImport} from "./proposal-ledger-import";
 import type {ModelTransport} from "./model-workflow";
 import {ATLAS_SCREEN_POLICY, HELIOS_SCREEN_POLICY} from "./policy";
@@ -31,14 +32,15 @@ import {createWorkspaceIntegrityContract, storageKey, validateWorkspace, type Wo
 
 export const dealViews = ["overview", "financials", "diligence", "documents", "memo"] as const;
 export type DealView = (typeof dealViews)[number];
-export type RouteView = DealView | "deals";
-export interface RouteState { caseId: CaseId | "local"; view: RouteView }
+export type RouteView = DealView | "deals" | "public-record";
+export interface RouteState { caseId: CaseId | "local" | "public-record"; view: RouteView }
 
 const viewLabels: Record<DealView, string> = {overview: "Overview", financials: "Financials", diligence: "Diligence", documents: "Documents", memo: "IC Memo"};
 const legacyViews: Record<string, DealView> = {risks: "diligence", thesis: "overview", "value-creation": "financials", explore: "documents", sources: "documents", methodology: "diligence", audit: "documents", underwriting: "financials"};
 
 export function parseRoute(): RouteState {
   const parts = window.location.hash.replace(/^#\//, "").split("/");
+  if (parts[0] === "public-record" && parts[1] === "snowflake") return {caseId: "public-record", view: "public-record"};
   const caseId = parts[1] ?? "";
   const requested = parts[2] ?? "overview";
   if (caseId === "local" && parts.length >= 3) return {caseId: "local", view: dealViews.includes(requested as DealView) ? requested as DealView : "overview"};
@@ -73,7 +75,7 @@ class RetainedEvidenceBoundary extends Component<{children: ReactNode; onReset: 
 
 interface DealIndexSummary {openIssues: number; lastActivity: string; working: boolean; nextAction: string}
 
-function DealList({onOpen, onNew, onConnect, connection, localDeal, onOpenLocal, onImportLocal, importNotice, loadCaseFn}: {onOpen: (caseId: CaseId) => void; onNew: () => void; onConnect: () => void; connection: ConnectionState | null; localDeal: IntakeResult | null; onOpenLocal: () => void; onImportLocal: (file?: File) => void; importNotice: string; loadCaseFn: (caseId: CaseId) => Promise<CaseData>}) {
+function DealList({onOpen, onNew, onConnect, connection, localDeal, onOpenLocal, onOpenPublicRecord, onImportLocal, importNotice, loadCaseFn}: {onOpen: (caseId: CaseId) => void; onNew: () => void; onConnect: () => void; connection: ConnectionState | null; localDeal: IntakeResult | null; onOpenLocal: () => void; onOpenPublicRecord: () => void; onImportLocal: (file?: File) => void; importNotice: string; loadCaseFn: (caseId: CaseId) => Promise<CaseData>}) {
   const [summaries, setSummaries] = useState<Partial<Record<CaseId, DealIndexSummary>>>({});
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +102,7 @@ function DealList({onOpen, onNew, onConnect, connection, localDeal, onOpenLocal,
     <header className="deals-header"><div><div className="brand-lockup"><span>U</span><strong>Underwriting Desk</strong></div><p>Evidence-linked underwriting where deterministic finance, policy and human judgment remain separate.</p></div><div><ModelConnectionButton connection={connection} onClick={onConnect} /><label className="file-button">Import deal<input type="file" accept="application/json,.json" onChange={(event) => onImportLocal(event.target.files?.[0])} /></label><button className="primary-button" type="button" data-testid="new-deal-button" onClick={onNew}>New deal</button></div></header>
     {importNotice ? <p className="import-notice" role="status">{importNotice}</p> : null}
     <section className="deal-index" aria-labelledby="active-deals-heading"><div className="section-heading"><div><p className="eyebrow">Decision workspaces</p><h1 id="active-deals-heading">Deals</h1></div><span>{caseCatalog.length} retained synthetic cases{localDeal ? " · 1 admitted local case" : ""}</span></div><div className="deal-table" aria-label="Deal decision workspaces"><div className="deal-table-head" aria-hidden="true"><span>Company</span><span>Strategy</span><span>Owner</span><span>Stage</span><span>Posture</span><span>Open issues</span><span>Last activity</span><span>Next action</span></div>{localDeal ? <button type="button" className="deal-row" aria-label={`Open ${localDeal.deal?.company} — ${localDeal.posture}; ${localDeal.analysis?.tests.filter((test) => test.blocksAdvancement).length ?? "unknown"} blockers`} onClick={onOpenLocal}><span><strong>{localDeal.deal?.company}</strong><small>Supported Quick Package</small></span><span>Growth</span><span>{localDeal.deal?.analystOwner}</span><span>Screening</span><span className={`posture posture-${localDeal.posture === "HOLD" ? "hold" : "screening"}`}>{localDeal.posture === "HOLD" ? "HOLD" : "Screening"}</span><span>{localDeal.analysis?.tests.filter((test) => test.blocksAdvancement).length ?? "—"}</span><span>{formatHumanDate(`${localDeal.deal?.cutoff}T12:00:00Z`)}</span><span>{localDeal.posture}</span></button> : null}{caseCatalog.map(dealButton)}</div></section>
+    <section className="deal-index public-record-index" aria-labelledby="public-record-heading"><div className="section-heading"><div><p className="eyebrow">Historical cutoff proof</p><h2 id="public-record-heading">Public-record retrospective</h2></div><span>Real company · SEC filings</span></div><button type="button" className="deal-row" onClick={onOpenPublicRecord}><span><strong>Snowflake pre-IPO screen</strong><small>Evidence available through September 14, 2020</small></span><span>Growth</span><span>Public record</span><span>Retrospective</span><span className="posture posture-hold">NO CALL</span><span>3 gaps</span><span>Sep 14, 2020</span><span>Inspect cutoff and excluded hindsight</span></button></section>
     <section className="intake-callout"><div><p className="eyebrow">Test with your own package</p><h2>Growth SaaS evidence package</h2><p>Upload declared Excel, CSV, PDF, and deal files. Validation and calculations stay in the browser. Uploaded thresholds never become fund policy.</p></div><button className="secondary-button" type="button" onClick={onNew}>Open intake</button></section>
     <footer className="public-boundary">Public demonstration with fictional companies and synthetic records. Not investment advice. Do not upload confidential information.</footer>
   </main>;
@@ -363,6 +366,7 @@ export default function App({initialCase, initialRoute, loadCaseFn = loadCase}: 
     const sync = () => {
       const route = parseRoute();
       if (route.view === "deals") {setActiveLocal(false); setView("deals"); window.scrollTo(0, 0); return;}
+      if (route.view === "public-record") {setActiveLocal(false); setView("public-record"); window.scrollTo(0, 0); return;}
       if (route.caseId === "local") {
         setLoading(true);
         void loadAdmittedDeal().then((restored) => {
@@ -371,7 +375,7 @@ export default function App({initialCase, initialRoute, loadCaseFn = loadCase}: 
         }).finally(() => setLoading(false));
         return;
       }
-      void openRetainedDeal(route.caseId, route.view, "replace");
+      void openRetainedDeal(route.caseId as CaseId, route.view as DealView, "replace");
     };
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
@@ -393,7 +397,8 @@ export default function App({initialCase, initialRoute, loadCaseFn = loadCase}: 
   if (loadError) return <main className="loading-state load-error" role="alert"><div><p className="eyebrow">Deal workspace</p><h1>Deal unavailable</h1><p>The selected deal could not be opened. No data, assumption or decision was changed.</p><button className="secondary-button" type="button" onClick={returnToDeals}>Return to Deals</button></div></main>;
   const importLocal = async (file?: File) => {if (!file) return; try {if (file.size > 13_000_000) throw new Error("Portable deal bundle exceeds the 13 MB public-slice limit"); const bundle = await validateAdmittedDealBundle(await file.text()); const persisted = installAdmittedDealBundle(bundle); setLocalDeal(bundle.admittedDeal); setImportNotice(persisted ? "Portable deal replayed, recalculated and imported locally." : "Portable deal replayed and recalculated; browser storage is unavailable, so this session remains in memory."); setLocalPersistenceNotice(persisted ? "" : "Session-only deal — browser persistence failed."); setActiveLocal(true); setView("overview"); window.history.pushState(null, "", "#/v3/local/overview"); window.scrollTo(0, 0);} catch (error) {setImportNotice(error instanceof Error ? error.message : "Portable deal import failed.");}};
   if (intakeOpen) return <DealIntake onCancel={() => setIntakeOpen(false)} onComplete={(result) => {const persisted = persistAdmittedDeal(result); setLocalPersistenceNotice(persisted ? "" : "Session-only deal — browser persistence failed."); setLocalDeal(result); setIntakeOpen(false); setActiveLocal(true); setView("overview"); window.history.pushState(null, "", "#/v3/local/overview"); window.scrollTo(0, 0);}} />;
-  if (view === "deals") return <><DealList onOpen={(caseId) => void openRetainedDeal(caseId, "overview")} onNew={() => setIntakeOpen(true)} onConnect={() => setConnectionOpen(true)} connection={connection} localDeal={localDeal} onOpenLocal={() => {setActiveLocal(true); setView("overview"); window.history.pushState(null, "", "#/v3/local/overview"); window.scrollTo(0, 0);}} onImportLocal={(file) => void importLocal(file)} importNotice={importNotice} loadCaseFn={loadCaseFn} />{connectionDialog}</>;
+  if (view === "deals") return <><DealList onOpen={(caseId) => void openRetainedDeal(caseId, "overview")} onNew={() => setIntakeOpen(true)} onConnect={() => setConnectionOpen(true)} connection={connection} localDeal={localDeal} onOpenLocal={() => {setActiveLocal(true); setView("overview"); window.history.pushState(null, "", "#/v3/local/overview"); window.scrollTo(0, 0);}} onOpenPublicRecord={() => {setActiveLocal(false); setView("public-record"); window.history.pushState(null, "", "#/public-record/snowflake"); window.scrollTo(0, 0);}} onImportLocal={(file) => void importLocal(file)} importNotice={importNotice} loadCaseFn={loadCaseFn} />{connectionDialog}</>;
+  if (view === "public-record") return <PublicRecordCase onDeals={returnToDeals} />;
   if (activeLocal && localDeal) return <><LocalDealShell result={localDeal} view={view} onNavigate={(next) => {setView(next); window.history.pushState(null, "", `#/v3/local/${next}`); window.scrollTo(0, 0);}} onDeals={returnToDeals} onConnect={() => setConnectionOpen(true)} onPromote={(promoted) => {const persisted = persistAdmittedDeal(promoted); setLocalPersistenceNotice(persisted ? "" : "Version promoted for this session; browser persistence failed."); setLocalDeal(promoted);}} connection={connection} modelTransport={modelTransport} persistenceNotice={localPersistenceNotice} />{connectionDialog}</>;
   return <><DealShell key={caseData.caseId} caseData={caseData} view={view as DealView} onNavigate={navigate} onChooseDeal={(caseId) => void openRetainedDeal(caseId, view as DealView)} onDeals={returnToDeals} onConnect={() => setConnectionOpen(true)} connection={connection} modelTransport={modelTransport} />{connectionDialog}</>;
 }
