@@ -4,6 +4,7 @@ import {compareDecimalStrings} from "./data-contract";
 import {approveBaseline, calculateQuickScenario, processDealPackage, type IntakeResult, type QuickAnalysis} from "./intake";
 import {localCaseId, localScenarioContract, localWorkspaceSeed, serializeAdmittedDealBundle} from "./local-deal-state";
 import {LocalChangeControl} from "./local-change-control";
+import {ExcelRoundTrip} from "./excel-round-trip";
 import {ModelReviewPanel} from "./model-review-panel";
 import type {ConnectionState} from "./model-connection";
 import {ModelConnectionButton} from "./model-connection-dialog";
@@ -223,7 +224,7 @@ export function LocalDealShell({result, view, onNavigate, onDeals, onConnect, on
       : view === "diligence"
         ? <LocalDiligence result={result} state={state} update={update} modelTransport={modelTransport} connection={connection} />
         : view === "documents"
-          ? <><SourceAttachments result={result} /><LocalDocuments result={result} /></>
+          ? <><ExcelRoundTrip result={result} /><SourceAttachments result={result} /><LocalDocuments result={result} /></>
           : <><EditableMemo state={state} update={update} title={deal.company} subtitle="What must be true for this package to advance beyond screening?" scenarioSummary={localScenarioMemoSummary(result, state)} /><LocalBundleTransfer result={result} state={state} /><WorkspaceTransfer state={state} replace={replace} allowedEvidenceRefs={allowedEvidenceRefs} scenarioContract={scenarioContract} integrityContract={integrityContract} /></>;
   return <div className="product-shell">
     <aside className="sidebar"><button type="button" className="wordmark" onClick={onDeals}><span>U</span><strong>Underwriting Desk</strong></button><nav aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={item === view ? "active" : ""} aria-current={item === view ? "page" : undefined} onClick={() => onNavigate(item)}>{labels[item]}</button>)}</nav><div className="sidebar-foot"><button type="button" onClick={onConnect}>Model settings</button><span>{persistenceNotice || storageAlert ? "Workspace attention required" : storageNotice}</span><small>Public synthetic workspace</small></div></aside>

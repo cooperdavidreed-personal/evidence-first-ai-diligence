@@ -194,6 +194,19 @@ table, .overview-metrics strong, .finance-kpi strong, .canonical-comparison stro
 .empirical-summary p { margin-top: 5px; }
 
 .documents-workspace { min-width: 0; display: grid; grid-template-columns: 340px minmax(0,1fr); gap: 18px; margin-top: 24px; }
+.excel-round-trip { display: grid; grid-template-columns: minmax(320px,1fr) auto; gap: 16px 24px; align-items: center; border: 1px solid var(--line); padding: 18px 20px; background: #fff; }
+.excel-round-trip h2 { margin: 3px 0 6px; font-size: 18px; }
+.excel-round-trip p { color: var(--muted); }
+.excel-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.excel-actions button { min-height: 36px; border: 0; border-radius: 2px; padding: 8px 11px; background: var(--ink); color: white; cursor: pointer; }
+.workbook-diff { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 14px; }
+.workbook-diff header { display: flex; gap: 12px; align-items: baseline; }
+.workbook-diff header strong { color: var(--green); }
+.workbook-diff-fail header strong { color: var(--rust); }
+.workbook-diff dl { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 1px; margin-top: 12px; background: var(--line); }
+.workbook-diff dl > div { min-width: 0; padding: 10px; background: var(--surface); }
+.workbook-diff dt { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.workbook-diff dd { margin: 4px 0 0; overflow-wrap: anywhere; font-size: 12px; }
 .document-preview, .excerpt-list, .excerpt-list article { min-width: 0; }
 .document-register { padding: 0; overflow: hidden; }
 .document-register > header { padding: 18px; }
