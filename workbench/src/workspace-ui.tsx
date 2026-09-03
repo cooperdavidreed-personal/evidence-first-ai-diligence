@@ -41,9 +41,9 @@ export function formatHumanDate(value: string | null | undefined) {
   return new Intl.DateTimeFormat("en-US", {month: "short", day: "numeric", year: "numeric", timeZone: "UTC"}).format(date);
 }
 
-export function useDealWorkspace(seed: WorkspaceSeed, allowedEvidenceRefs: ReadonlySet<string>, scenarioContract: WorkspaceScenarioContract, policyOverrideRoles: Record<string, string> = EMPTY_POLICY_OVERRIDE_ROLES) {
+export function useDealWorkspace(seed: WorkspaceSeed, allowedEvidenceRefs: ReadonlySet<string>, scenarioContract: WorkspaceScenarioContract, policyOverrideRoles: Record<string, string> = EMPTY_POLICY_OVERRIDE_ROLES, integritySeed: WorkspaceSeed = seed) {
   const fallback = useMemo(() => createWorkspace(seed), [seed]);
-  const integrityContract = useMemo(() => createWorkspaceIntegrityContract(seed, policyOverrideRoles), [seed, policyOverrideRoles]);
+  const integrityContract = useMemo(() => createWorkspaceIntegrityContract(integritySeed, policyOverrideRoles), [integritySeed, policyOverrideRoles]);
   const initialLoad = useMemo(() => loadWorkspaceResult(seed.caseId, fallback, allowedEvidenceRefs, scenarioContract, integrityContract), [seed.caseId, fallback, allowedEvidenceRefs, scenarioContract, integrityContract]);
   const [state, setState] = useState<DealWorkspaceState>(() => initialLoad.state);
   const [loadNotice, setLoadNotice] = useState<string | null>(() => initialLoad.notice);

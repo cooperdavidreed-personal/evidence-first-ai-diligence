@@ -39,6 +39,8 @@ export interface EvidenceVersionArchive {
   approval: BaselineApproval;
   files: IntakeFileStatus[];
   sourcePayloads: SourcePayload[] | Array<{name: typeof REQUIRED_FILES[number]; text: string}>;
+  deal: DealInput;
+  analysis: QuickAnalysis;
 }
 
 export interface SourcePayload {
@@ -544,6 +546,6 @@ export function promoteEvidenceVersion(current: IntakeResult, candidate: IntakeR
   if (statedRationale.length < 20 || statedRationale.length > 1200) throw new Error("Explain why the revised evidence should replace the canonical version");
   const packageDigest = candidate.files.find((file) => file.name === "manifest.json")?.sha256;
   if (!packageDigest || Number.isNaN(Date.parse(approvedAt))) throw new Error("Revision identity or approval time is invalid");
-  const archive: EvidenceVersionArchive = {approval: current.baselineApproval, files: current.files, sourcePayloads: current.sourcePayloads};
+  const archive: EvidenceVersionArchive = {approval: current.baselineApproval, files: current.files, sourcePayloads: current.sourcePayloads, deal: current.deal!, analysis: current.analysis!};
   return structuredClone({...candidate, dealLineageId: current.dealLineageId ?? current.baselineApproval.packageDigest, versionHistory: [...(current.versionHistory ?? []), archive], baselineApproval: {version: `V${Number(match[1]) + 1}` as `V${number}`, actor: namedActor, rationale: statedRationale, approvedAt, packageDigest}});
 }

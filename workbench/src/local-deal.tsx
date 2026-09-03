@@ -2,7 +2,7 @@ import {useMemo, useState} from "react";
 import {dealViews, type DealView} from "./App";
 import {compareDecimalStrings} from "./data-contract";
 import {approveBaseline, calculateQuickScenario, processDealPackage, type IntakeResult, type QuickAnalysis} from "./intake";
-import {localCaseId, localScenarioContract, localWorkspaceSeed, serializeAdmittedDealBundle} from "./local-deal-state";
+import {localCaseId, localScenarioContract, localWorkspaceIntegritySeed, localWorkspaceSeed, serializeAdmittedDealBundle} from "./local-deal-state";
 import {LocalChangeControl} from "./local-change-control";
 import {ExcelRoundTrip} from "./excel-round-trip";
 import {ModelReviewPanel} from "./model-review-panel";
@@ -140,7 +140,9 @@ function LocalDiligence({result, state, update, modelTransport, connection}: {re
   ];
   const tabs = [{id: "issues", label: `Issues · ${state.issues.filter((issue) => issue.status !== "RESOLVED").length}`}, {id: "assumptions", label: "Assumptions"}, {id: "policy", label: "Policy"}, {id: "model", label: "Model review"}] as const;
   const lockedIssueIds = new Set(localWorkspaceSeed(result).lockedIssueIds ?? []);
-  return <div className="view-stack"><label className="mobile-workspace-selector"><span>Diligence workspace</span><select value={section} onChange={(event) => setSection(event.target.value as typeof section)}>{tabs.map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}</select></label><nav className="workspace-tabs" aria-label="Diligence workspace">{tabs.map((tab) => <button type="button" key={tab.id} aria-pressed={section === tab.id} onClick={() => setSection(tab.id)}>{tab.label}</button>)}</nav>{section === "issues" ? <DiligenceWorklist state={state} update={update} lockedIssueIds={lockedIssueIds} /> : null}{section === "assumptions" ? <AssumptionRegistry assumptions={assumptions} state={state} update={update} /> : null}{section === "policy" ? <PolicyRegistry profile={analysis.policyProfile} state={state} update={update} blockingGates={analysis.tests.filter((test) => test.blocksAdvancement).map((test) => ({gateId: test.gateId, label: test.label}))} overridableGateIds={LOCAL_OVERRIDABLE_GATES} /> : null}{section === "model" ? <ModelReviewPanel dealId={dealId} connection={connection} transport={modelTransport} hostedEligible={hostedEligible} unavailableReason="Hosted review is enabled for the included Northstar sample only. Other admitted packages keep deterministic analysis and human workflow, but no model control is presented as functional." proposals={state.proposals} onProposalsChange={(next) => update((current) => ({proposals: typeof next === "function" ? next(current.proposals) : next}))} evidence={analysis.metrics.map((metric) => ({id: metric.id, title: metric.label, displayValue: metric.display, summary: metric.meaning}))} /> : null}</div>;
+  const latestChange = state.changeControl?.dispositionEvents.at(-1)?.disposition;
+  const staleAssumptionIds = state.changeControl && latestChange !== "REJECTED" ? state.changeControl.affectedAssumptionIds : [];
+  return <div className="view-stack"><label className="mobile-workspace-selector"><span>Diligence workspace</span><select value={section} onChange={(event) => setSection(event.target.value as typeof section)}>{tabs.map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}</select></label><nav className="workspace-tabs" aria-label="Diligence workspace">{tabs.map((tab) => <button type="button" key={tab.id} aria-pressed={section === tab.id} onClick={() => setSection(tab.id)}>{tab.label}</button>)}</nav>{section === "issues" ? <DiligenceWorklist state={state} update={update} lockedIssueIds={lockedIssueIds} /> : null}{section === "assumptions" ? <AssumptionRegistry assumptions={assumptions} state={state} update={update} staleAssumptionIds={staleAssumptionIds} staleSince={state.changeControl?.importedAt} /> : null}{section === "policy" ? <PolicyRegistry profile={analysis.policyProfile} state={state} update={update} blockingGates={analysis.tests.filter((test) => test.blocksAdvancement).map((test) => ({gateId: test.gateId, label: test.label}))} overridableGateIds={LOCAL_OVERRIDABLE_GATES} /> : null}{section === "model" ? <ModelReviewPanel dealId={dealId} connection={connection} transport={modelTransport} hostedEligible={hostedEligible} unavailableReason="Hosted review is enabled for the included Northstar sample only. Other admitted packages keep deterministic analysis and human workflow, but no model control is presented as functional." proposals={state.proposals} onProposalsChange={(next) => update((current) => ({proposals: typeof next === "function" ? next(current.proposals) : next}))} evidence={analysis.metrics.map((metric) => ({id: metric.id, title: metric.label, displayValue: metric.display, summary: metric.meaning}))} /> : null}</div>;
 }
 
 function SourceAttachments({result}: {result: IntakeResult}) {
@@ -173,11 +175,13 @@ function LocalDocuments({result}: {result: IntakeResult}) {
 
 function localScenarioMemoSummary(result: IntakeResult, state: DealWorkspaceState) {
   const {growth, multipleValue, changed, output} = normalizedLocalScenario(result, state);
-  const label = changed ? `${percent(growth)} growth · ${multipleValue.toFixed(1)}x exit` : "Admitted package case";
+  const evidenceVersion = result.baselineApproval?.version ?? "Unapproved evidence";
+  const evidenceDigest = result.baselineApproval?.packageDigest ?? "unapproved";
+  const label = changed ? `${percent(growth)} growth · ${multipleValue.toFixed(1)}x exit` : `${evidenceVersion} admitted package case`;
   const returnLine = `${percent(output.annualizedGrossReturn)} annualized gross return · ${output.grossMoic.toFixed(2)}x gross multiple`;
-  return {state: changed ? "Unapproved what-if" as const : "Canonical case" as const, label, returnLine, detail: `${money(output.terminalRevenueCents)} terminal revenue · ${money(output.exitEquityCents)} exit equity value. The working scenario does not overwrite the admitted package case.`, snapshotId: `local:${growth}:${multipleValue}:${output.annualizedGrossReturn}:${output.grossMoic}`, sectionBodies: {
-    screening: `${result.posture}. ${label} produces ${returnLine}. Advancement still requires fund-owned policy, completed diligence, and human IC review.`,
-    economics: `${label}: ${returnLine}, ${money(output.terminalRevenueCents)} terminal revenue, and ${money(output.exitEquityCents)} exit equity value.`,
+  return {state: changed ? "Unapproved what-if" as const : "Canonical case" as const, label, returnLine, detail: `${evidenceVersion} evidence · ${percent(result.analysis!.ordinaryNrr)} cohort retention proxy · ${money(output.terminalRevenueCents)} terminal revenue · ${money(output.exitEquityCents)} exit equity value. The working scenario does not overwrite the admitted package case.`, snapshotId: `local:${evidenceVersion}:${evidenceDigest}:${growth}:${multipleValue}:${result.analysis!.ordinaryNrr}:${output.annualizedGrossReturn}:${output.grossMoic}`, sectionBodies: {
+    screening: `${result.posture}. ${evidenceVersion} evidence records a ${percent(result.analysis!.ordinaryNrr)} cohort retention proxy. ${label} produces ${returnLine}. Advancement still requires fund-owned policy, completed diligence, and human IC review.`,
+    economics: `${label}: ${returnLine}, ${money(output.terminalRevenueCents)} terminal revenue, and ${money(output.exitEquityCents)} exit equity value. Evidence version: ${evidenceVersion}.`,
     diligence: "Validate retention interval and cohort quality, cost classification, customer concentration, committed costs, cap table, financing terms, and assumption provenance before any IC advancement.",
   }};
 }
@@ -213,9 +217,10 @@ function BaselineApprovalRecord({result}: {result: IntakeResult}) {
 export function LocalDealShell({result, view, onNavigate, onDeals, onConnect, onPromote, connection, modelTransport, persistenceNotice = ""}: {result: IntakeResult; view: DealView; onNavigate: (view: DealView) => void; onDeals: () => void; onConnect: () => void; onPromote?: (result: IntakeResult) => void; connection: ConnectionState | null; modelTransport?: ModelTransport; persistenceNotice?: string}) {
   const deal = result.deal!;
   const seed = useMemo(() => localWorkspaceSeed(result), [result]);
+  const integritySeed = useMemo(() => localWorkspaceIntegritySeed(result), [result]);
   const allowedEvidenceRefs = useMemo(() => new Set(result.analysis!.metrics.map((item) => item.id)), [result]);
   const scenarioContract = useMemo(() => localScenarioContract(), []);
-  const {state, update, replace, storageNotice, recovery, discardRejectedState, integrityContract} = useDealWorkspace(seed, allowedEvidenceRefs, scenarioContract, LOCAL_POLICY_OVERRIDE_ROLES);
+  const {state, update, replace, storageNotice, recovery, discardRejectedState, integrityContract} = useDealWorkspace(seed, allowedEvidenceRefs, scenarioContract, LOCAL_POLICY_OVERRIDE_ROLES, integritySeed);
   const storageAlert = storageNotice === "Saved locally" ? "" : storageNotice;
   const content = view === "overview"
     ? <><BaselineApprovalRecord result={result} />{onPromote ? <LocalChangeControl result={result} state={state} update={update} onPromote={onPromote} /> : null}<LocalOverview result={result} state={state} update={update} /></>

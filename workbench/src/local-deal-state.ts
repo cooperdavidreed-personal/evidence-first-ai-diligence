@@ -44,7 +44,9 @@ function compactPercent(value: number) {
 export function localWorkspaceSeed(result: IntakeResult): WorkspaceSeed {
   if (!result.deal || !result.analysis) throw new Error("A complete admitted deal is required to create its workspace contract");
   const {deal, analysis} = result;
-  const snapshotId = `local:${deal.annualRevenueGrowth}:${deal.exitRevenueMultiple}:${analysis.annualizedGrossReturn}:${analysis.grossMoic}`;
+  const evidenceVersion = result.baselineApproval?.version ?? "Unapproved evidence";
+  const evidenceDigest = result.baselineApproval?.packageDigest ?? "unapproved";
+  const snapshotId = `local:${evidenceVersion}:${evidenceDigest}:${deal.annualRevenueGrowth}:${deal.exitRevenueMultiple}:${analysis.ordinaryNrr}:${analysis.annualizedGrossReturn}:${analysis.grossMoic}`;
   return {
     caseId: localCaseId(result),
     lockedIssueIds: analysis.tests.filter((test) => test.blocksAdvancement).map((test) => test.gateId),
@@ -79,8 +81,14 @@ export function localWorkspaceSeed(result: IntakeResult): WorkspaceSeed {
   };
 }
 
+export function localWorkspaceIntegritySeed(result: IntakeResult): WorkspaceSeed {
+  const origin = result.versionHistory?.[0];
+  if (!origin) return localWorkspaceSeed(result);
+  return localWorkspaceSeed({...result, deal: origin.deal, analysis: origin.analysis, baselineApproval: origin.approval, versionHistory: []});
+}
+
 function localIntegrityContract(result: IntakeResult) {
-  return createWorkspaceIntegrityContract(localWorkspaceSeed(result), {"retention-nrr": "Policy owner"});
+  return createWorkspaceIntegrityContract(localWorkspaceIntegritySeed(result), {"retention-nrr": "Policy owner"});
 }
 
 export function validateAdmittedDeal(raw: unknown): IntakeResult {
@@ -120,7 +128,7 @@ export function validateAdmittedDeal(raw: unknown): IntakeResult {
   if (raw.dealLineageId !== undefined && (typeof raw.dealLineageId !== "string" || !/^[a-f0-9]{64}$/.test(raw.dealLineageId))) throw new Error("Deal evidence lineage is invalid");
   if (raw.versionHistory !== undefined) {
     if (!Array.isArray(raw.versionHistory) || raw.versionHistory.length > 10) throw new Error("Evidence version history is invalid");
-    for (const [index, archive] of raw.versionHistory.entries()) if (!record(archive) || !record(archive.approval) || typeof archive.approval.version !== "string" || !/^V[1-9]\d*$/.test(archive.approval.version) || !Array.isArray(archive.files) || !Array.isArray(archive.sourcePayloads)) throw new Error(`Evidence version archive ${index} is invalid`);
+    for (const [index, archive] of raw.versionHistory.entries()) if (!record(archive) || !record(archive.approval) || typeof archive.approval.version !== "string" || !/^V[1-9]\d*$/.test(archive.approval.version) || !Array.isArray(archive.files) || !Array.isArray(archive.sourcePayloads) || !record(archive.deal) || !record(archive.analysis)) throw new Error(`Evidence version archive ${index} is invalid`);
   }
   localCaseId(raw as unknown as IntakeResult);
   return structuredClone(raw) as unknown as IntakeResult;
