@@ -38,3 +38,11 @@ Run the independent test in `docs/DESK-ANALYST-PILOT-20260909.md`. Measure setup
 Native Excel check: the new synthetic change-table export opened in Microsoft Excel on macOS with worksheet Review changes, used range A1:I2 and Ready status, with no repair dialog observed. This establishes local opening compatibility, not his Windows setup or arbitrary model calculation. See trial-native-excel-open.json.
 
 Minimum-runtime exercise: the same ZIP passed its extracted launcher/API/MCP/backup/delete/restore checks using Node v24.20.0, in addition to Node v26.3.0. The manifest remains unsigned.
+
+## Final result
+
+Full locked Python regression: **190/190 passed**, 775.28 seconds. No Python investment-engine change was needed. The earlier system-environment run was stopped after its missing format-validator dependency was diagnosed; its failure is not represented as a passing run.
+
+Application/source candidate: `da1e0a730aaad9435dd5efa8f5312151cf87661b`. Pushed to `origin/codex/desk-local-20260907`; the subsequent verification-only commit records these results. Remote main remained `e866ca110da4b7c61c4543dd1b8135c6cb251ce6`. GitHub served the exact tested trial ZIP: 3,921,931 bytes, SHA-256 `2382e4387424fa800b81c7fc962426411268dc9fdb9a4e399eb11d227a3edc8f`.
+
+Ready for the managed-workstation installation and independent analyst trial, subject to that device/account's actual permissions. Not yet practitioner-validated. All authorized source, design, documentation and trial-package work is pushed. No production merge or deployment was performed.

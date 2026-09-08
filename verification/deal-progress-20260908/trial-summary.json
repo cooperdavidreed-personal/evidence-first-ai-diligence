@@ -1,0 +1,23 @@
+{
+  "status": "VERIFIED_LOCAL_SYNTHETIC",
+  "sourceCandidate": "da1e0a730aaad9435dd5efa8f5312151cf87661b",
+  "pythonPassed": 190,
+  "frontendPassed": 240,
+  "mcpServerPassed": 26,
+  "packagingPassed": 6,
+  "browserPassed": 84,
+  "conditionalBrowserSkips": 12,
+  "nativeExcelMacOpen": "PASS",
+  "packagedRuntimeVersions": [
+    "24.20.0",
+    "26.3.0"
+  ],
+  "githubZipBytes": 3921931,
+  "githubZipSha256": "2382e4387424fa800b81c7fc962426411268dc9fdb9a4e399eb11d227a3edc8f",
+  "notRun": [
+    "brother managed-workstation installation",
+    "brother Claude Enterprise connection",
+    "independent practitioner trial"
+  ],
+  "productionMainUnchanged": "e866ca110da4b7c61c4543dd1b8135c6cb251ce6"
+}
