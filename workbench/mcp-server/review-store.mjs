@@ -1,3 +1,4 @@
+import {onboardingMethods,connectionTool} from './onboarding-store.mjs';
 import {progressMethods,progressTools} from "./progress-store.mjs";
 import {attachPackageStore} from "./package-store.mjs";
 import {workspaceMethods} from "./workspace-store.mjs";
@@ -20,6 +21,7 @@ export function openReviewStore(path) {
     return row;
   }
   return {
+    ...onboardingMethods(db),
     ...workspaceMethods(db),
     ...progressMethods(db),
     ...attachPackageStore(db),
@@ -74,7 +76,8 @@ export const reviewTools = [
 ];
 
 export function reviewHandlers(store) {
-  return {toolDefinitions: [...reviewTools,...progressTools], onInitialize: (clientInfo) => store.recordInitialize(clientInfo), async callTool(name, args = {}) {
+  return {toolDefinitions: [...reviewTools,...progressTools,connectionTool], onInitialize: (clientInfo) => store.recordInitialize(clientInfo), async callTool(name, args = {}) {
+    if (name === "verify_desk_connection") return store.verifyConnection(args.code);
     if (name === "list_investment_reviews") return store.progressReleased();
     if (name === "read_investment_evidence") return store.progressContext(args.deal_id,args.release_digest,args.cursor ?? 0);
     if (name === "propose_investment_work") return store.progressPropose(args);

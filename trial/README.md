@@ -1,6 +1,8 @@
 # Underwriting Desk — workstation trial
 
-**Download:** [Underwriting Desk ZIP](https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence/raw/refs/heads/codex/desk-local-20260907/trial/underwriting-desk-local.zip).
+**Easier desktop candidate:** the new bundled application removes the separate Node installation and terminal steps. See [Desktop start guide](DESKTOP-START.md). Native artifacts are built locally under `dist/desktop/`; they have not replaced this branch's downloadable legacy ZIP.
+
+**Legacy runtime-required download:** [Underwriting Desk ZIP](https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence/raw/refs/heads/codex/desk-local-20260907/trial/underwriting-desk-local.zip).
 
 Extract the entire ZIP. You need Node.js 24 or newer and permission to run the application on this computer. Open `Open Underwriting Desk.cmd` on Windows or `Open Underwriting Desk.command` on macOS. Alternatively, open a terminal in the extracted folder and run `node start-desk.mjs`. Keep that terminal open.
 

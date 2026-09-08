@@ -27,7 +27,7 @@ test("UI packet crosses independent SQLite connections into MCP; response is bou
     assert.equal(ui.response("helios", second.request_digest_sha256), null);
     await assert.rejects(handlers.callTool("approve_proposal", {}), /tool_not_found/);
     const tools = await handleMessage({id: 2, method: "tools/list"}, handlers);
-    assert.deepEqual(tools.result.tools.map((tool) => tool.name), ["list_prepared_reviews", "get_review_context", "submit_evidence_review", "list_investment_reviews", "read_investment_evidence", "propose_investment_work"]);
+    assert.deepEqual(tools.result.tools.map((tool) => tool.name), ["list_prepared_reviews", "get_review_context", "submit_evidence_review", "list_investment_reviews", "read_investment_evidence", "propose_investment_work", "verify_desk_connection"]);
   } finally {ui.close(); mcp.close(); rmSync(dir, {recursive: true, force: true});}
 });
 test("invalid digests and oversized selections cannot enter the review store", () => {

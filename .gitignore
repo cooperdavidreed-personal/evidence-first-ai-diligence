@@ -16,3 +16,4 @@ __pycache__/
 .DS_Store
 .vercel
 .env*
+/workbench/desktop/cmd/launcher/payload.zip

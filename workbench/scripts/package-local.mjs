@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import {zipSync} from 'fflate';
 
-export const runtimeFiles = ['progress-store.mjs', 'progress-http.mjs', 'local-server.mjs', 'review-http.mjs', 'review-store.mjs', 'workspace-store.mjs', 'package-store.mjs', 'server.mjs'];
+export const runtimeFiles = ['onboarding-store.mjs', 'desktop-http.mjs', 'progress-store.mjs', 'progress-http.mjs', 'local-server.mjs', 'review-http.mjs', 'review-store.mjs', 'workspace-store.mjs', 'package-store.mjs', 'server.mjs'];
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const forbidden = name => name.startsWith('.') || /\.(map|sqlite|sqlite3|db|pem|key)(-|$)/i.test(name) || name === 'node_modules';
 

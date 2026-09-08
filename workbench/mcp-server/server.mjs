@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import {closeSync, constants, fchmodSync, openSync, readFileSync, writeFileSync} from "node:fs";
+import {closeSync, constants, fchmodSync, openSync, realpathSync, readFileSync, writeFileSync} from "node:fs";
 import {createHash, randomUUID} from "node:crypto";
 import {fileURLToPath} from "node:url";
 import {dirname, resolve} from "node:path";
@@ -96,7 +96,7 @@ export async function handleMessage(message, handlers) {
   return error(message.id, "method_not_found");
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const ledgerFlag = process.argv.indexOf("--proposal-ledger");
   if (ledgerFlag >= 0 && !process.argv[ledgerFlag + 1]) throw new Error("proposal_ledger_path_required");
   const storeFlag = process.argv.indexOf("--review-store");

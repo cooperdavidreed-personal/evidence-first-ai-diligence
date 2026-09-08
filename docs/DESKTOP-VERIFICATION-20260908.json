@@ -1,0 +1,22 @@
+{
+  "status": "VERIFIED_LOCAL_SYNTHETIC",
+  "nodeVersion": "v24.20.0",
+  "checks": [
+    "Mac extracted application with spaces in path",
+    "no Node on PATH",
+    "bundled runtime",
+    "wizard browser render and actions",
+    "extracted MCPB binary roundtrip",
+    "fresh connection code verified in browser",
+    "quit and reopen",
+    "onboarding and company record persistence",
+    "second open reuses owned service"
+  ],
+  "notRun": [
+    "Windows native execution",
+    "Intel Mac native execution",
+    "Claude Desktop extension import",
+    "managed workstation policy",
+    "practitioner trial"
+  ]
+}

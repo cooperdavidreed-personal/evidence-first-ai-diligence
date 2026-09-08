@@ -12,7 +12,7 @@ function CopyButton({value, label}: {value: string; label: string}) {
   return <span><button type="button" className="primary-button" onClick={copy}>{label}</button><small role="status">{notice}</small></span>;
 }
 export function ModelConnectionButton({connection: _connection, onClick}: {connection: ConnectionState | null; onClick: () => void}) {
-  return <button type="button" className="connection-button" onClick={onClick}>Connect model</button>;
+  return <button type="button" className="connection-button" onClick={()=>{if((window as unknown as {__DESK_DESKTOP__?:boolean}).__DESK_DESKTOP__)window.dispatchEvent(new Event("desk-open-setup"));else onClick();}}>Connect model</button>;
 }
 export function ModelConnectionDialog({current, onClose, onApply}: {current: ConnectionState | null; onClose: () => void; onApply: (connection: ConnectionState) => void}) {
   const dialogRef = useRef<HTMLElement>(null);

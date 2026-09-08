@@ -13,7 +13,9 @@
     "check": "pnpm test && pnpm test:mcp && pnpm build && pnpm verify:chunks && pnpm test:e2e",
     "desk:start": "node scripts/start-desk.mjs",
     "desk:package": "pnpm build && node scripts/package-local.mjs",
-    "test:package": "node --test scripts/package-local.test.mjs"
+    "test:package": "node --test scripts/package-local.test.mjs",
+    "desk:desktop": "pnpm build && node scripts/package-desktop.mjs",
+    "test:desktop": "node scripts/verify-desktop.mjs"
   },
   "dependencies": {
     "@noble/hashes": "2.0.1",

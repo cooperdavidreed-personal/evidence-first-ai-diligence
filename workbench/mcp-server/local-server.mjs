@@ -1,3 +1,4 @@
+import {desktopHandler} from './desktop-http.mjs';
 import {randomBytes} from "node:crypto";
 import {progressHandler} from "./progress-http.mjs";
 import {createServer} from "node:http";
@@ -9,7 +10,7 @@ import {createReviewHandler, isLoopbackHost} from "./review-http.mjs";
 const types = {".mjs": "text/javascript; charset=utf-8", ".csv": "text/csv; charset=utf-8", ".md": "text/plain; charset=utf-8",".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon", ".woff2": "font/woff2", ".pdf": "application/pdf", ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"};
 const within = (root, file) => {const rel = relative(root, file); return rel !== ".." && !rel.startsWith(`..${sep}`) && !rel.startsWith(sep);};
 
-export async function startLocalDesk({workbenchPath, storePath, port = 4198}) {
+export async function startLocalDesk({workbenchPath, storePath, port = 4198, desktop}) {
   const root = await realpath(resolve(workbenchPath, "dist"));
   await stat(resolve(root, "index.html")); // Fail before opening a store when the build is missing.
   const store = openReviewStore(storePath);
@@ -17,10 +18,12 @@ export async function startLocalDesk({workbenchPath, storePath, port = 4198}) {
   const packages = createReviewHandler({store, packages: true});
   const workspace = createReviewHandler({store, workspace: true});
   const sessionToken=randomBytes(32).toString("hex"), progress=progressHandler(store,sessionToken);
+  const onboarding = desktop ? desktopHandler(store,sessionToken,desktop) : null;
   const server = createServer(async (req, res) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
     if (!isLoopbackHost(req.headers.host)) {res.writeHead(403); res.end(); return;}
     const rawPath = (req.url ?? "/").split("?")[0];
+    if (rawPath === "/__desk/desktop" && onboarding) {await onboarding(req,res);return;}
     if (rawPath === "/__desk/progress") {await progress(req,res);return;}
     if (rawPath === "/__desk/packages") {await packages(req, res); return;}
     if (rawPath === "/__desk/workspace") {await workspace(req, res); return;}
@@ -33,7 +36,7 @@ export async function startLocalDesk({workbenchPath, storePath, port = 4198}) {
       const file = await realpath(resolve(root, `.${decoded === "/" ? "/index.html" : decoded}`));
       if (!within(root, file) || extname(file) === ".map") {res.writeHead(403); res.end(); return;}
       let body = await readFile(file);
-      if (file === resolve(root, "index.html")) body = Buffer.from(body.toString("utf8").replace("<head>", `<head><script>window.__DESK_LOCAL_RUNTIME__=true;window.__DESK_SESSION__=${JSON.stringify(sessionToken)};</script>`));
+      if (file === resolve(root, "index.html")) body = Buffer.from(body.toString("utf8").replace("<head>", `<head><script>window.__DESK_DESKTOP__=${!!desktop};window.__DESK_LOCAL_RUNTIME__=true;window.__DESK_SESSION__=${JSON.stringify(sessionToken)};</script>`));
       res.setHeader("Content-Type", types[extname(file)] ?? "application/octet-stream");
       res.setHeader("Cache-Control", "no-store");
       res.setHeader("Content-Length", body.length);
@@ -45,5 +48,6 @@ export async function startLocalDesk({workbenchPath, storePath, port = 4198}) {
     server.once("error", reject);
     server.listen(port, "127.0.0.1", () => {server.off("error", reject); resolveReady();});
   }).catch(error => {store.close(); throw error;});
+  server.deskSessionToken = sessionToken;
   return server;
 }

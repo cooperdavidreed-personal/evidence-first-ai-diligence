@@ -1,3 +1,4 @@
+import {DesktopOnboarding} from './desktop-onboarding';
 import {WorkspaceOpening} from "./workspace-opening";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -19,7 +20,8 @@ if (window.location.hash === "#/design-directions") {
 } else {
   const initialRoute = parseRoute();
   const initialCase = await loadCase(initialRoute.caseId === "local" || initialRoute.caseId === "public-record" ? "atlasgrid" : initialRoute.caseId);
-  root.render(<StrictMode><App initialCase={initialCase} initialRoute={initialRoute} /></StrictMode>);
+  const app=<App initialCase={initialCase} initialRoute={initialRoute} />;
+  root.render(<StrictMode>{(window as unknown as {__DESK_DESKTOP__?:boolean}).__DESK_DESKTOP__ ? <DesktopOnboarding>{app}</DesktopOnboarding> : app}</StrictMode>);
 }
 
 } catch {root.render(<WorkspaceOpening failed onRetry={()=>window.location.reload()}/>);}
