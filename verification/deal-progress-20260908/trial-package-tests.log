@@ -1,0 +1,15 @@
+$ node --test scripts/package-local.test.mjs
+✔ package is allowlisted, hash-verified and serves without installed dependencies (95.193875ms)
+✔ packaging refuses symlinks and requires an existing application build (12.114833ms)
+✔ extracted launcher check verifies files without creating a workspace and rejects corruption or missing files (265.336208ms)
+✔ actual extracted launcher serves, saves only in selected path and terminates cleanly (148.447709ms)
+✔ extracted launcher explains invalid ports before creating any workspace (91.097042ms)
+✔ extracted launcher gives an actionable occupied-port error (137.75275ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 852.997791

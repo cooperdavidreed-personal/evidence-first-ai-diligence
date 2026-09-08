@@ -1,0 +1,29 @@
+$ node --test mcp-server/*.test.mjs
+✔ standalone serves only built assets, rejects traversal and foreign review origins (30.686708ms)
+✔ standalone packet and MCP initialize/response are visible through independent connections (13.962625ms)
+✔ workspace HTTP route protects origin, commits durably, and rejects stale revisions (10.132792ms)
+✔ source archive HTTP route enforces local origin and verifies persisted bytes (10.602208ms)
+✔ source archive keeps exact bytes, returns durable receipts and is idempotent (3.762041ms)
+✔ archives reject changed bytes, metadata reassignment, direct edits and deletion (0.758916ms)
+✔ archives reject invalid JSON, non-object content, unsafe identities and oversized content (10.108916ms)
+✔ UI packet crosses independent SQLite connections into MCP; response is bound to the current packet (10.38475ms)
+✔ invalid digests and oversized selections cannot enter the review store (6.323417ms)
+✔ a basis-only change invalidates previous responses without modifying evidence (7.512541ms)
+✔ MCP exposes the exact read and proposal-only tool surface (1.494375ms)
+✔ read tools return canonical decisions and declared tests (30.111334ms)
+✔ proposal tools return PROPOSED and never change canonical case bytes (43.265917ms)
+✔ unknown evidence and forbidden tools fail closed (45.7235ms)
+✔ unknown notifications are silent while unknown requests fail (23.336ms)
+✔ id-less tools/call notifications are dropped without proposal side effects (40.460375ms)
+✔ proposal ledger is opt-in and binds successful proposals to retained digests (85.841584ms)
+✔ proposal ledger tightens a pre-existing file to operator-only permissions (24.599958ms)
+✔ invalid and id-less proposal calls never append to the operator ledger (37.047583ms)
+✔ workspace transactions reject stale windows and retain immutable history outside MCP (10.729875ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 441.401417

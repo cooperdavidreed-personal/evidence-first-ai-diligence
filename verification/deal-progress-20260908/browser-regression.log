@@ -1,0 +1,164 @@
+[WebServer] (node:86158) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 92 tests using 14 workers
+
+(node:86186) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:86184) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:86185) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:86182) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:86190) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:86183) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:86192) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:86188) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:86195) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:86196) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:86187) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:86193) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:86189) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:86194) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/92] [desktop] › tests/deal-library.spec.ts:27:1 › saved incomplete intake resumes exact bytes after reload without approval
+[2/92] [desktop-webkit] › tests/package-archive.spec.ts:3:1 › archived source delivery replays after browser storage is cleared
+[3/92] [desktop] › tests/analysis-workspace.spec.ts:4:1 › investment matrix keeps evidence inspectable and assigns a persistent diligence question
+[4/92] [desktop] › tests/review-system.spec.ts:6:1 › component standard supports keyboard sorting and a recoverable empty filter
+[5/92] [desktop-webkit] › tests/memo.spec.ts:19:5 › atlasgrid ic-snapshot renders and paginates without horizontal clipping
+[6/92] [desktop] › tests/local-review.spec.ts:5:1 › selected evidence reaches MCP and a returned proposal survives human review and reload
+[7/92] [desktop] › tests/memo.spec.ts:19:5 › atlasgrid ic-snapshot renders and paginates without horizontal clipping
+[8/92] [desktop-webkit] › tests/analysis-workspace.spec.ts:4:1 › investment matrix keeps evidence inspectable and assigns a persistent diligence question
+[9/92] [desktop-webkit] › tests/local-review.spec.ts:5:1 › selected evidence reaches MCP and a returned proposal survives human review and reload
+[10/92] [desktop] › tests/package-archive.spec.ts:3:1 › archived source delivery replays after browser storage is cleared
+[11/92] [desktop] › tests/workbook-first.spec.ts:6:1 › ordinary workbook mapping, saved review, rejected then accepted revision and committee note
+[12/92] [desktop-webkit] › tests/deal-library.spec.ts:27:1 › saved incomplete intake resumes exact bytes after reload without approval
+[13/92] [desktop] › tests/supported-revision-flow.spec.ts:15:1 › workbook candidate survives navigation, rejection preserves V1, acceptance survives reload
+[14/92] [desktop] › tests/workbench.spec.ts:79:1 › Deals is a calm product root with no critical accessibility or overflow finding
+[15/92] [desktop] › tests/memo.spec.ts:19:5 › atlasgrid underwriting-packet renders and paginates without horizontal clipping
+[16/92] [desktop-webkit] › tests/memo.spec.ts:19:5 › atlasgrid underwriting-packet renders and paginates without horizontal clipping
+(node:86318) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:86319) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[17/92] [desktop-webkit] › tests/review-system.spec.ts:6:1 › component standard supports keyboard sorting and a recoverable empty filter
+[18/92] [desktop-webkit] › tests/supported-revision-flow.spec.ts:15:1 › workbook candidate survives navigation, rejection preserves V1, acceptance survives reload
+[19/92] [desktop] › tests/memo.spec.ts:19:5 › atlasgrid technical-appendix renders and paginates without horizontal clipping
+[20/92] [desktop-webkit] › tests/memo.spec.ts:19:5 › atlasgrid technical-appendix renders and paginates without horizontal clipping
+[21/92] [desktop-webkit] › tests/workbook-first.spec.ts:6:1 › ordinary workbook mapping, saved review, rejected then accepted revision and committee note
+[22/92] [desktop-webkit] › tests/workbench.spec.ts:79:1 › Deals is a calm product root with no critical accessibility or overflow finding
+[23/92] [desktop-webkit] › tests/memo.spec.ts:19:5 › helios ic-snapshot renders and paginates without horizontal clipping
+[24/92] [desktop] › tests/memo.spec.ts:19:5 › helios ic-snapshot renders and paginates without horizontal clipping
+[25/92] [desktop-webkit] › tests/memo.spec.ts:19:5 › helios underwriting-packet renders and paginates without horizontal clipping
+[26/92] [desktop] › tests/memo.spec.ts:19:5 › helios underwriting-packet renders and paginates without horizontal clipping
+[27/92] [desktop-webkit] › tests/memo.spec.ts:19:5 › helios technical-appendix renders and paginates without horizontal clipping
+[28/92] [desktop] › tests/memo.spec.ts:19:5 › helios technical-appendix renders and paginates without horizontal clipping
+[29/92] [desktop] › tests/review-system.spec.ts:21:1 › financial work area survives reload without replacing the selected scenario
+[30/92] [desktop] › tests/workbench.spec.ts:90:1 › mobile deal navigation resets a previously scrolled Deals page
+[31/92] [desktop] › tests/workbench.spec.ts:100:1 › invalid saved workspace remains preserved behind a visible recovery warning
+[32/92] [desktop-webkit] › tests/review-system.spec.ts:21:1 › financial work area survives reload without replacing the selected scenario
+[33/92] [desktop] › tests/deal-library.spec.ts:52:1 › two same-company source packages reopen independently after reload
+[34/92] [desktop-webkit] › tests/analysis-workspace.spec.ts:30:1 › connection setup explains the local boundary and provides an assistant prompt
+[35/92] [desktop-webkit] › tests/workbench.spec.ts:90:1 › mobile deal navigation resets a previously scrolled Deals page
+[36/92] [desktop-webkit] › tests/deal-library.spec.ts:52:1 › two same-company source packages reopen independently after reload
+[37/92] [desktop-webkit] › tests/workbench.spec.ts:100:1 › invalid saved workspace remains preserved behind a visible recovery warning
+[38/92] [desktop] › tests/analysis-workspace.spec.ts:30:1 › connection setup explains the local boundary and provides an assistant prompt
+[39/92] [desktop] › tests/workbench.spec.ts:109:1 › model connection center prepares subscription setup without claiming a connection
+[40/92] [desktop-webkit] › tests/analysis-workspace.spec.ts:43:1 › financial workspace compares both transaction types and navigates by task
+[41/92] [desktop] › tests/review-system.spec.ts:33:1 › committee record downloads reconciled contents with a reproducible checksum
+[42/92] [desktop] › tests/analysis-workspace.spec.ts:43:1 › financial workspace compares both transaction types and navigates by task
+[43/92] [desktop-webkit] › tests/review-system.spec.ts:33:1 › committee record downloads reconciled contents with a reproducible checksum
+[44/92] [desktop-webkit] › tests/workbench.spec.ts:109:1 › model connection center prepares subscription setup without claiming a connection
+[45/92] [desktop-webkit] › tests/analysis-workspace.spec.ts:55:1 › deal register filters and evidence layout stays a user preference
+[46/92] [desktop] › tests/workbench.spec.ts:128:1 › bounded hosted model proposal requires evidence confirmation and named human acceptance
+[47/92] [desktop] › tests/analysis-workspace.spec.ts:55:1 › deal register filters and evidence layout stays a user preference
+[48/92] [desktop-webkit] › tests/workbench.spec.ts:128:1 › bounded hosted model proposal requires evidence confirmation and named human acceptance
+[49/92] [desktop] › tests/workbench.spec.ts:165:1 › scenario, observation, issue, assumption, and memo changes persist as human work
+[50/92] [desktop-webkit] › tests/workbench.spec.ts:165:1 › scenario, observation, issue, assumption, and memo changes persist as human work
+[51/92] [desktop] › tests/workbench.spec.ts:213:1 › memo export fails closed and downloads one reconciled scenario snapshot
+[52/92] [desktop-webkit] › tests/workbench.spec.ts:213:1 › memo export fails closed and downloads one reconciled scenario snapshot
+[53/92] [desktop] › tests/workbench.spec.ts:246:1 › every retained-case and Northstar public source opens from the running build
+[54/92] [desktop-webkit] › tests/workbench.spec.ts:246:1 › every retained-case and Northstar public source opens from the running build
+[55/92] [desktop] › tests/workbench.spec.ts:280:1 › portable state export downloads and imports its validated scenario ownership
+[56/92] [desktop] › tests/workbench.spec.ts:297:1 › Version 2 evidence propagates through returns, stale state, diligence, and human disposition
+[57/92] [desktop-webkit] › tests/workbench.spec.ts:280:1 › portable state export downloads and imports its validated scenario ownership
+[58/92] [desktop-webkit] › tests/workbench.spec.ts:297:1 › Version 2 evidence propagates through returns, stale state, diligence, and human disposition
+[59/92] [desktop] › tests/workbench.spec.ts:356:1 › decision rail keeps canonical conditions separate from worklist resolutions
+[60/92] [desktop] › tests/workbench.spec.ts:371:1 › Helios policy sensitivity is an unapproved what-if and follows the memo
+[61/92] [desktop-webkit] › tests/workbench.spec.ts:356:1 › decision rail keeps canonical conditions separate from worklist resolutions
+[62/92] [desktop] › tests/workbench.spec.ts:390:1 › print export uses complete memo text instead of a clipped textarea
+[63/92] [desktop-webkit] › tests/workbench.spec.ts:371:1 › Helios policy sensitivity is an unapproved what-if and follows the memo
+[64/92] [desktop] › tests/workbench.spec.ts:402:1 › portable state rejects a fabricated accepted-proposal citation
+[65/92] [desktop-webkit] › tests/workbench.spec.ts:390:1 › print export uses complete memo text instead of a clipped textarea
+[66/92] [desktop] › tests/workbench.spec.ts:415:1 › lineage closes back to its exact opener and defers calculation detail
+[67/92] [desktop-webkit] › tests/workbench.spec.ts:402:1 › portable state rejects a fabricated accepted-proposal citation
+[68/92] [desktop] › tests/workbench.spec.ts:429:1 › mobile controls expose every diligence tab, heatmap edge, and source-cell label
+[69/92] [desktop] › tests/workbench.spec.ts:460:1 › legacy MCP proposal remains readable but cannot bypass current-basis acceptance
+[70/92] [desktop-webkit] › tests/workbench.spec.ts:415:1 › lineage closes back to its exact opener and defers calculation detail
+[71/92] [desktop-webkit] › tests/workbench.spec.ts:429:1 › mobile controls expose every diligence tab, heatmap edge, and source-cell label
+[72/92] [desktop-webkit] › tests/workbench.spec.ts:460:1 › legacy MCP proposal remains readable but cannot bypass current-basis acceptance
+[73/92] [desktop] › tests/workbench.spec.ts:495:3 › AtlasGrid Systems six-destination investor journey
+[74/92] [desktop-webkit] › tests/workbench.spec.ts:495:3 › AtlasGrid Systems six-destination investor journey
+[75/92] [desktop] › tests/workbench.spec.ts:495:3 › Helios Compute Control six-destination investor journey
+[76/92] [desktop-webkit] › tests/workbench.spec.ts:495:3 › Helios Compute Control six-destination investor journey
+[77/92] [desktop] › tests/workbench.spec.ts:525:1 › ordinary multi-file intake produces a governed local deal that survives refresh
+[78/92] [desktop-webkit] › tests/workbench.spec.ts:525:1 › ordinary multi-file intake produces a governed local deal that survives refresh
+[79/92] [desktop] › tests/workbench.spec.ts:574:1 › missing required input is explained and blocks analysis before return conclusions
+[80/92] [desktop] › tests/workbench.spec.ts:586:1 › sequential selections add to the package, and per-file remove and replace work
+[81/92] [desktop] › tests/workbench.spec.ts:607:1 › one click loads the complete synthetic sample package
+[82/92] [desktop-webkit] › tests/workbench.spec.ts:574:1 › missing required input is explained and blocks analysis before return conclusions
+[83/92] [desktop] › tests/workbench.spec.ts:617:1 › mixed Excel CSV PDF package is parsed, reviewed, approved, and replayable
+[84/92] [desktop-webkit] › tests/workbench.spec.ts:586:1 › sequential selections add to the package, and per-file remove and replace work
+[85/92] [desktop-webkit] › tests/workbench.spec.ts:607:1 › one click loads the complete synthetic sample package
+[86/92] [desktop-webkit] › tests/workbench.spec.ts:617:1 › mixed Excel CSV PDF package is parsed, reviewed, approved, and replayable
+[87/92] [desktop-webkit] › tests/workbench.spec.ts:663:1 › local Version 2 changes propagate and require explicit accept reject or defer
+[88/92] [desktop] › tests/workbench.spec.ts:663:1 › local Version 2 changes propagate and require explicit accept reject or defer
+[89/92] [desktop-webkit] › tests/workbench.spec.ts:739:1 › deep links still load only the selected retained case chunk
+[90/92] [desktop-webkit] › tests/workbench.spec.ts:749:1 › public-record retrospective enforces the historical cutoff without hindsight
+[91/92] [desktop] › tests/workbench.spec.ts:739:1 › deep links still load only the selected retained case chunk
+[92/92] [desktop] › tests/workbench.spec.ts:749:1 › public-record retrospective enforces the historical cutoff without hindsight
+  16 skipped
+  76 passed (1.0m)

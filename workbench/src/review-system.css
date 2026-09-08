@@ -1,0 +1,77 @@
+/* Shared review language: Carbon-informed table behavior, original Desk styling. */
+:root {--desk-space-1:4px;--desk-space-2:8px;--desk-space-3:12px;--desk-space-4:16px;--desk-space-5:24px;--desk-space-6:32px;--desk-control-height:34px;--desk-row-space:12px;--desk-rule:#d7dfe4;--desk-panel:#fff;--desk-panel-subtle:#f5f7f9;--desk-text:#202a32;--desk-secondary:#53616c;--desk-selected:#edf3f8;--desk-action:#284e70;}
+.review-table-scroll {overflow:auto;width:100%;scrollbar-gutter:stable;}
+.review-table {border-collapse:collapse;width:100%;font-size:13px;background:var(--desk-panel);font-variant-numeric:tabular-nums;}
+.review-table :is(th,td) {padding:var(--desk-row-space) var(--desk-space-4);border-bottom:1px solid var(--desk-rule);vertical-align:top;text-align:left;line-height:1.5;}
+.review-table thead th {background:var(--desk-panel-subtle);font-size:12px;font-weight:600;color:var(--desk-secondary);position:sticky;top:0;z-index:1;text-transform:none;letter-spacing:0;}
+.review-table thead button {display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;border:0;background:transparent;padding:0;font:inherit;text-align:left;}
+.review-table tbody th {font-weight:500;}
+.review-table tbody tr:hover>:is(th,td) {background:var(--desk-panel-subtle);}
+.review-table tbody tr[data-selected=true]>:is(th,td) {background:var(--desk-selected);}
+.review-table tr[data-selected=true]>:first-child {box-shadow:inset 3px 0 var(--desk-action);}
+.review-table .numeric {text-align:right;}
+.review-table .numeric button {justify-content:flex-end;}
+.review-table small {display:block;margin-top:4px;font-size:12px;color:var(--desk-secondary);}
+.review-table .review-table-empty {padding:32px;text-align:center;color:var(--desk-secondary);}
+.review-table td button,.review-table tbody th button {color:var(--desk-action);}
+.review-table .record-link {border:0;background:transparent;padding:0;text-align:left;font-weight:600;}
+.review-table .record-link:hover {text-decoration:underline;}
+.review-table-scroll.compact {--desk-row-space:8px;}
+.desk-section-tabs {display:flex;gap:4px;border-bottom:1px solid var(--desk-rule);padding:0 0 8px;margin-bottom:20px;}
+.desk-section-tabs button {min-height:var(--desk-control-height);padding:7px 14px;border:0;background:transparent;border-bottom:2px solid transparent;}
+.desk-section-tabs button[aria-pressed=true] {color:var(--desk-action);border-bottom-color:var(--desk-action);font-weight:600;}
+.desk-section-tabs button:hover {background:var(--desk-panel-subtle);}
+.desk-home-shell {min-height:100vh;display:grid;grid-template-columns:216px minmax(0,1fr);}
+.desk-home-rail {background:var(--rail);color:var(--rail-ink);padding:24px 16px;display:flex;flex-direction:column;gap:32px;}
+.desk-home-rail .brand-lockup {color:inherit;}
+.desk-home-rail nav {display:grid;gap:8px;}
+.desk-home-rail button {padding:10px 12px;background:transparent;border:0;text-align:left;color:var(--rail-ink);}
+.desk-home-rail button[aria-current=page] {background:var(--rail-2);border-left:2px solid #adc8df;}
+.desk-home-rail footer {margin-top:auto;font-size:12px;line-height:1.6;color:var(--rail-muted);}
+.desk-home-shell .deals-page {min-width:0;padding:24px 28px;}
+.desk-home-shell .deals-header .brand-lockup {display:none;}
+.desk-home-shell .deals-secondary {display:grid;grid-template-columns:1fr;}
+.desk-home-shell .intake-callout {display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.desk-home-shell .intake-callout>p {max-width:55ch;}
+.investment-argument {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin:24px 0;}
+.investment-argument section {border-top:2px solid var(--desk-rule);padding-top:14px;}
+.investment-argument h3 {font-size:13px;margin-bottom:8px;}
+.investment-argument p,.investment-argument li {font-size:13px;color:var(--desk-secondary);line-height:1.65;}
+.investment-argument ul {padding-left:18px;}
+.source-selection {border-left:3px solid var(--desk-action);padding:12px;background:var(--desk-selected);margin:8px 0;}
+.source-selection mark {background:#fff0bd;color:inherit;}
+.source-location {font-size:12px;color:var(--desk-secondary);margin-bottom:8px;}
+.analysis-inspector .source-selection {overflow:auto;max-height:230px;}
+.component-specimen {padding:32px;max-width:1200px;margin:auto;}
+.component-specimen>section {margin:24px 0;padding:24px;border:1px solid var(--desk-rule);background:white;}
+@media print {.desk-home-rail,.desk-section-tabs {display:none}.desk-home-shell{display:block}}
+
+.financial-desktop:not([data-finance-section="all"]) .finance-workspace>.finance-section {display:none;}
+.financial-desktop[data-finance-section="capital"] .finance-workspace>:is(.capital-area,.split-finance),
+.financial-desktop[data-finance-section="sensitivities"] .finance-workspace>.sensitivity-workspace,
+.financial-desktop[data-finance-section="loss"] .finance-workspace>.risk-lab,
+.financial-desktop[data-finance-section="upside"] .finance-workspace>:is(.upside-area,.distribution-panel) {display:block;}
+.financial-desktop:not([data-finance-section="comparison"]):not([data-finance-section="all"]) .canonical-comparison {display:none;}
+@media print {.financial-desktop .finance-workspace>.finance-section,.financial-desktop .canonical-comparison{display:block !important}}
+.saved-deals-register {margin:24px 0;border:1px solid var(--desk-rule);background:white;}
+.saved-deals-register>.section-heading {padding:20px 20px 0;}
+.saved-deals-register code {display:block;max-width:220px;overflow-wrap:anywhere;}
+.saved-deals-register>p[role=alert] {padding:16px;color:var(--negative);}
+.intake-draft-controls {border:1px solid var(--desk-rule);background:var(--desk-panel);padding:16px;margin:16px 0;display:grid;gap:10px;}
+.intake-draft-controls p,.intake-draft-controls small {color:var(--desk-secondary);}
+.analysis-table-scroll .review-table>thead>tr>th:first-child {width:23%;}
+.analysis-table-scroll .review-table>thead>tr>th:nth-child(2) {width:21%;}
+.analysis-table-scroll .review-table>thead>tr>th:nth-child(3) {width:38%;}
+.analysis-table-scroll .review-table>thead>tr>th:last-child {width:18%;}
+.analysis-inspector .source-row-table {max-height:200px;}
+.analysis-inspector .source-row-table table {font-size:12px;}
+
+.saved-deals-register .review-table-toolbar {display:flex;align-items:flex-end;gap:16px;padding:16px 20px;flex-wrap:wrap;}
+.saved-deals-register .review-table-toolbar label:has(input[type=checkbox]) {display:flex;align-items:center;gap:8px;min-height:34px;}
+.saved-deals-register input[type=checkbox] {width:16px;height:16px;min-height:0;margin:0;accent-color:var(--desk-action);}
+.saved-deals-register .review-table-toolbar button {min-height:34px;border:1px solid var(--desk-rule);background:white;padding:6px 12px;border-radius:2px;}
+.desk-home-shell .review-table tbody th .record-link span {display:block;font-weight:400;margin-top:4px;color:var(--desk-secondary);}
+/* Workbook comparisons need the full work surface, not the action column. */
+.excel-round-trip > :is(.excel-cell-review,.workbook-diff,p[role=status]) {grid-column:1 / -1;min-width:0;}
+.excel-cell-review .review-table {min-width:640px;}
+.excel-cell-review .review-table :is(th,td) {overflow-wrap:normal;word-break:normal;}

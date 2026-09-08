@@ -6,7 +6,7 @@ export interface SelectedEvidence {
 }
 export type ProposalState = "PROPOSED" | "ACCEPTED" | "REJECTED";
 export type ProposalKind = "CHALLENGE" | "DILIGENCE_GAP" | "MEMO_DRAFT";
-export type ProposalOrigin = "IN_PRODUCT_RUNTIME" | "LOCAL_MCP_LEDGER" | "PORTABLE_IMPORT_UNVERIFIED";
+export type ProposalOrigin = "IN_PRODUCT_RUNTIME" | "LOCAL_MCP_LEDGER" | "LOCAL_MCP_REVIEW" | "PORTABLE_IMPORT_UNVERIFIED";
 export interface ModelProposal {
   proposalId: string;
   kind: ProposalKind;
@@ -25,6 +25,7 @@ export interface ModelProposal {
   humanEdited?: boolean;
   reviewedAt?: string;
   requestDigestSha256: string;
+  reviewBasisId?: string;
   sourceRequestDigestSha256?: string;
   responseDigestSha256?: string;
   modelFamily?: string;
@@ -42,6 +43,7 @@ export interface ModelChallengeRequest {
   evidence: SelectedEvidence[];
   output_contract: "underwriting-evidence-challenge/v1";
   request_digest_sha256: string;
+  review_basis_id?: string;
 }
 export type ModelTransport = (request: ModelChallengeRequest) => Promise<unknown>;
 
@@ -53,20 +55,20 @@ function refs(value: unknown, allowed: Set<string>) {
 }
 function proposalId(kind: ProposalKind, index: number, evidenceRefs: string[], requestDigestSha256: string, responseDigestSha256: string) { return `proposal-${requestDigestSha256.slice(0, 10)}-${responseDigestSha256.slice(0, 10)}-${kind.toLowerCase()}-${index + 1}-${evidenceRefs.join("-").replace(/[^a-z0-9-]/gi, "").slice(0, 20)}`; }
 
-export function canonicalChallengePayload(dealId: string, evidence: SelectedEvidence[]) {
-  return JSON.stringify({job: "challenge_selected_evidence", deal_id: dealId, evidence: evidence.map(({id, title, displayValue, summary}) => ({id, title, displayValue, summary})), output_contract: "underwriting-evidence-challenge/v1"});
+export function canonicalChallengePayload(dealId: string, evidence: SelectedEvidence[], reviewBasisId?: string) {
+  return JSON.stringify({job: "challenge_selected_evidence", deal_id: dealId, evidence: evidence.map(({id, title, displayValue, summary}) => ({id, title, displayValue, summary})), output_contract: "underwriting-evidence-challenge/v1", ...(reviewBasisId ? {review_basis_id: reviewBasisId} : {})});
 }
 
-export async function digestChallengePayload(dealId: string, evidence: SelectedEvidence[]) {
-  return digestChallengePayloadSync(dealId, evidence);
+export async function digestChallengePayload(dealId: string, evidence: SelectedEvidence[], reviewBasisId?: string) {
+  return digestChallengePayloadSync(dealId, evidence, reviewBasisId);
 }
 
 export function digestTextSync(value: string) {
   return bytesToHex(sha256(new TextEncoder().encode(value)));
 }
 
-export function digestChallengePayloadSync(dealId: string, evidence: SelectedEvidence[]) {
-  return digestTextSync(canonicalChallengePayload(dealId, evidence));
+export function digestChallengePayloadSync(dealId: string, evidence: SelectedEvidence[], reviewBasisId?: string) {
+  return digestTextSync(canonicalChallengePayload(dealId, evidence, reviewBasisId));
 }
 
 async function digestResponseEnvelope(raw: unknown) {
@@ -119,15 +121,17 @@ export function validateModelOutput(raw: unknown, dealId: string, evidence: Sele
   return {proposals, droppedItems};
 }
 
-export async function runEvidenceChallenge(dealId: string, evidence: SelectedEvidence[], transport?: ModelTransport): Promise<ModelReviewResult> {
+export async function runEvidenceChallenge(dealId: string, evidence: SelectedEvidence[], transport?: ModelTransport, reviewBasisId?: string): Promise<ModelReviewResult> {
   if (!transport) return {status: "UNAVAILABLE", message: "Model review unavailable — no runtime credentials configured. Deterministic analysis remains functional.", proposals: [], droppedItems: 0};
   try { validateSelectedEvidence(dealId, evidence); }
   catch (error) { return {status: "FAILED", message: error instanceof Error ? error.message : "Selected evidence is invalid", proposals: [], droppedItems: 0}; }
   try {
-    const requestDigestSha256 = await digestChallengePayload(dealId, evidence);
-    const raw = await transport({job: "challenge_selected_evidence", deal_id: dealId, evidence: evidence.map((item) => ({...item})), output_contract: "underwriting-evidence-challenge/v1", request_digest_sha256: requestDigestSha256});
+    if (reviewBasisId !== undefined && !/^[a-f0-9]{64}$/.test(reviewBasisId)) throw new Error("Review basis identity is invalid");
+    const requestDigestSha256 = await digestChallengePayload(dealId, evidence, reviewBasisId);
+    const raw = await transport({job: "challenge_selected_evidence", deal_id: dealId, evidence: evidence.map((item) => ({...item})), output_contract: "underwriting-evidence-challenge/v1", request_digest_sha256: requestDigestSha256, ...(reviewBasisId ? {review_basis_id: reviewBasisId} : {})});
     const responseDigestSha256 = await digestResponseEnvelope(raw);
     const validated = validateModelOutput(raw, dealId, evidence, requestDigestSha256, responseDigestSha256);
+    validated.proposals = validated.proposals.map(proposal => ({...proposal, ...(reviewBasisId ? {reviewBasisId} : {})}));
     return {status: "PRODUCED", message: validated.proposals.length ? `${validated.proposals.length} proposals require human review.` : "The response contained no admissible evidence-linked proposals.", ...validated};
   } catch (error) {
     return {status: "FAILED", message: error instanceof Error ? error.message : "Model review failed", proposals: [], droppedItems: 0};

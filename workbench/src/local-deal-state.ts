@@ -1,3 +1,4 @@
+import {migrateLegacyDeal, saveDealToBrowser} from "./deal-library";
 import {EVIDENCE_REQUIRED_FILES, processDealPackage, REQUIRED_FILES, type IntakeResult, type SourcePayload} from "./intake";
 import {assertRegisteredPolicyProfile} from "./policy";
 import {createWorkspaceIntegrityContract, sanitizePortableWorkspaceImport, storageKey, validateWorkspace, type DealWorkspaceState, type WorkspaceScenarioContract, type WorkspaceSeed} from "./workspace-state";
@@ -134,8 +135,8 @@ export function validateAdmittedDeal(raw: unknown): IntakeResult {
   return structuredClone(raw) as unknown as IntakeResult;
 }
 
-async function replayAdmittedDeal(result: IntakeResult) {
-  const files = result.sourcePayloads!.map((payload) => {
+function admittedSourceFiles(result: Pick<IntakeResult, "sourcePayloads">) {
+  return result.sourcePayloads!.map((payload) => {
     const legacyText = "text" in payload ? payload.text : null;
     const current = payload as SourcePayload;
     const bytes = legacyText !== null
@@ -146,7 +147,10 @@ async function replayAdmittedDeal(result: IntakeResult) {
     const sourceText = legacyText ?? (current.encoding === "UTF8" ? current.content : "");
     return {name: payload.name, type: "mediaType" in payload ? payload.mediaType : "text/plain", size: bytes.byteLength, text: async () => sourceText, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)} as File;
   });
-  const replayed = await processDealPackage(files);
+ }
+
+export async function replayAdmittedDeal(result: IntakeResult) {
+  const replayed = await processDealPackage(admittedSourceFiles(result));
   if (replayed.packageState !== "READY") throw new Error(`Portable deal source package does not replay to a complete result: ${replayed.errors.join("; ")}`);
   for (const key of ["posture", "rationale", "files", "deal", "analysis"] as const) {
     if (JSON.stringify(replayed[key]) !== JSON.stringify(result[key])) throw new Error(`Portable deal calculations do not match the replayed source package (${key})`);
@@ -154,11 +158,22 @@ async function replayAdmittedDeal(result: IntakeResult) {
   return result;
 }
 
+export async function replayHistoricalDelivery(current: IntakeResult, index: number): Promise<IntakeResult> {
+  const source = validateAdmittedDeal(current);
+  const archived = source.versionHistory?.[index];
+  if (!archived || !Number.isSafeInteger(index) || index < 0) throw new Error("Historical source version is unavailable.");
+  const recalculated = await processDealPackage(admittedSourceFiles({sourcePayloads: archived.sourcePayloads}));
+  if (recalculated.packageState !== "READY" || JSON.stringify(recalculated.deal) !== JSON.stringify(archived.deal) || JSON.stringify(recalculated.analysis) !== JSON.stringify(archived.analysis) || JSON.stringify(recalculated.files) !== JSON.stringify(archived.files)) throw new Error("Historical source version does not match its replayed calculations.");
+  return validateAdmittedDeal({...recalculated, dealLineageId: source.dealLineageId, baselineApproval: archived.approval, versionHistory: source.versionHistory!.slice(0, index)});
+}
+
 export function persistAdmittedDeal(result: IntakeResult) {
   try {
     const validated = validateAdmittedDeal(result);
     if (!validated.baselineApproval) throw new Error("A named analyst must approve Version 1 before persistence");
     if (!window.localStorage) return false;
+    migrateLegacyDeal();
+    saveDealToBrowser(validated);
     const serialized = JSON.stringify(validated);
     window.localStorage.setItem(LOCAL_DEAL_KEY, serialized);
     const retained = window.localStorage.getItem(LOCAL_DEAL_KEY);
@@ -204,6 +219,8 @@ export function installAdmittedDealBundle(bundle: AdmittedDealBundle) {
   const previousDeal = storage.getItem(LOCAL_DEAL_KEY);
   const previousWorkspace = storage.getItem(workspaceStorageKey);
   try {
+    migrateLegacyDeal();
+    saveDealToBrowser(admittedDeal);
     storage.setItem(LOCAL_DEAL_KEY, JSON.stringify(admittedDeal));
     storage.setItem(workspaceStorageKey, JSON.stringify(workspace));
     const retainedDeal = storage.getItem(LOCAL_DEAL_KEY);

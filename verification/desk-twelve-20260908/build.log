@@ -1,0 +1,49 @@
+$ tsc -b && vite build
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 91 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/source-pack/atlasgrid/data/qoe_bridge.csv                    0.24 kB
+dist/source-pack/helios/data/MEMORANDUM.md                        0.31 kB
+dist/source-pack/helios/data/market_assumptions.json              0.31 kB │ gzip:   0.23 kB
+dist/source-pack/atlasgrid/data/CIM.md                            0.38 kB
+dist/source-pack/atlasgrid/data/forecast.csv                      0.55 kB
+dist/index.html                                                   0.83 kB │ gzip:   0.43 kB
+dist/source-pack/helios/data/risk_policy.json                     0.86 kB │ gzip:   0.52 kB
+dist/source-pack/helios/data/cap_table.json                       1.02 kB │ gzip:   0.41 kB
+dist/source-pack/atlasgrid/data/debt_terms.json                   1.03 kB │ gzip:   0.57 kB
+dist/source-pack/helios/data/team_diligence.json                  1.40 kB │ gzip:   0.68 kB
+dist/.vite/manifest.json                                          2.11 kB │ gzip:   0.49 kB
+dist/source-pack/helios/data/venture_scenarios.json               2.19 kB │ gzip:   1.00 kB
+dist/source-pack/helios/data/monthly_pnl.csv                      3.02 kB
+dist/source-pack/helios/data/pipeline.csv                         6.13 kB
+dist/source-pack/atlasgrid/data/monthly_pnl.csv                   6.33 kB
+dist/source-pack/helios/data/market_survey.csv                    9.58 kB
+dist/source-pack/helios/data/financing_plan.json                  9.97 kB │ gzip:   1.78 kB
+dist/source-pack/helios/manifest.json                            12.07 kB │ gzip:   4.04 kB
+dist/source-pack/atlasgrid/manifest.json                         13.17 kB │ gzip:   4.19 kB
+dist/source-pack/helios/data/customer_master.csv                 16.20 kB
+dist/source-pack/helios/data/optimizer_experiment.csv            18.49 kB
+dist/source-pack/atlasgrid/data/support_rollout.csv              32.47 kB
+dist/source-pack/atlasgrid/data/pricing_experiment.csv           42.21 kB
+dist/source-pack/helios/data/stage_history.csv                   76.90 kB
+dist/source-pack/atlasgrid/data/customer_master.csv              86.97 kB
+dist/source-pack/helios/data/customer_month.csv                 664.90 kB
+dist/assets/pdf.worker.min-BmVo14Nb.mjs                       1,317.03 kB
+dist/source-pack/atlasgrid/data/customer_month.csv            4,240.78 kB
+dist/source-pack/atlasgrid/data/billing_ledger.csv            5,563.76 kB
+dist/assets/review-table-D32jFYxR.css                             6.84 kB │ gzip:   1.92 kB
+dist/assets/index-BwL6FM11.css                                  104.71 kB │ gzip:  18.91 kB
+dist/assets/design-specimen-CDbzrXBs.js                           2.57 kB │ gzip:   1.13 kB │ map:     4.50 kB
+dist/assets/review-table-DklLOtkA.js                              9.60 kB │ gzip:   3.73 kB │ map:    35.65 kB
+dist/assets/pdf-ClZ_1Nv1.js                                     495.68 kB │ gzip: 150.98 kB │ map: 1,807.88 kB
+dist/assets/index-CFxCQV4J.js                                   606.14 kB │ gzip: 180.86 kB │ map: 2,038.18 kB
+dist/assets/_virtual_underwriting-case-helios-DXkcisu0.js     1,592.24 kB │ gzip: 156.51 kB │ map:     0.13 kB
+dist/assets/_virtual_underwriting-case-atlasgrid-DpdI2IiM.js  1,862.88 kB │ gzip: 203.22 kB │ map:     0.13 kB
+
+(!) Some chunks are larger than 1000 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.90s

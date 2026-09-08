@@ -37,7 +37,7 @@ describe("model review panel", () => {
     await user.click(accept);
     expect(screen.getByText("accepted")).toBeInTheDocument();
     expect(screen.getByText((_, node) => node?.tagName === "FOOTER" && Boolean(node.textContent?.includes("Edited and accepted by Avery Chen")))).toBeInTheDocument();
-    await user.click(screen.getByText("Compare human-reviewed text to model draft"));
+    expect(screen.getByText("Compare human-reviewed text to model draft")).toBeVisible();
     expect(screen.getByText("Which committed costs are absent?")).toBeInTheDocument();
     expect(screen.getAllByText("Reconcile committed costs against the signed plan.")).toHaveLength(2);
   });
@@ -45,7 +45,7 @@ describe("model review panel", () => {
   it("does not present portable proposal origin as authenticated model provenance", () => {
     render(<ModelReviewPanel dealId="test-deal" evidence={evidence} proposals={[{proposalId: "portable-1", kind: "CHALLENGE", state: "ACCEPTED", title: "Imported challenge", body: "Reconcile the burn window.", evidenceRefs: ["runway"], dealId: "test-deal", origin: "PORTABLE_IMPORT_UNVERIFIED", requestEvidence: evidence, requestDigestSha256: "a".repeat(64), humanActor: "Avery Chen", reviewedAt: "2026-09-01T01:00:00.000Z", limitations: "Imported portable state preserves the proposal and named human disposition, but does not authenticate the original model or provider."}]} />);
     expect(screen.getByText("Imported proposal · source unverified")).toBeInTheDocument();
-    expect(screen.getByText(/Portable import/)).toBeInTheDocument();
+    expect(screen.getByText(/Imported portable state preserves/)).toBeInTheDocument();
     expect(screen.queryByText(/claude|grok|chatgpt/i)).not.toBeInTheDocument();
   });
 

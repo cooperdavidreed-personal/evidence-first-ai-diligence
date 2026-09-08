@@ -1,93 +1,95 @@
-import {useState} from "react";
-import {processDealPackage, promoteEvidenceVersion, sha256, type IntakeResult} from "./intake";
+import {ReviewTable} from "./review-table";
+import {compareSupportedRevision} from "./supported-revision";
+import {useEffect, useRef, useState} from "react";
+import {processDealPackage, promoteEvidenceVersion, type IntakeResult} from "./intake";
 import type {DealWorkspaceState, PackageChangeControlState} from "./workspace-state";
 import type {WorkspaceUpdate} from "./workspace-ui";
 
-const percent = (value: number) => `${(value * 100).toFixed(1)}%`;
-const multiple = (value: number) => `${value.toFixed(2)}x`;
-const money = (cents: number) => new Intl.NumberFormat("en-US", {style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1}).format(cents / 100);
-
-function manifestDigest(result: IntakeResult) {
-  const digest = result.files.find((file) => file.name === "manifest.json")?.sha256;
-  if (!digest) throw new Error("Revision manifest identity is missing");
-  return digest;
-}
-
-export function LocalChangeControl({result, state, update, onPromote}: {result: IntakeResult; state: DealWorkspaceState; update: WorkspaceUpdate; onPromote: (result: IntakeResult) => void}) {
+export function LocalChangeControl({result, state, update, onPromote, candidateRevision, onCandidateConsumed, onCandidateStaged, onCandidateDiscarded}: {candidateRevision?: IntakeResult | null; onCandidateConsumed?: () => void; onCandidateStaged?: (candidate: IntakeResult) => void; onCandidateDiscarded?: () => void; result: IntakeResult; state: DealWorkspaceState; update: WorkspaceUpdate; onPromote: (result: IntakeResult, acceptedControl: PackageChangeControlState) => void | Promise<void>}) {
+  const staged = useRef<IntakeResult | null>(null);
   const [candidate, setCandidate] = useState<IntakeResult | null>(null);
+  const [selectedImpact, setSelectedImpact] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [actor, setActor] = useState("");
   const [rationale, setRationale] = useState("");
   const control = state.changeControl;
   const currentVersion = result.baselineApproval?.version ?? "V1";
 
+  const canLoadExample = result.deal?.company === "Northstar Metrics" && result.baselineApproval?.packageDigest === "138bf7fa507174de136ad4c47035483918747afdfb7ae47102b9110674d7e78e" && ["operating_model.xlsx", "customer_arr.csv", "management_update.pdf", "deal.json"].every(name=>result.files.some(file=>file.name===name && file.sha256));
+  async function loadExample() {
+    if (!canLoadExample || saving) return;
+    setSaving(true);
+    try {
+      const files = await Promise.all(["manifest.json", "deal.json", "operating_model.xlsx", "customer_arr.csv", "management_update.pdf"].map(async name=>{
+        const response = await fetch(new URL(`sample-package-v2-revision/${name}`, window.location.href), {signal:AbortSignal.timeout(10000)});
+        if(!response.ok) throw new Error("The included revision could not be loaded. Upload its files instead.");
+        const bytes = await response.arrayBuffer(); if(bytes.byteLength > 5*1024*1024) throw new Error("Example source exceeds the supported size limit.");
+        return new File([bytes],name,{type:response.headers.get("content-type")??"application/octet-stream"});
+      }));
+      await importRevision(files);
+    } catch(error) {setNotice(error instanceof Error ? error.message : "Example revision unavailable.");}
+    finally {setSaving(false);}
+  }
+
   async function importRevision(files: File[]) {
     if (!files.length) return;
     try {
       const revision = await processDealPackage(files, result.analysis!.policyProfile);
-      if (revision.packageState !== "READY" || !revision.analysis || !revision.deal) throw new Error(revision.errors[0] ?? "Revision package is incomplete");
-      if (revision.deal.company !== result.deal!.company) throw new Error("Revision package belongs to a different company");
-      const packageDigestSha256 = manifestDigest(revision);
-      if (packageDigestSha256 === result.baselineApproval?.packageDigest) throw new Error("Revision package is byte-identical to the canonical evidence");
-      const before = result.analysis!; const after = revision.analysis;
-      const rawReceipt = JSON.stringify({from: result.baselineApproval?.packageDigest, to: packageDigestSha256, before: {revenue: before.ltmRevenueCents, margin: before.grossMargin, nrr: before.ordinaryNrr, moic: before.grossMoic, annualized: before.annualizedGrossReturn}, after: {revenue: after.ltmRevenueCents, margin: after.grossMargin, nrr: after.ordinaryNrr, moic: after.grossMoic, annualized: after.annualizedGrossReturn}});
-      const deterministicReceiptSha256 = await sha256(new TextEncoder().encode(rawReceipt).buffer);
-      const changedTests = after.tests.filter((test) => test.blocksAdvancement).map((test) => test.label);
-      const next: PackageChangeControlState = {
-        changeSetId: `local-${packageDigestSha256.slice(0, 12)}`,
-        fromVersion: currentVersion,
-        toVersion: `V${Number(currentVersion.slice(1) || "1") + 1}`,
-        packageDigestSha256,
-        importedAt: new Date().toISOString(),
-        sourcePath: "Declared Version 2 package",
-        sourceLocator: "operating_model.xlsx + customer_arr.csv + management_update.pdf + deal.json",
-        changeId: `local-evidence-${packageDigestSha256.slice(0, 12)}`,
-        changeTitle: "Revised evidence changes the screening record",
-        beforeValue: percent(before.ordinaryNrr),
-        afterValue: percent(after.ordinaryNrr),
-        deterministicReceiptSha256,
-        decisionConsequence: `${revision.posture}. ${changedTests.length} screening or diligence gates remain unresolved after the deterministic rerun.`,
-        affectedAssumptionIds: ["local-growth", "local-exit-multiple", "local-financing"],
-        affectedIssueIds: ["local-version-change"],
-        affectedMemoSectionIds: ["screening", "economics", "diligence"],
-        impacts: [
-          {impactId: "retention", label: "Cohort retention proxy", before: percent(before.ordinaryNrr), after: percent(after.ordinaryNrr), consequence: "The revised customer delivery changes the fixed-cohort outcome and its screening concern.", rank: 1},
-          {impactId: "revenue", label: "LTM revenue", before: money(before.ltmRevenueCents), after: money(after.ltmRevenueCents), consequence: "The deterministic revenue base is recalculated from the revised operating-model evidence.", rank: 2},
-          {impactId: "gross-margin", label: "Gross margin", before: percent(before.grossMargin), after: percent(after.grossMargin), consequence: "Reported margin remains subject to cost-classification diligence.", rank: 3},
-          {impactId: "gross-moic", label: "Gross multiple", before: multiple(before.grossMoic), after: multiple(after.grossMoic), consequence: "Returns are rerun from revised canonical inputs; assumptions remain separately unapproved.", rank: 4},
-          {impactId: "annualized-return", label: "Annualized gross return", before: percent(before.annualizedGrossReturn), after: percent(after.annualizedGrossReturn), consequence: "The return screen updates mechanically and does not itself authorize advancement.", rank: 5},
-        ],
-        dispositionEvents: [],
-      };
-      const now = new Date().toISOString();
-      const issue = {id: "local-version-change", title: "Disposition the Version 2 evidence delivery", description: "Confirm the revised mappings, exclusions, discrepancies, and decision consequences before changing the canonical evidence.", owner: result.deal!.analystOwner, priority: "CRITICAL" as const, status: "OPEN" as const, dueDate: null, decisionImpact: next.decisionConsequence, evidenceRefs: ["ordinary-nrr"], resolution: null, resolvedBy: null, createdAt: now, updatedAt: now};
-      setCandidate(revision);
-      update({changeControl: next, issues: [...state.issues.filter((item) => item.id !== issue.id), issue], memoSections: state.memoSections.map((section) => next.affectedMemoSectionIds.includes(section.sectionId) ? {...section, scenarioSnapshotId: `stale:${next.changeSetId}`} : section)});
-      setNotice("Version 2 validated. Five decision impacts are ready for a named human disposition; Version 1 remains canonical.");
+      await stage(revision);
     } catch (error) { setCandidate(null); setNotice(error instanceof Error ? error.message : "Revision package could not be admitted"); }
   }
 
-  function disposition(value: "ACCEPTED" | "REJECTED" | "DEFERRED") {
-    if (!control || !actor.trim() || rationale.trim().length < 20) return;
+  async function stage(revision: IntakeResult) {
+    // Mark manual imports before notifying the parent. Its prop echo must not
+    // start a second validation against a captured, older disposition state.
+    staged.current = revision;
+    try {
+      const next = await compareSupportedRevision(result, revision);
+      if (control?.packageDigestSha256 === next.packageDigestSha256 && control.fromVersion === currentVersion && control.dispositionEvents.at(-1)?.disposition !== "ACCEPTED") {setCandidate(revision); onCandidateStaged?.(revision); if(control.dispositionEvents.at(-1)?.disposition === "REJECTED") {update({issues:state.issues.map(issue=>issue.id === "local-version-change" ? {...issue,status:"OPEN",resolution:null,resolvedBy:null,updatedAt:new Date().toISOString()} : issue)});setNotice("Previously rejected; available for reconsideration. The prior rejection remains recorded until a new human disposition.");} return;}
+      const now = new Date().toISOString();
+      const issue = {id: "local-version-change", title: `Disposition the ${next.toVersion} evidence delivery`, description: "Confirm the revised mappings, exclusions, discrepancies, and decision consequences before changing the canonical evidence.", owner: result.deal!.analystOwner, priority: "CRITICAL" as const, status: "OPEN" as const, dueDate: null, decisionImpact: next.decisionConsequence, evidenceRefs: [], resolution: null, resolvedBy: null, createdAt: now, updatedAt: now};
+      setCandidate(revision); onCandidateStaged?.(revision); setSelectedImpact(next.impacts[0]?.impactId ?? null);
+      update({changeControl: next, issues: [...state.issues.filter((item) => item.id !== issue.id), issue]});
+      setNotice(`${next.toVersion} validated. ${next.impacts.length} calculated measures changed. ${currentVersion} remains canonical until human acceptance.`);
+    } catch (error) { if(staged.current === revision) staged.current = null; setCandidate(null); setNotice(error instanceof Error ? error.message : "Revision package could not be admitted"); }
+  }
+
+  useEffect(() => {if(candidateRevision && staged.current !== candidateRevision) {staged.current = candidateRevision; void stage(candidateRevision).finally(()=>onCandidateConsumed?.());}}, [candidateRevision]);
+
+  async function disposition(value: "ACCEPTED" | "REJECTED" | "DEFERRED") {
+    if (saving || !control || control.dispositionEvents.at(-1)?.disposition === "ACCEPTED" || actor.trim().length < 2 || rationale.trim().length < 20) return;
     const event = {eventId: crypto.randomUUID(), changeId: control.changeId, disposition: value, actor: actor.trim(), rationale: rationale.trim(), recordedAt: new Date().toISOString()} as const;
-    update({changeControl: {...control, dispositionEvents: [...control.dispositionEvents, event]}});
     if (value === "ACCEPTED") {
-      if (!candidate) { setNotice("The validated Version 2 bytes are not available in this session. Re-import the package before acceptance."); return; }
-      const promoted = promoteEvidenceVersion(result, candidate, actor, rationale, event.recordedAt);
-      onPromote(promoted);
-      setCandidate(null);
-      setNotice(`${promoted.baselineApproval!.version} is now canonical. ${control.fromVersion} source bytes remain preserved in evidence history.`);
-    } else setNotice(`${value === "REJECTED" ? "Rejected" : "Deferred"} by ${actor.trim()}. ${control.fromVersion} remains canonical and all revised evidence remains non-canonical.`);
+      if (!candidate || candidate.files.find(file=>file.name === "manifest.json")?.sha256 !== control.packageDigestSha256 || result.baselineApproval?.version !== control.fromVersion) {setNotice("The validated candidate bytes are missing or stale. Re-import the delivery before acceptance."); return;}
+      try {
+        const promoted = promoteEvidenceVersion(result, candidate, actor, rationale, event.recordedAt);
+        setSaving(true);
+        await onPromote(promoted, {...control, dispositionEvents: [...control.dispositionEvents, event]});
+        onCandidateDiscarded?.();
+        setCandidate(null);
+        setNotice(`${promoted.baselineApproval!.version} is now canonical. ${control.fromVersion} source bytes remain preserved in evidence history.`);
+      } catch(error) {setNotice(error instanceof Error ? error.message : "Promotion failed; no acceptance recorded."); return;} finally {setSaving(false);}
+    } else {
+      update({changeControl: {...control, dispositionEvents: [...control.dispositionEvents, event]}});
+      if(value === "REJECTED") {setCandidate(null); onCandidateDiscarded?.(); update({issues: state.issues.map(issue=>issue.id === "local-version-change" ? {...issue,status:"RESOLVED",resolution:rationale.trim(),resolvedBy:actor.trim(),updatedAt:event.recordedAt} : issue)});}
+      setNotice(`${value === "REJECTED" ? "Rejected" : "Deferred"} by ${actor.trim()}. ${control.fromVersion} remains canonical.`);
+    }
     setRationale("");
   }
 
   const latest = control?.dispositionEvents.at(-1);
+  const inspected = control?.impacts.find(impact=>impact.impactId===selectedImpact) ?? control?.impacts[0];
   return <section className="change-control local-change-control" aria-labelledby="local-change-control-heading">
-    <header><div><p className="eyebrow">Evidence change control</p><h2 id="local-change-control-heading">Compare a revised delivery</h2><p>Validate Version 2 against the approved Version 1 evidence, then disposition the recalculated impact without letting the package approve itself.</p></div><label className="file-button">Upload Version 2<input data-testid="local-revision-input" type="file" multiple accept=".json,.csv,.pdf,.xlsx" onChange={(event) => void importRevision(Array.from(event.target.files ?? []))} /></label></header>
-    {!control ? <div className="change-empty"><div><strong>{currentVersion}</strong><span>Canonical evidence · current</span></div><p>Use the included revised Northstar package to test source-to-decision propagation.</p><details><summary>Download five revision files</summary><a href="sample-package-v2-revision/manifest.json" download>Manifest</a> · <a href="sample-package-v2-revision/deal.json" download>Deal</a> · <a href="sample-package-v2-revision/operating_model.xlsx" download>Operating model</a> · <a href="sample-package-v2-revision/customer_arr.csv" download>Customer ARR</a> · <a href="sample-package-v2-revision/management_update.pdf" download>Management update</a></details></div> : <>
-      <div className="version-strip"><div><span>Canonical</span><strong>{control.fromVersion}</strong><small>Preserved</small></div><div><span>Candidate</span><strong>{control.toVersion}</strong><small>{candidate ? "Validated in this session" : "Re-import to accept"}</small></div><div data-state="blocked"><span>Decision consequence</span><strong>{candidate?.posture ?? "Revision awaiting disposition"}</strong><small>{control.affectedMemoSectionIds.length} memo sections stale</small></div></div>
-      <div className="change-impact-table"><div className="change-impact-head"><span>Priority</span><span>Changed measure</span><span>Before</span><span>After</span><span>Decision meaning</span></div>{control.impacts.map((impact) => <article key={impact.impactId}><span>{impact.rank}</span><strong>{impact.label}</strong><span>{impact.before}</span><span>{impact.after}</span><p>{impact.consequence}</p></article>)}</div>
-      <section className="change-disposition"><div><span>Human disposition</span><strong>{latest?.disposition.toLowerCase() ?? "Pending"}</strong><small>{latest ? `${latest.actor} · ${latest.rationale}` : `${control.fromVersion} remains canonical until a named human accepts the change.`}</small></div><label><span>Reviewer</span><input value={actor} maxLength={120} onChange={(event) => setActor(event.target.value)} placeholder="Named human reviewer" /></label><label><span>Rationale</span><textarea value={rationale} maxLength={1200} onChange={(event) => setRationale(event.target.value)} placeholder="Why should Version 2 replace, not replace, or wait?" /></label><div><button type="button" disabled={!candidate || !actor.trim() || rationale.trim().length < 20} onClick={() => disposition("ACCEPTED")}>Accept and promote</button><button type="button" disabled={!actor.trim() || rationale.trim().length < 20} onClick={() => disposition("REJECTED")}>Reject change</button><button type="button" disabled={!actor.trim() || rationale.trim().length < 20} onClick={() => disposition("DEFERRED")}>Defer</button></div></section>
+    <header><div><p className="eyebrow">Evidence review</p><h2 id="local-change-control-heading">Compare a revised delivery</h2><p>Compare the new delivery with the approved source. Review the changed numbers before accepting it.</p></div>{canLoadExample ? <button type="button" className="primary-button" disabled={saving} onClick={()=>void loadExample()}>Load example revision</button> : null}<label className="file-button">Upload revised package<input data-testid="local-revision-input" type="file" multiple accept=".json,.csv,.pdf,.xlsx" onChange={(event) => {const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; void importRevision(files);}} /></label></header>
+    {!control ? <div className="change-empty"><div><strong>{currentVersion}</strong><span>Approved evidence · current</span></div><p>Upload a supported package for this company. Its manifest, sources and deterministic results are validated before comparison.</p><details><summary>Download five revision files</summary><a href="sample-package-v2-revision/manifest.json" download>Manifest</a> · <a href="sample-package-v2-revision/deal.json" download>Deal</a> · <a href="sample-package-v2-revision/operating_model.xlsx" download>Operating model</a> · <a href="sample-package-v2-revision/customer_arr.csv" download>Customer ARR</a> · <a href="sample-package-v2-revision/management_update.pdf" download>Management update</a></details></div> : <>
+      <div className="version-strip"><div><span>{latest?.disposition === "ACCEPTED" ? "Prior approved source" : "Approved source"}</span><strong>{control.fromVersion}</strong><small>Preserved</small></div><div><span>{latest?.disposition === "ACCEPTED" ? "Accepted source" : "Candidate"}</span><strong>{control.toVersion}</strong><small>{latest?.disposition === "ACCEPTED" ? "Human acceptance recorded" : candidate ? latest?.disposition === "REJECTED" ? "Previously rejected; available for reconsideration" : "Validated in this session" : "Re-import to accept"}</small></div><div data-state="blocked"><span>Decision consequence</span><strong>{candidate?.posture ?? (latest?.disposition === "ACCEPTED" ? result.posture : "Revision awaiting disposition")}</strong><small>{control.affectedMemoSectionIds.length} memo section dependencies</small></div></div>
+      <div className="review-workbench-grid"><ReviewTable label="Revised delivery impacts" rows={control.impacts} rowKey={impact=>impact.impactId} selectedId={inspected?.impactId} emptyMessage="No calculated financial measures changed. The source revision still requires human disposition." columns={[
+        {id:"measure",label:"Changed measure",sortValue:impact=>impact.label,render:impact=><button className="record-link" type="button" onClick={()=>setSelectedImpact(impact.impactId)}>{impact.label}</button>},
+        {id:"before",label:"Approved source",numeric:true,render:impact=>impact.before},
+        {id:"after",label:"Revised source",numeric:true,render:impact=>impact.after}
+      ]}/><aside className="review-inspector" aria-label="Selected revision impact"><p className="eyebrow">Source consequence</p><h3>{inspected?.label ?? "No numerical change"}</h3><p>{inspected?.consequence ?? control.changeTitle}</p><dl><dt>Changed sources</dt><dd>{control.sourceLocator}</dd><dt>Screening implication</dt><dd>{control.decisionConsequence}</dd><dt>Assumptions requiring review</dt><dd>{control.affectedAssumptionIds.map(id=>({"local-growth":"Revenue growth","local-exit-multiple":"Exit multiple","local-financing":"Financing terms"}[id] ?? "Declared assumption")).join(", ") || "No declared deal assumptions changed"}</dd><dt>Memo dependencies</dt><dd>{control.affectedMemoSectionIds.map(id=>({screening:"Screening view",economics:"Economics",diligence:"Required diligence"}[id] ?? "Memo section")).join(", ") || "No calculated memo dependencies changed"}</dd></dl></aside></div>
+      <section className="change-disposition"><div><span>Review decision</span><strong>{latest?.disposition.toLowerCase() ?? "Pending"}</strong><small>{latest ? `${latest.actor} · ${latest.rationale}` : `${control.fromVersion} remains canonical until a named human accepts the change.`}</small></div><label><span>Reviewer</span><input value={actor} maxLength={120} onChange={(event) => setActor(event.target.value)} placeholder="Named human reviewer" /></label><label><span>Rationale</span><textarea value={rationale} maxLength={1200} onChange={(event) => setRationale(event.target.value)} placeholder="Explain why this source revision should be accepted, rejected or deferred." /></label><div><button type="button" disabled={saving || !candidate || actor.trim().length < 2 || rationale.trim().length < 20} onClick={() => disposition("ACCEPTED")}>Accept and promote</button><button type="button" disabled={saving || latest?.disposition === "ACCEPTED" || actor.trim().length < 2 || rationale.trim().length < 20} onClick={() => disposition("REJECTED")}>Reject change</button><button type="button" disabled={saving || latest?.disposition === "ACCEPTED" || actor.trim().length < 2 || rationale.trim().length < 20} onClick={() => disposition("DEFERRED")}>Defer</button></div></section>
     </>}
     {notice ? <p className="change-notice" role="status">{notice}</p> : null}
   </section>;

@@ -1,0 +1,51 @@
+$ vitest run
+
+ RUN  v3.2.7 <repository>/workbench
+
+ ✓ src/intake-package.test.ts (9 tests) 8ms
+ ✓ src/package-archive-panel.test.tsx (2 tests) 93ms
+ ✓ src/workbook-diff.test.ts (21 tests) 111ms
+(node:99753) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/controlled-workbook.test.ts (2 tests) 39ms
+ ✓ src/excel-round-trip.test.tsx (2 tests) 87ms
+ ✓ src/review-table.test.tsx (1 test) 94ms
+ ✓ src/package-archive.test.ts (6 tests) 105ms
+ ✓ src/local-review.test.tsx (1 test) 143ms
+ ✓ src/review-basis-binding.test.tsx (4 tests) 110ms
+ ✓ src/committee-snapshot.test.tsx (4 tests) 142ms
+ ✓ src/workspace-ui-review.test.tsx (3 tests) 141ms
+ ✓ src/excel-change-review.test.tsx (2 tests) 202ms
+ ✓ src/governance-review.test.tsx (5 tests) 133ms
+ ✓ src/intake.test.ts (18 tests) 193ms
+ ✓ src/model-connection-dialog.test.tsx (3 tests) 195ms
+ ✓ src/local-change-control.test.tsx (7 tests) 242ms
+ ✓ src/model-workflow.test.ts (7 tests) 50ms
+ ✓ src/proposal-ledger.test.ts (4 tests) 18ms
+ ✓ src/deal-library.test.ts (7 tests) 267ms
+ ✓ src/review-basis.test.ts (7 tests) 14ms
+ ✓ src/scenario-comparison.test.tsx (2 tests) 93ms
+ ✓ src/local-workspace-hook.test.tsx (3 tests) 310ms
+ ✓ src/supported-revision.test.ts (6 tests) 278ms
+ ✓ src/model-review-panel.test.tsx (4 tests) 549ms
+   ✓ model review panel > requires evidence selection and confirmation before producing a proposal  496ms
+ ✓ src/local-deal-state.test.ts (12 tests) 177ms
+ ✓ src/local-workspace.test.ts (6 tests) 7ms
+ ✓ src/workspace-state.test.ts (18 tests) 8ms
+ ✓ src/data-contract.test.ts (13 tests) 695ms
+ ✓ src/desk-setup.test.ts (2 tests) 2ms
+ ✓ src/challenge-api.test.ts (10 tests) 7ms
+ ✓ src/public-record-case.test.ts (2 tests) 2ms
+ ✓ src/model-connection.test.ts (5 tests) 7ms
+ ✓ src/intake-draft.test.ts (3 tests) 7ms
+ ✓ src/runtime-case.test.ts (3 tests) 13ms
+ ✓ src/canonical-evidence-registry.test.ts (2 tests) 187ms
+ ✓ src/App.test.tsx (23 tests) 3957ms
+   ✓ Underwriting Desk investor workspace > fails closed with a readable boundary when retained analysis is incomplete  366ms
+   ✓ Underwriting Desk investor workspace > derives empirical direction from the retained estimate sign  319ms
+   ✓ Underwriting Desk investor workspace > records named human observations without mutating retained case data  330ms
+
+ Test Files  36 passed (36)
+      Tests  229 passed (229)
+   Start at  09:19:27
+   Duration  6.83s (transform 4.73s, setup 18.30s, collect 15.28s, tests 8.68s, environment 22.05s, prepare 2.49s)

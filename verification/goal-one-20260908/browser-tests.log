@@ -1,0 +1,116 @@
+[WebServer] (node:50623) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 100 tests using 1 worker
+
+(node:51038) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/100] [desktop] › tests/analysis-workspace.spec.ts:4:1 › investment matrix keeps evidence inspectable and assigns a persistent diligence question
+[2/100] [desktop] › tests/analysis-workspace.spec.ts:30:1 › connection setup explains the local boundary and provides an assistant prompt
+[3/100] [desktop] › tests/analysis-workspace.spec.ts:43:1 › financial workspace compares both transaction types and navigates by task
+[4/100] [desktop] › tests/analysis-workspace.spec.ts:55:1 › deal register filters and evidence layout stays a user preference
+[5/100] [desktop] › tests/deal-library.spec.ts:27:1 › saved incomplete intake resumes exact bytes after reload without approval
+[6/100] [desktop] › tests/deal-library.spec.ts:52:1 › two same-company source packages reopen independently after reload
+[7/100] [desktop] › tests/goal-one-visual.spec.ts:6:1 › desktop composition across entry and workspaces
+[8/100] [desktop] › tests/goal-one-visual.spec.ts:18:1 › two direction comparison
+[9/100] [desktop] › tests/goal-one-visual.spec.ts:26:1 › entry walkthrough, focused navigation, and reduced motion
+[10/100] [desktop] › tests/goal-one-visual.spec.ts:48:1 › case loading failure has a recoverable designed state
+[11/100] [desktop] › tests/goal-one-walkthrough.spec.ts:4:1 › record the working desktop review sequence
+[12/100] [desktop] › tests/local-review.spec.ts:5:1 › selected evidence reaches MCP and a returned proposal survives human review and reload
+[13/100] [desktop] › tests/memo.spec.ts:19:5 › atlasgrid ic-snapshot renders and paginates without horizontal clipping
+[14/100] [desktop] › tests/memo.spec.ts:19:5 › atlasgrid underwriting-packet renders and paginates without horizontal clipping
+[15/100] [desktop] › tests/memo.spec.ts:19:5 › atlasgrid technical-appendix renders and paginates without horizontal clipping
+[16/100] [desktop] › tests/memo.spec.ts:19:5 › helios ic-snapshot renders and paginates without horizontal clipping
+[17/100] [desktop] › tests/memo.spec.ts:19:5 › helios underwriting-packet renders and paginates without horizontal clipping
+[18/100] [desktop] › tests/memo.spec.ts:19:5 › helios technical-appendix renders and paginates without horizontal clipping
+[19/100] [desktop] › tests/package-archive.spec.ts:3:1 › archived source delivery replays after browser storage is cleared
+[20/100] [desktop] › tests/review-system.spec.ts:6:1 › component standard supports keyboard sorting and a recoverable empty filter
+[21/100] [desktop] › tests/review-system.spec.ts:21:1 › financial work area survives reload without replacing the selected scenario
+[22/100] [desktop] › tests/review-system.spec.ts:33:1 › committee record downloads reconciled contents with a reproducible checksum
+[23/100] [desktop] › tests/supported-revision-flow.spec.ts:14:1 › workbook candidate survives navigation, rejection preserves V1, acceptance survives reload
+[24/100] [desktop] › tests/workbench.spec.ts:79:1 › Deals is a calm product root with no critical accessibility or overflow finding
+[25/100] [desktop] › tests/workbench.spec.ts:90:1 › mobile deal navigation resets a previously scrolled Deals page
+[26/100] [desktop] › tests/workbench.spec.ts:100:1 › invalid saved workspace remains preserved behind a visible recovery warning
+[27/100] [desktop] › tests/workbench.spec.ts:109:1 › model connection center prepares subscription setup without claiming a connection
+[28/100] [desktop] › tests/workbench.spec.ts:128:1 › bounded hosted model proposal requires evidence confirmation and named human acceptance
+[29/100] [desktop] › tests/workbench.spec.ts:165:1 › scenario, observation, issue, assumption, and memo changes persist as human work
+[30/100] [desktop] › tests/workbench.spec.ts:213:1 › memo export fails closed and downloads one reconciled scenario snapshot
+[31/100] [desktop] › tests/workbench.spec.ts:246:1 › every retained-case and Northstar public source opens from the running build
+[32/100] [desktop] › tests/workbench.spec.ts:280:1 › portable state export downloads and imports its validated scenario ownership
+[33/100] [desktop] › tests/workbench.spec.ts:297:1 › Version 2 evidence propagates through returns, stale state, diligence, and human disposition
+[34/100] [desktop] › tests/workbench.spec.ts:356:1 › decision rail keeps canonical conditions separate from worklist resolutions
+[35/100] [desktop] › tests/workbench.spec.ts:371:1 › Helios policy sensitivity is an unapproved what-if and follows the memo
+[36/100] [desktop] › tests/workbench.spec.ts:390:1 › print export uses complete memo text instead of a clipped textarea
+[37/100] [desktop] › tests/workbench.spec.ts:402:1 › portable state rejects a fabricated accepted-proposal citation
+[38/100] [desktop] › tests/workbench.spec.ts:415:1 › lineage closes back to its exact opener and defers calculation detail
+[39/100] [desktop] › tests/workbench.spec.ts:429:1 › mobile controls expose every diligence tab, heatmap edge, and source-cell label
+[40/100] [desktop] › tests/workbench.spec.ts:460:1 › legacy MCP proposal remains readable but cannot bypass current-basis acceptance
+[41/100] [desktop] › tests/workbench.spec.ts:495:3 › AtlasGrid Systems six-destination investor journey
+[42/100] [desktop] › tests/workbench.spec.ts:495:3 › Helios Compute Control six-destination investor journey
+[43/100] [desktop] › tests/workbench.spec.ts:525:1 › ordinary multi-file intake produces a governed local deal that survives refresh
+[44/100] [desktop] › tests/workbench.spec.ts:574:1 › missing required input is explained and blocks analysis before return conclusions
+[45/100] [desktop] › tests/workbench.spec.ts:586:1 › sequential selections add to the package, and per-file remove and replace work
+[46/100] [desktop] › tests/workbench.spec.ts:607:1 › one click loads the complete synthetic sample package
+[47/100] [desktop] › tests/workbench.spec.ts:617:1 › mixed Excel CSV PDF package is parsed, reviewed, approved, and replayable
+[48/100] [desktop] › tests/workbench.spec.ts:663:1 › local Version 2 changes propagate and require explicit accept reject or defer
+[49/100] [desktop] › tests/workbench.spec.ts:739:1 › deep links still load only the selected retained case chunk
+[50/100] [desktop] › tests/workbench.spec.ts:749:1 › public-record retrospective enforces the historical cutoff without hindsight
+(node:64010) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[51/100] [desktop-webkit] › tests/analysis-workspace.spec.ts:4:1 › investment matrix keeps evidence inspectable and assigns a persistent diligence question
+[52/100] [desktop-webkit] › tests/analysis-workspace.spec.ts:30:1 › connection setup explains the local boundary and provides an assistant prompt
+[53/100] [desktop-webkit] › tests/analysis-workspace.spec.ts:43:1 › financial workspace compares both transaction types and navigates by task
+[54/100] [desktop-webkit] › tests/analysis-workspace.spec.ts:55:1 › deal register filters and evidence layout stays a user preference
+[55/100] [desktop-webkit] › tests/deal-library.spec.ts:27:1 › saved incomplete intake resumes exact bytes after reload without approval
+[56/100] [desktop-webkit] › tests/deal-library.spec.ts:52:1 › two same-company source packages reopen independently after reload
+[57/100] [desktop-webkit] › tests/goal-one-visual.spec.ts:6:1 › desktop composition across entry and workspaces
+[58/100] [desktop-webkit] › tests/goal-one-visual.spec.ts:18:1 › two direction comparison
+[59/100] [desktop-webkit] › tests/goal-one-visual.spec.ts:26:1 › entry walkthrough, focused navigation, and reduced motion
+[60/100] [desktop-webkit] › tests/goal-one-visual.spec.ts:48:1 › case loading failure has a recoverable designed state
+[61/100] [desktop-webkit] › tests/goal-one-walkthrough.spec.ts:4:1 › record the working desktop review sequence
+[62/100] [desktop-webkit] › tests/local-review.spec.ts:5:1 › selected evidence reaches MCP and a returned proposal survives human review and reload
+[63/100] [desktop-webkit] › tests/memo.spec.ts:19:5 › atlasgrid ic-snapshot renders and paginates without horizontal clipping
+[64/100] [desktop-webkit] › tests/memo.spec.ts:19:5 › atlasgrid underwriting-packet renders and paginates without horizontal clipping
+[65/100] [desktop-webkit] › tests/memo.spec.ts:19:5 › atlasgrid technical-appendix renders and paginates without horizontal clipping
+[66/100] [desktop-webkit] › tests/memo.spec.ts:19:5 › helios ic-snapshot renders and paginates without horizontal clipping
+[67/100] [desktop-webkit] › tests/memo.spec.ts:19:5 › helios underwriting-packet renders and paginates without horizontal clipping
+[68/100] [desktop-webkit] › tests/memo.spec.ts:19:5 › helios technical-appendix renders and paginates without horizontal clipping
+[69/100] [desktop-webkit] › tests/package-archive.spec.ts:3:1 › archived source delivery replays after browser storage is cleared
+[70/100] [desktop-webkit] › tests/review-system.spec.ts:6:1 › component standard supports keyboard sorting and a recoverable empty filter
+[71/100] [desktop-webkit] › tests/review-system.spec.ts:21:1 › financial work area survives reload without replacing the selected scenario
+[72/100] [desktop-webkit] › tests/review-system.spec.ts:33:1 › committee record downloads reconciled contents with a reproducible checksum
+[73/100] [desktop-webkit] › tests/supported-revision-flow.spec.ts:14:1 › workbook candidate survives navigation, rejection preserves V1, acceptance survives reload
+[74/100] [desktop-webkit] › tests/workbench.spec.ts:79:1 › Deals is a calm product root with no critical accessibility or overflow finding
+[75/100] [desktop-webkit] › tests/workbench.spec.ts:90:1 › mobile deal navigation resets a previously scrolled Deals page
+[76/100] [desktop-webkit] › tests/workbench.spec.ts:100:1 › invalid saved workspace remains preserved behind a visible recovery warning
+[77/100] [desktop-webkit] › tests/workbench.spec.ts:109:1 › model connection center prepares subscription setup without claiming a connection
+[78/100] [desktop-webkit] › tests/workbench.spec.ts:128:1 › bounded hosted model proposal requires evidence confirmation and named human acceptance
+[79/100] [desktop-webkit] › tests/workbench.spec.ts:165:1 › scenario, observation, issue, assumption, and memo changes persist as human work
+[80/100] [desktop-webkit] › tests/workbench.spec.ts:213:1 › memo export fails closed and downloads one reconciled scenario snapshot
+[81/100] [desktop-webkit] › tests/workbench.spec.ts:246:1 › every retained-case and Northstar public source opens from the running build
+[82/100] [desktop-webkit] › tests/workbench.spec.ts:280:1 › portable state export downloads and imports its validated scenario ownership
+[83/100] [desktop-webkit] › tests/workbench.spec.ts:297:1 › Version 2 evidence propagates through returns, stale state, diligence, and human disposition
+[84/100] [desktop-webkit] › tests/workbench.spec.ts:356:1 › decision rail keeps canonical conditions separate from worklist resolutions
+[85/100] [desktop-webkit] › tests/workbench.spec.ts:371:1 › Helios policy sensitivity is an unapproved what-if and follows the memo
+[86/100] [desktop-webkit] › tests/workbench.spec.ts:390:1 › print export uses complete memo text instead of a clipped textarea
+[87/100] [desktop-webkit] › tests/workbench.spec.ts:402:1 › portable state rejects a fabricated accepted-proposal citation
+[88/100] [desktop-webkit] › tests/workbench.spec.ts:415:1 › lineage closes back to its exact opener and defers calculation detail
+[89/100] [desktop-webkit] › tests/workbench.spec.ts:429:1 › mobile controls expose every diligence tab, heatmap edge, and source-cell label
+[90/100] [desktop-webkit] › tests/workbench.spec.ts:460:1 › legacy MCP proposal remains readable but cannot bypass current-basis acceptance
+[91/100] [desktop-webkit] › tests/workbench.spec.ts:495:3 › AtlasGrid Systems six-destination investor journey
+[92/100] [desktop-webkit] › tests/workbench.spec.ts:495:3 › Helios Compute Control six-destination investor journey
+[93/100] [desktop-webkit] › tests/workbench.spec.ts:525:1 › ordinary multi-file intake produces a governed local deal that survives refresh
+[94/100] [desktop-webkit] › tests/workbench.spec.ts:574:1 › missing required input is explained and blocks analysis before return conclusions
+[95/100] [desktop-webkit] › tests/workbench.spec.ts:586:1 › sequential selections add to the package, and per-file remove and replace work
+[96/100] [desktop-webkit] › tests/workbench.spec.ts:607:1 › one click loads the complete synthetic sample package
+[97/100] [desktop-webkit] › tests/workbench.spec.ts:617:1 › mixed Excel CSV PDF package is parsed, reviewed, approved, and replayable
+[98/100] [desktop-webkit] › tests/workbench.spec.ts:663:1 › local Version 2 changes propagate and require explicit accept reject or defer
+[99/100] [desktop-webkit] › tests/workbench.spec.ts:739:1 › deep links still load only the selected retained case chunk
+[100/100] [desktop-webkit] › tests/workbench.spec.ts:749:1 › public-record retrospective enforces the historical cutoff without hindsight
+  17 skipped
+  83 passed (3.4m)

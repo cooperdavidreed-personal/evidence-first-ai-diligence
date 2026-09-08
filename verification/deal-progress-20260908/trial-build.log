@@ -1,0 +1,56 @@
+$ tsc -b && vite build
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 102 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/source-pack/atlasgrid/data/qoe_bridge.csv                    0.24 kB
+dist/source-pack/helios/data/MEMORANDUM.md                        0.31 kB
+dist/source-pack/helios/data/market_assumptions.json              0.31 kB │ gzip:   0.23 kB
+dist/source-pack/atlasgrid/data/CIM.md                            0.38 kB
+dist/source-pack/atlasgrid/data/forecast.csv                      0.55 kB
+dist/source-pack/helios/data/risk_policy.json                     0.86 kB │ gzip:   0.52 kB
+dist/source-pack/helios/data/cap_table.json                       1.02 kB │ gzip:   0.41 kB
+dist/source-pack/atlasgrid/data/debt_terms.json                   1.03 kB │ gzip:   0.57 kB
+dist/index.html                                                   1.07 kB │ gzip:   0.48 kB
+dist/source-pack/helios/data/team_diligence.json                  1.40 kB │ gzip:   0.68 kB
+dist/source-pack/helios/data/venture_scenarios.json               2.19 kB │ gzip:   1.00 kB
+dist/source-pack/helios/data/monthly_pnl.csv                      3.02 kB
+dist/.vite/manifest.json                                          3.18 kB │ gzip:   0.63 kB
+dist/source-pack/helios/data/pipeline.csv                         6.13 kB
+dist/source-pack/atlasgrid/data/monthly_pnl.csv                   6.33 kB
+dist/source-pack/helios/data/market_survey.csv                    9.58 kB
+dist/source-pack/helios/data/financing_plan.json                  9.97 kB │ gzip:   1.78 kB
+dist/source-pack/helios/manifest.json                            12.07 kB │ gzip:   4.04 kB
+dist/source-pack/atlasgrid/manifest.json                         13.17 kB │ gzip:   4.19 kB
+dist/source-pack/helios/data/customer_master.csv                 16.20 kB
+dist/source-pack/helios/data/optimizer_experiment.csv            18.49 kB
+dist/source-pack/atlasgrid/data/support_rollout.csv              32.47 kB
+dist/source-pack/atlasgrid/data/pricing_experiment.csv           42.21 kB
+dist/source-pack/helios/data/stage_history.csv                   76.90 kB
+dist/source-pack/atlasgrid/data/customer_master.csv              86.97 kB
+dist/source-pack/helios/data/customer_month.csv                 664.90 kB
+dist/assets/pdf.worker.min-BmVo14Nb.mjs                       1,317.03 kB
+dist/source-pack/atlasgrid/data/customer_month.csv            4,240.78 kB
+dist/source-pack/atlasgrid/data/billing_ledger.csv            5,563.76 kB
+dist/assets/design-directions-cs-Qnw3Q.css                        3.49 kB │ gzip:   1.14 kB
+dist/assets/product-intro-DLe_6Z6i.css                            4.16 kB │ gzip:   1.44 kB
+dist/assets/review-table-D32jFYxR.css                             6.84 kB │ gzip:   1.92 kB
+dist/assets/index-Dm5s_NzT.css                                  120.25 kB │ gzip:  22.05 kB
+dist/assets/review-table-BfpiEZBI.js                              1.55 kB │ gzip:   0.76 kB │ map:     4.18 kB
+dist/assets/design-directions-jgQPvatV.js                         2.41 kB │ gzip:   0.94 kB │ map:     4.53 kB
+dist/assets/design-specimen-ClbJXQ8C.js                           2.60 kB │ gzip:   1.15 kB │ map:     4.50 kB
+dist/assets/product-intro-C6M3ThmK.js                             4.26 kB │ gzip:   1.72 kB │ map:     7.86 kB
+dist/assets/index-53k9KwvS.js                                     8.14 kB │ gzip:   3.13 kB │ map:    31.58 kB
+dist/assets/pdf-ClZ_1Nv1.js                                     495.68 kB │ gzip: 150.98 kB │ map: 1,807.88 kB
+dist/assets/index-CIaOtFA4.js                                   681.72 kB │ gzip: 202.57 kB │ map: 2,195.25 kB
+dist/assets/_virtual_underwriting-case-helios-DXkcisu0.js     1,592.24 kB │ gzip: 156.51 kB │ map:     0.13 kB
+dist/assets/_virtual_underwriting-case-atlasgrid-DpdI2IiM.js  1,862.88 kB │ gzip: 203.22 kB │ map:     0.13 kB
+
+(!) Some chunks are larger than 1000 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 3.37s
+$ node scripts/verify-case-chunks.mjs
+{"status":"PASS","shell_gzip_bytes":208176,"cases":{"atlasgrid":{"initial_gzip_bytes":437274,"payload_gzip_bytes":203215},"helios":{"initial_gzip_bytes":390565,"payload_gzip_bytes":156506}}}

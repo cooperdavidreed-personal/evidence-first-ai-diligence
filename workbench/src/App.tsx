@@ -1,4 +1,18 @@
+import {progressApi,type ProgressRow} from "./deal-progress";
+import {DealProgressWorkspace} from "./deal-progress-ui";
+import {WorkspaceOpening} from "./workspace-opening";
+import {ProductIntro} from "./product-intro";
+import {InvestmentBrief} from "./investment-brief";
+import {selectReviewBasis} from "./review-basis";
+import {useWorkspaceLocation, selectWorkspaceObject} from "./workspace-navigation";
+import {ReviewTable} from "./review-table";
+import {SavedDealsPanel} from "./saved-deals-panel";
+import {saveSavedDeal,listSavedDeals,openSavedDeal,type SavedDeal} from "./deal-library";
+import {SOURCE_BACKUP_VERSION, validateSourceBackup} from "./package-archive";
 import {Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode} from "react";
+import {usesLocalWorkstation} from "./local-workspace";
+import {PackageArchivePanel} from "./package-archive-panel";
+import {AnalysisWorkspace} from "./analysis-workspace";
 import {caseCatalog, isCaseId, loadCase, type CaseId} from "./case-data";
 import {DocumentsWorkspace} from "./documents-workspace";
 import {ChangeControlWorkspace} from "./change-control-workspace";
@@ -13,7 +27,7 @@ import {ModelConnectionButton, ModelConnectionDialog} from "./model-connection-d
 import {ModelReviewPanel} from "./model-review-panel";
 import {PublicRecordCase} from "./public-record-case";
 import {ProposalLedgerImport} from "./proposal-ledger-import";
-import type {ModelTransport} from "./model-workflow";
+import {digestTextSync,type ModelTransport} from "./model-workflow";
 import {ATLAS_SCREEN_POLICY, HELIOS_SCREEN_POLICY} from "./policy";
 import type {CaseData, Metric} from "./types";
 import {
@@ -30,17 +44,17 @@ import {
 } from "./workspace-ui";
 import {createWorkspaceIntegrityContract, storageKey, validateWorkspace, type DealWorkspaceState, type WorkspaceScenarioContract, type WorkspaceSeed} from "./workspace-state";
 
-export const dealViews = ["overview", "financials", "diligence", "documents", "memo"] as const;
+export const dealViews = ["overview", "changes", "financials", "diligence", "documents", "memo"] as const;
 export type DealView = (typeof dealViews)[number];
 export type RouteView = DealView | "deals" | "public-record";
 export interface RouteState { caseId: CaseId | "local" | "public-record"; view: RouteView }
 
-export const viewLabels: Record<DealView, string> = {overview: "Overview", financials: "Financials", diligence: "Diligence", documents: "Documents", memo: "IC Memo"};
-export const viewQuestions: Record<DealView, string> = {overview: "What is the current view, and why?", financials: "What are the returns, and what drives them?", diligence: "What remains, and who owns it?", documents: "What evidence supports each number?", memo: "Is this ready for the next IC step?"};
-const legacyViews: Record<string, DealView> = {risks: "diligence", thesis: "overview", "value-creation": "financials", explore: "documents", sources: "documents", methodology: "diligence", audit: "documents", underwriting: "financials"};
+export const viewLabels: Record<DealView, string> = {overview: "Brief", changes: "Review", financials: "Model", diligence: "Review", documents: "Evidence", memo: "Committee"};
+export const viewQuestions: Record<DealView, string> = {overview: "What is the current view, and why?", changes: "What changed, and does it change the decision?", financials: "What are the returns, and what drives them?", diligence: "What remains, and who owns it?", documents: "What evidence supports each number?", memo: "Is this ready for the next IC step?"};
+const legacyViews: Record<string, DealView> = {brief:"overview", review:"changes", model:"financials", evidence:"documents", committee:"memo", risks: "diligence", thesis: "overview", "value-creation": "financials", explore: "documents", sources: "documents", methodology: "diligence", audit: "documents", underwriting: "financials"};
 
 export function parseRoute(): RouteState {
-  const parts = window.location.hash.replace(/^#\//, "").split("/");
+  const parts = window.location.hash.split("?")[0].replace(/^#\//, "").split("/");
   if (parts[0] === "public-record" && parts[1] === "snowflake") return {caseId: "public-record", view: "public-record"};
   const caseId = parts[1] ?? "";
   const requested = parts[2] ?? "overview";
@@ -76,7 +90,7 @@ const stageLabel: Record<string, string> = {PRE_IC: "Before IC", PRE_SIGNING: "B
 
 /** The single persistent disclosure for a deal workspace. */
 export function BoundaryNote({synthetic = true}: {synthetic?: boolean}) {
-  return <p className="rail-boundary">{synthetic ? "Fictional company and synthetic records." : "Public demonstration."} Not investment advice. Browser-local workspace; not for confidential information.</p>;
+  return <p className="rail-boundary">{synthetic ? "Fictional company and synthetic records." : "Public demonstration."} Not investment advice. Local demonstration; not for confidential information.</p>;
 }
 
 export function NavIcon({view}: {view: DealView}) { return <i aria-hidden="true" data-icon={view} />; }
@@ -92,40 +106,71 @@ class RetainedEvidenceBoundary extends Component<{children: ReactNode; onReset: 
 
 interface DealIndexSummary {openIssues: number; lastActivity: string; working: boolean; nextAction: string}
 
-function DealList({onOpen, onNew, onConnect, connection, localDeal, onOpenLocal, onOpenPublicRecord, onImportLocal, importNotice, loadCaseFn}: {onOpen: (caseId: CaseId) => void; onNew: () => void; onConnect: () => void; connection: ConnectionState | null; localDeal: IntakeResult | null; onOpenLocal: () => void; onOpenPublicRecord: () => void; onImportLocal: (file?: File) => void; importNotice: string; loadCaseFn: (caseId: CaseId) => Promise<CaseData>}) {
+function DealList({onOpen, onNew, onConnect, connection, localDeal, onOpenLocal, onOpenPublicRecord, onImportLocal, importNotice, loadCaseFn, archivePanel, savedPanel, onOpenSaved, onOpenProgress}: {onOpen: (caseId: CaseId) => void; onNew: () => void; onConnect: () => void; connection: ConnectionState | null; localDeal: IntakeResult | null; onOpenLocal: () => void; onOpenPublicRecord: () => void; onImportLocal: (file?: File) => void; importNotice: string; loadCaseFn: (caseId: CaseId) => Promise<CaseData>; archivePanel?: ReactNode; savedPanel?: ReactNode; onOpenSaved:(result:IntakeResult)=>void; onOpenProgress:(id:string)=>void}) {
+  const [introVisible,setIntroVisible]=useState(true);
+  const [previewCase,setPreviewCase]=useState<CaseData|null>(null);
+  const [previewFailed,setPreviewFailed]=useState(false);
+  const [savedRows,setSavedRows]=useState<SavedDeal[]>([]);
+  const [progressRows,setProgressRows]=useState<ProgressRow[]>([]);
+  useEffect(()=>{let active=true;if(window.__DESK_SESSION__)progressApi().then(r=>{if(active)setProgressRows(r.deals);}).catch(()=>{if(active)setLibraryError("Company review register unavailable. Reopen the local Desk and retry.");});return()=>{active=false;};},[]);
+  const [libraryError,setLibraryError]=useState("");
+  useEffect(()=>{let active=true;void listSavedDeals().then(rows=>{if(active)setSavedRows(rows);}).catch(()=>{if(active)setLibraryError("Saved source library unavailable. Retry through source history.");});return()=>{active=false;};},[]);
+  async function openSaved(id:string) {try {onOpenSaved(await openSavedDeal(id));}catch(error){setLibraryError(error instanceof Error?error.message:"Saved deal unavailable");}}
+  const [dealQuery, setDealQuery] = useState("");
+  const [strategy, setStrategy] = useState("All strategies");
+  const matches = (company: string, type: string, question: string) => (strategy === "All strategies" || strategy === type) && `${company} ${question}`.toLowerCase().includes(dealQuery.trim().toLowerCase());
+  const visibleDeals = caseCatalog.filter(deal => matches(deal.company, deal.caseType, deal.investmentQuestion));
+  const showLocal = localDeal && matches(localDeal.deal?.company ?? "", "Growth", "Admitted company package");
   const [summaries, setSummaries] = useState<Partial<Record<CaseId, DealIndexSummary>>>({});
   useEffect(() => {
     let cancelled = false;
     void Promise.all(caseCatalog.map(async (deal) => {
       const data = await loadCaseFn(deal.caseId);
+      if(data.caseId==="atlasgrid"&&!cancelled)setPreviewCase(data);
       const seed = workspaceSeed(data);
       const allowed = new Set([...data.metricRegistry.map((item) => item.metric_id), ...data.analyses.map((item) => item.analysis_id), ...data.artifacts.map((item) => item.artifact_id)]);
-      const raw = window.localStorage?.getItem(storageKey(data.caseId));
+      let raw = window.localStorage?.getItem(storageKey(data.caseId));
+      if (usesLocalWorkstation()) {
+        const response = await fetch(`/__desk/workspace?deal=${data.caseId}`, {headers: {"x-desk-local": "1"}, signal: AbortSignal.timeout(5000)});
+        if (!response.ok) throw new Error("Local workspace index unavailable");
+        const snapshot = await response.json();
+        raw = snapshot.workspace ? JSON.stringify(snapshot.workspace.state) : null;
+      }
       const state = raw ? validateWorkspace(JSON.parse(raw) as unknown, data.caseId, allowed, scenarioContractFor(data), createWorkspaceIntegrityContract(seed)) : null;
       const issues = state?.issues ?? seed.issues;
       const openIssues = issues.filter((issue) => issue.status !== "RESOLVED");
       const working = state ? (data.peEngine ? state.scenarioValues.peScenario !== "selected" : state.scenarioValues.vcScenario !== "milestone" || state.scenarioValues.vcRiskCell !== data.vcEngine!.risk_sensitivity.canonical_cell_id || state.scenarioValues.vcLossPolicy !== data.vcEngine!.risk_sensitivity.canonical_policy_threshold) : false;
       return [deal.caseId, {openIssues: openIssues.length, lastActivity: state?.updatedAt ?? deal.asOf, working, nextAction: openIssues.length ? `${data.decision.decision === "HOLD" ? "Maintain HOLD; address" : "Address"}: ${openIssues[0].title}` : "Complete named human IC review"}] as const;
-    })).then((entries) => {if (!cancelled) setSummaries(Object.fromEntries(entries));}).catch(() => {if (!cancelled) setSummaries({});});
+    })).then((entries) => {if (!cancelled) setSummaries(Object.fromEntries(entries));}).catch(() => {if (!cancelled) {setSummaries({});setPreviewFailed(true);}});
     return () => {cancelled = true;};
   }, [loadCaseFn]);
-  const dealButton = (deal: typeof caseCatalog[number]) => {
-    const summary = summaries[deal.caseId];
-    const blockers = summary?.openIssues ?? deal.blockerCount;
-    const next = summary?.nextAction ?? `${deal.posture === "HOLD" ? "Maintain HOLD; address" : "Address"}: ${deal.primaryBlocker}`;
-    return <button type="button" className="deal-row" key={deal.caseId} aria-label={`Open ${deal.company} — ${deal.posture}; ${blockers} open issues; next: ${next}`} onClick={() => onOpen(deal.caseId)}><span><strong>{deal.company}</strong><small>{deal.investmentQuestion}</small></span><span>{deal.caseType}</span><span>{deal.owner}</span><span>{summary?.working ? "What-if open" : deal.stage}</span><span className={`posture posture-${deal.posture.toLowerCase()}`}>{deal.posture}</span><span className="num">{blockers}</span><span>{formatHumanDate(summary?.lastActivity ?? deal.asOf)}</span><span>{next}</span></button>;
-  };
-  return <main className="deals-page" id="main-content">
-    <header className="deals-header"><div><div className="brand-lockup"><span>U</span><strong>Underwriting Desk</strong></div><p>Deterministic finance, source-linked evidence, fund policy, and named human decisions, kept separate.</p></div><div><ModelConnectionButton connection={connection} onClick={onConnect} /><label className="file-button">Import deal<input type="file" accept="application/json,.json" onChange={(event) => onImportLocal(event.target.files?.[0])} /></label><button className="primary-button" type="button" data-testid="new-deal-button" onClick={onNew}>New deal</button></div></header>
-    {importNotice ? <p className="import-notice" role="status">{importNotice}</p> : null}
-    <section className="deal-index" aria-labelledby="active-deals-heading"><div className="section-heading"><div><p className="eyebrow">Decision workspaces</p><h1 id="active-deals-heading">Deals</h1></div><span>{caseCatalog.length} retained synthetic cases{localDeal ? " · 1 admitted local case" : ""}</span></div><div className="deal-table" aria-label="Deal decision workspaces"><div className="deal-table-head" aria-hidden="true"><span>Company</span><span>Strategy</span><span>Owner</span><span>Stage</span><span>Posture</span><span>Open issues</span><span>Last activity</span><span>Next action</span></div>{localDeal ? <button type="button" className="deal-row" aria-label={`Open ${localDeal.deal?.company} — ${localDeal.posture}; ${localDeal.analysis?.tests.filter((test) => test.blocksAdvancement).length ?? "unknown"} blockers`} onClick={onOpenLocal}><span><strong>{localDeal.deal?.company}</strong><small>Admitted company package · {localDeal.baselineApproval?.version ?? "unapproved"}</small></span><span>Growth</span><span>{localDeal.deal?.analystOwner}</span><span>Screening</span><span className={`posture posture-${localDeal.posture === "HOLD" ? "hold" : "screening"}`}>{localDeal.posture === "HOLD" ? "HOLD" : "Screening"}</span><span className="num">{localDeal.analysis?.tests.filter((test) => test.blocksAdvancement).length ?? "—"}</span><span>{formatHumanDate(`${localDeal.deal?.cutoff}T12:00:00Z`)}</span><span>{localDeal.posture === "HOLD" ? "Return screens miss; resolve before IC" : "Complete further diligence before IC"}</span></button> : null}{caseCatalog.map(dealButton)}</div></section>
-    <div className="deals-secondary">
+  const registerRows = visibleDeals.map(deal=>({id:deal.caseId,company:deal.company,question:deal.investmentQuestion,strategy:deal.caseType,owner:deal.owner,stage:summaries[deal.caseId]?.working?"What-if open":deal.stage,posture:deal.posture,issues:summaries[deal.caseId]?.openIssues??deal.blockerCount,activity:summaries[deal.caseId]?.lastActivity??deal.asOf,next:summaries[deal.caseId]?.nextAction??deal.primaryBlocker,open:()=>onOpen(deal.caseId)}));
+  if(showLocal) registerRows.unshift({id:"local" as CaseId,company:localDeal.deal?.company??"Local deal",question:`Admitted company package · ${localDeal.baselineApproval?.version??"unapproved"}`,strategy:"Growth",owner:localDeal.deal?.analystOwner??"Unassigned",stage:"Screening",posture:localDeal.posture??"Screening",issues:localDeal.analysis?.tests.filter(test=>test.blocksAdvancement).length??0,activity:`${localDeal.deal?.cutoff}T12:00:00Z`,next:"Complete further diligence before IC",open:onOpenLocal});
+  for(const r of progressRows){const strategyLabel=r.strategy==="PE"?"Buyout":"VC / Growth";if(matches(r.company,strategyLabel,r.question))registerRows.unshift({id:r.id as CaseId,company:r.company,question:r.question,strategy:strategyLabel,owner:"Analyst review",stage:r.stage,posture:"Review",issues:r.openIssues,activity:r.updatedAt,next:r.next,open:()=>onOpenProgress(r.id)});}
+  const seenCompanies=new Set<string>(localDeal?.deal?.company?[localDeal.deal.company]:[]);
+  for(const saved of savedRows){if(seenCompanies.has(saved.company))continue;seenCompanies.add(saved.company);if(!matches(saved.company,"Growth","Supported company package"))continue;registerRows.unshift({id:saved.id as CaseId,company:saved.company,question:`${saved.version} · Supported company package`,strategy:"Growth",owner:"Open to review",stage:"Screening",posture:"Review",issues:-1,activity:saved.savedAt,next:"Review saved source delivery",open:()=>void openSaved(saved.id)});}
+  return <div className="desk-home-shell"><aside className="desk-home-rail"><div className="brand-lockup"><span>U</span><strong>Underwriting Desk</strong></div><nav aria-label="Desk navigation"><button type="button" aria-current="page">Deals</button><button type="button" onClick={onNew}>Package intake</button><button type="button" onClick={onConnect}>Model settings</button></nav><footer>Evidence → economics → human decision<br/>Private-market investment review</footer></aside><main className="deals-page" id="main-content">
+    <header className="deals-header"><div><div className="brand-lockup"><span>U</span><strong>Underwriting Desk</strong></div><p>Your investment workspace</p></div><div><button type="button" className="intro-toggle" aria-expanded={introVisible} onClick={()=>setIntroVisible(value=>!value)}>{introVisible?"Go to workspaces ↓":"Show introduction"}</button><ModelConnectionButton connection={connection} onClick={onConnect} /><label className="file-button">Import deal<input type="file" accept="application/json,.json" onChange={(event) => onImportLocal(event.target.files?.[0])} /></label><button className={introVisible?"secondary-button":"primary-button"} type="button" data-testid="new-deal-button" onClick={onNew}>New deal</button></div></header>
+    {introVisible?<ProductIntro data={previewCase} unavailable={previewFailed} onExplore={()=>onOpen("atlasgrid")} onNew={onNew}/>:null}
+    {importNotice||libraryError ? <p className="import-notice" role="status">{importNotice||libraryError}</p> : null}
+    <section className="deal-index" aria-labelledby="active-deals-heading"><div className="section-heading"><div><p className="eyebrow">Decision workspaces</p><h1 id="active-deals-heading">Deals</h1></div><span>{caseCatalog.length} illustrative cases{localDeal ? " · 1 admitted local case" : ""}</span></div><div className="review-table-toolbar deal-register-toolbar"><label>Find a deal<input type="search" placeholder="Company or investment question" value={dealQuery} onChange={event => setDealQuery(event.target.value)} /></label><label>Strategy<select value={strategy} onChange={event => setStrategy(event.target.value)}>{["All strategies", ...new Set(caseCatalog.map(deal => deal.caseType)), ...(localDeal||savedRows.length ? ["Growth"] : [])].map(type => <option key={type}>{type}</option>)}</select></label><span role="status">{registerRows.length} workspaces shown</span></div><ReviewTable label="Deal decision workspaces" rows={registerRows} rowKey={row=>row.id} columns={[
+ {id:"company",label:"Company",sortValue:r=>r.company,render:r=><button className="record-link" type="button" aria-label={`Open ${r.company} — ${r.posture}; ${r.issues<0?"Issue status available inside":`${r.issues} open issues`}; next: ${r.next}`} onClick={r.open}><strong>{r.company}</strong><small>{r.question}</small></button>},
+ {id:"strategy",label:"Strategy",sortValue:r=>r.strategy,render:r=>r.strategy},
+ {id:"owner",label:"Owner",sortValue:r=>r.owner,render:r=>r.owner},
+ {id:"stage",label:"Stage",render:r=>r.stage},
+ {id:"posture",label:"Posture",sortValue:r=>r.posture,render:r=><span className={`posture posture-${r.posture.toLowerCase()}`}>{r.posture}</span>},
+ {id:"issues",label:"Open issues",numeric:true,sortValue:r=>r.issues,render:r=>r.issues<0?"—":r.issues},
+ {id:"activity",label:"Last activity",sortValue:r=>r.activity,render:r=>formatHumanDate(r.activity)},
+ {id:"next",label:"Next action",render:r=>investorLanguage(r.next)}
+ ]}/>{!registerRows.length?<div className="register-empty"><h2>No matching workspaces</h2><button type="button" onClick={()=>{setDealQuery("");setStrategy("All strategies");}}>Clear deal filters</button></div>:null}</section>
+    <details className="workspace-maintenance"><summary>Saved deliveries and source history</summary>{savedPanel}{archivePanel}</details>
+    <details className="workspace-maintenance"><summary>More examples and supported package guide</summary><div className="deals-secondary">
       <section className="deal-index public-record-index" aria-labelledby="public-record-heading"><div className="section-heading"><div><p className="eyebrow">Historical cutoff proof</p><h2 id="public-record-heading">Public-record retrospective</h2></div><span>Real company · SEC filings only</span></div><div className="deal-table"><div className="deal-table-head" aria-hidden="true"><span>Company</span><span>Posture</span><span>Evidence cutoff</span><span>Next action</span></div><button type="button" className="deal-row" onClick={onOpenPublicRecord}><span><strong>Snowflake pre-IPO screen</strong><small>Only filings available through September 14, 2020 are admitted</small></span><span className="posture posture-no-call">NO CALL</span><span>Sep 14, 2020</span><span>Inspect the cutoff and excluded hindsight</span></button></div></section>
-      <section className="intake-callout" aria-labelledby="intake-callout-heading"><p className="eyebrow">Bring your own package</p><h2 id="intake-callout-heading">Screen a company package</h2><p>Drop the operating model, customer data, management update, deal terms, and package declaration. Every byte is validated and calculated in this browser; nothing is sent anywhere.</p><ul><li>Uploaded thresholds never become fund policy.</li><li>Every number keeps its source rows and formulas.</li><li>A named analyst approves Version 1 before the workspace opens.</li></ul><button className="secondary-button" type="button" onClick={onNew}>Open intake</button></section>
-    </div>
-    <section className="desk-principles" aria-label="How the Desk works"><article><strong>Deterministic math</strong><p>Returns, debt, and waterfalls are retained calculations with a formula and inputs behind every figure.</p></article><article><strong>Versioned deal state</strong><p>Evidence versions, scenarios, approvals, and memo sections are recorded; nothing overwrites the canonical case silently.</p></article><article><strong>Owned policy and assumptions</strong><p>Fund thresholds and analyst assumptions carry a named owner, a review state, and an exception history.</p></article><article><strong>Governed model proposals</strong><p>A model may challenge evidence or draft a section. It cannot change a number, a threshold, or the recommendation.</p></article></section>
-    <footer className="public-boundary">Public demonstration with fictional companies and synthetic records. Not investment advice. Do not upload confidential information.</footer>
-  </main>;
+      <section className="intake-callout" aria-labelledby="intake-callout-heading"><p className="eyebrow">Bring your own package</p><h2 id="intake-callout-heading">Screen a company package</h2><p>Review an operating model, customer data, management update, and deal terms. Start with the sample package or bring a non-confidential example.</p><p>A named analyst reviews source mappings before the workspace opens.</p><button className="secondary-button" type="button" onClick={onNew}>Open intake</button></section>
+    </div></details>
+    <details className="desk-method"><summary>How evidence, calculations, and judgment stay separate</summary><section className="desk-principles" aria-label="How the Desk works"><article><strong>Deterministic math</strong><p>Returns, debt, and waterfalls are retained calculations with a formula and inputs behind every figure.</p></article><article><strong>Versioned deal state</strong><p>Evidence versions, scenarios, approvals, and memo sections are recorded; nothing overwrites the canonical case silently.</p></article><article><strong>Owned policy and assumptions</strong><p>Fund thresholds and analyst assumptions carry a named owner, a review state, and an exception history.</p></article><article><strong>Governed model proposals</strong><p>A model may challenge evidence or draft a section. It cannot change a number, a threshold, or the recommendation.</p></article></section></details>
+    <footer className="public-boundary">{usesLocalWorkstation()?"Examples use fictional companies. Uploaded company reviews remain on this workstation; model sharing requires an explicit evidence release. Not investment advice.":"Public demonstration with fictional companies and synthetic records. Not investment advice. Do not upload confidential information."}</footer>
+  </main></div>;
 }
 
 function assumptionsFor(caseData: CaseData): AssumptionDefinition[] {
@@ -340,7 +385,7 @@ function Overview({caseData, state, update, openMetric, onNavigate}: {caseData: 
       <section className="workspace-card" aria-labelledby="screens-heading"><div className="section-heading"><div><p className="eyebrow">What changes the recommendation</p><h2 id="screens-heading">Investment screens against the working policy</h2></div><span>Policy requires human approval</span></div><DecisionScreenTable caseData={caseData} compact /></section>
     </div>
     <WhatMustBeTrue caseData={caseData} />
-    {caseData.caseId === "atlasgrid" ? <ChangeControlWorkspace caseData={caseData} state={state} update={update} /> : null}
+    {caseData.caseId === "atlasgrid" ? <button type="button" className="secondary-button" onClick={() => onNavigate("changes")}>Review revised evidence in Changes</button> : null}
     <RemainingWork state={state} onOpenDiligence={() => onNavigate("diligence")} />
     <Readiness caseData={caseData} state={state} />
     <ObservationComposer state={state} update={update} />
@@ -422,6 +467,7 @@ function DecisionRail({caseData, view, state}: {caseData: CaseData; view: DealVi
   const posture = activeChange ? "REOPEN DILIGENCE" : caseData.decision.decision;
   const memo = scenarioMemoSummary(caseData, state);
   const viewNote: Record<DealView, ReactNode> = {
+    changes: <p>Review revised evidence before updating the investment case.</p>,
     overview: null,
     financials: <section><span>Scenario consequence</span><strong>{memo.returnLine}</strong><p>{working ? "Unapproved what-if. The canonical case and the recommendation are unchanged until a named reviewer acts." : "Canonical case. Change a scenario to see the return consequence without touching the books."}</p></section>,
     diligence: <section><span>Ownership</span><strong>{unresolved.length} open {unresolved.length === 1 ? "item" : "items"} · {new Set(unresolved.map((issue) => issue.owner)).size} named {new Set(unresolved.map((issue) => issue.owner)).size === 1 ? "owner" : "owners"}</strong><p>Quantitative hurdles clear only through evidence or a recorded policy-owner exception.</p></section>,
@@ -440,38 +486,42 @@ function DecisionRail({caseData, view, state}: {caseData: CaseData; view: DealVi
   </aside>;
 }
 
-function Diligence({caseData, state, update, modelTransport, connection, openMetric}: {caseData: CaseData; state: DealWorkspaceState; update: ReturnType<typeof useDealWorkspace>["update"]; modelTransport?: ModelTransport; connection: ConnectionState | null; openMetric: (metric: Metric, trigger: HTMLElement) => void}) {
-  const [section, setSection] = useState<"issues" | "assumptions" | "policy" | "test" | "model">("issues");
+function Diligence({caseData, state, update, modelTransport, connection, openMetric, initialEvidenceId}: {caseData: CaseData; state: DealWorkspaceState; update: ReturnType<typeof useDealWorkspace>["update"]; modelTransport?: ModelTransport; connection: ConnectionState | null; openMetric: (metric: Metric, trigger: HTMLElement) => void; initialEvidenceId?: string}) {
+  const location = useWorkspaceLocation();
+  const section = location.get("tab") ?? (initialEvidenceId ? "model" : "issues");
+  const setSection = (tab:string) => selectWorkspaceObject({tab,issue:null});
   const referenceLabels = Object.fromEntries([...caseData.metricRegistry.map((metric) => [metric.metric_id, metric.label]), ...caseData.analyses.map((analysis) => [analysis.analysis_id, analysis.question]), ...caseData.artifacts.map((artifact) => [artifact.artifact_id, artifact.path.split("/").at(-1) ?? artifact.path])]);
   const evidence = modelEvidenceForCase(caseData);
   const profile = caseData.caseId === "helios" ? HELIOS_SCREEN_POLICY : ATLAS_SCREEN_POLICY;
   const tabs = [{id: "issues", label: `Issues · ${state.issues.filter((issue) => issue.status !== "RESOLVED").length}`}, {id: "assumptions", label: "Assumptions"}, {id: "policy", label: "Policy"}, {id: "test", label: "Assumption test"}, {id: "model", label: "Model review"}] as const;
   const stages = new Map<string, string>(caseData.decision.issue_summary.issues.map((issue) => [issue.issue_id, stageLabel[issue.stage] ?? issue.stage]));
   const content = section === "issues"
-    ? <DiligenceWorklist state={state} update={update} lockedIssueIds={new Set(workspaceSeed(caseData).lockedIssueIds ?? [])} stages={stages} />
+    ? <DiligenceWorklist state={state} update={update} lockedIssueIds={new Set(workspaceSeed(caseData).lockedIssueIds ?? [])} stages={stages} evidenceOptions={Object.entries(referenceLabels).map(([id,label])=>({id,label:String(label)}))} selectedIssueId={location.get("issue")} onSelectIssue={issue=>selectWorkspaceObject({issue})} onInspectEvidence={id=>{const metric=caseData.summaryMetrics.find(m=>m.metric_id===id); if(metric) openMetric(metric,document.activeElement as HTMLElement); else window.location.hash=`/v3/${caseData.caseId}/documents?source=${encodeURIComponent(caseData.metricRegistry.find(m=>m.metric_id===id)?.source_locator_ids.map(ref=>caseData.sourceLocators.find(loc=>loc.locator_id===ref)?.artifact_id).find(Boolean)??id)}`;}} />
     : section === "assumptions"
-      ? <AssumptionRegistry assumptions={assumptionsFor(caseData)} state={state} update={update} staleAssumptionIds={state.changeControl?.affectedAssumptionIds} staleSince={state.changeControl?.importedAt} />
+      ? <AssumptionRegistry assumptions={assumptionsFor(caseData)} state={state} update={update} staleAssumptionIds={state.changeControl?.dispositionEvents.at(-1)?.disposition === "REJECTED" ? [] : state.changeControl?.affectedAssumptionIds} staleSince={state.changeControl?.importedAt} />
       : section === "policy"
         ? <><DecisionScreenTable caseData={caseData} /><PolicyRegistry profile={profile} state={state} update={update} blockingGates={state.issues.filter((issue) => issue.status !== "RESOLVED").map((issue) => ({gateId: issue.id, label: issue.title}))} /></>
         : section === "test"
           ? <EconometricTest caseData={caseData} openMetric={openMetric} />
-          : <><ModelReviewPanel dealId={caseData.caseId} connection={connection} transport={modelTransport} proposals={state.proposals} onProposalsChange={(next) => update((current) => ({proposals: typeof next === "function" ? next(current.proposals) : next}))} evidence={evidence} referenceLabels={referenceLabels} /><details className="advanced-handoff"><summary>Advanced local model handoff</summary><ProposalLedgerImport caseData={caseData} onImport={(proposals) => update((current) => ({proposals: [...current.proposals, ...proposals].filter((proposal, index, items) => items.findIndex((candidate) => candidate.proposalId === proposal.proposalId) === index)}))} /></details></>;
+          : <><ModelReviewPanel reviewBasisId={digestTextSync(scenarioMemoSummary(caseData,state).snapshotId)} memoUses={state.memoSections} initialEvidenceId={initialEvidenceId} dealId={caseData.caseId} connection={connection} transport={modelTransport} proposals={state.proposals} onProposalsChange={(next) => update((current) => ({proposals: typeof next === "function" ? next(current.proposals) : next}))} evidence={evidence} referenceLabels={referenceLabels} /><details className="advanced-handoff"><summary>Advanced local model handoff</summary><ProposalLedgerImport caseData={caseData} onImport={(proposals) => update((current) => ({proposals: [...current.proposals, ...proposals].filter((proposal, index, items) => items.findIndex((candidate) => candidate.proposalId === proposal.proposalId) === index)}))} /></details></>;
   return <div className="view-stack">
-    <nav className="workspace-tabs" aria-label="Diligence workspace">{tabs.map((tab) => <button type="button" key={tab.id} aria-pressed={section === tab.id} onClick={() => setSection(tab.id)}>{tab.label}</button>)}</nav>
+    <nav className="workspace-tabs" aria-label="Diligence workspace">{tabs.filter(tab=>tab.id==="issues"||tab.id==="model").map((tab) => <button type="button" key={tab.id} aria-pressed={section === tab.id} onClick={() => setSection(tab.id)}>{tab.id==="model"?"Model proposals":tab.label}</button>)}</nav>
     {content}
   </div>;
 }
 
 export function DealSidebar({company, caseId, onDeals, onNavigate, view, onConnect, storageNotice, attention, switcher, footNote}: {company: string; caseId: string; onDeals: () => void; onNavigate: (view: DealView) => void; view: DealView; onConnect: () => void; storageNotice: string; attention: boolean; switcher?: ReactNode; footNote?: string}) {
-  return <aside className="sidebar"><button type="button" className="wordmark" onClick={onDeals} aria-label="Underwriting Desk deals"><span>U</span><strong>Underwriting Desk</strong></button><div className="sidebar-deal"><span>Deal</span>{switcher ?? <strong>{company}</strong>}<small>{caseId === "local" ? "Admitted company package" : "Retained synthetic case"}</small></div><nav aria-label="Deal navigation">{dealViews.map((item) => <button key={item} type="button" className={view === item ? "active" : ""} aria-current={view === item ? "page" : undefined} onClick={() => onNavigate(item)}><NavIcon view={item} />{viewLabels[item]}</button>)}</nav><div className="sidebar-questions"><span>Each view answers</span><ol>{dealViews.map((item) => <li key={item}>{viewQuestions[item]}</li>)}</ol></div><div className="sidebar-foot"><button type="button" onClick={onConnect}>Model settings</button><span data-attention={attention || undefined}>{attention ? "Workspace attention required" : storageNotice}</span>{footNote ? <small>{footNote}</small> : null}</div></aside>;
+  return <aside className="sidebar"><button type="button" className="wordmark" onClick={onDeals} aria-label="Underwriting Desk deals"><span>U</span><strong>Underwriting Desk</strong></button><div className="sidebar-deal"><span>Deal</span>{switcher ?? <strong>{company}</strong>}<small>{caseId === "local" ? "Your source package" : "Illustrative investment case"}</small></div><nav aria-label="Deal navigation">{dealViews.filter(item=>item!=="diligence").map((item) => <button key={item} type="button" className={view === item || (view === "diligence" && item === "changes") ? "active" : ""} aria-current={view === item || (view === "diligence" && item === "changes") ? "page" : undefined} onClick={() => onNavigate(item)}><NavIcon view={item} />{viewLabels[item]}</button>)}</nav><div className="sidebar-foot"><button type="button" onClick={onConnect}>Model settings</button><span data-attention={attention || undefined}>{attention ? "Workspace attention required" : storageNotice}</span>{footNote ? <small>{footNote}</small> : null}</div></aside>;
 }
 
 function DealShell({caseData, view, onNavigate, onChooseDeal, onDeals, onConnect, connection, modelTransport}: {caseData: CaseData; view: DealView; onNavigate: (view: DealView) => void; onChooseDeal: (caseId: CaseId) => void; onDeals: () => void; onConnect: () => void; connection: ConnectionState | null; modelTransport?: ModelTransport}) {
   const seed = useMemo(() => workspaceSeed(caseData), [caseData]);
   const allowedEvidenceRefs = useMemo(() => new Set([...caseData.metricRegistry.map((item) => item.metric_id), ...caseData.analyses.map((item) => item.analysis_id), ...caseData.artifacts.map((item) => item.artifact_id)]), [caseData]);
   const scenarioContract = useMemo(() => scenarioContractFor(caseData), [caseData]);
-  const {state, update, replace, storageNotice, recovery, discardRejectedState, integrityContract} = useDealWorkspace(seed, allowedEvidenceRefs, scenarioContract);
-  const storageAlert = storageNotice === "Saved locally" ? "" : storageNotice;
+  const {state, update, replace, storageNotice, recovery, discardRejectedState, integrityContract, editingPaused} = useDealWorkspace(seed, allowedEvidenceRefs, scenarioContract);
+  const storageAlert = ["Saved locally", "Saved to local workstation", "Saving to local workstation…"].includes(storageNotice) ? "" : storageNotice;
+  const [reviewEvidenceId, setReviewEvidenceId] = useState<string | undefined>();
+  const [showContext, setShowContext] = useState(false);
   const [lineage, setLineage] = useState<{metric: Metric; trigger: HTMLElement} | null>(null);
   const openLineage = (metric: Metric, trigger: HTMLElement) => setLineage({metric, trigger});
   const closeLineage = () => {
@@ -480,21 +530,26 @@ function DealShell({caseData, view, onNavigate, onChooseDeal, onDeals, onConnect
     window.requestAnimationFrame(() => { if (trigger?.isConnected) trigger.focus(); });
   };
   const catalogEntry = caseCatalog.find((item) => item.caseId === caseData.caseId);
+  const basis=selectReviewBasis(caseData,state);
+  const location=useWorkspaceLocation();
+  const reviewNav=<nav className="workspace-tabs review-destinations" aria-label="Review sections"><button type="button" aria-pressed={view==="changes"} onClick={()=>onNavigate("changes")}>Evidence changes</button><button type="button" aria-pressed={view==="diligence"} onClick={()=>{setReviewEvidenceId(undefined);onNavigate("diligence");selectWorkspaceObject({tab:"issues"});}}>Diligence and proposals</button></nav>;
   const content = view === "overview"
-    ? <Overview caseData={caseData} state={state} update={update} openMetric={openLineage} onNavigate={onNavigate} />
+    ? <><InvestmentBrief caseData={caseData} state={state} interpret={investorLanguage} onReview={()=>onNavigate(state.changeControl?"changes":"diligence")} onModel={()=>onNavigate("financials")} onCommittee={()=>onNavigate("memo")} onEvidence={metric=>{onNavigate("documents");selectWorkspaceObject({metric:metric.metric_id});}} /><details className="workspace-maintenance"><summary>Analyst observations</summary><ObservationComposer state={state} update={update}/></details></>
+    : view === "changes"
+      ? caseData.caseId === "atlasgrid" ? <ChangeControlWorkspace caseData={caseData} state={state} update={update} /> : <section className="panel"><h2>No revised delivery is loaded</h2><p>The Helios retained baseline has no supported revision fixture. Review its assumptions and scenarios in Financials; use an admitted local package to compare a revised workbook.</p><button type="button" onClick={() => onNavigate("financials")}>Open financial scenarios</button></section>
     : view === "financials"
-      ? <FinancialWorkspace caseData={caseData} state={state} update={update} openMetric={openLineage} />
+      ? <><FinancialWorkspace caseData={caseData} state={state} update={update} openMetric={openLineage} /><details className="workspace-maintenance"><summary>Assumptions and fund policy</summary><AssumptionRegistry assumptions={assumptionsFor(caseData)} state={state} update={update} staleAssumptionIds={basis.activeRevision?state.changeControl?.affectedAssumptionIds:[]} staleSince={state.changeControl?.importedAt}/><PolicyRegistry profile={caseData.caseId === "helios" ? HELIOS_SCREEN_POLICY : ATLAS_SCREEN_POLICY} state={state} update={update} blockingGates={state.issues.filter(i=>i.status!=="RESOLVED").map(i=>({gateId:i.id,label:i.title}))}/><EconometricTest caseData={caseData} openMetric={openLineage}/></details></>
       : view === "diligence"
-        ? <Diligence caseData={caseData} state={state} update={update} modelTransport={modelTransport} connection={connection} openMetric={openLineage} />
+        ? <Diligence key={`${caseData.caseId}:${reviewEvidenceId ?? ""}:${location.get("tab")??""}`} initialEvidenceId={reviewEvidenceId} caseData={caseData} state={state} update={update} modelTransport={modelTransport} connection={connection} openMetric={openLineage} />
         : view === "documents"
-          ? <DocumentsWorkspace caseData={caseData} openMetric={openLineage} />
-          : <><EditableMemo state={state} update={update} title={caseData.company} subtitle={caseData.dealContext.investment_question} scenarioSummary={scenarioMemoSummary(caseData, state)} /><WorkspaceTransfer state={state} replace={replace} allowedEvidenceRefs={allowedEvidenceRefs} scenarioContract={scenarioContract} integrityContract={integrityContract} /></>;
+          ? <><nav className="workspace-tabs" aria-label="Evidence sections"><button type="button" aria-pressed={location.get("tab")!=="sources"} onClick={()=>selectWorkspaceObject({tab:"measures"})}>Measures and support</button><button type="button" aria-pressed={location.get("tab")==="sources"} onClick={()=>selectWorkspaceObject({tab:"sources"})}>Source files</button></nav>{location.get("tab")==="sources"||location.has("source")?<DocumentsWorkspace caseData={caseData} openMetric={openLineage}/>:<AnalysisWorkspace onModelReview={id=>{setReviewEvidenceId(id);onNavigate("diligence");selectWorkspaceObject({tab:"model"});}} interpret={investorLanguage} key={caseData.caseId} caseData={caseData} state={state} update={update} openMetric={openLineage} relevance={metric=>metricRelevance(caseData,metric)} onFinancials={()=>onNavigate("financials")} onDiligence={()=>onNavigate("diligence")} onMemo={()=>onNavigate("memo")}/>}</>
+          : <><EditableMemo state={state} update={update} title={caseData.company} subtitle={caseData.dealContext.investment_question} scenarioSummary={scenarioMemoSummary(caseData, state)} /><details className="workspace-maintenance"><summary>Backup and restore workspace</summary><WorkspaceTransfer state={state} replace={replace} allowedEvidenceRefs={allowedEvidenceRefs} scenarioContract={scenarioContract} integrityContract={integrityContract} /></details></>;
   const switcher = <select aria-label="Deal" value={caseData.caseId} onChange={(event) => onChooseDeal(event.target.value as CaseId)}>{caseCatalog.map((item) => <option value={item.caseId} key={item.caseId}>{item.company}</option>)}</select>;
-  return <div className="product-shell">
-    <DealSidebar company={caseData.company} caseId={caseData.caseId} onDeals={onDeals} onNavigate={onNavigate} view={view} onConnect={onConnect} storageNotice={storageNotice} attention={Boolean(storageAlert)} switcher={switcher} />
+  return <div className={`product-shell desk-workpaper view-${view}`}>
+    <DealSidebar company={caseData.company} caseId={caseData.caseId} onDeals={onDeals} onNavigate={onNavigate} view={view} onConnect={onConnect} storageNotice={storageNotice} attention={Boolean(storageAlert)} switcher={switcher} footNote="Illustrative case · Not investment advice" />
     <div className="shell-main">
-      <header className="deal-topbar"><div className="topbar-company"><strong>{viewLabels[view]}</strong><small>{viewQuestions[view]}</small></div><div className="topbar-meta"><span><b>{caseData.caseType}</b></span><span>{catalogEntry?.stage ?? "Underwriting"}</span><span>As of {formatHumanDate(caseData.decision.as_of ?? `${caseData.temporalScan.cutoff.slice(0, 10)}T12:00:00Z`)}</span><span className={`posture posture-${caseData.decision.decision.toLowerCase()}`}>{caseData.decision.decision}</span></div><button className="topbar-model" type="button" onClick={onConnect}>Model settings</button></header>
-      <div className="workspace-layout"><main id="main-content" className="deal-main">{storageAlert ? <p className="persistence-warning" role="status">{storageAlert}</p> : null}{recovery ? <WorkspaceRecovery recovery={recovery} onStartFresh={discardRejectedState} /> : null}<header className="deal-heading"><div><p className="eyebrow">{caseData.caseType} · {catalogEntry?.owner ?? "Deal team"}</p><h1>{caseData.company}</h1><p>{caseData.dealContext.company_one_liner}</p></div><p className="ic-question"><span>Investment question</span>{caseData.dealContext.investment_question}</p></header><RetainedEvidenceBoundary key={`${caseData.caseId}:${view}`} onReset={onDeals}>{content}</RetainedEvidenceBoundary></main><DecisionRail caseData={caseData} view={view} state={state} /></div>
+      <header className="deal-topbar"><div className="topbar-company"><strong>{viewLabels[view]}</strong><small>{viewQuestions[view]}</small></div><div className="topbar-meta"><span><b>{caseData.caseType}</b></span><span>{catalogEntry?.stage ?? "Underwriting"}</span><span>As of {formatHumanDate(caseData.decision.as_of ?? `${caseData.temporalScan.cutoff.slice(0, 10)}T12:00:00Z`)}</span><span className={`posture posture-${basis.posture.toLowerCase()}`}>{basis.posture}</span><span className="basis-label">{basis.sourceVersion} · {basis.scenarioLabel}{basis.activeRevision?` · ${basis.disposition.toLowerCase()}`:""}</span></div><button className="topbar-model" type="button" onClick={() => setShowContext(!showContext)} aria-expanded={showContext}>Decision context</button></header>
+      <div className={`workspace-layout ${showContext ? "" : "workspace-layout-wide"}`}><main id="main-content" className="deal-main">{storageAlert ? <p className="persistence-warning" role="status">{storageAlert}</p> : null}{recovery ? <WorkspaceRecovery recovery={recovery} onStartFresh={discardRejectedState} /> : null}<header className="deal-heading"><div><p className="eyebrow">{caseData.caseType} · {catalogEntry?.owner ?? "Deal team"}</p><h1>{caseData.company}</h1><p>{caseData.dealContext.company_one_liner}</p></div><p className="ic-question"><span>Investment question</span>{caseData.dealContext.investment_question}</p></header><RetainedEvidenceBoundary key={`${caseData.caseId}:${view}`} onReset={onDeals}><div inert={editingPaused}>{view==="changes"||view==="diligence"?reviewNav:null}{content}</div></RetainedEvidenceBoundary></main>{showContext ? <DecisionRail caseData={caseData} view={view} state={state} /> : null}</div>
     </div>
     {lineage ? <LineageDrawer caseData={caseData} metric={lineage.metric} onClose={closeLineage} /> : null}
   </div>;
@@ -508,6 +563,8 @@ export default function App({initialCase, initialRoute, loadCaseFn = loadCase}: 
   const [loading, setLoading] = useState(initialLocalRoute);
   const [loadError, setLoadError] = useState(false);
   const [intakeOpen, setIntakeOpen] = useState(false);
+  const [progressId,setProgressId]=useState<string|null>(()=>window.location.hash.match(/^#\/progress\/([a-zA-Z0-9._:-]+)$/)?.[1]??null);
+  const openProgress=(id:string)=>{setProgressId(id);setIntakeOpen(false);window.history.pushState(null,"",`#/progress/${id}`);window.scrollTo(0,0);};
   const [activeLocal, setActiveLocal] = useState(false);
   const [importNotice, setImportNotice] = useState("");
   const [localPersistenceNotice, setLocalPersistenceNotice] = useState("");
@@ -552,6 +609,7 @@ export default function App({initialCase, initialRoute, loadCaseFn = loadCase}: 
   }, [initialLocalRoute, initialRoute.view]);
   useEffect(() => {
     const sync = () => {
+      const progress=window.location.hash.match(/^#\/progress\/([a-zA-Z0-9._:-]+)$/)?.[1];setProgressId(progress??null);if(progress)return;
       const route = parseRoute();
       if (route.view === "deals") {setActiveLocal(false); setView("deals"); window.scrollTo(0, 0); return;}
       if (route.view === "public-record") {setActiveLocal(false); setView("public-record"); window.scrollTo(0, 0); return;}
@@ -563,10 +621,11 @@ export default function App({initialCase, initialRoute, loadCaseFn = loadCase}: 
         }).finally(() => setLoading(false));
         return;
       }
+      if (route.caseId === caseData.caseId) {setActiveLocal(false);setView(route.view);return;}
       void openRetainedDeal(route.caseId as CaseId, route.view as DealView, "replace");
     };
-    window.addEventListener("hashchange", sync);
-    return () => window.removeEventListener("hashchange", sync);
+    window.addEventListener("hashchange", sync);window.addEventListener("popstate",sync);
+    return () => {window.removeEventListener("hashchange", sync);window.removeEventListener("popstate",sync);};
   }, [openRetainedDeal]);
   useEffect(() => {
     if (!routeFocusReady.current) { routeFocusReady.current = true; return; }
@@ -578,15 +637,43 @@ export default function App({initialCase, initialRoute, loadCaseFn = loadCase}: 
     });
     return () => window.cancelAnimationFrame(frame);
   }, [view, caseData.caseId, activeLocal, intakeOpen]);
+
   function navigate(next: DealView) {window.history.pushState(null, "", routePath(caseData.caseId, next)); setView(next); window.scrollTo(0, 0);}
   function returnToDeals() {window.history.pushState(null, "", "#/" ); setLoadError(false); setActiveLocal(false); setView("deals"); window.scrollTo(0, 0);}
 
-  if (loading) return <div className="loading-state" role="status">Opening deal…</div>;
+  async function selectAdmitted(result: IntakeResult, keepView=false) {
+    setLoading(true);
+    let sourceError="";
+    try {await saveSavedDeal(result);} catch(error) {sourceError=`Source library save failed: ${error instanceof Error?error.message:"unknown error"}. Export a source backup before closing.`;}
+    const persisted=persistAdmittedDeal(result);
+    setLocalPersistenceNotice(sourceError || (persisted?"":"Browser selection could not be saved. Use Saved deals to reopen the durable source, if available."));
+    setLocalDeal(result);setIntakeOpen(false);setActiveLocal(true);
+    if(!keepView){setView("overview");window.history.pushState(null,"","#/v3/local/overview");window.scrollTo(0,0);}
+    setLoading(false);
+  }
+  if (loading) return <WorkspaceOpening/>;
   if (loadError) return <main className="loading-state load-error" role="alert"><div><p className="eyebrow">Deal workspace</p><h1>Deal unavailable</h1><p>The selected deal could not be opened. No data, assumption or decision was changed.</p><button className="secondary-button" type="button" onClick={returnToDeals}>Return to Deals</button></div></main>;
-  const importLocal = async (file?: File) => {if (!file) return; try {if (file.size > 13_000_000) throw new Error("Portable deal bundle exceeds the 13 MB public-slice limit"); const bundle = await validateAdmittedDealBundle(await file.text()); const persisted = installAdmittedDealBundle(bundle); setLocalDeal(bundle.admittedDeal); setImportNotice(persisted ? "Portable deal replayed, recalculated and imported locally." : "Portable deal replayed and recalculated; browser storage is unavailable, so this session remains in memory."); setLocalPersistenceNotice(persisted ? "" : "Session-only deal — browser persistence failed."); setActiveLocal(true); setView("overview"); window.history.pushState(null, "", "#/v3/local/overview"); window.scrollTo(0, 0);} catch (error) {setImportNotice(error instanceof Error ? error.message : "Portable deal import failed.");}};
-  if (intakeOpen) return <DealIntake onCancel={() => setIntakeOpen(false)} onComplete={(result) => {const persisted = persistAdmittedDeal(result); setLocalPersistenceNotice(persisted ? "" : "Session-only deal — browser persistence failed."); setLocalDeal(result); setIntakeOpen(false); setActiveLocal(true); setView("overview"); window.history.pushState(null, "", "#/v3/local/overview"); window.scrollTo(0, 0);}} />;
-  if (view === "deals") return <><DealList onOpen={(caseId) => void openRetainedDeal(caseId, "overview")} onNew={() => setIntakeOpen(true)} onConnect={() => setConnectionOpen(true)} connection={connection} localDeal={localDeal} onOpenLocal={() => {setActiveLocal(true); setView("overview"); window.history.pushState(null, "", "#/v3/local/overview"); window.scrollTo(0, 0);}} onOpenPublicRecord={() => {setActiveLocal(false); setView("public-record"); window.history.pushState(null, "", "#/public-record/snowflake"); window.scrollTo(0, 0);}} onImportLocal={(file) => void importLocal(file)} importNotice={importNotice} loadCaseFn={loadCaseFn} />{connectionDialog}</>;
+  const importLocal = async (file?: File) => {
+    if (!file) return;
+    try {
+      if (file.size > 13_000_000) throw new Error("Portable deal bundle exceeds the 13 MB public-slice limit");
+      const content = await file.text();
+      const raw: unknown = JSON.parse(content);
+      const sourceOnly = raw && typeof raw === "object" && "schemaVersion" in raw && raw.schemaVersion === SOURCE_BACKUP_VERSION;
+      const bundle = sourceOnly ? null : await validateAdmittedDealBundle(content);
+      const admitted = bundle ? bundle.admittedDeal : await validateSourceBackup(content);
+      await saveSavedDeal(admitted);
+      const persisted = bundle ? installAdmittedDealBundle(bundle) : persistAdmittedDeal(admitted);
+      setLocalDeal(admitted);
+      setImportNotice(sourceOnly ? "Source backup verified and recalculated. Existing analyst workspace records were preserved." : "Portable deal replayed, recalculated and imported locally.");
+      setLocalPersistenceNotice(persisted ? "" : "Session-only deal — browser persistence failed.");
+      setActiveLocal(true); setView("overview"); window.history.pushState(null, "", "#/v3/local/overview"); window.scrollTo(0, 0);
+    } catch (error) {setImportNotice(error instanceof Error ? error.message : "Portable deal import failed.");}
+  };
+  if(progressId)return <><DealProgressWorkspace key={progressId} id={progressId} onDeals={()=>{setProgressId(null);returnToDeals();}} onConnect={()=>setConnectionOpen(true)}/>{connectionDialog}</>;
+  if (intakeOpen) return <DealIntake onProgress={openProgress} onCancel={() => setIntakeOpen(false)} onComplete={result=>void selectAdmitted(result)} />;
+  if (view === "deals") return <><DealList onOpenProgress={openProgress} onOpen={(caseId) => void openRetainedDeal(caseId, "overview")} onNew={() => setIntakeOpen(true)} onConnect={() => setConnectionOpen(true)} connection={connection} localDeal={localDeal} onOpenLocal={() => {setActiveLocal(true); setView("overview"); window.history.pushState(null, "", "#/v3/local/overview"); window.scrollTo(0, 0);}} onOpenPublicRecord={() => {setActiveLocal(false); setView("public-record"); window.history.pushState(null, "", "#/public-record/snowflake"); window.scrollTo(0, 0);}} onImportLocal={(file) => void importLocal(file)} importNotice={importNotice} loadCaseFn={loadCaseFn} onOpenSaved={result=>void selectAdmitted(result)} savedPanel={<SavedDealsPanel onOpen={result=>void selectAdmitted(result)} />} archivePanel={<PackageArchivePanel current={localDeal} onRestore={result=>void selectAdmitted(result)} />} />{connectionDialog}</>;
   if (view === "public-record") return <PublicRecordCase onDeals={returnToDeals} />;
-  if (activeLocal && localDeal) return <><LocalDealShell result={localDeal} view={view} onNavigate={(next) => {setView(next); window.history.pushState(null, "", `#/v3/local/${next}`); window.scrollTo(0, 0);}} onDeals={returnToDeals} onConnect={() => setConnectionOpen(true)} onPromote={(promoted) => {const persisted = persistAdmittedDeal(promoted); setLocalPersistenceNotice(persisted ? "" : "Version promoted for this session; browser persistence failed."); setLocalDeal(promoted);}} connection={connection} modelTransport={modelTransport} persistenceNotice={localPersistenceNotice} />{connectionDialog}</>;
+  if (activeLocal && localDeal) return <><LocalDealShell result={localDeal} view={view} onNavigate={(next) => {setView(next); window.history.pushState(null, "", `#/v3/local/${next}`); window.scrollTo(0, 0);}} onDeals={returnToDeals} onConnect={() => setConnectionOpen(true)} onPromote={promoted=>selectAdmitted(promoted,true)} connection={connection} modelTransport={modelTransport} persistenceNotice={localPersistenceNotice} />{connectionDialog}</>;
   return <><DealShell key={caseData.caseId} caseData={caseData} view={view as DealView} onNavigate={navigate} onChooseDeal={(caseId) => void openRetainedDeal(caseId, view as DealView)} onDeals={returnToDeals} onConnect={() => setConnectionOpen(true)} connection={connection} modelTransport={modelTransport} />{connectionDialog}</>;
 }

@@ -378,6 +378,62 @@ def validate_blind_review_binding(root: Path) -> None:
     if receipt_case_ids != set(protocol_cases):
         raise ValueError("blind_review_case_set_invalid")
 
+def reviewed_trial_artifacts(root: Path) -> set[str]:
+    """Hash-bind explicitly retained synthetic screenshots and the local trial ZIP."""
+    manifest_path = root / "verification/local-trial-artifacts.json"
+    if not manifest_path.exists():
+        return set()
+    body = json.loads(manifest_path.read_text())
+    digest = body.pop("manifest_sha256", None)
+    if digest != hashlib.sha256(canonical_json(body)).hexdigest():
+        raise ValueError("trial_manifest_digest_mismatch")
+    allowed_roots = ("verification/design-rebuild-20260903/", "verification/goal-one-20260908/", "verification/goal-two-20260908/", "verification/desk-twelve-20260908/", "verification/deal-progress-20260908/")
+    reviewed: set[str] = set()
+    for entry in body.get("files", []):
+        relative = entry["path"]
+        path = Path(relative)
+        if path.is_absolute() or ".." in path.parts or relative in reviewed:
+            raise ValueError("trial_artifact_path_invalid")
+        is_zip = relative == "trial/underwriting-desk-local.zip"
+        is_walkthrough = relative == "verification/goal-one-20260908/goal-one-working-walkthrough.webm"
+        if not is_zip and not is_walkthrough and not (relative.startswith(allowed_roots) and path.suffix == ".png"):
+            raise ValueError("trial_artifact_outside_scope")
+        source = root / path
+        if source.is_symlink():
+            raise ValueError("trial_artifact_symlink")
+        data = source.read_bytes()
+        if len(data) != entry["bytes"] or hashlib.sha256(data).hexdigest() != entry["sha256"]:
+            raise ValueError("trial_artifact_changed")
+        if is_zip:
+            import io
+            import zipfile
+            with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                names = archive.namelist()
+                if len(set(names)) != len(names) or len(names) > 500:
+                    raise ValueError("trial_archive_inventory_invalid")
+                manifest = json.loads(archive.read("manifest.json"))
+                if set(names) != set(manifest["files"]) | {"manifest.json"}:
+                    raise ValueError("trial_archive_manifest_inventory_mismatch")
+                for name, record in manifest["files"].items():
+                    item = Path(name)
+                    if item.is_absolute() or ".." in item.parts or any(p.startswith(".") for p in item.parts) or item.suffix in {".sqlite", ".db", ".map", ".key", ".pem"}:
+                        raise ValueError("trial_archive_private_path")
+                    contents = archive.read(name)
+                    if len(contents) != record["bytes"] or hashlib.sha256(contents).hexdigest() != record["sha256"]:
+                        raise ValueError("trial_archive_file_changed")
+                    # PDF.js embeds an Emscripten virtual home, not a device user path.
+                    scanned = contents.replace(b'HOME:"/home/web_user"', b'HOME:"<virtual-home>"') if item.name.startswith("pdf.worker.min-") and item.suffix == ".mjs" else contents
+                    if item.suffix in {".js", ".mjs", ".html", ".txt", ".json", ".css"} and any(pattern.search(scanned) for pattern in PATTERNS.values()):
+                        raise ValueError("trial_archive_private_content")
+        elif is_walkthrough:
+            if not data.startswith(bytes.fromhex("1a45dfa3")):
+                raise ValueError("trial_artifact_not_webm")
+        elif not data.startswith(bytes.fromhex("89504e470d0a1a0a")):
+            raise ValueError("trial_artifact_not_png")
+        reviewed.add(relative)
+    return reviewed
+
+
 def main() -> int:
     result = subprocess.run(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
@@ -402,6 +458,10 @@ def main() -> int:
         reviewed_binaries.update(reviewed_sample_package_binaries(ROOT))
     except (OSError, ValueError, json.JSONDecodeError) as error:
         failures.append(f"workbench public sample packages: {error}")
+    try:
+        reviewed_binaries.update(reviewed_trial_artifacts(ROOT))
+    except (OSError, ValueError, KeyError, json.JSONDecodeError) as error:
+        failures.append(f"verification/local-trial-artifacts.json: {error}")
     try:
         reviewed_source_files = source_room_allowlist(ROOT)
     except (OSError, ValueError, json.JSONDecodeError) as error:

@@ -1,7 +1,7 @@
 import type {ModelTransport} from "./model-workflow";
 
 export type ExternalModelClient = "claude-code" | "codex" | "claude-web" | "chatgpt" | "grok";
-export type LocalModelClient = "claude-code" | "codex";
+export type LocalModelClient = "claude-code" | "codex" | "claude-desktop" | "chatgpt-desktop";
 export type RemoteModelClient = "claude-web" | "chatgpt" | "grok";
 export type ConnectionState =
   | {channel: "LOCAL_MCP"; client: LocalModelClient; label: string; state: "SETUP_PREPARED"}
@@ -32,6 +32,7 @@ function safeAbsolutePath(value: string, label: string) {
 }
 
 export function localMcpCommand(client: LocalModelClient, workbenchPath: string, ledgerPath = "/tmp/underwriting-desk-proposals.jsonl") {
+  if (client === "claude-desktop" || client === "chatgpt-desktop") throw new Error("Use desktop MCP settings for this client");
   const server = `${safeAbsolutePath(workbenchPath, "workbench")}/mcp-server/server.mjs`;
   const ledger = safeAbsolutePath(ledgerPath, "proposal ledger");
   if (client === "claude-code") return `claude mcp add --scope user underwriting-desk -- node "${server}" --proposal-ledger "${ledger}"`;

@@ -3,19 +3,19 @@
    Warm neutral canvas · graphite ink · single deep-cobalt accent
    ------------------------------------------------------------------ */
 :root {
-  --canvas: #f3f0e9;
+  --canvas: #f6f7f8;
   --surface: #ffffff;
-  --surface-2: #faf8f3;
+  --surface-2: #f9fafb;
   --surface-3: #f1ede4;
   --ink: #1a1d21;
   --ink-2: #363b42;
   --muted: #59626b;
   --faint: #5e676f;
-  --line: #e2ddd3;
-  --line-2: #c9c2b4;
-  --accent: #1d3f8a;
+  --line: #e1e5e9;
+  --line-2: #cbd2d9;
+  --accent: #284d72;
   --accent-ink: #163170;
-  --accent-soft: #ecf0f9;
+  --accent-soft: #edf3f8;
   --positive: #2b6a4b;
   --positive-soft: #e9f2ec;
   --negative: #9b3a2c;
@@ -29,6 +29,9 @@
   --rail-muted: #a3a8ae;
   --focus: #3b6fd6;
   --radius: 3px;
+  --control-height: 34px;
+  --table-row-space: 14px;
+  --review-rule: #d7dfe4;
   --shadow-drawer: -12px 0 32px rgba(20, 22, 26, .16);
   font-family: Inter, "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   font-size: 13px;
@@ -885,3 +888,184 @@ tbody tr:hover > td { background: var(--surface-2); }
   .memo-print-body { display: block !important; }
 }
 .sensitivity-heatmap thead th:first-child { width: 150px; text-align: left; }
+
+/* Local model review: a bounded work surface, with evidence beside the handoff. */
+.local-review-desk { margin-bottom: 32px; border-bottom: 1px solid #cdd1d5; padding-bottom: 24px; }
+.local-review-desk > header { display: flex; justify-content: space-between; gap: 24px; align-items: baseline; }
+.local-review-desk > header > span { white-space: nowrap; font-variant-numeric: tabular-nums; font-size: 12px; color: #56616b; }
+.local-review-desk h3 { font-size: 22px; letter-spacing: -.025em; margin: 4px 0 8px; }
+.local-review-desk header p:not(.eyebrow) { max-width: 640px; color: #56616b; font-size: 14px; line-height: 1.5; }
+.local-review-layout { display: grid; grid-template-columns: minmax(0, 1fr) 260px; border-top: 1px solid #cdd1d5; margin-top: 20px; }
+.local-review-layout fieldset { border: 0; margin: 0; padding: 0 20px 0 0; min-width: 0; }
+.local-review-layout legend { padding: 14px 0; color: #56616b; font-size: 12px; }
+.local-review-layout label { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 13px 0; border-top: 1px solid #e0e2e3; cursor: pointer; }
+.local-review-layout label strong { font-size: 14px; font-weight: 550; }
+.local-review-layout label small { display: block; margin-top: 5px; color: #626c74; font-size: 12px; line-height: 1.45; }
+.local-review-layout label b { font-size: 14px; font-variant-numeric: tabular-nums; }
+.local-review-layout aside { padding: 16px 0 0 20px; border-left: 1px solid #cdd1d5; }
+.local-review-layout aside h4 { font-size: 14px; margin: 0; }
+.local-review-layout ol { padding-left: 18px; font-size: 13px; line-height: 1.6; }
+.local-review-layout li { padding-bottom: 10px; }
+.local-review-layout aside button { width: 100%; margin-bottom: 8px; border-radius: 4px; }
+.local-review-layout aside p { font-size: 13px; line-height: 1.5; }
+.local-review-layout aside small { color: #626c74; font-size: 12px; line-height: 1.5; }
+
+/* Analytical workspace: original structured review layout, September 2026. */
+.sidebar-workflow { padding: 24px 12px; color: var(--rail-muted); font-size: 12px; }
+.sidebar-workflow > span { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+.sidebar-workflow p { line-height: 2; margin-top: 10px; }
+.deal-heading { padding-bottom: 20px; margin-bottom: 22px; }
+.investment-brief { display: grid; grid-template-columns: minmax(0, 1fr) 225px; gap: 40px; align-items: start; padding: 2px 0 24px; }
+.investment-brief h2 { font-size: 25px; line-height: 1.25; letter-spacing: -.03em; margin: 7px 0 12px; max-width: 720px; }
+.investment-brief p:not(.eyebrow) { max-width: 790px; font-size: 14px; color: var(--ink-2); line-height: 1.65; }
+.brief-actions { display: grid; gap: 8px; padding-top: 12px; }
+.brief-actions button { min-height: 34px; border: 1px solid var(--line-2); background: white; border-radius: 4px; padding: 6px 10px; font-size: 12px; }
+.brief-actions .primary-button { background: var(--accent); color: white; border-color: var(--accent); }
+.brief-actions .text-button { border: 0; background: transparent; text-align: right; }
+.analysis-toolbar { display: flex; justify-content: space-between; gap: 20px; align-items: center; background: white; border: 1px solid var(--line-2); border-bottom: 0; border-radius: 6px 6px 0 0; padding: 14px 18px; }
+.analysis-toolbar > div { display: flex; gap: 16px; align-items: baseline; }
+.analysis-toolbar h3 { font-size: 14px; }
+.analysis-toolbar span { color: var(--muted); font-size: 12px; }
+.analysis-toolbar input { border: 1px solid var(--line); border-radius: 4px; padding: 7px 10px; min-width: 230px; font-size: 12px; }
+.analysis-surface { display: grid; grid-template-columns: minmax(0, 1fr) 290px; border: 1px solid var(--line-2); background: white; border-radius: 0 0 6px 6px; overflow: hidden; }
+.analysis-table-scroll { min-width: 0; overflow-x: auto; }
+.analysis-matrix { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.analysis-matrix th, .analysis-matrix td { text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); padding: 16px 14px; line-height: 1.5; }
+.analysis-matrix thead th { background: #f8fafb; padding: 11px 14px; font-size: 12px; font-weight: 550; color: var(--muted); }
+.analysis-matrix thead th:nth-child(1) { width: 23%; }
+.analysis-matrix thead th:nth-child(2) { width: 20%; }
+.analysis-matrix thead th:nth-child(3) { width: 37%; }
+.analysis-matrix thead th:nth-child(4) { width: 20%; }
+.analysis-matrix td { font-size: 12px; color: var(--ink-2); }
+.analysis-matrix tbody th { font-weight: 550; }
+.analysis-matrix th button { background: transparent; border: 0; padding: 0; text-align: left; line-height: 1.5; width: 100%; font-size: 13px; }
+.analysis-matrix th button span { display: block; color: var(--accent); font-size: 12px; margin-top: 10px; opacity: 0; }
+.analysis-matrix tr:hover th button span, .analysis-matrix tr[data-selected="true"] th button span, .analysis-matrix th button:focus-visible span { opacity: 1; }
+.analysis-matrix tr[data-selected="true"] { background: #eef4f9; }
+.analysis-matrix tr[data-selected="true"] th { box-shadow: inset 3px 0 var(--accent); }
+.analysis-matrix .matrix-value { font-size: 18px; font-weight: 600; color: var(--ink); letter-spacing: -.02em; }
+.matrix-value small { display: block; font-size: 12px; font-weight: 400; letter-spacing: 0; color: var(--muted); margin-top: 5px; overflow-wrap: anywhere; }
+.matrix-footer, .matrix-empty { padding: 15px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+.analysis-inspector { border-left: 1px solid var(--line-2); padding: 20px; background: #fcfcfd; }
+.analysis-inspector header h3 { font-size: 16px; margin: 8px 0; }
+.analysis-inspector header > strong { display: block; font-size: 28px; letter-spacing: -.04em; font-weight: 550; margin: 8px 0; }
+.analysis-inspector p { font-size: 12px; color: var(--ink-2); line-height: 1.65; }
+.analysis-inspector section { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+.analysis-inspector h4 { font-size: 12px; font-weight: 650; margin-bottom: 8px; }
+.analysis-inspector section small { display: block; color: var(--muted); font-size: 12px; }
+.inspector-source { display: grid; gap: 3px; border: 1px solid var(--line); padding: 9px; margin-bottom: 6px; border-radius: 3px; font-size: 12px; overflow-wrap: anywhere; }
+.inspector-source span { color: var(--muted); }
+.analysis-inspector button { background: white; border: 1px solid var(--line-2); padding: 6px 9px; font-size: 12px; border-radius: 3px; margin-top: 8px; }
+.analysis-inspector .text-button { background: transparent; padding: 0; border: 0; text-align: left; }
+.inspector-question label { display: block; margin-top: 8px; font-size: 12px; }
+.inspector-question input { display: block; width: 100%; border: 1px solid var(--line-2); padding: 6px; margin-top: 4px; }
+.case-arguments { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; margin: 24px 0; }
+.case-arguments section { border-top: 2px solid var(--line-2); padding-top: 12px; }
+.case-arguments h3 { font-size: 12px; margin-bottom: 8px; }
+.case-arguments p { color: var(--ink-2); font-size: 12px; line-height: 1.65; }
+.supporting-analysis { border-top: 1px solid var(--line-2); padding-top: 16px; margin-top: 26px; }
+.supporting-analysis > summary { font-size: 12px; margin-bottom: 20px; }
+.simple-connect { max-width: 820px; }
+.simple-connect .connection-dialog-header h1 { font-size: 25px; margin: 6px 0 10px; }
+.simple-connect .connection-dialog-header p:not(.eyebrow) { font-size: 13px; color: var(--muted); }
+.simple-connect .connection-body { display: grid; gap: 24px; }
+.setup-client-grid { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.setup-client-grid legend { margin-bottom: 12px; font-weight: 600; }
+.setup-client-grid label { display: flex; align-items: start; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 5px; cursor: pointer; }
+.setup-client-grid label[data-selected="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.setup-client-grid small { display: block; color: var(--muted); font-size: 12px; margin-top: 4px; }
+.setup-assistance h2, .setup-check h2 { margin-bottom: 8px; font-size: 14px; }
+.setup-assistance p { margin-bottom: 12px; font-size: 13px; color: var(--muted); }
+.setup-assistance details { margin-top: 12px; }
+.setup-assistance textarea { width: 100%; border: 1px solid var(--line); margin-top: 10px; padding: 12px; font-size: 12px; }
+.setup-check { display: flex; gap: 18px; align-items: start; background: #f4f7f9; padding: 16px; border: 1px solid var(--line); border-radius: 5px; }
+.setup-check > div { flex: 1; }
+.setup-check p, .setup-manual p { font-size: 12px; line-height: 1.6; color: var(--muted); }
+.setup-check button { white-space: nowrap; }
+.setup-manual pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; padding: 12px; background: var(--surface-2); }
+.setup-manual p { margin: 10px 0; }
+.simple-connect .connection-dialog-footer > span { color: var(--muted); font-size: 12px; }
+@media (max-width: 1250px) { .analysis-surface { grid-template-columns: minmax(0, 1fr) 245px; } .analysis-matrix th, .analysis-matrix td { padding: 12px 10px; } .analysis-toolbar > div { display: block; } }
+
+.excel-cell-review { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.excel-cell-review > h3 { font-size: 15px; margin-bottom: 8px; }
+.excel-cell-review > p { max-width: 760px; margin-bottom: 12px; }
+.excel-cell-review td { overflow-wrap: anywhere; max-width: 300px; }
+.excel-cell-review td small { display: block; }
+.analysis-inspector .matrix-model-action { margin-top: 18px; padding: 9px; width: 100%; color: var(--accent); background: var(--accent-soft); border-color: var(--line-2); text-align: left; }
+.analysis-surface { max-height: 520px; }
+.analysis-table-scroll, .analysis-inspector { max-height: 520px; overflow: auto; }
+.analysis-matrix thead { position: sticky; top: 0; z-index: 1; }
+.analysis-inspector { scrollbar-gutter: stable; }
+
+/* Structured desktop review surfaces. */
+.finance-navigation {display:flex; gap:4px; padding:10px 0; margin-bottom:18px; border-bottom:1px solid #d9dee2;}
+.finance-navigation button, .proposal-review-toolbar button {border:0; background:transparent; padding:9px 12px; color:#44525d; font-size:12px; cursor:pointer; border-radius:3px;}
+.finance-navigation button:hover, .proposal-review-toolbar button:hover {background:#edf1f3; color:#182d3b;}
+.financial-desktop section {scroll-margin-top:24px;}
+.canonical-comparison.scenario-comparison-table {display:block; padding:0; border:1px solid #d7dfe4; border-radius:4px; background:#fff; overflow:hidden; margin:20px 0;}
+.scenario-comparison-table header {display:flex; justify-content:space-between; gap:24px; align-items:center; padding:18px 20px; background:#f5f7f8; border-bottom:1px solid #d7dfe4;}
+.scenario-comparison-table h3 {margin:4px 0 0; font-size:17px; font-weight:600;}
+.scenario-comparison-table header > span {font-size:12px; color:#52616b; max-width:300px;}
+.scenario-comparison-table table, .package-archive table {width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums;}
+.scenario-comparison-table th, .scenario-comparison-table td, .package-archive th, .package-archive td {padding:13px 20px; border-bottom:1px solid #e3e7ea; font-size:13px; text-align:right;}
+.scenario-comparison-table th:first-child, .package-archive th, .package-archive td {text-align:left;}
+.scenario-comparison-table thead th, .package-archive thead th {font-size:12px; color:#52616b; font-weight:500;}
+.scenario-comparison-table tbody th {font-weight:500;}
+.scenario-comparison-table td:last-child {background:#f5f8f9; font-weight:600; color:#213d4d;}
+.scenario-comparison-table > p {margin:0; padding:12px 20px; color:#61707b; font-size:12px;}
+.proposal-review-toolbar {display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 0; border-bottom:1px solid #d7dfe4; margin-bottom:16px; flex-wrap:wrap;}
+.proposal-review-toolbar nav {display:flex; gap:3px;}
+.proposal-review-toolbar button[aria-pressed="true"] {background:#233f50; color:white;}
+.proposal-review-toolbar input {padding:9px 12px; min-width:240px; border:1px solid #c7d0d7; border-radius:3px; font:inherit; font-size:13px;}
+.package-archive {max-width:1280px; margin:24px auto 60px; padding:24px; border:1px solid #d7dfe4; border-radius:4px; background:#fff;}
+.package-archive header {display:flex; align-items:center; justify-content:space-between; gap:24px; margin-bottom:20px;}
+.package-archive h2 {font-size:20px; margin:6px 0;}
+.package-archive p, .package-archive small {font-size:13px; color:#52616b; line-height:1.6;}
+.package-archive td button {background:transparent; border:1px solid #bac7ce; border-radius:3px; padding:7px 10px; color:#233f50; cursor:pointer;}
+.package-archive button:disabled {opacity:.5; cursor:wait;}
+
+/* Review-system refinement: one hierarchy across registers, evidence and finance. */
+.review-table-toolbar {display:flex; align-items:end; gap:16px; padding:16px 20px; border-bottom:1px solid var(--review-rule); background:var(--surface); flex-wrap:wrap;}
+.review-table-toolbar label {display:grid; gap:5px; font-size:12px; color:var(--muted);}
+.review-table-toolbar input, .review-table-toolbar select {min-height:var(--control-height); padding:6px 10px; border:1px solid var(--line-2); background:white; border-radius:var(--radius); font-size:13px; color:var(--ink);}
+.review-table-toolbar > span {margin-left:auto; padding-bottom:7px; color:var(--muted); font-size:12px;}
+.deal-register-toolbar input {min-width:300px;}
+.deal-register-toolbar {border-top:1px solid var(--line);}
+.deals-page .section-heading h1 {font-size:26px;}
+.deals-page .deals-header {padding-bottom:24px;}
+.deals-page .deal-index {box-shadow:none;}
+.deals-page .package-archive {margin:24px 0; max-width:none; padding:20px;}
+.deals-secondary {gap:20px;}
+.deals-secondary .intake-callout {background:var(--surface); border:1px solid var(--line); padding:20px;}
+.desk-method {margin-top:24px; padding-top:18px; border-top:1px solid var(--line);}
+.register-empty {padding:36px 24px; text-align:center; background:white;}
+.register-empty p {margin:8px 0 14px; color:var(--muted);}
+.register-empty button {border:1px solid var(--line-2); padding:7px 12px; background:white;}
+.archive-toolbar {display:flex; align-items:end; gap:16px; margin:16px 0;}
+.archive-toolbar label {display:grid; gap:5px;}
+.archive-toolbar input {padding:7px 10px; border:1px solid var(--line-2); border-radius:3px;}
+.archive-actions {display:flex; gap:8px; flex-wrap:wrap;}
+.archive-identity {max-width:360px; overflow-wrap:anywhere;}
+.archive-error {padding:12px; border-left:3px solid var(--negative); background:var(--negative-soft);}
+.connection-assessment {padding:12px 0 0; font-size:13px;}
+.setup-steps {padding-left:22px; margin-bottom:16px;}
+.setup-steps li {margin:8px 0;}
+.setup-manual > button {margin-left:12px;}
+.excel-change-review {margin-top:16px; border:1px solid var(--line); background:white;}
+.excel-change-review > p {padding:12px 16px;}
+.excel-change-review footer {display:flex; justify-content:space-between; gap:12px; padding:12px 16px; font-size:12px; color:var(--muted); border-top:1px solid var(--line);}
+.excel-change-review td {overflow-wrap:anywhere; max-width:320px;}
+.comparison-source {display:grid; gap:3px; padding:0; border:0; background:transparent; text-align:left; font-weight:500;}
+.comparison-source span {font-size:12px; color:var(--accent); font-weight:400;}
+.analysis-surface {grid-template-columns:minmax(0,1fr) var(--inspector-width,300px);}
+.analysis-workspace[data-density="compact"] .analysis-matrix :is(th,td) {padding-top:9px; padding-bottom:9px;}
+.analysis-toolbar {position:relative;}
+.view-options {margin-left:8px; flex-shrink:0;}
+.view-options > div {position:absolute; z-index:3; right:12px; top:calc(100% - 4px); width:270px; padding:18px; border:1px solid var(--line-2); background:white; box-shadow:0 8px 20px #182d3b14; display:grid; gap:14px;}
+.view-options label {display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:12px;}
+.view-options input[type="range"] {width:100%; min-width:0; accent-color:var(--accent);}
+.view-options input[type="checkbox"] {min-width:0; width:auto;}
+.view-options button {border:1px solid var(--line-2); background:white; padding:7px 10px;}
+@media (max-width:1250px) { .analysis-surface {grid-template-columns:minmax(0,1fr) min(var(--inspector-width,300px),32%);} }
+@media print { .finance-navigation, .view-options, .review-table-toolbar {display:none !important;} }

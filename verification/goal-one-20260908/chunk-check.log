@@ -1,0 +1,2 @@
+$ node scripts/verify-case-chunks.mjs
+{"status":"PASS","shell_gzip_bytes":187070,"cases":{"atlasgrid":{"initial_gzip_bytes":414599,"payload_gzip_bytes":203215},"helios":{"initial_gzip_bytes":367890,"payload_gzip_bytes":156506}}}

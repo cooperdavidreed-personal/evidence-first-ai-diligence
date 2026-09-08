@@ -1,0 +1,59 @@
+[WebServer] (node:71235) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 4 tests using 1 worker
+
+(node:71261) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/4] [desktop] › tests/local-review.spec.ts:5:1 › selected evidence reaches MCP and a returned proposal survives human review and reload
+[2/4] [desktop] › tests/package-archive.spec.ts:3:1 › archived source delivery replays after browser storage is cleared
+(node:72754) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[3/4] [desktop-webkit] › tests/local-review.spec.ts:5:1 › selected evidence reaches MCP and a returned proposal survives human review and reload
+  1) [desktop-webkit] › tests/local-review.spec.ts:5:1 › selected evidence reaches MCP and a returned proposal survives human review and reload
+
+    Error: expect(locator).toBeDisabled() failed
+
+    Locator: getByRole('button', { name: 'Accept proposal' })
+    Expected: disabled
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeDisabled" with timeout 5000ms
+      - waiting for getByRole('button', { name: 'Accept proposal' })
+
+
+      23 |   await local.getByRole("button", {name: "Collect model proposals"}).click();
+      24 |   await expect(page.getByRole("heading", {name: "Test the renewal concentration"})).toBeVisible();
+    > 25 |   await expect(page.getByRole("button", {name: "Accept proposal"})).toBeDisabled();
+         |                                                                     ^
+      26 |   await page.getByRole("textbox", {name: "Human reviewer"}).fill("Cooper test fixture");
+      27 |   await page.getByRole("button", {name: "Accept proposal"}).click();
+      28 |   await expect(page.getByText(/accepted by Cooper test fixture/)).toBeVisible();
+        at <repository>/workbench/tests/local-review.spec.ts:25:69
+
+    Error Context: ../../../../../tmp/desk-twelve-local-verified/local-review-selected-evid-9e1ea-ves-human-review-and-reload-desktop-webkit/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/desk-twelve-local-verified/local-review-selected-evid-9e1ea-ves-human-review-and-reload-desktop-webkit/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace ../../../../../tmp/desk-twelve-local-verified/local-review-selected-evid-9e1ea-ves-human-review-and-reload-desktop-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:73541) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[4/4] [desktop-webkit] › tests/package-archive.spec.ts:3:1 › archived source delivery replays after browser storage is cleared
+  1 failed
+    [desktop-webkit] › tests/local-review.spec.ts:5:1 › selected evidence reaches MCP and a returned proposal survives human review and reload
+  3 passed (19.6s)

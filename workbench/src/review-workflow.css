@@ -1,0 +1,7 @@
+.diligence-queue-toolbar{display:flex;align-items:end;gap:16px;padding:16px 0;border-top:1px solid #d8dde2}
+.diligence-queue-toolbar label{display:grid;gap:5px;min-width:190px;font-size:12px;font-weight:600}
+.diligence-queue-toolbar label:nth-child(2){flex:1}.diligence-queue-toolbar input,.diligence-queue-toolbar select{min-height:38px;padding:8px;border:1px solid #aeb7c0;background:#fff;color:#17202a}
+.diligence-queue-toolbar p{font-size:12px;color:#576573;white-space:nowrap}.queue-definition{font-size:13px;color:#576573;margin:0 0 16px}
+.queue-issue-link{border:0;background:transparent;color:#173d62;padding:0;font:inherit;font-weight:600;text-align:left;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.queue-resolution-details{margin-top:16px}.queue-resolution-details:empty{display:none}.committee-version{font-size:12px;color:#576573;line-height:1.5}
+@media print{.diligence-queue-toolbar,.queue-issue-link,.memo-actions{display:none}}

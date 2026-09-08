@@ -1,9 +1,11 @@
+import {useWorkspaceLocation,selectWorkspaceObject} from "./workspace-navigation";
 import {useMemo, useState} from "react";
 import type {CaseData, Metric, SourceLocator} from "./types";
 import {formatHumanDate} from "./workspace-ui";
 
 type OpenMetric = (metric: Metric, trigger: HTMLElement) => void;
 
+export const sourceTitle = (value: string) => value.split("/").at(-1)?.replace(/\.[^.]+$/, "").replaceAll("_", " ").replaceAll("-", " ").replace(/\b\w/g, letter => letter.toUpperCase()) ?? value;
 const friendly = (value: string) => value.split("/").at(-1)?.replace(/\.[^.]+$/, "").replaceAll("_", " ").replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()) ?? value;
 const financeLabel = (value: string) => friendly(value).replaceAll(" Xirr", " IRR").replaceAll(" Moic", " MOIC").replaceAll(" Nrr", " NRR").replaceAll(" Result", "").replace(/ Delta(?: Cents)?\b/g, " impact").replace(/ Cents\b/g, "");
 const readable = (value: unknown): string => {
@@ -42,6 +44,7 @@ export function EvidenceExcerpt({locator}: {locator: SourceLocator}) {
   if (excerpt.kind === "JSON_VALUES" && recordValues(excerpt.values)) {
     return <dl className="source-value-list">{Object.entries(excerpt.values).map(([key, value]) => <div key={key}><dt>{friendly(key.replace(/^\//, ""))}</dt><dd>{Array.isArray(value) ? value.map((item, index) => <span key={index}>{recordValues(item) ? Object.entries(item).map(([field, fieldValue]) => `${friendly(field)}: ${cellValue(field, fieldValue)}`).join(" · ") : readable(item)}</span>) : cellValue(key, value)}</dd></div>)}</dl>;
   }
+  if (typeof excerpt.text === "string") return <div className="source-selection"><p className="source-location">Selected source passage</p><blockquote><mark>{excerpt.text}</mark></blockquote></div>;
   return <dl className="source-value-list">{Object.entries(excerpt).map(([key, value]) => <div key={key}><dt>{friendly(key)}</dt><dd>{cellValue(key, value)}</dd></div>)}</dl>;
 }
 
@@ -57,7 +60,9 @@ function metricFrom(caseData: CaseData, metricId: string): Metric | null {
 
 export function DocumentsWorkspace({caseData, openMetric}: {caseData: CaseData; openMetric: OpenMetric}) {
   const [query, setQuery] = useState("");
-  const [selectedArtifact, setSelectedArtifact] = useState(caseData.artifacts[0]?.artifact_id ?? "");
+  const location=useWorkspaceLocation();
+  const selectedArtifact=location.get("source")??caseData.artifacts[0]?.artifact_id??"";
+  const setSelectedArtifact=(source:string)=>selectWorkspaceObject({source,tab:"sources"});
   const records = useMemo(() => caseData.artifacts.map((artifact) => {
     const locators = caseData.sourceLocators.filter((item) => item.artifact_id === artifact.artifact_id);
     const searchText = [artifact.path, artifact.schema, ...locators.flatMap((item) => [item.period, JSON.stringify(item.retained_excerpt)])].join(" ").toLowerCase();

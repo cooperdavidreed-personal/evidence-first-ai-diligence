@@ -54,38 +54,42 @@ describe("Underwriting Desk investor workspace", () => {
   it("opens a model connection center that explains the Desk-model boundary", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", {name: "Model options"}));
-    expect(screen.getByRole("dialog", {name: "Governed review, without handing over the case"})).toBeInTheDocument();
-    expect(screen.getByRole("heading", {name: "One deal record. Replaceable models."})).toBeInTheDocument();
-    expect(screen.getByText(/No provider keys are collected/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name: "Connect model"}));
+    expect(screen.getByRole("dialog", {name: "Connect your model"})).toBeInTheDocument();
+    expect(screen.getByRole("button", {name: "Copy setup prompt"})).toBeInTheDocument();
+    expect(screen.getByText(/No API keys/)).toBeInTheDocument();
   });
 
   it("opens an ordinary browser-local package intake", async () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("button", {name: "New deal"}));
-    expect(screen.getByRole("heading", {name: "Screen a company package"})).toBeInTheDocument();
-    expect(screen.getByText(/bytes stay in this browser tab/)).toBeInTheDocument();
+    await user.click(screen.getByText("Complete-package screening · existing governed workflow"));
+    expect(screen.getByRole("heading", {name: "Start a deal review"})).toBeInTheDocument();
+    expect(screen.getByText(/Selections remain in this tab until/)).toBeInTheDocument();
     expect(screen.getByTestId("deal-package-input")).toHaveAttribute("multiple");
     expect(screen.getByRole("button", {name: "Validate and analyze"})).toBeDisabled();
-    expect(screen.getByText(/Files are validated and calculated locally/)).toBeInTheDocument();
+    expect(screen.getByText(/Files are processed locally/)).toBeInTheDocument();
     expect(screen.getByText(/evidence summaries you explicitly select after confirmation/)).toBeInTheDocument();
   });
 
-  it("opens a retained case with exactly five in-deal destinations", async () => {
+  it("opens a retained case with the task-oriented in-deal destinations", async () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("button", {name: /Open AtlasGrid Systems/}));
     await screen.findByRole("heading", {name: "AtlasGrid Systems"});
     const desktopNavigation = document.querySelector<HTMLElement>(".sidebar nav")!;
-    expect(within(desktopNavigation).getAllByRole("button")).toHaveLength(dealViews.length);
-    for (const label of ["Overview", "Financials", "Diligence", "Documents", "IC Memo"]) {
+    expect(within(desktopNavigation).getAllByRole("button")).toHaveLength(dealViews.filter(view => view !== "diligence").length);
+    for (const label of ["Brief", "Review", "Model", "Evidence", "Committee"]) {
       expect(within(desktopNavigation).getByRole("button", {name: label})).toBeInTheDocument();
     }
     expect(screen.getAllByText("REPRICE", {exact: true}).length).toBeGreaterThan(0);
-    expect(screen.getByText("IC decision pending")).toBeInTheDocument();
+    expect(screen.getByRole("table", {name: "Investment drivers"})).toBeInTheDocument();
     expect(window.location.hash).toBe("#/v3/atlasgrid/overview");
     expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
+    await user.click(within(desktopNavigation).getByRole("button", {name: "Evidence"}));
+    expect(screen.getByRole("table", {name: "Investment evidence matrix"})).toBeInTheDocument();
+    expect(window.location.hash).toContain("#/v3/atlasgrid/documents");
   });
 
   it("shows a complete AtlasGrid exit equity bridge including cash", async () => {
@@ -136,7 +140,8 @@ describe("Underwriting Desk investor workspace", () => {
     window.history.replaceState(null, "", "/#/v3/helios/diligence");
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", {name: "Assumption test"}));
+    await user.click(within(screen.getByRole("navigation", {name: "Deal navigation"})).getByRole("button", {name: "Model"}));
+    await user.click(screen.getByText("Assumptions and fund policy"));
     expect(screen.getByRole("heading", {name: "Optimizer test reduced unit compute cost"})).toBeInTheDocument();
     expect(screen.getByText(/8.7% less compute per workload/)).toBeInTheDocument();
     expect(screen.getByText("Population")).toBeInTheDocument();
@@ -154,11 +159,12 @@ describe("Underwriting Desk investor workspace", () => {
     window.history.replaceState(null, "", "/#/v3/helios/diligence");
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", {name: "Assumptions"}));
+    await user.click(within(screen.getByRole("navigation", {name: "Deal navigation"})).getByRole("button", {name: "Model"}));
+    await user.click(screen.getByText("Assumptions and fund policy"));
     expect(screen.getByRole("heading", {name: "Material assumptions"})).toBeInTheDocument();
     expect(screen.getByText("Severe-loss probability assumption")).toBeInTheDocument();
-    expect(screen.queryByText("Maximum probability below 1.0x")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", {name: "Policy"}));
+    const registry = screen.getByRole("heading", {name: "Material assumptions"}).closest("section")!;
+    expect(within(registry).queryByText("Maximum probability below 1.0x")).not.toBeInTheDocument();
     expect(screen.getByText("Maximum probability below 1.0x")).toBeInTheDocument();
   });
 
@@ -169,6 +175,7 @@ describe("Underwriting Desk investor workspace", () => {
     expect(screen.getAllByText("Maximum acceptable loss probability").length).toBeGreaterThan(0);
     expect(screen.getByText(/Point return is not enough while the severe-loss assumption breaches the selected ceiling/)).toBeInTheDocument();
     expect(screen.getByRole("heading", {name: "What must be true to avoid a capital-loss outcome?"})).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole("button", {name: "Decision context"}));
     const rail = screen.getByRole("complementary", {name: "Decision status"});
     expect(within(rail).getByText("Canonical case")).toBeInTheDocument();
     expect(within(rail).getByText("Scenario consequence")).toBeInTheDocument();
@@ -186,8 +193,9 @@ describe("Underwriting Desk investor workspace", () => {
   it("makes diligence row actions explicit on the default desktop worklist", async () => {
     window.history.replaceState(null, "", "/#/v3/atlasgrid/diligence");
     render(<App />);
-    expect(await screen.findByText("Action")).toBeInTheDocument();
-    expect(screen.getAllByText("Review").length).toBeGreaterThan(0);
+    expect(await screen.findByRole("button", {name: "Validate cancellation rights"})).toBeInTheDocument();
+    expect(screen.queryByRole("complementary", {name: "Decision status"})).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole("button", {name: "Decision context"}));
     expect(screen.getByRole("complementary", {name: "Decision status"})).toBeInTheDocument();
   });
 
@@ -195,7 +203,8 @@ describe("Underwriting Desk investor workspace", () => {
     window.history.replaceState(null, "", "/#/v3/atlasgrid/diligence");
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", {name: "Assumption test"}));
+    await user.click(within(screen.getByRole("navigation", {name: "Deal navigation"})).getByRole("button", {name: "Model"}));
+    await user.click(screen.getByText("Assumptions and fund policy"));
     expect(screen.getByText(/6.7 percentage points lower renewal conversion/)).toBeInTheDocument();
     await user.click(screen.getByText("Method and uncertainty"));
     expect(screen.getByText(/2.5 to 10.9 percentage points lower renewal conversion/)).toBeInTheDocument();
@@ -211,7 +220,7 @@ describe("Underwriting Desk investor workspace", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const user = userEvent.setup();
     render(<WorkbenchApp initialCase={helios} initialRoute={{caseId: "helios", view: "diligence"}} />);
-    await user.click(screen.getByRole("button", {name: "Assumption test"}));
+    await user.click(within(screen.getByRole("navigation", {name: "Deal navigation"})).getByRole("button", {name: "Model"}));
     expect(screen.getByRole("heading", {name: "Analysis unavailable"})).toBeInTheDocument();
     expect(screen.getByText(/no analytical conclusion is shown/)).toBeInTheDocument();
     expect(screen.queryByText(/less compute per workload/)).not.toBeInTheDocument();
@@ -226,7 +235,8 @@ describe("Underwriting Desk investor workspace", () => {
     optimizer.outputs.find((output) => output.name === "optimizer_ate")!.value = "0.0911";
     const user = userEvent.setup();
     render(<WorkbenchApp initialCase={helios} initialRoute={{caseId: "helios", view: "diligence"}} />);
-    await user.click(screen.getByRole("button", {name: "Assumption test"}));
+    await user.click(within(screen.getByRole("navigation", {name: "Deal navigation"})).getByRole("button", {name: "Model"}));
+    await user.click(screen.getByText("Assumptions and fund policy"));
     expect(screen.getByRole("heading", {name: "Optimizer test increased unit compute cost"})).toBeInTheDocument();
     expect(screen.getByText(/9.5% more compute per workload/)).toBeInTheDocument();
     expect(screen.getByText("Adverse signal")).toBeInTheDocument();
@@ -241,7 +251,8 @@ describe("Underwriting Desk investor workspace", () => {
     optimizer.outputs.find((output) => output.name === "optimizer_ate")!.value = "0";
     const user = userEvent.setup();
     render(<WorkbenchApp initialCase={helios} initialRoute={{caseId: "helios", view: "diligence"}} />);
-    await user.click(screen.getByRole("button", {name: "Assumption test"}));
+    await user.click(within(screen.getByRole("navigation", {name: "Deal navigation"})).getByRole("button", {name: "Model"}));
+    await user.click(screen.getByText("Assumptions and fund policy"));
     expect(screen.getByRole("heading", {name: "Optimizer test did not change unit compute cost"})).toBeInTheDocument();
     expect(screen.getByText(/no measurable difference in compute per workload/)).toBeInTheDocument();
     expect(screen.getByText("No measured effect")).toBeInTheDocument();
@@ -251,6 +262,7 @@ describe("Underwriting Desk investor workspace", () => {
     window.history.replaceState(null, "", "/#/v3/atlasgrid/documents");
     const user = userEvent.setup();
     render(<App />);
+    await user.click(screen.getByRole("button", {name: "Source files"}));
     expect(screen.getByRole("heading", {name: "Sources and evidence"})).toBeInTheDocument();
     const search = screen.getByRole("searchbox", {name: "Search filenames and retained evidence"});
     await user.type(search, "customer");
@@ -265,10 +277,11 @@ describe("Underwriting Desk investor workspace", () => {
     await user.selectOptions(screen.getByRole("combobox", {name: "Deal"}), "helios");
     await waitFor(() => expect(screen.getByRole("heading", {name: "Helios Compute Control"})).toBeInTheDocument());
     expect(screen.getAllByText("HOLD", {exact: true}).length).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", {name: "Decision context"}));
     expect(screen.getByText("Maintain HOLD while the binding screen and open diligence remain unresolved.")).toBeInTheDocument();
     expect(screen.getByText("Path to reconsideration")).toBeInTheDocument();
     expect(screen.queryByText(/Working recommendation/)).not.toBeInTheDocument();
-    expect(screen.getByText("IC decision pending")).toBeInTheDocument();
+    expect(screen.getByRole("table", {name: "Investment drivers"})).toBeInTheDocument();
     expect(window.location.hash).toBe("#/v3/helios/overview");
   });
 
@@ -299,6 +312,7 @@ describe("Underwriting Desk investor workspace", () => {
     window.history.replaceState(null, "", "/#/v3/atlasgrid/overview");
     const user = userEvent.setup(); const before = JSON.stringify(rawData);
     render(<App />);
+    await user.click(screen.getByText("Analyst observations"));
     await user.type(screen.getByRole("textbox", {name: "Author"}), "Avery Chen");
     await user.type(screen.getByRole("textbox", {name: "New observation"}), "Validate cancellation rights before crediting booked ARR.");
     await user.click(screen.getByRole("button", {name: "Add observation"}));

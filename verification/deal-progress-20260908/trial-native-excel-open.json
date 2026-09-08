@@ -1,0 +1,18 @@
+{
+  "status": "VERIFIED_LOCAL_SYNTHETIC",
+  "app": "Microsoft Excel on macOS",
+  "artifact": "dist/trial-verification/Desk trial financial changes.xlsx",
+  "sha256": "fbb932bab9b2e549f2ce02d0dd1349df6dd0932b8bb1b4e1bd1dbac3985b1364",
+  "observed": [
+    "Document opened under expected name",
+    "Review changes worksheet present",
+    "Used range A1:I2",
+    "Ready status",
+    "No repair or corruption dialog observed"
+  ],
+  "limits": [
+    "Opening compatibility check only; no formula recalculation claimed",
+    "Brother managed workstation remains untested",
+    "Numeric export values covered by automated domain tests"
+  ]
+}

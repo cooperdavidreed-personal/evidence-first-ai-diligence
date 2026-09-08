@@ -1,0 +1,19 @@
+[WebServer] (node:34727) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 4 tests using 2 workers
+
+(node:34751) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:34750) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/4] [desktop-webkit] › tests/deal-progress.spec.ts:4:1 › one company: evidence, actual MCP proposal, adopted work, revision, committee and recovery
+[2/4] [desktop] › tests/deal-progress.spec.ts:4:1 › one company: evidence, actual MCP proposal, adopted work, revision, committee and recovery
+[3/4] [desktop-webkit] › tests/deal-progress.spec.ts:27:1 › unfamiliar XLSX maps into the unified model and retains mappings across a revised delivery
+[4/4] [desktop] › tests/deal-progress.spec.ts:27:1 › unfamiliar XLSX maps into the unified model and retains mappings across a revised delivery
+  4 passed (6.3s)

@@ -1,0 +1,19 @@
+{
+  "status": "VERIFIED_LOCAL_SYNTHETIC",
+  "node": "v26.3.0",
+  "archive": "<repository>/dist/local-distribution/underwriting-desk-local.zip",
+  "sha256": "2382e4387424fa800b81c7fc962426411268dc9fdb9a4e399eb11d227a3edc8f",
+  "checks": [
+    "extracted path with spaces",
+    "manifest integrity",
+    "packaged launcher",
+    "private company API",
+    "packaged MCP source retrieval and proposal",
+    "encrypted backup delete restore"
+  ],
+  "notRun": [
+    "managed Windows installation",
+    "native Claude Enterprise",
+    "practitioner trial"
+  ]
+}

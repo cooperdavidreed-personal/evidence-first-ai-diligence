@@ -8,16 +8,34 @@ const manifest = JSON.parse(readFileSync(resolve(dist, ".vite/manifest.json"), "
 const entry = manifest["index.html"];
 const expected = [
   "node_modules/.pnpm/pdfjs-dist@6.3.289/node_modules/pdfjs-dist/legacy/build/pdf.mjs",
+  "src/design-directions.tsx",
+  "src/design-specimen.tsx",
   "virtual:underwriting-case-atlasgrid",
   "virtual:underwriting-case-helios",
 ];
-if (!entry || JSON.stringify(entry.dynamicImports?.slice().sort()) !== JSON.stringify(expected)) throw new Error("case_chunk_manifest_invalid");
+if (!entry || JSON.stringify([...new Set(entry.dynamicImports ?? [])].sort()) !== JSON.stringify(expected)) throw new Error("case_chunk_manifest_invalid");
 
-const shell = readFileSync(resolve(dist, entry.file));
-if (shell.includes(Buffer.from('"schema_version":"underwriting.workbench-case/v2"')) || shell.includes(Buffer.from("atlasgrid-distribution-999")) || shell.includes(Buffer.from("helios-distribution-moic-999"))) throw new Error("case_payload_leaked_into_shell");
-const css = (entry.css ?? []).reduce((sum, file) => sum + gzipSync(readFileSync(resolve(dist, file))).length, 0);
+// Account for the complete static shell graph, including shared UI chunks.
+// Dynamic case, PDF and specimen payloads are excluded until requested.
+const staticKeys = new Set();
+function collect(key) {
+  if (staticKeys.has(key)) return;
+  if (!manifest[key]) throw new Error(`static_chunk_missing:${key}`);
+  staticKeys.add(key);
+  for (const dependency of manifest[key].imports ?? []) collect(dependency);
+}
+collect("index.html");
+const cssFiles = new Set();
+let shellGzip = 0;
+for (const key of staticKeys) {
+  const record = manifest[key];
+  const shell = readFileSync(resolve(dist, record.file));
+  if (shell.includes(Buffer.from('"schema_version":"underwriting.workbench-case/v2"')) || shell.includes(Buffer.from("atlasgrid-distribution-999")) || shell.includes(Buffer.from("helios-distribution-moic-999"))) throw new Error("case_payload_leaked_into_shell");
+  shellGzip += gzipSync(shell).length;
+  for (const file of record.css ?? []) cssFiles.add(file);
+}
+const css = [...cssFiles].reduce((sum, file) => sum + gzipSync(readFileSync(resolve(dist, file))).length, 0);
 const html = gzipSync(readFileSync(resolve(dist, "index.html"))).length;
-const shellGzip = gzipSync(shell).length;
 const results = {};
 
 for (const caseId of ["atlasgrid", "helios"]) {

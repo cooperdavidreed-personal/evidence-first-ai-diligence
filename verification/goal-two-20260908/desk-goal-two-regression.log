@@ -1,0 +1,80 @@
+[WebServer] (node:40465) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 56 tests using 4 workers
+
+(node:40767) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:40765) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:40763) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:40764) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/56] [desktop-webkit] › tests/supported-revision-flow.spec.ts:14:1 › workbook candidate survives navigation, rejection preserves V1, acceptance survives reload
+[2/56] [desktop] › tests/supported-revision-flow.spec.ts:14:1 › workbook candidate survives navigation, rejection preserves V1, acceptance survives reload
+[3/56] [desktop] › tests/workbench.spec.ts:79:1 › Deals is a calm product root with no critical accessibility or overflow finding
+[4/56] [desktop-webkit] › tests/workbench.spec.ts:79:1 › Deals is a calm product root with no critical accessibility or overflow finding
+[5/56] [desktop] › tests/workbench.spec.ts:90:1 › mobile deal navigation resets a previously scrolled Deals page
+[6/56] [desktop] › tests/workbench.spec.ts:100:1 › invalid saved workspace remains preserved behind a visible recovery warning
+[7/56] [desktop-webkit] › tests/workbench.spec.ts:90:1 › mobile deal navigation resets a previously scrolled Deals page
+[8/56] [desktop-webkit] › tests/workbench.spec.ts:100:1 › invalid saved workspace remains preserved behind a visible recovery warning
+[9/56] [desktop] › tests/workbench.spec.ts:109:1 › model connection center prepares subscription setup without claiming a connection
+[10/56] [desktop-webkit] › tests/workbench.spec.ts:109:1 › model connection center prepares subscription setup without claiming a connection
+[11/56] [desktop] › tests/workbench.spec.ts:128:1 › bounded hosted model proposal requires evidence confirmation and named human acceptance
+[12/56] [desktop-webkit] › tests/workbench.spec.ts:128:1 › bounded hosted model proposal requires evidence confirmation and named human acceptance
+[13/56] [desktop] › tests/workbench.spec.ts:165:1 › scenario, observation, issue, assumption, and memo changes persist as human work
+[14/56] [desktop-webkit] › tests/workbench.spec.ts:165:1 › scenario, observation, issue, assumption, and memo changes persist as human work
+[15/56] [desktop] › tests/workbench.spec.ts:213:1 › memo export fails closed and downloads one reconciled scenario snapshot
+[16/56] [desktop-webkit] › tests/workbench.spec.ts:213:1 › memo export fails closed and downloads one reconciled scenario snapshot
+[17/56] [desktop] › tests/workbench.spec.ts:246:1 › every retained-case and Northstar public source opens from the running build
+[18/56] [desktop-webkit] › tests/workbench.spec.ts:246:1 › every retained-case and Northstar public source opens from the running build
+[19/56] [desktop] › tests/workbench.spec.ts:280:1 › portable state export downloads and imports its validated scenario ownership
+[20/56] [desktop-webkit] › tests/workbench.spec.ts:280:1 › portable state export downloads and imports its validated scenario ownership
+[21/56] [desktop] › tests/workbench.spec.ts:297:1 › Version 2 evidence propagates through returns, stale state, diligence, and human disposition
+[22/56] [desktop-webkit] › tests/workbench.spec.ts:297:1 › Version 2 evidence propagates through returns, stale state, diligence, and human disposition
+[23/56] [desktop] › tests/workbench.spec.ts:356:1 › decision rail keeps canonical conditions separate from worklist resolutions
+[24/56] [desktop-webkit] › tests/workbench.spec.ts:356:1 › decision rail keeps canonical conditions separate from worklist resolutions
+[25/56] [desktop] › tests/workbench.spec.ts:371:1 › Helios policy sensitivity is an unapproved what-if and follows the memo
+[26/56] [desktop-webkit] › tests/workbench.spec.ts:371:1 › Helios policy sensitivity is an unapproved what-if and follows the memo
+[27/56] [desktop] › tests/workbench.spec.ts:390:1 › print export uses complete memo text instead of a clipped textarea
+[28/56] [desktop] › tests/workbench.spec.ts:402:1 › portable state rejects a fabricated accepted-proposal citation
+[29/56] [desktop-webkit] › tests/workbench.spec.ts:390:1 › print export uses complete memo text instead of a clipped textarea
+[30/56] [desktop] › tests/workbench.spec.ts:415:1 › lineage closes back to its exact opener and defers calculation detail
+[31/56] [desktop-webkit] › tests/workbench.spec.ts:402:1 › portable state rejects a fabricated accepted-proposal citation
+[32/56] [desktop] › tests/workbench.spec.ts:429:1 › mobile controls expose every diligence tab, heatmap edge, and source-cell label
+[33/56] [desktop] › tests/workbench.spec.ts:460:1 › legacy MCP proposal remains readable but cannot bypass current-basis acceptance
+[34/56] [desktop-webkit] › tests/workbench.spec.ts:415:1 › lineage closes back to its exact opener and defers calculation detail
+[35/56] [desktop-webkit] › tests/workbench.spec.ts:429:1 › mobile controls expose every diligence tab, heatmap edge, and source-cell label
+[36/56] [desktop-webkit] › tests/workbench.spec.ts:460:1 › legacy MCP proposal remains readable but cannot bypass current-basis acceptance
+[37/56] [desktop] › tests/workbench.spec.ts:495:3 › AtlasGrid Systems six-destination investor journey
+[38/56] [desktop-webkit] › tests/workbench.spec.ts:495:3 › AtlasGrid Systems six-destination investor journey
+[39/56] [desktop] › tests/workbench.spec.ts:495:3 › Helios Compute Control six-destination investor journey
+[40/56] [desktop-webkit] › tests/workbench.spec.ts:495:3 › Helios Compute Control six-destination investor journey
+[41/56] [desktop] › tests/workbench.spec.ts:525:1 › ordinary multi-file intake produces a governed local deal that survives refresh
+[42/56] [desktop-webkit] › tests/workbench.spec.ts:525:1 › ordinary multi-file intake produces a governed local deal that survives refresh
+[43/56] [desktop] › tests/workbench.spec.ts:574:1 › missing required input is explained and blocks analysis before return conclusions
+[44/56] [desktop] › tests/workbench.spec.ts:586:1 › sequential selections add to the package, and per-file remove and replace work
+[45/56] [desktop] › tests/workbench.spec.ts:607:1 › one click loads the complete synthetic sample package
+[46/56] [desktop] › tests/workbench.spec.ts:617:1 › mixed Excel CSV PDF package is parsed, reviewed, approved, and replayable
+[47/56] [desktop-webkit] › tests/workbench.spec.ts:574:1 › missing required input is explained and blocks analysis before return conclusions
+[48/56] [desktop-webkit] › tests/workbench.spec.ts:586:1 › sequential selections add to the package, and per-file remove and replace work
+[49/56] [desktop-webkit] › tests/workbench.spec.ts:607:1 › one click loads the complete synthetic sample package
+[50/56] [desktop] › tests/workbench.spec.ts:663:1 › local Version 2 changes propagate and require explicit accept reject or defer
+[51/56] [desktop-webkit] › tests/workbench.spec.ts:617:1 › mixed Excel CSV PDF package is parsed, reviewed, approved, and replayable
+[52/56] [desktop-webkit] › tests/workbench.spec.ts:663:1 › local Version 2 changes propagate and require explicit accept reject or defer
+[53/56] [desktop-webkit] › tests/workbench.spec.ts:739:1 › deep links still load only the selected retained case chunk
+[54/56] [desktop] › tests/workbench.spec.ts:739:1 › deep links still load only the selected retained case chunk
+[55/56] [desktop-webkit] › tests/workbench.spec.ts:749:1 › public-record retrospective enforces the historical cutoff without hindsight
+[56/56] [desktop] › tests/workbench.spec.ts:749:1 › public-record retrospective enforces the historical cutoff without hindsight
+  6 skipped
+  50 passed (58.4s)

@@ -1,0 +1,17 @@
+[WebServer] (node:64635) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 2 tests using 2 workers
+
+(node:64669) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:64667) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/2] [desktop] › tests/package-archive.spec.ts:3:1 › archived source delivery replays after browser storage is cleared
+[2/2] [desktop] › tests/supported-revision-flow.spec.ts:15:1 › workbook candidate survives navigation, rejection preserves V1, acceptance survives reload
+  2 passed (11.4s)

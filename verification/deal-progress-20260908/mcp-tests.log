@@ -1,0 +1,35 @@
+$ node --test mcp-server/*.test.mjs
+✔ standalone serves only built assets, rejects traversal and foreign review origins (33.793041ms)
+✔ standalone packet and MCP initialize/response are visible through independent connections (13.74425ms)
+✔ workspace HTTP route protects origin, commits durably, and rejects stale revisions (11.716333ms)
+✔ source archive HTTP route enforces local origin and verifies persisted bytes (15.963667ms)
+✔ source archive keeps exact bytes, returns durable receipts and is idempotent (3.371417ms)
+✔ archives reject changed bytes, metadata reassignment, direct edits and deletion (0.513625ms)
+✔ archives reject invalid JSON, non-object content, unsafe identities and oversized content (9.912833ms)
+✔ private company API requires the current local session and same-origin access (40.149458ms)
+✔ durable CAS, original-byte checks, and source immutability (11.141875ms)
+✔ MCP sees only explicitly released evidence, paginates and rejects stale submissions (11.575042ms)
+✔ release never includes uncited/private context or unselected source (10.164417ms)
+✔ encrypted backup authentication, restore, conflict and deletion (231.082ms)
+✔ explicit prior-version release retains the investment case for a new management delivery (6.755333ms)
+✔ UI packet crosses independent SQLite connections into MCP; response is bound to the current packet (10.956875ms)
+✔ invalid digests and oversized selections cannot enter the review store (5.805584ms)
+✔ a basis-only change invalidates previous responses without modifying evidence (9.307667ms)
+✔ MCP exposes the exact read and proposal-only tool surface (1.415333ms)
+✔ read tools return canonical decisions and declared tests (30.536875ms)
+✔ proposal tools return PROPOSED and never change canonical case bytes (43.42825ms)
+✔ unknown evidence and forbidden tools fail closed (48.377833ms)
+✔ unknown notifications are silent while unknown requests fail (22.403833ms)
+✔ id-less tools/call notifications are dropped without proposal side effects (38.784375ms)
+✔ proposal ledger is opt-in and binds successful proposals to retained digests (83.333333ms)
+✔ proposal ledger tightens a pre-existing file to operator-only permissions (23.606708ms)
+✔ invalid and id-less proposal calls never append to the operator ledger (37.578375ms)
+✔ workspace transactions reject stale windows and retain immutable history outside MCP (10.999458ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 434.859541

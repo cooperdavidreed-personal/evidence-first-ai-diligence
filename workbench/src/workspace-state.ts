@@ -136,6 +136,7 @@ export interface WorkspaceSeed {
   scenarioValues?: Record<string, string>;
   lockedIssueIds?: string[];
   canonicalEvidence?: SelectedEvidence[];
+  canonicalEvidenceHistory?: SelectedEvidence[][];
 }
 
 export interface WorkspaceScenarioContract {
@@ -148,6 +149,7 @@ export interface WorkspaceIntegrityContract {
   policyOverrideRoles: Record<string, string>;
   lockedIssueIds: string[];
   canonicalEvidence: Record<string, SelectedEvidence>;
+  canonicalEvidenceHistory?: SelectedEvidence[][];
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -219,6 +221,7 @@ export function createWorkspaceIntegrityContract(seed: WorkspaceSeed, policyOver
     requiredMemoSections: seed.memoSections.map(({sectionId, title, body, provenance, updatedBy}) => ({sectionId, title, body, provenance, updatedBy})),
     policyOverrideRoles: {...policyOverrideRoles},
     lockedIssueIds: [...(seed.lockedIssueIds ?? [])],
+    canonicalEvidenceHistory: seed.canonicalEvidenceHistory?.map(version => version.map(item => ({...item}))),
     canonicalEvidence: Object.fromEntries((seed.canonicalEvidence ?? []).map((item) => [item.id, {...item}])),
   };
 }
@@ -302,16 +305,19 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
     });
     const dealId = requiredString(item.dealId, `proposals[${index}].dealId`, 100);
     if (dealId !== caseId) throw new Error(`proposals[${index}] belongs to a different deal`);
-    const origin = ["IN_PRODUCT_RUNTIME", "LOCAL_MCP_LEDGER", "PORTABLE_IMPORT_UNVERIFIED"].includes(String(item.origin)) ? item.origin as ModelProposal["origin"] : (() => {throw new Error(`proposals[${index}] origin is invalid`);})();
+    const origin = ["IN_PRODUCT_RUNTIME", "LOCAL_MCP_LEDGER", "LOCAL_MCP_REVIEW", "PORTABLE_IMPORT_UNVERIFIED"].includes(String(item.origin)) ? item.origin as ModelProposal["origin"] : (() => {throw new Error(`proposals[${index}] origin is invalid`);})();
     try { validateSelectedEvidence(dealId, requestEvidence); }
     catch { throw new Error(`proposals[${index}] selected-evidence request envelope is invalid`); }
     if (integrityContract && Object.keys(integrityContract.canonicalEvidence).length) {
       for (const selected of requestEvidence) {
         const canonical = integrityContract.canonicalEvidence[selected.id];
-        if (!canonical || JSON.stringify(selected) !== JSON.stringify(canonical)) throw new Error(`proposals[${index}] selected-evidence content does not match the canonical registry`);
+        const trustedHistory = integrityContract.canonicalEvidenceHistory?.some(version => version.some(item => item.id === selected.id && JSON.stringify(item) === JSON.stringify(selected)));
+        if ((!canonical || JSON.stringify(selected) !== JSON.stringify(canonical)) && !trustedHistory) throw new Error(`proposals[${index}] selected-evidence content does not match the canonical registry`);
       }
     }
-    if (digestChallengePayloadSync(dealId, requestEvidence) !== requestDigestSha256) throw new Error(`proposals[${index}] selected-evidence request digest does not match its envelope`);
+    const reviewBasisId = item.reviewBasisId === undefined ? undefined : boundedString(item.reviewBasisId, `proposals[${index}].reviewBasisId`, 64);
+    if (reviewBasisId !== undefined && !/^[a-f0-9]{64}$/.test(reviewBasisId)) throw new Error(`proposals[${index}] review basis is invalid`);
+    if (digestChallengePayloadSync(dealId, requestEvidence, reviewBasisId) !== requestDigestSha256) throw new Error(`proposals[${index}] selected-evidence request digest does not match its envelope`);
     const requestedIds = new Set(requestEvidence.map((candidate) => candidate.id));
     const evidenceRefs = stringArray(item.evidenceRefs, `proposals[${index}].evidenceRefs`, 20);
     if (evidenceRefs.some((ref) => !requestedIds.has(ref))) throw new Error(`proposals[${index}] cites evidence outside its selected request subset`);
@@ -327,10 +333,11 @@ export function validateWorkspace(raw: unknown, expectedCaseId?: string, allowed
     if (!humanEdited && originalBody !== undefined) throw new Error(`proposals[${index}] cannot claim an original draft without a human edit`);
     if (state === "PROPOSED" && (humanEdited !== undefined || originalBody !== undefined)) throw new Error(`proposals[${index}] cannot claim human editing before review`);
     const modelFamily = item.modelFamily === undefined ? undefined : boundedString(item.modelFamily, `proposals[${index}].modelFamily`, 120);
+    if (origin === "LOCAL_MCP_REVIEW" && !responseDigestSha256) throw new Error(`proposals[${index}] local review requires its response receipt`);
     if (origin === "IN_PRODUCT_RUNTIME" && (!responseDigestSha256 || !modelFamily)) throw new Error(`proposals[${index}] hosted runtime origin requires its response receipt`);
     if (origin === "LOCAL_MCP_LEDGER" && (!sourceRequestDigestSha256 || modelFamily !== "Local MCP ledger")) throw new Error(`proposals[${index}] local ledger origin requires its source receipt`);
     if (origin === "PORTABLE_IMPORT_UNVERIFIED" && modelFamily !== undefined) throw new Error(`proposals[${index}] portable import cannot claim a model family`);
-    return {proposalId: boundedString(item.proposalId, `proposals[${index}].proposalId`, 160), kind: item.kind as ModelProposal["kind"], state, title: boundedString(item.title, `proposals[${index}].title`, 500), body, originalBody, evidenceRefs, dealId, origin, requestEvidence, requestDigestSha256, sourceRequestDigestSha256, responseDigestSha256, severity, proposedOwner: item.proposedOwner === undefined ? undefined : boundedString(item.proposedOwner, `proposals[${index}].proposedOwner`, 160), memoSection: item.memoSection === undefined ? undefined : boundedString(item.memoSection, `proposals[${index}].memoSection`, 100), humanActor, humanEdited, reviewedAt, modelFamily, limitations: item.limitations === undefined ? undefined : boundedString(item.limitations, `proposals[${index}].limitations`, 500)};
+    return {proposalId: boundedString(item.proposalId, `proposals[${index}].proposalId`, 160), kind: item.kind as ModelProposal["kind"], state, title: boundedString(item.title, `proposals[${index}].title`, 500), body, originalBody, evidenceRefs, dealId, origin, requestEvidence, reviewBasisId, requestDigestSha256, sourceRequestDigestSha256, responseDigestSha256, severity, proposedOwner: item.proposedOwner === undefined ? undefined : boundedString(item.proposedOwner, `proposals[${index}].proposedOwner`, 160), memoSection: item.memoSection === undefined ? undefined : boundedString(item.memoSection, `proposals[${index}].memoSection`, 100), humanActor, humanEdited, reviewedAt, modelFamily, limitations: item.limitations === undefined ? undefined : boundedString(item.limitations, `proposals[${index}].limitations`, 500)};
   });
   assertUnique(proposals.map((item) => item.proposalId), "Model proposal");
   if (allowedEvidenceRefs) {

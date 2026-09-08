@@ -76,9 +76,12 @@ export function createToolHandlers({proposalLedgerPath} = {}) {
 function result(id, value) { return {jsonrpc: "2.0", id, result: value}; }
 function error(id, message) { return {jsonrpc: "2.0", id, error: {code: -32000, message}}; }
 export async function handleMessage(message, handlers) {
-  if (message.method === "initialize") return result(message.id, {protocolVersion: message.params?.protocolVersion ?? "2025-06-18", capabilities: {tools: {listChanged: false}}, serverInfo: {name: "underwriting-desk-local", version: "1.0.0"}});
+  if (message.method === "initialize") {
+    await handlers.onInitialize?.(message.params?.clientInfo);
+    return result(message.id, {protocolVersion: message.params?.protocolVersion ?? "2025-06-18", capabilities: {tools: {listChanged: false}}, serverInfo: {name: "underwriting-desk-local", version: "1.0.0"}});
+  }
   if (message.method === "notifications/initialized") return null;
-  if (message.method === "tools/list") return result(message.id, {tools: toolDefinitions});
+  if (message.method === "tools/list") return result(message.id, {tools: handlers.toolDefinitions ?? toolDefinitions});
   if (message.method === "tools/call") {
     const notification = !Object.prototype.hasOwnProperty.call(message, "id");
     if (notification) return null;
@@ -96,7 +99,16 @@ export async function handleMessage(message, handlers) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const ledgerFlag = process.argv.indexOf("--proposal-ledger");
   if (ledgerFlag >= 0 && !process.argv[ledgerFlag + 1]) throw new Error("proposal_ledger_path_required");
-  const handlers = createToolHandlers({proposalLedgerPath: ledgerFlag >= 0 ? resolve(process.argv[ledgerFlag + 1]) : undefined}); const lines = createInterface({input: process.stdin, crlfDelay: Infinity});
+  const storeFlag = process.argv.indexOf("--review-store");
+  if (storeFlag >= 0 && !process.argv[storeFlag + 1]) throw new Error("review_store_path_required");
+  let handlers;
+  if (storeFlag >= 0) {
+    const {openReviewStore, reviewHandlers} = await import("./review-store.mjs");
+    const store = openReviewStore(resolve(process.argv[storeFlag + 1]));
+    process.once("exit", () => store.close());
+    handlers = reviewHandlers(store);
+  } else handlers = createToolHandlers({proposalLedgerPath: ledgerFlag >= 0 ? resolve(process.argv[ledgerFlag + 1]) : undefined});
+  const lines = createInterface({input: process.stdin, crlfDelay: Infinity});
   lines.on("line", async (line) => {
     if (!line.trim()) return;
     let response; try { response = await handleMessage(JSON.parse(line), handlers); } catch (caught) { response = error(null, caught instanceof Error ? caught.message : "invalid_request"); }

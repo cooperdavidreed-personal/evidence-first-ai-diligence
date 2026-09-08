@@ -1,0 +1,3 @@
+export function WorkspaceOpening({failed=false,onRetry}:{failed?:boolean;onRetry?:()=>void}){
+ return <main className="loading-state desk-loading" role={failed?"alert":"status"}><span className="loading-mark" aria-hidden="true">U</span><h1>{failed?"This workspace could not be opened":"Opening your workspace"}</h1><p>{failed?"The case files could not be loaded. Your saved work has not been changed.":"Restoring the evidence, analysis, and review history."}</p>{failed?<button type="button" className="primary-button" onClick={onRetry}>Try again</button>:<div className="loading-skeleton" aria-hidden="true"><i/><i/><i/></div>}</main>;
+}

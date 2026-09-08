@@ -1,0 +1,189 @@
+[WebServer] (node:70611) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 90 tests using 1 worker
+
+(node:70889) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/90] [desktop] › tests/analysis-workspace.spec.ts:4:1 › investment matrix keeps evidence inspectable and assigns a persistent diligence question
+[2/90] [desktop] › tests/analysis-workspace.spec.ts:30:1 › connection setup explains the local boundary and provides an assistant prompt
+[3/90] [desktop] › tests/analysis-workspace.spec.ts:43:1 › financial workspace compares both transaction types and navigates by task
+[4/90] [desktop] › tests/analysis-workspace.spec.ts:55:1 › deal register filters and evidence layout stays a user preference
+[5/90] [desktop] › tests/deal-library.spec.ts:27:1 › saved incomplete intake resumes exact bytes after reload without approval
+[6/90] [desktop] › tests/deal-library.spec.ts:52:1 › two same-company source packages reopen independently after reload
+[7/90] [desktop] › tests/local-review.spec.ts:5:1 › selected evidence reaches MCP and a returned proposal survives human review and reload
+[8/90] [desktop] › tests/memo.spec.ts:19:5 › atlasgrid ic-snapshot renders and paginates without horizontal clipping
+[9/90] [desktop] › tests/memo.spec.ts:19:5 › atlasgrid underwriting-packet renders and paginates without horizontal clipping
+[10/90] [desktop] › tests/memo.spec.ts:19:5 › atlasgrid technical-appendix renders and paginates without horizontal clipping
+[11/90] [desktop] › tests/memo.spec.ts:19:5 › helios ic-snapshot renders and paginates without horizontal clipping
+[12/90] [desktop] › tests/memo.spec.ts:19:5 › helios underwriting-packet renders and paginates without horizontal clipping
+[13/90] [desktop] › tests/memo.spec.ts:19:5 › helios technical-appendix renders and paginates without horizontal clipping
+[14/90] [desktop] › tests/package-archive.spec.ts:3:1 › archived source delivery replays after browser storage is cleared
+[15/90] [desktop] › tests/review-system.spec.ts:6:1 › component standard supports keyboard sorting and a recoverable empty filter
+[16/90] [desktop] › tests/review-system.spec.ts:21:1 › financial work area survives reload without replacing the selected scenario
+[17/90] [desktop] › tests/review-system.spec.ts:33:1 › committee record downloads reconciled contents with a reproducible checksum
+[18/90] [desktop] › tests/supported-revision-flow.spec.ts:14:1 › workbook candidate survives navigation, rejection preserves V1, acceptance survives reload
+[19/90] [desktop] › tests/workbench.spec.ts:79:1 › Deals is a calm product root with no critical accessibility or overflow finding
+[20/90] [desktop] › tests/workbench.spec.ts:90:1 › mobile deal navigation resets a previously scrolled Deals page
+[21/90] [desktop] › tests/workbench.spec.ts:100:1 › invalid saved workspace remains preserved behind a visible recovery warning
+[22/90] [desktop] › tests/workbench.spec.ts:109:1 › model connection center prepares subscription setup without claiming a connection
+[23/90] [desktop] › tests/workbench.spec.ts:128:1 › bounded hosted model proposal requires evidence confirmation and named human acceptance
+[24/90] [desktop] › tests/workbench.spec.ts:165:1 › scenario, observation, issue, assumption, and memo changes persist as human work
+[25/90] [desktop] › tests/workbench.spec.ts:213:1 › memo export fails closed and downloads one reconciled scenario snapshot
+[26/90] [desktop] › tests/workbench.spec.ts:246:1 › every retained-case and Northstar public source opens from the running build
+[27/90] [desktop] › tests/workbench.spec.ts:280:1 › portable state export downloads and imports its validated scenario ownership
+[28/90] [desktop] › tests/workbench.spec.ts:297:1 › Version 2 evidence propagates through returns, stale state, diligence, and human disposition
+[29/90] [desktop] › tests/workbench.spec.ts:356:1 › decision rail keeps canonical conditions separate from worklist resolutions
+[30/90] [desktop] › tests/workbench.spec.ts:371:1 › Helios policy sensitivity is an unapproved what-if and follows the memo
+[31/90] [desktop] › tests/workbench.spec.ts:390:1 › print export uses complete memo text instead of a clipped textarea
+[32/90] [desktop] › tests/workbench.spec.ts:402:1 › portable state rejects a fabricated accepted-proposal citation
+[33/90] [desktop] › tests/workbench.spec.ts:415:1 › lineage closes back to its exact opener and defers calculation detail
+[34/90] [desktop] › tests/workbench.spec.ts:429:1 › mobile controls expose every diligence tab, heatmap edge, and source-cell label
+[35/90] [desktop] › tests/workbench.spec.ts:460:1 › legacy MCP proposal remains readable but cannot bypass current-basis acceptance
+[36/90] [desktop] › tests/workbench.spec.ts:495:3 › AtlasGrid Systems six-destination investor journey
+[37/90] [desktop] › tests/workbench.spec.ts:495:3 › Helios Compute Control six-destination investor journey
+[38/90] [desktop] › tests/workbench.spec.ts:525:1 › ordinary multi-file intake produces a governed local deal that survives refresh
+[39/90] [desktop] › tests/workbench.spec.ts:574:1 › missing required input is explained and blocks analysis before return conclusions
+[40/90] [desktop] › tests/workbench.spec.ts:586:1 › sequential selections add to the package, and per-file remove and replace work
+[41/90] [desktop] › tests/workbench.spec.ts:607:1 › one click loads the complete synthetic sample package
+[42/90] [desktop] › tests/workbench.spec.ts:617:1 › mixed Excel CSV PDF package is parsed, reviewed, approved, and replayable
+[43/90] [desktop] › tests/workbench.spec.ts:663:1 › local Version 2 changes propagate and require explicit accept reject or defer
+  1) [desktop] › tests/workbench.spec.ts:663:1 › local Version 2 changes propagate and require explicit accept reject or defer
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('status')
+    Expected substring: "V1 remains canonical"
+    Received string:    "Previously rejected; available for reconsideration. The prior rejection remains recorded until a new human disposition."
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toContainText" with timeout 5000ms
+      - waiting for getByRole('status')
+        14 × locator resolved to <p role="status" class="change-notice">Previously rejected; available for reconsideratio…</p>
+           - unexpected value "Previously rejected; available for reconsideration. The prior rejection remains recorded until a new human disposition."
+
+
+      697 |   await page.getByRole("textbox", {name: "Rationale"}).fill("Deferring the revision while the commercial diligence owner verifies the cancellation schedule.");
+      698 |   await page.getByRole("button", {name: "Defer"}).click();
+    > 699 |   await expect(page.getByRole("status")).toContainText("V1 remains canonical");
+          |                                          ^
+      700 |   await page.getByRole("textbox", {name: "Rationale"}).fill("Accepting the revised customer evidence after confirming the changed cohort rows and downstream screening impact.");
+      701 |   await page.getByRole("button", {name: "Accept and promote"}).click();
+      702 |   await expect(page.getByRole("region", {name: "Evidence version approval"})).toContainText("V2 approved");
+        at <repository>/workbench/tests/workbench.spec.ts:699:42
+
+    Error Context: ../../../../../tmp/desk-twelve-browser-verified/workbench-local-Version-2--82b43-icit-accept-reject-or-defer-desktop/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/desk-twelve-browser-verified/workbench-local-Version-2--82b43-icit-accept-reject-or-defer-desktop/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace ../../../../../tmp/desk-twelve-browser-verified/workbench-local-Version-2--82b43-icit-accept-reject-or-defer-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:78692) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[44/90] [desktop] › tests/workbench.spec.ts:739:1 › deep links still load only the selected retained case chunk
+[45/90] [desktop] › tests/workbench.spec.ts:749:1 › public-record retrospective enforces the historical cutoff without hindsight
+(node:79555) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[46/90] [desktop-webkit] › tests/analysis-workspace.spec.ts:4:1 › investment matrix keeps evidence inspectable and assigns a persistent diligence question
+[47/90] [desktop-webkit] › tests/analysis-workspace.spec.ts:30:1 › connection setup explains the local boundary and provides an assistant prompt
+[48/90] [desktop-webkit] › tests/analysis-workspace.spec.ts:43:1 › financial workspace compares both transaction types and navigates by task
+[49/90] [desktop-webkit] › tests/analysis-workspace.spec.ts:55:1 › deal register filters and evidence layout stays a user preference
+[50/90] [desktop-webkit] › tests/deal-library.spec.ts:27:1 › saved incomplete intake resumes exact bytes after reload without approval
+[51/90] [desktop-webkit] › tests/deal-library.spec.ts:52:1 › two same-company source packages reopen independently after reload
+[52/90] [desktop-webkit] › tests/local-review.spec.ts:5:1 › selected evidence reaches MCP and a returned proposal survives human review and reload
+[53/90] [desktop-webkit] › tests/memo.spec.ts:19:5 › atlasgrid ic-snapshot renders and paginates without horizontal clipping
+[54/90] [desktop-webkit] › tests/memo.spec.ts:19:5 › atlasgrid underwriting-packet renders and paginates without horizontal clipping
+[55/90] [desktop-webkit] › tests/memo.spec.ts:19:5 › atlasgrid technical-appendix renders and paginates without horizontal clipping
+[56/90] [desktop-webkit] › tests/memo.spec.ts:19:5 › helios ic-snapshot renders and paginates without horizontal clipping
+[57/90] [desktop-webkit] › tests/memo.spec.ts:19:5 › helios underwriting-packet renders and paginates without horizontal clipping
+[58/90] [desktop-webkit] › tests/memo.spec.ts:19:5 › helios technical-appendix renders and paginates without horizontal clipping
+[59/90] [desktop-webkit] › tests/package-archive.spec.ts:3:1 › archived source delivery replays after browser storage is cleared
+[60/90] [desktop-webkit] › tests/review-system.spec.ts:6:1 › component standard supports keyboard sorting and a recoverable empty filter
+[61/90] [desktop-webkit] › tests/review-system.spec.ts:21:1 › financial work area survives reload without replacing the selected scenario
+[62/90] [desktop-webkit] › tests/review-system.spec.ts:33:1 › committee record downloads reconciled contents with a reproducible checksum
+[63/90] [desktop-webkit] › tests/supported-revision-flow.spec.ts:14:1 › workbook candidate survives navigation, rejection preserves V1, acceptance survives reload
+[64/90] [desktop-webkit] › tests/workbench.spec.ts:79:1 › Deals is a calm product root with no critical accessibility or overflow finding
+[65/90] [desktop-webkit] › tests/workbench.spec.ts:90:1 › mobile deal navigation resets a previously scrolled Deals page
+[66/90] [desktop-webkit] › tests/workbench.spec.ts:100:1 › invalid saved workspace remains preserved behind a visible recovery warning
+[67/90] [desktop-webkit] › tests/workbench.spec.ts:109:1 › model connection center prepares subscription setup without claiming a connection
+[68/90] [desktop-webkit] › tests/workbench.spec.ts:128:1 › bounded hosted model proposal requires evidence confirmation and named human acceptance
+[69/90] [desktop-webkit] › tests/workbench.spec.ts:165:1 › scenario, observation, issue, assumption, and memo changes persist as human work
+[70/90] [desktop-webkit] › tests/workbench.spec.ts:213:1 › memo export fails closed and downloads one reconciled scenario snapshot
+[71/90] [desktop-webkit] › tests/workbench.spec.ts:246:1 › every retained-case and Northstar public source opens from the running build
+[72/90] [desktop-webkit] › tests/workbench.spec.ts:280:1 › portable state export downloads and imports its validated scenario ownership
+[73/90] [desktop-webkit] › tests/workbench.spec.ts:297:1 › Version 2 evidence propagates through returns, stale state, diligence, and human disposition
+[74/90] [desktop-webkit] › tests/workbench.spec.ts:356:1 › decision rail keeps canonical conditions separate from worklist resolutions
+[75/90] [desktop-webkit] › tests/workbench.spec.ts:371:1 › Helios policy sensitivity is an unapproved what-if and follows the memo
+[76/90] [desktop-webkit] › tests/workbench.spec.ts:390:1 › print export uses complete memo text instead of a clipped textarea
+[77/90] [desktop-webkit] › tests/workbench.spec.ts:402:1 › portable state rejects a fabricated accepted-proposal citation
+[78/90] [desktop-webkit] › tests/workbench.spec.ts:415:1 › lineage closes back to its exact opener and defers calculation detail
+[79/90] [desktop-webkit] › tests/workbench.spec.ts:429:1 › mobile controls expose every diligence tab, heatmap edge, and source-cell label
+[80/90] [desktop-webkit] › tests/workbench.spec.ts:460:1 › legacy MCP proposal remains readable but cannot bypass current-basis acceptance
+[81/90] [desktop-webkit] › tests/workbench.spec.ts:495:3 › AtlasGrid Systems six-destination investor journey
+[82/90] [desktop-webkit] › tests/workbench.spec.ts:495:3 › Helios Compute Control six-destination investor journey
+[83/90] [desktop-webkit] › tests/workbench.spec.ts:525:1 › ordinary multi-file intake produces a governed local deal that survives refresh
+[84/90] [desktop-webkit] › tests/workbench.spec.ts:574:1 › missing required input is explained and blocks analysis before return conclusions
+[85/90] [desktop-webkit] › tests/workbench.spec.ts:586:1 › sequential selections add to the package, and per-file remove and replace work
+[86/90] [desktop-webkit] › tests/workbench.spec.ts:607:1 › one click loads the complete synthetic sample package
+[87/90] [desktop-webkit] › tests/workbench.spec.ts:617:1 › mixed Excel CSV PDF package is parsed, reviewed, approved, and replayable
+[88/90] [desktop-webkit] › tests/workbench.spec.ts:663:1 › local Version 2 changes propagate and require explicit accept reject or defer
+  2) [desktop-webkit] › tests/workbench.spec.ts:663:1 › local Version 2 changes propagate and require explicit accept reject or defer
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('status')
+    Expected substring: "V1 remains canonical"
+    Received string:    "Previously rejected; available for reconsideration. The prior rejection remains recorded until a new human disposition."
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toContainText" with timeout 5000ms
+      - waiting for getByRole('status')
+        14 × locator resolved to <p role="status" class="change-notice">Previously rejected; available for reconsideratio…</p>
+           - unexpected value "Previously rejected; available for reconsideration. The prior rejection remains recorded until a new human disposition."
+
+
+      697 |   await page.getByRole("textbox", {name: "Rationale"}).fill("Deferring the revision while the commercial diligence owner verifies the cancellation schedule.");
+      698 |   await page.getByRole("button", {name: "Defer"}).click();
+    > 699 |   await expect(page.getByRole("status")).toContainText("V1 remains canonical");
+          |                                          ^
+      700 |   await page.getByRole("textbox", {name: "Rationale"}).fill("Accepting the revised customer evidence after confirming the changed cohort rows and downstream screening impact.");
+      701 |   await page.getByRole("button", {name: "Accept and promote"}).click();
+      702 |   await expect(page.getByRole("region", {name: "Evidence version approval"})).toContainText("V2 approved");
+        at <repository>/workbench/tests/workbench.spec.ts:699:42
+
+    Error Context: ../../../../../tmp/desk-twelve-browser-verified/workbench-local-Version-2--82b43-icit-accept-reject-or-defer-desktop-webkit/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../tmp/desk-twelve-browser-verified/workbench-local-Version-2--82b43-icit-accept-reject-or-defer-desktop-webkit/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace ../../../../../tmp/desk-twelve-browser-verified/workbench-local-Version-2--82b43-icit-accept-reject-or-defer-desktop-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:86063) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[89/90] [desktop-webkit] › tests/workbench.spec.ts:739:1 › deep links still load only the selected retained case chunk
+[90/90] [desktop-webkit] › tests/workbench.spec.ts:749:1 › public-record retrospective enforces the historical cutoff without hindsight
+  2 failed
+    [desktop] › tests/workbench.spec.ts:663:1 › local Version 2 changes propagate and require explicit accept reject or defer
+    [desktop-webkit] › tests/workbench.spec.ts:663:1 › local Version 2 changes propagate and require explicit accept reject or defer
+  16 skipped
+  72 passed (2.5m)

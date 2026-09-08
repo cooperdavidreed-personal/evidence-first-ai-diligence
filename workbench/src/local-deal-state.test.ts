@@ -2,7 +2,7 @@ import {File as NodeFile} from "node:buffer";
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {createElement} from "react";
-import {render, within} from "@testing-library/react";
+import {fireEvent, render, within} from "@testing-library/react";
 import {beforeEach, describe, expect, it} from "vitest";
 import {approveBaseline, processDealPackage} from "./intake";
 import {digestChallengePayloadSync} from "./model-workflow";
@@ -83,10 +83,11 @@ describe("portable admitted deal state", () => {
       onConnect: () => undefined,
       connection: null,
     }));
+    fireEvent.click(within(rendered.container).getByRole("button", {name:"Decision context"}));
     const rail = within(rendered.container).getByRole("complementary", {name: "Decision status"});
     expect(within(rail).getByText("HOLD")).toBeTruthy();
     expect(within(rail).getByText("Return screens miss; no IC advancement")).toBeTruthy();
-    expect(within(rendered.container).getByText("HOLD — deterministic return screens miss")).toBeTruthy();
+    expect(within(rendered.container).getByRole("heading",{name:"Hold; the deterministic return screens miss"})).toBeTruthy();
     rendered.unmount();
   });
 

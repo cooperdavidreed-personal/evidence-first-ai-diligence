@@ -1,0 +1,38 @@
+import { test, expect } from '@playwright/test';
+import { zipSync, strToU8 } from 'fflate';
+import { mkdirSync } from 'node:fs';
+import { resolve } from 'node:path';
+function workbook(revenue = 120) { const t = (a: string, v: string) => `<c r="${a}" t="inlineStr"><is><t>${v}</t></is></c>`; const cells = t('A2', 'Revenue') + t('B1', 'FY2024 actual') + t('C1', 'FY2025 actual') + `<c r="B2"><v>100</v></c><c r="C2"><v>${revenue}</v></c>`; return Buffer.from(zipSync(Object.fromEntries(Object.entries({ 'xl/workbook.xml': '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Operating plan" sheetId="1" r:id="r1"/></sheets></workbook>', 'xl/_rels/workbook.xml.rels': '<Relationships><Relationship Id="r1" Target="worksheets/sheet1.xml"/></Relationships>', 'xl/worksheets/sheet1.xml': `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row>${cells}</row></sheetData></worksheet>` }).map(([k, v]) => [k, strToU8(v)])))); }
+test('ordinary workbook mapping, saved review, rejected then accepted revision and committee note', async ({ page }, info) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'New deal', exact: true }).click(); await page.getByText('Earlier standalone workbook review',{exact:true}).click();
+    await page.getByLabel('Operating workbook', { exact: true }).setInputFiles({ name: 'Board operating plan.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: workbook() });
+    await expect(page.getByLabel('Period 1', { exact: true })).toHaveValue('FY2024 actual');
+    await page.getByLabel('Workbook units', { exact: true }).selectOption('1000');
+    await page.getByLabel('Period basis', { exact: true }).selectOption('Annual');
+    await page.getByLabel('Reviewer', { exact: true }).fill('Avery Chen');
+    await page.getByLabel('Decision rationale', { exact: true }).fill('Confirmed annual actual revenue in thousands; EBITDA not supplied.');
+    await page.getByRole('button', { name: 'Approve mapping and open review' }).click();
+    await expect(page.getByRole('cell', { name: '$120,000', exact: true })).toBeVisible();
+    await page.reload();
+    await page.getByRole('button', { name: 'New deal', exact: true }).click(); await page.getByText('Earlier standalone workbook review',{exact:true}).click();
+    await page.getByRole('button', { name: 'Board operating plan · Version 1', exact: true }).click();
+    await page.getByLabel('Revised operating workbook', { exact: true }).setInputFiles({ name: 'Board plan revised.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: workbook(90) });
+    await expect(page.getByText(/1 changed cells/)).toBeVisible();
+    await page.getByLabel('Decision rationale', { exact: true }).fill('Reject pending reconciliation.');
+    await page.getByRole('button', { name: 'Reject revision', exact: true }).click();
+    await expect(page.getByRole('cell', { name: '$120,000', exact: true })).toBeVisible();
+    await page.getByLabel('Revised operating workbook', { exact: true }).setInputFiles({ name: 'Board plan revised.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: workbook(90) });
+    await page.getByLabel('Decision rationale', { exact: true }).fill('Reconciled revised actual revenue to source.');
+    await page.getByRole('button', { name: 'Accept revised operating evidence', exact: true }).click();
+    await expect(page.getByRole('cell', { name: '$90,000', exact: true })).toBeVisible();
+    const out = resolve(import.meta.dirname, '../../verification/goal-two-20260908');
+    mkdirSync(out, { recursive: true });
+    await page.screenshot({ path: resolve(out, `${info.project.name}-workbook-review.png`), fullPage: true });
+    await page.getByRole('button', { name: 'Committee note', exact: true }).click();
+    await expect(page.locator('.workbook-note')).toContainText('Version 2');
+    await expect(page.locator('.workbook-note')).toContainText('revenue 90000');
+    await page.getByRole('button', { name: 'Sources & history', exact: true }).click();
+    await page.getByText('Source fingerprint and prior decisions (2)', { exact: true }).click();
+    await expect(page.getByText('Reject pending reconciliation.', { exact: true })).toBeVisible();
+});

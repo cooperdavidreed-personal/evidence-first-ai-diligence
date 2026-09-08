@@ -1,0 +1,13 @@
+{
+  "evidence_kind": "agent reported tool execution; not a captured stdout log",
+  "agent": "/root/source_archive",
+  "session_id": 44108,
+  "final_chunk": "08ef11",
+  "unit_command": "pnpm exec vitest run src/local-change-control.test.tsx",
+  "unit_passed": 7,
+  "browser_command": "WORKBENCH_PORT=4242 PLAYWRIGHT_PROJECTS=desktop,desktop-webkit pnpm exec playwright test tests/workbench.spec.ts --grep 'local Version 2 changes'",
+  "browser_passed": 2,
+  "browser_seconds": 11.3,
+  "boundary": "actual local V2 reject/reconsider/defer/accept tests on Chromium and WebKit; synthetic local data only",
+  "root_followup": "229 full unit tests and production build passed after this source fix; captured alongside this receipt"
+}

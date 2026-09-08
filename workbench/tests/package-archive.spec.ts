@@ -1,0 +1,36 @@
+import {readFile} from "node:fs/promises";
+import {expect, test} from "@playwright/test";
+test("archived source delivery replays after browser storage is cleared", async ({page}) => {
+  test.skip(!process.env.DESK_LOCAL_STORE, "Requires local workstation");
+  await page.goto("/");
+  await page.getByRole("button", {name:"New deal", exact:true}).click();await page.locator(".advanced-package-intake > summary").click();
+  await page.getByTestId("load-sample-package").click();
+  await page.getByRole("button", {name:"Validate and analyze"}).click();
+  await page.getByRole("textbox", {name:"Analyst name"}).fill("Archive test analyst");
+  await page.getByRole("textbox", {name:"Approval rationale"}).fill("Reviewed sample source mappings for archive verification.");
+  await page.getByRole("button", {name:"Approve Version 1 and open workspace"}).click();
+  await expect(page.getByRole("heading", {name:"Northstar Metrics",level:1})).toBeVisible();
+  await page.goto("/#/");
+  await page.getByText("Saved deliveries and source history", {exact:true}).click();
+  await page.getByRole("button", {name:"Archive current source package"}).click();
+  await expect(page.getByRole("table", {name:"Archived source deliveries"})).toBeVisible();
+  const downloading = page.waitForEvent("download");
+  await page.getByRole("button", {name:"Download source backup"}).first().click();
+  const download = await downloading;
+  const backupPath = await download.path();
+  const envelope = JSON.parse(await readFile(backupPath!,"utf8"));
+  expect(envelope.schemaVersion).toBe("underwriting-desk.source-backup/v1");
+  expect(envelope).not.toHaveProperty("workspace");
+  await page.locator('.deals-header input[type="file"]').setInputFiles(backupPath!);
+  await expect(page.getByRole("heading", {name:"Northstar Metrics",level:1})).toBeVisible();
+  await page.goto("/#/");
+  await page.getByText("Saved deliveries and source history", {exact:true}).click();
+
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.getByText("Saved deliveries and source history", {exact:true}).click();
+  await page.getByRole("button", {name:"Verify and open delivery"}).first().click();
+  await expect(page.getByRole("heading", {name:"Northstar Metrics",level:1})).toBeVisible();
+  await page.getByRole("navigation", {name:"Deal navigation"}).getByRole("button", {name:"Review",exact:true}).click();
+  await expect(page.getByRole("region", {name:"Evidence version approval"})).toContainText("Archive test analyst");
+});

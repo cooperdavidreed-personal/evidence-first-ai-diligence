@@ -1,0 +1,51 @@
+import {expect, test} from "@playwright/test";
+import {spawnSync} from "node:child_process";
+import {resolve} from "node:path";
+
+test("selected evidence reaches MCP and a returned proposal survives human review and reload", async ({page}) => {
+  test.skip(!process.env.DESK_LOCAL_STORE, "Requires the explicit local review store");
+  await page.goto("/#/v3/helios/diligence");
+  await page.getByRole("button", {name: "Model proposals", exact: true}).click();
+  const local = page.locator(".local-review-desk");
+  await expect(local).toBeVisible();
+  await local.getByRole("checkbox").first().check();
+  await local.getByRole("button", {name: "Prepare selected evidence"}).click();
+  await expect(local.getByText(/Evidence prepared locally/)).toBeVisible();
+  function mcp(name: string, args: object) {
+    const result = spawnSync(process.execPath, [resolve("mcp-server/server.mjs"), "--review-store", process.env.DESK_LOCAL_STORE!], {input: JSON.stringify({jsonrpc: "2.0", id: 1, method: "tools/call", params: {name, arguments: args}}) + "\n", encoding: "utf8"});
+    expect(result.status, result.stderr).toBe(0);
+    const message = JSON.parse(result.stdout); expect(message.error).toBeUndefined();
+    return message.result.structuredContent;
+  }
+  const packet = mcp("get_review_context", {deal_id: "helios"});
+  expect(packet.evidence).toHaveLength(1);
+  mcp("submit_evidence_review", {deal_id: "helios", request_digest_sha256: packet.request_digest_sha256, model_family: "synthetic test fixture", challenges: [{claim: "Test the renewal concentration", management_question: "Which renewals drive the underwriting case?", severity: "HIGH", evidence_refs: [packet.evidence[0].id]}], gaps: [], memo_drafts: []});
+  await local.getByRole("button", {name: "Collect model proposals"}).click();
+  await expect(page.getByRole("heading", {name: "Test the renewal concentration"})).toBeVisible();
+  await expect(page.getByRole("button", {name: "Accept proposal"})).toBeDisabled();
+  await page.getByRole("textbox", {name: "Human reviewer"}).fill("Cooper test fixture");
+  await page.getByRole("button", {name: "Accept proposal"}).click();
+  await expect(page.getByText(/accepted by Cooper test fixture/)).toBeVisible();
+  await page.getByRole("button", {name: "Awaiting review · 0", exact: true}).click();
+  await expect(page.getByRole("heading", {name: "Test the renewal concentration"})).toHaveCount(0);
+  await page.getByRole("button", {name: "Accepted · 1", exact: true}).click();
+  await page.getByRole("searchbox", {name: "Search model proposals"}).fill("unmatched-query");
+  await expect(page.getByText("No proposals match this view. Change the filter or clear the search.")).toBeVisible();
+  await page.getByRole("searchbox", {name: "Search model proposals"}).fill("renewal");
+  await expect(page.getByRole("heading", {name: "Test the renewal concentration"})).toBeVisible();
+  await expect(page.getByText("Saved to local workstation", {exact: true})).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", {name: "Model proposals", exact: true}).click();
+  await expect(page.getByText(/accepted by Cooper test fixture/)).toBeVisible();
+  await page.screenshot({path: resolve("../dist/local-review-1440.png"), fullPage: true});
+  await page.setViewportSize({width: 1728, height: 1117});
+  await page.screenshot({path: resolve("../dist/local-review-1728.png"), fullPage: true});
+  const denied = await page.request.post("/__desk/review", {data: packet});
+  expect(denied.status()).toBe(403);
+  const initialized = spawnSync(process.execPath, [resolve("mcp-server/server.mjs"), "--review-store", process.env.DESK_LOCAL_STORE!], {input: JSON.stringify({jsonrpc: "2.0", id: 1, method: "initialize", params: {protocolVersion: "2025-06-18", clientInfo: {name: "Desktop connection test", version: "1"}}}) + "\n", encoding: "utf8"});
+  expect(initialized.status).toBe(0);
+  await page.getByRole("button", {name: "Model settings", exact: true}).click();
+  await expect(page.getByText(/Last contact: Desktop connection test/)).toBeVisible();
+  await page.getByRole("button", {name: "Check connection", exact: true}).click();
+  await expect(page.getByText(/Client contact recorded/)).toBeVisible();
+});

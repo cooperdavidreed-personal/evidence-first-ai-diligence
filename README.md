@@ -1,3 +1,5 @@
+> **Local workstation trial:** The current trial candidate and downloadable application are on [`codex/desk-local-20260907`](https://github.com/cooperdavidreed-personal/evidence-first-ai-diligence/tree/codex/desk-local-20260907/trial). See the [trial guide](trial/README.md). The hosted release remains separate; managed-device and practitioner validation are still required.
+
 # Underwriting Desk
 
 Evidence-linked private-markets underwriting where deterministic finance, firm policy, analyst assumptions, model proposals, and human decisions remain separate.
