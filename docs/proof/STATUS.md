@@ -1,26 +1,28 @@
-# Verification status — local candidate
+# Verification status — desktop pilot 0.3.4
 
-Latest follow-up: [0.3.2 onboarding recovery](ONBOARDING-RECOVERY.md) adds matching extension download and expired-code handling. Its build, four focused UI tests, all 36 server tests and rebuilt native Mac package passed; actual Claude import remains unverified. The 242-test full UI result below belongs to the preceding increment.
+Status: **VERIFIED_LOCAL_SYNTHETIC**. Source branch: `codex/desk-workflow-proof-20260908`. Application code revision: `a4ca904514e06829aa75f0dc2492d73f7aa5a25c`. The following documentation commit does not change the packaged application.
 
-Status: **VERIFIED_LOCAL_SYNTHETIC**. Source branch: `codex/desk-workflow-proof-20260908`, based on `c1d24f2`. The [retained evidence](../../verification/workflow-proof-20260908/README.md) identifies the tested code revision. This candidate has not been published, pushed, merged or deployed.
+The actual Claude Desktop installation and connection now work. Claude read the released synthetic original and revised packages and submitted two source-linked proposals on the installed 0.3.3 runtime. Its deal-list response exposed an older-client schema incompatibility: array results were included in structuredContent. The 0.3.4 fix preserves the JSON text result and includes structuredContent only for objects. The updated extension was installed in Claude, and the exact deal-list call then returned the expected company and release digest. [Native observation](native-claude-verification.json).
+
+The agent exercised the analyst review UI on synthetic data: corrected an unsupported model inference, adopted both proposals, assigned the funding question, marked the earlier conclusion contradicted, reconciled the current conclusion, and saved a partner update. Source bytes/mappings, assumptions, review basis and source version remained unchanged. Saving revoked the old evidence release. This is a developer-run integration test, not independent practitioner validation.
 
 | Check | Result |
 |---|---|
-| TypeScript and Vite production build | Passed; oversized synthetic data chunk warning remains |
-| React/Vitest | 242 tests passed |
-| Node server/MCP | 36 tests passed |
-| Legacy package tests | 6 tests passed |
-| Go launcher/install | 4 tests passed |
-| Retained Python finance primitives / PE oracles | 9 tests passed |
-| Independent monthly Python Decimal oracle | 200 seeded cases passed |
-| Numeric citation fixtures | 12 / 12 passed; authored public fixtures, not blinded human evaluation |
-| Browser operating workflow | Source replacement, stale output, source inspection, diligence, contradiction, reconciled update, measurement and reopen passed |
-| Extracted local package | MCP retrieval/proposal and encrypted backup/delete/restore passed |
-| Apple Silicon native package | Extracted app, bundled runtime without Node on PATH, packaged MCP handshake, wizard, quit/reopen and owned-service reuse passed |
-| AWS synthetic handler | 4 local checks passed with simulated authorizer claims; not real AWS authentication |
+| TypeScript and Vite production build | Passed; oversized synthetic-data chunk warning remains |
+| React/Vitest | 245 passed |
+| Node server/MCP | 37 passed, including native-client response regression |
+| Go launcher/install/recovery | Passed |
+| Numeric citation fixtures | 12/12 authored public fixtures; not blinded evaluation |
+| Retained financial proof | 200 seeded Decimal cases and 9 Python finance/PE tests from the preceding operating-workflow increment |
+| Operating browser workflow | Source replacement, stale output, inspection, diligence, contradiction, reconciled update and reopen passed |
+| Nonstandard workbook | Author-created sparse layout with GBP thousands and explicit mappings passed; original bytes retained |
+| Proposal review | Current adoption and stale dismissal passed; financial inputs unchanged |
+| Partner PDF | Actual print HTML rendered; both pages visually inspected in preceding 0.3.3 increment; output code unchanged in 0.3.4 |
+| Apple Silicon package | Extracted application, bundled runtime without Node on PATH, recovery page, matching extension download, packaged MCP binary, quit/reopen, persistence and service reuse passed |
+| Actual Claude Desktop | Extension install/update, connection, released retrieval and proposals exercised; corrected deal list passed on 0.3.4 |
 
-Pending: native Windows and Intel execution; actual Claude Desktop import and provider roundtrip for this example; managed workstation permissions; independent practitioner trial; broader adversarial security review; disaster recovery on the intended device. This increment's browser workflow was checked in Chrome; WebKit was not rerun for it.
+[Package hashes](desktop-0.3.4-artifacts.json), [start guide](../../trial/DESKTOP-START.md), [earlier workflow evidence](../../verification/workflow-proof-20260908/README.md).
 
-The AWS slice is source-only and undeployed. SAM validation, real JWT checks, IAM/log retention review, cloud costs and rollback have not run. The current public download remains the earlier desktop build; this local package is not yet available from that link.
+Pending: native Windows and Intel execution, downloaded-file quarantine on the intended device, managed workstation permissions, independent practitioner trial, broader adversarial security review and recovery on the intended device. WebKit was not rerun for the new workflow. Mac signing is ad-hoc only; Windows is unsigned. Neither artifact has a trusted publisher certificate or Apple notarization.
 
-Keep correctness results separate from usefulness. There is no measured human time saving, independent adoption, production uptime or investment-performance result.
+No firm-wide identity/roles or concurrent team collaboration is claimed. The AWS slice remains source-only and undeployed. This release does not change the public Vercel demonstration. No measured human time saving, independent adoption, production uptime or investment-performance result exists. Installation friction and workflow usefulness must be tested by the practitioner.

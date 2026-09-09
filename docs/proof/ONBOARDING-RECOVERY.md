@@ -1,3 +1,5 @@
+Current follow-up: [0.3.4 native-client verification](STATUS.md). The observations below are historical.
+
 # Desktop onboarding recovery — 0.3.2 local candidate
 
 The next trial-readiness episode checked Claude Desktop directly. Version 1.49585.0 was signed in, its Extensions screen showed no installed desktop extensions, and Settings → Extensions → Advanced settings exposed Install extension and a Preview file picker. The previous synthetic chat demonstrated an older connector, not the new native extension package.

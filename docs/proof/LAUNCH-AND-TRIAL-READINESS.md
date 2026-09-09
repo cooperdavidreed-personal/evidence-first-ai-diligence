@@ -1,5 +1,7 @@
 # Launch recovery and eight-step trial readiness
 
+**Updated:** [0.3.4 status](STATUS.md) and [native Claude results](native-claude-verification.json) supersede the pending installation and publication-approval states below. The rest records the earlier launch-recovery episode.
+
 ## Live observation
 
 The installed desktop service responded successfully as 0.3.2-local, with an unfinished setup and no verified Claude connection. Its log was empty. The machine's HTTP/HTTPS handler was Chrome. The application had started; the absence of a visible browser page was not a failed local server. The precise reason the OS browser handoff was not visible remains unconfirmed. A working page was opened in the Codex browser without stopping the user's service or modifying company records.

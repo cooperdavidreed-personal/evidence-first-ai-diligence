@@ -1,0 +1,34 @@
+{
+  "version": "0.3.4-local",
+  "nodeVersion": "24.20.0",
+  "signed": false,
+  "artifacts": [
+    {
+      "file": "Underwriting-Desk-Mac-Apple-Silicon.zip",
+      "bytes": 51169030,
+      "sha256": "ed7be6bbcaab28bd2ceb367d2875320380dce039e235bed8ce963147227dab59",
+      "nativeTested": true
+    },
+    {
+      "file": "Underwriting-Desk-Mac-Intel.zip",
+      "bytes": 53124906,
+      "sha256": "cd9f0cd8c1225269b2b754a431ecf4140311e80d60ca1d934a36290a52876a87",
+      "nativeTested": false
+    },
+    {
+      "file": "Underwriting-Desk-Windows.exe",
+      "bytes": 51768832,
+      "sha256": "797fbdf16bea6f5270eca013911b626a5ca0e1c7398207dfa368ec312db565a6",
+      "nativeTested": false
+    },
+    {
+      "file": "Underwriting Desk.mcpb",
+      "bytes": 5452952,
+      "sha256": "97cb26693deee4a05bd28ea063fcdd5b454d1e896d457b8e0ff13a45fc6d8595",
+      "nativeTested": false,
+      "binaryRoundtripTestedOn": "darwin-arm64",
+      "claudeDesktopImportedOn": "darwin-arm64"
+    }
+  ],
+  "codeRevision": "a4ca904514e06829aa75f0dc2492d73f7aa5a25c"
+}

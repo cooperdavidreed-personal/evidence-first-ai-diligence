@@ -4,7 +4,7 @@ This is a local, single-workstation candidate. It complements Claude Enterprise 
 
 ## Before the managed workstation test
 
-Obtain permission to run the unsigned local package, Node.js 24 or newer, and a local MCP server in the approved Claude client. Do not bypass application control or organization connector policies. If those are blocked, record the specific restriction; do not substitute an unrestricted remote tunnel or give an agent broad computer permissions.
+Obtain permission to run the local desktop package (which includes Node.js 24) and its MCP extension in the approved Claude client. No separate Node installation is needed. Follow [the desktop start guide](../trial/DESKTOP-START.md). Do not bypass application control or organization connector policies. If those are blocked, record the specific restriction; do not substitute an unrestricted remote tunnel or give an agent broad computer permissions.
 
 Extract the complete ZIP into a permanent folder. Run `node start-desk.mjs --check` there. On Windows use `Open Underwriting Desk.cmd`; on macOS use `Open Underwriting Desk.command`, or run `node start-desk.mjs`. Keep its terminal open. The browser should open at http://127.0.0.1:4198. The app does not need a package manager once Node is present. The ZIP does not bundle Node or a publisher signature.
 

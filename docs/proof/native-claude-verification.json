@@ -1,0 +1,76 @@
+{
+  "status": "VERIFIED_LOCAL_SYNTHETIC",
+  "version": "0.3.4-local",
+  "codeRevision": "a4ca904514e06829aa75f0dc2492d73f7aa5a25c",
+  "observedAt": "2026-09-09T02:10:19.478189+00:00",
+  "nativeClient": {
+    "client": "Claude Desktop",
+    "data": "Juniper Software synthetic fixture only",
+    "extensionInstall": "0.3.2 installed, then updated to 0.3.4 in native UI",
+    "connectionTest": "CONNECTION_VERIFIED; companyEvidenceShared false",
+    "evidenceAndProposals": "Actual client retrieved released original/revised evidence and submitted one finding and one diligence proposal on the installed 0.3.3 app runtime",
+    "compatibilityRegression": "0.3.3 list_investment_reviews failed in Claude; 0.3.4 call returned the expected single released deal and matching digest",
+    "proposalIds": [
+      "feaa6e43-c890-4ea3-9ea7-dc3366737015",
+      "1b99e91d-c47f-48f7-a2b4-02481742846e"
+    ],
+    "analystReview": "Agent exercised authorized synthetic analyst actions in UI: edited and adopted both, assigned decision blocker, contradicted old finding, reconciled new finding, saved Partner update",
+    "unchangedAfterReview": [
+      "source bytes and mappings",
+      "assumptions",
+      "operating review basis",
+      "sourceVersion"
+    ],
+    "releaseAfterSave": null,
+    "modelCorrection": "Removed unsupported causal inference and simplified references before adoption. Corrected next action timing after adoption.",
+    "limits": "This is a developer-run client integration test, not Cooper or Brooks independently underwriting a company."
+  },
+  "packageHarness": {
+    "status": "VERIFIED_LOCAL_SYNTHETIC",
+    "nodeVersion": "v24.20.0",
+    "checks": [
+      "Mac extracted application with spaces in path",
+      "no Node on PATH",
+      "bundled runtime",
+      "browser recovery file contains live address without session token",
+      "wizard browser render and actions",
+      "authenticated browser extension download matches bundled bytes",
+      "extracted MCPB binary roundtrip",
+      "fresh connection code verified in browser",
+      "quit and reopen",
+      "onboarding and company record persistence",
+      "second open reuses owned service"
+    ],
+    "notRun": [
+      "Windows native execution",
+      "Intel Mac native execution",
+      "Claude Desktop extension import",
+      "managed workstation policy",
+      "practitioner trial"
+    ]
+  },
+  "notRun": [
+    "Windows native execution",
+    "Intel Mac native execution",
+    "managed workstation installation or policy approval",
+    "independent practitioner trial",
+    "new workflow in WebKit",
+    "trusted publisher signing and Apple notarization"
+  ],
+  "finalChecks": {
+    "typescript": "passed",
+    "vite": "passed; oversized data chunk warning",
+    "vitest": {
+      "passed": 245,
+      "files": 39
+    },
+    "nodeServer": {
+      "passed": 37
+    },
+    "goLauncher": "passed",
+    "citationFixtures": {
+      "passed": 12,
+      "total": 12
+    }
+  }
+}
