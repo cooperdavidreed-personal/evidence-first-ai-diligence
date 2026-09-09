@@ -1,0 +1,78 @@
+{
+  "status": "VERIFIED_LOCAL_SYNTHETIC",
+  "nodeVersion": "v24.20.0",
+  "checks": [
+    "Mac extracted application with spaces in path",
+    "no Node on PATH",
+    "bundled runtime",
+    "browser recovery file contains live address without session token",
+    "wizard browser render and actions",
+    "authenticated browser extension download matches bundled bytes",
+    "extracted MCPB binary roundtrip",
+    "fresh connection code verified in browser",
+    "quit and reopen",
+    "onboarding and company record persistence",
+    "second open reuses owned service"
+  ],
+  "notRun": [
+    "Windows native execution",
+    "Intel Mac native execution",
+    "Claude Desktop extension import",
+    "managed workstation policy",
+    "practitioner trial"
+  ],
+  "version": "0.3.3-local",
+  "workbookTest": {
+    "status": "VERIFIED_LOCAL_SYNTHETIC",
+    "checks": [
+      "new company without prescribed filename",
+      "nonstandard cell layout",
+      "GBP thousands normalization",
+      "manual actual/forecast and duration mapping",
+      "preserved uploaded bytes",
+      "source inspector",
+      "cash headroom",
+      "adopt current proposal",
+      "dismiss stale proposal without changing financial inputs",
+      "partner update"
+    ],
+    "limits": [
+      "Author-created layout test; not an independently supplied workbook",
+      "No practitioner timing or adoption claim",
+      "Proposals seeded through production store for UI test; no model/provider call"
+    ]
+  },
+  "pdf": {
+    "pages": 2,
+    "visuallyInspected": true,
+    "source": "actual application print HTML",
+    "sha256": "f92a29dab4b9c248023ae924e725b392de4a32cbf229616c150a9ac8511cc82f"
+  },
+  "artifacts": [
+    {
+      "file": "Underwriting-Desk-Mac-Apple-Silicon.zip",
+      "bytes": 51169001,
+      "sha256": "22bb7facb01fdd62e4a2c5c9280fe2d05dc86e34b77936a3d97783db4e7c3888",
+      "nativeTested": true
+    },
+    {
+      "file": "Underwriting-Desk-Mac-Intel.zip",
+      "bytes": 53124915,
+      "sha256": "185535ddc1ffdcd8c6c7adc6ae5d1590eb86c69f45005607cfb37fe3109536fb",
+      "nativeTested": false
+    },
+    {
+      "file": "Underwriting-Desk-Windows.exe",
+      "bytes": 51768832,
+      "sha256": "e6638557f16e438eac21a9e2ae0df7adffbc1027de12f573d189cf0d55e34bc3",
+      "nativeTested": false
+    },
+    {
+      "file": "Underwriting Desk.mcpb",
+      "bytes": 5452950,
+      "sha256": "bd89de8c8a7b06e8c2a050aa4458a6bfcfdb6df74bb642337a7f627a6339cce5",
+      "nativeTested": false,
+      "binaryRoundtripTestedOn": "darwin-arm64"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+Alder Systems — synthetic layout test — Partner update
+VC / Growth · Initial screen · Evidence version 1
+Investment question: What must be true for us to advance this investment?
+
+Current view
+Hold pending explanation of the GBP 20,000 cash shortfall.
+Evidence: Board delivery - 14 August.xlsx — Board appendix!D25
+
+Not yet established: Next action; Concerns; Contradictory evidence; Business; Merits.
+
+Remaining diligence
+
+Monthly operating review
+2026-07 · Base · GBP · evidence available through 2026-08-15
+revenue: actual 720000; forecast 800000; variance -80000; comparable; sources Board delivery - 14 August.xlsx — Board appendix!D14; Board delivery - 14 August.xlsx — Board appendix!G14
+ebitda: actual 54000; forecast 100000; variance -46000; comparable; sources Board delivery - 14 August.xlsx — Board appendix!D19; Board delivery - 14 August.xlsx — Board appendix!G19
+cash: actual 180000; forecast 260000; variance -80000; comparable; sources Board delivery - 14 August.xlsx — Board appendix!D25; Board delivery - 14 August.xlsx — Board appendix!G25
+debt: actual 900000; forecast 880000; variance 20000; comparable; sources Board delivery - 14 August.xlsx — Board appendix!D31; Board delivery - 14 August.xlsx — Board appendix!G31
+Net debt: 720000 GBP. Debt less cash, from the same source and period. Not a leverage multiple. Sources: Board delivery - 14 August.xlsx — Board appendix!D25; Board delivery - 14 August.xlsx — Board appendix!D31; Board delivery - 14 August.xlsx — Board appendix!G25; Board delivery - 14 August.xlsx — Board appendix!G31
+Cash above analyst minimum: -20000 GBP. Cash less the named analyst minimum; not a contractual covenant or cash runway. Sources: Board delivery - 14 August.xlsx — Board appendix!D25
+EBITDA margin (%): 7.5%. Reported monthly EBITDA divided by monthly revenue. No annualization. Sources: Board delivery - 14 August.xlsx — Board appendix!D14; Board delivery - 14 August.xlsx — Board appendix!D19
+Minimum cash assumption: 200000 GBP; owner Synthetic reviewer
+Requires attention: How will liquidity be restored above the analyst minimum? Cash is 20,000 GBP below the analyst minimum.
+
+Review history to date
+2026-09-09: Added source delivery (Synthetic reviewer)
+2026-09-09: Confirmed source availability date (Synthetic reviewer)
+2026-09-09: Reviewed financial mappings (Synthetic reviewer)
+2026-09-09: accepted: Board delivery - 14 August.xlsx. Confirmed worksheet, GBP thousands, July duration and actual/forecast basis. (Synthetic reviewer)
+2026-09-09: Confirmed operating review basis and minimum cash assumption (Synthetic reviewer)
+2026-09-09: Adopted model work (Synthetic reviewer)
+2026-09-09: Dismissed model work (Synthetic reviewer)
+
+Transaction implications
+Ownership, dilution and financing outcomes require verified terms or the original Excel model; uploaded operating metrics do not establish a VC return.
+
+Source register
+Board delivery - 14 August.xlsx
+
+Working investment analysis; human judgment required.

@@ -19,7 +19,7 @@ function openFile(file){return new Promise((resolve,reject)=>{
   const args=process.platform==='darwin'?[file]:['url.dll,FileProtocolHandler',file];
   const child=spawn(command,args,{windowsHide:true,stdio:'ignore'});child.once('error',reject);child.once('exit',code=>code===0?resolve():reject(Error('Could not open the Claude extension. Check that Claude Desktop is installed and local extensions are allowed.')));
 });}
-const server=await startLocalDesk({workbenchPath:root,storePath:join(home,'reviews.sqlite'),port:0,desktop:{version:'0.3.2-local',readExtension:()=>readFile(join(root,'Underwriting Desk.mcpb')),openExtension:()=>openFile(join(root,'Underwriting Desk.mcpb')),quit:()=>server.close()}});
+const server=await startLocalDesk({workbenchPath:root,storePath:join(home,'reviews.sqlite'),port:0,desktop:{version:'0.3.3-local',readExtension:()=>readFile(join(root,'Underwriting Desk.mcpb')),openExtension:()=>openFile(join(root,'Underwriting Desk.mcpb')),quit:()=>server.close()}});
 const url=`http://127.0.0.1:${server.address().port}`;
 await writeFile(instancePath,JSON.stringify({url,token:server.deskSessionToken,pid:process.pid}),{mode:0o600});
 console.log(url);

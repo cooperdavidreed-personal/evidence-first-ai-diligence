@@ -41,23 +41,24 @@ export function outputText(deal:ProgressDeal,kind:string){
  const allowed=(ref:string)=>!admitted||deal.sources.some(s=>admitted.includes(s.id)&&s.excerpts.some(e=>e.id===ref));
  const current=deal.findings.filter(f=>f.state==='current'&&f.refs.every(allowed));
  const citations=(refs:string[])=>refs.map(ref=>evidenceLabel(deal,ref)).join('; ')||'Analyst judgment; no cited evidence';
+ const history:string[]=[];
  const text=[`${deal.company} — ${kind}`,`${deal.strategy} · ${deal.stage} · Evidence version ${deal.sourceVersion}`,`Investment question: ${deal.question}`,''];
  if(kind==='Management questions'){
   for(const status of ['blocker','working'])for(const i of deal.issues.filter(i=>i.status===status))text.push(`[${status==='blocker'?'Decision blocker':'In progress'}] ${i.question}`,`Why: ${i.why}`,`Owner: ${i.owner||'Unassigned'} · Next: ${i.next}`,`Affected conclusion: ${deal.findings.find(f=>f.id===i.target)?.text??deal.assumptions.find(a=>a.id===i.target)?.text??'Not linked'}`,`Evidence: ${citations(i.refs)}`,'');
  }else{
-  for(const section of ['Business','Merits','Concerns','Contradictory evidence','Current view','Next action']){
-   const findings=current.filter(f=>f.section===section);text.push(section);
-   text.push(...(findings.length?findings.map(f=>`${f.text}\nEvidence: ${citations(f.refs)}`):['Not yet established.']),'');
-  }
+  const order=kind==='Partner update'?['Current view','Next action','Concerns','Contradictory evidence','Business','Merits']:['Business','Current view','Merits','Concerns','Contradictory evidence','Next action'];
+  const missing:string[]=[];
+  for(const section of order){const findings=current.filter(f=>f.section===section);if(!findings.length){missing.push(section);continue;}text.push(section,...findings.map(f=>`${f.text}\nEvidence: ${citations(f.refs)}`),'');}
+  if(missing.length)text.push('Not yet established: '+missing.join('; ')+'.','');
   const contradicted=deal.findings.filter(f=>f.state==='contradicted');
   if(contradicted.length)text.push('Prior conclusions now contradicted',...contradicted.map(f=>`${f.text}\nPrior support: ${citations(f.refs)}`),'');
   text.push('Remaining diligence',...deal.issues.filter(i=>i.status!=='resolved').map(i=>`${i.question} — ${i.owner||'Unassigned'}: ${i.next}`));
   if(kind==='Partner update'){
    const since=deal.outputs[kind]?.eventCount??0;
-   text.push('',since?'Changes since previous saved partner update':'Review history to date',...deal.events.slice(since).map(e=>`${e.at}: ${e.action.replace(/Adopted proposal [0-9a-f-]+/g,'Adopted model finding or diligence work')} (${e.actor})`));
+   history.push('',since?'Changes since previous saved partner update':'Review history to date',...deal.events.slice(since).filter(e=>!/^Recorded source decision |^(Adopted|Dismissed) selected model work$/.test(e.action)).map(e=>`${e.at.slice(0,10)}: ${e.action.replace(/(Adopted|Dismissed) proposal [0-9a-f-]+/g,'$1 model work')} (${e.actor})`));
   }
  }
- text.push('',...operatingText(deal),'','Financial evidence',...deal.sources.filter(s=>(admitted?admitted.includes(s.id):s.status==='accepted')&&s.mapping).flatMap(s=>s.mapping!.rows.map(r=>`${metricNames[r.metric]} · ${r.period} ${r.basis}: ${r.value.toLocaleString('en-US')} ${s.mapping!.currency} · ${s.name} — ${s.mapping!.sheet}!${r.address} · ${r.definition}`)),'','Transaction implications',deal.strategy==='PE'?'Leverage, price and returns require verified transaction inputs or the original Excel model; uploaded operating metrics do not establish an LBO.':'Ownership, dilution and financing outcomes require verified terms or the original Excel model; uploaded operating metrics do not establish a VC return.','','Source register',...deal.sources.filter(s=>admitted?admitted.includes(s.id):s.status==='accepted').map(s=>s.name),'','Working investment analysis; human judgment required.');
+ text.push('',...operatingText(deal),...history,...(admitted?[]:['','Financial evidence',...deal.sources.filter(s=>s.status==='accepted'&&s.mapping).flatMap(s=>s.mapping!.rows.map(r=>`${metricNames[r.metric]} · ${r.period} ${r.basis}: ${r.value.toLocaleString('en-US')} ${s.mapping!.currency} · ${s.name} — ${s.mapping!.sheet}!${r.address} · ${r.definition}`))]),'','Transaction implications',deal.strategy==='PE'?'Leverage, price and returns require verified transaction inputs or the original Excel model; uploaded operating metrics do not establish an LBO.':'Ownership, dilution and financing outcomes require verified terms or the original Excel model; uploaded operating metrics do not establish a VC return.','','Source register',...deal.sources.filter(s=>admitted?admitted.includes(s.id):s.status==='accepted').map(s=>s.name),'','Working investment analysis; human judgment required.');
  return text.join('\n');
 }
 

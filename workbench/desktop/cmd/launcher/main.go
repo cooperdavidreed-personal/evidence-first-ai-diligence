@@ -58,10 +58,12 @@ func run() error {
 	if !strings.HasPrefix(url, "http://127.0.0.1:") {
 		return fmt.Errorf("Invalid local application address")
 	}
+	if e = desk.WriteRecovery(home, url); e != nil {
+		return e
+	}
 	if os.Getenv("DESK_NO_OPEN") != "1" {
 		if e = openURL(url); e != nil {
-			cmd.Process.Kill()
-			return e
+			return fmt.Errorf("The Desk is running at %s, but the browser did not open. Paste that address into your browser. Your saved work is intact. Browser error: %w", url, e)
 		}
 	}
 	fmt.Println(url)

@@ -8,7 +8,7 @@ The desktop package includes the application and its runtime. You do not need Te
 
 **Mac:** download the Apple Silicon or Intel ZIP for your Mac, unzip it, and drag **Underwriting Desk.app** to Applications (or your user Applications folder). Double-click the app.
 
-The Desk opens in your browser. Keep the application running while working. Use **Quit Desk** in the top bar to close its local service. Closing the browser tab alone does not quit the service.
+The Desk opens in your browser. It does not open a separate native analysis window. If its tab does not appear, check the browser you normally use. New 0.3.3 builds also save **Open Underwriting Desk.html** in your `.underwriting-desk` folder with the current local address. Keep the application running while working. Use **Quit Desk** in the top bar to close its local service. Closing the browser tab alone does not quit the service.
 
 These are pilot builds, without a trusted publisher certificate or Apple notarization. If your computer or firm blocks the app, ask IT to approve the package. Do not disable computer security or grant an AI tool full permissions to work around the block.
 
