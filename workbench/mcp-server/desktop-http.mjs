@@ -4,6 +4,11 @@ export function desktopHandler(store,token,desktop){return async(req,res)=>{
   const host=req.headers.host;
   if(!isLoopbackHost(host)||req.headers['x-desk-session']!==token||(req.headers.origin&&req.headers.origin!==`http://${host}`)){res.writeHead(403);res.end('{}');return;}
   try {
+    if((req.url??'').split('?')[0]==='/__desk/desktop-extension'){
+      if(req.method!=='GET'){res.writeHead(405);res.end('{}');return;}
+      if(!desktop.readExtension)throw Error('Reopen the desktop application to download its Claude extension.');
+      const bytes=await desktop.readExtension();res.setHeader('Content-Type','application/octet-stream');res.setHeader('Content-Disposition','attachment; filename="Underwriting Desk.mcpb"');res.end(bytes);return;
+    }
     if(req.method==='GET'){res.end(JSON.stringify({version:desktop.version,platform:process.platform,...store.onboardingStatus()}));return;}
     if(req.method!=='POST'){res.writeHead(405);res.end('{}');return;}
     const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;if(size>1024)throw Error('Request too large');chunks.push(chunk);}

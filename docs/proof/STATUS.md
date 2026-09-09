@@ -1,5 +1,7 @@
 # Verification status — local candidate
 
+Latest follow-up: [0.3.2 onboarding recovery](ONBOARDING-RECOVERY.md) adds matching extension download and expired-code handling. Its build, four focused UI tests, all 36 server tests and rebuilt native Mac package passed; actual Claude import remains unverified. The 242-test full UI result below belongs to the preceding increment.
+
 Status: **VERIFIED_LOCAL_SYNTHETIC**. Source branch: `codex/desk-workflow-proof-20260908`, based on `c1d24f2`. The [retained evidence](../../verification/workflow-proof-20260908/README.md) identifies the tested code revision. This candidate has not been published, pushed, merged or deployed.
 
 | Check | Result |

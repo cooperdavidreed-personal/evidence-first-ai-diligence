@@ -19,11 +19,16 @@ These are pilot builds, without a trusted publisher certificate or Apple notariz
 3. Back in the Desk, click **Create connection test**, then **Copy test prompt**. Paste it into a new Claude conversation with Underwriting Desk enabled.
 4. When the Desk shows **Connection verified**, click **Open my workspace**.
 
+Keep the Desk open while Claude runs the test. If the code expires, click **Start a fresh test** and copy the new prompt. An expired or previously used code cannot verify a connection.
+
 The test does not share company materials. The Desk will not mark setup as verified just because a settings file was downloaded. You can also choose **Continue without Claude** and connect later from **Connection setup**.
 
-If your computer does not associate `.mcpb` files with Claude, import the separately supplied `Underwriting Desk.mcpb` through Claude Desktop's extension settings. If your organization does not offer that option, send the extension and this guide to your administrator. There is no need to edit a JSON configuration file.
+If Claude does not open, expand **Claude did not open, or the extension is missing?** in the Desk and click **Download Claude extension**. In Claude Desktop, go to **Settings → Extensions → Advanced settings → Install extension**. Select the downloaded `Underwriting Desk.mcpb`, review its preview and approve the installation. This download comes from your running Desk version. If your organization does not offer that option, send the extension and this guide to your administrator. There is no need to edit a JSON configuration file.
 
 ## First review
+
+For the new local candidate, choose **New deal → Try monthly operating review** to try a fictional company before adding your own materials. Review the revised July package, inspect the cash cell, add the liquidity question to diligence, revisit the prior conclusion in Brief, and prepare a Partner update in Committee. This sample is not in the earlier published desktop download.
+
 
 Click **New deal**, name the company, and add available materials. Start with the supplied synthetic trial notes or another non-confidential example. Confirm financial mappings where required. Release only the evidence you want Claude to read. Ask Claude to propose a first review, then adopt, edit, or dismiss its work in the Desk.
 

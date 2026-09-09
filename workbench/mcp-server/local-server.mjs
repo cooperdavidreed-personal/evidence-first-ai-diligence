@@ -25,7 +25,7 @@ export async function startLocalDesk({workbenchPath, storePath, port = 4198, des
     res.setHeader("X-Content-Type-Options", "nosniff");
     if (!isLoopbackHost(req.headers.host)) {res.writeHead(403); res.end(); return;}
     const rawPath = (req.url ?? "/").split("?")[0];
-    if (rawPath === "/__desk/desktop" && onboarding) {await onboarding(req,res);return;}
+    if ((rawPath === "/__desk/desktop" || rawPath === "/__desk/desktop-extension") && onboarding) {await onboarding(req,res);return;}
     if (rawPath === "/__desk/measurements") {await measurements(req,res);return;}
     if (rawPath === "/__desk/progress") {await progress(req,res);return;}
     if (rawPath === "/__desk/packages") {await packages(req, res); return;}

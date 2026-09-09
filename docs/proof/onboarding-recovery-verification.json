@@ -1,0 +1,46 @@
+{
+  "status": "VERIFIED_LOCAL_SYNTHETIC",
+  "nodeVersion": "v24.20.0",
+  "checks": [
+    "Mac extracted application with spaces in path",
+    "no Node on PATH",
+    "bundled runtime",
+    "wizard browser render and actions",
+    "authenticated browser extension download matches bundled bytes",
+    "extracted MCPB binary roundtrip",
+    "fresh connection code verified in browser",
+    "quit and reopen",
+    "onboarding and company record persistence",
+    "second open reuses owned service"
+  ],
+  "notRun": [
+    "Windows native execution",
+    "Intel Mac native execution",
+    "Claude Desktop extension import",
+    "managed workstation policy",
+    "practitioner trial"
+  ],
+  "version": "0.3.2-local",
+  "artifacts": [
+    {
+      "file": "Underwriting-Desk-Mac-Apple-Silicon.zip",
+      "bytes": 51167778,
+      "sha256": "1849e16312f6972098a12e05913f9f25a2d83bf21678d7a32bfd7f5ea8581515"
+    },
+    {
+      "file": "Underwriting-Desk-Mac-Intel.zip",
+      "bytes": 53123117,
+      "sha256": "a0cc9c4892e36dfb17de9052c51805cceb2c439083f25f70ebee2edeca9a1217"
+    },
+    {
+      "file": "Underwriting-Desk-Windows.exe",
+      "bytes": 51765760,
+      "sha256": "1ce9daafeaa708323a3541add34502d3a58871a59be0008886af9f0935b3251b"
+    },
+    {
+      "file": "Underwriting Desk.mcpb",
+      "bytes": 5452855,
+      "sha256": "1a1700fd677e33ce82bb11e1c07bb49013016f1c22bb8f9da9ad72d36b135d50"
+    }
+  ]
+}
