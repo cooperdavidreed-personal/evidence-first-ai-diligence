@@ -87,7 +87,7 @@ export async function handleMessage(message, handlers) {
     if (notification) return null;
     try {
       const value = await handlers.callTool(message.params?.name, message.params?.arguments ?? {});
-      return result(message.id, {content: [{type: "text", text: JSON.stringify(value)}], structuredContent: value});
+      return result(message.id, {content: [{type: "text", text: JSON.stringify(value)}], ...(value !== null && typeof value === "object" && !Array.isArray(value) ? {structuredContent: value} : {})});
     } catch (caught) {
       return error(message.id, caught instanceof Error ? caught.message : "tool_call_failed");
     }

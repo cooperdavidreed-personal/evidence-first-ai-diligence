@@ -86,3 +86,12 @@ test("invalid and id-less proposal calls never append to the operator ledger", a
     assert.equal(existsSync(ledger), false); assert.equal(handlers.proposals.length, 0); assert.equal(digest(), before);
   } finally { rmSync(temp, {recursive: true, force: true}); }
 });
+
+test('array tool results remain valid MCP content without an invalid structuredContent array',async()=>{
+ const list=[{deal_id:'synthetic',release_digest:'example'}];
+ const reply=await handleMessage({jsonrpc:'2.0',id:77,method:'tools/call',params:{name:'list_investment_reviews',arguments:{}}},{callTool:()=>list});
+ assert.deepEqual(JSON.parse(reply.result.content[0].text),list);
+ assert.equal(Object.hasOwn(reply.result,'structuredContent'),false);
+ const object=await handleMessage({jsonrpc:'2.0',id:78,method:'tools/call',params:{name:'verify_desk_connection',arguments:{}}},{callTool:()=>({status:'CONNECTION_VERIFIED'})});
+ assert.deepEqual(object.result.structuredContent,{status:'CONNECTION_VERIFIED'});
+});
