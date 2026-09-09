@@ -1,0 +1,64 @@
+Juniper Software — synthetic — Partner update
+PE · Active diligence · Evidence version 2
+Investment question: Does the July cash shortfall require an updated funding plan?
+
+Business
+Not yet established.
+
+Merits
+Not yet established.
+
+Concerns
+Not yet established.
+
+Contradictory evidence
+Not yet established.
+
+Current view
+Not yet established.
+
+Next action
+Not yet established.
+
+Prior conclusions now contradicted
+July cash exceeds the analyst minimum; confirm continued cash conversion.
+Prior support: July original.xlsx — Monthly!B3 (prior version)
+
+Remaining diligence
+How will liquidity be restored above the analyst minimum? — Trial analyst: Obtain management explanation and reconcile the funding plan.
+
+Changes since previous saved partner update
+2026-09-09T01:03:58.674Z: accepted: July revised.xlsx. Confirm July restatement and cash requirement. (Trial analyst)
+2026-09-09T01:03:58.675Z: Recorded source decision accepted (Trial analyst)
+2026-09-09T01:03:58.741Z: Added operating review diligence question (Trial analyst)
+2026-09-09T01:03:58.791Z: Marked conclusion contradicted: Prior cash view contradicted by restatement. (Trial analyst)
+
+Monthly operating review
+2026-07 · Base · USD · evidence available through 2026-08-15
+revenue: actual 900000; forecast 1100000; variance -200000; comparable; sources monthly-revised:1, monthly-revised:5
+ebitda: actual 90000; forecast 250000; variance -160000; comparable; sources monthly-revised:2, monthly-revised:6
+cash: actual 350000; forecast 900000; variance -550000; comparable; sources monthly-revised:3, monthly-revised:7
+debt: actual 3300000; forecast 3000000; variance 300000; comparable; sources monthly-revised:4, monthly-revised:8
+Net debt: 2950000 USD. Debt less cash, from the same source and period. Not a leverage multiple. Sources: monthly-revised:3, monthly-revised:4, monthly-revised:7, monthly-revised:8
+Cash above analyst minimum: -150000 USD. Cash less the named analyst minimum; not a contractual covenant or cash runway. Sources: monthly-revised:3
+EBITDA margin (%): 10%. Reported monthly EBITDA divided by monthly revenue. No annualization. Sources: monthly-revised:1, monthly-revised:2
+Minimum cash assumption: 500000 USD; owner Sample analyst
+Requires attention: How will liquidity be restored above the analyst minimum? Cash is 150,000 USD below the analyst minimum.
+
+Financial evidence
+Revenue · 2026-07 actual: 900,000 USD · July revised.xlsx — Monthly!B1 · Recognized monthly revenue
+Reported EBITDA · 2026-07 actual: 90,000 USD · July revised.xlsx — Monthly!B2 · Reported monthly EBITDA
+Cash · 2026-07 actual: 350,000 USD · July revised.xlsx — Monthly!B3 · Unrestricted period-end cash
+Debt · 2026-07 actual: 3,300,000 USD · July revised.xlsx — Monthly!B4 · Period-end funded debt
+Revenue · 2026-07 forecast: 1,100,000 USD · July revised.xlsx — Monthly!B5 · Recognized monthly revenue
+Reported EBITDA · 2026-07 forecast: 250,000 USD · July revised.xlsx — Monthly!B6 · Reported monthly EBITDA
+Cash · 2026-07 forecast: 900,000 USD · July revised.xlsx — Monthly!B7 · Unrestricted period-end cash
+Debt · 2026-07 forecast: 3,000,000 USD · July revised.xlsx — Monthly!B8 · Period-end funded debt
+
+Transaction implications
+Leverage, price and returns require verified transaction inputs or the original Excel model; uploaded operating metrics do not establish an LBO.
+
+Source register
+July revised.xlsx
+
+Working investment analysis; human judgment required.

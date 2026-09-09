@@ -1,0 +1,118 @@
+{
+  "revision": "a2457c6a2ac93dac765e6fff819feac3d53bb5e0",
+  "dirty": false,
+  "fixtureHashes": {
+    "development.json": "21d04fb1d862788075f80d4b56780b7788763ad558ef60643faafef223554cc4",
+    "holdout.json": "9cce86dc783a15d3f90bcce9a098ba1e57b49b1a4cb53ff144aa90e682da1b1e"
+  },
+  "grading": "Author-declared synthetic numeric expectations. Not independent human semantic labels.",
+  "split": "Separate frozen development and holdout files. Holdout is inspectable and must not be described as blinded or untouched.",
+  "passed": 12,
+  "total": 12,
+  "rows": [
+    {
+      "split": "development.json",
+      "id": "matched",
+      "expected": "supported",
+      "actual": "supported",
+      "pass": true,
+      "elapsedMs": 12.117708999999998
+    },
+    {
+      "split": "development.json",
+      "id": "false-value",
+      "expected": "contradicted",
+      "actual": "contradicted",
+      "pass": true,
+      "elapsedMs": 0.661750000000012
+    },
+    {
+      "split": "development.json",
+      "id": "wrong-real-citation",
+      "expected": "unsupported",
+      "actual": "unsupported",
+      "pass": true,
+      "elapsedMs": 0.09341599999999062
+    },
+    {
+      "split": "development.json",
+      "id": "wrong-month",
+      "expected": "unsupported",
+      "actual": "unsupported",
+      "pass": true,
+      "elapsedMs": 0.07829200000000469
+    },
+    {
+      "split": "development.json",
+      "id": "wrong-currency",
+      "expected": "unsupported",
+      "actual": "unsupported",
+      "pass": true,
+      "elapsedMs": 0.04366599999998755
+    },
+    {
+      "split": "development.json",
+      "id": "wrong-scenario",
+      "expected": "unsupported",
+      "actual": "unsupported",
+      "pass": true,
+      "elapsedMs": 0.034417000000004805
+    },
+    {
+      "split": "holdout.json",
+      "id": "cash-matched",
+      "expected": "supported",
+      "actual": "supported",
+      "pass": true,
+      "elapsedMs": 0.03941700000000026
+    },
+    {
+      "split": "holdout.json",
+      "id": "cash-false",
+      "expected": "contradicted",
+      "actual": "contradicted",
+      "pass": true,
+      "elapsedMs": 0.02904200000000401
+    },
+    {
+      "split": "holdout.json",
+      "id": "cash-wrong-debt-ref",
+      "expected": "unsupported",
+      "actual": "unsupported",
+      "pass": true,
+      "elapsedMs": 0.02425000000000921
+    },
+    {
+      "split": "holdout.json",
+      "id": "ebitda-matched",
+      "expected": "supported",
+      "actual": "supported",
+      "pass": true,
+      "elapsedMs": 0.03108300000000952
+    },
+    {
+      "split": "holdout.json",
+      "id": "future-citation",
+      "expected": "unsupported",
+      "actual": "unsupported",
+      "pass": true,
+      "elapsedMs": 0.026250000000004547
+    },
+    {
+      "split": "holdout.json",
+      "id": "missing-ref",
+      "expected": "unsupported",
+      "actual": "unsupported",
+      "pass": true,
+      "elapsedMs": 0.023958999999990738
+    }
+  ],
+  "cost": {
+    "providerCalls": 0,
+    "providerMarginalUSD": 0,
+    "basis": "Deterministic code; no model requests",
+    "allocatedSubscriptionUSD": null,
+    "hardwareEnergyUSD": null
+  },
+  "limits": "Numeric mapping support only. No broad semantic entailment, retrieval accuracy or human trial claim. Small per-case timings are not a population p95."
+}

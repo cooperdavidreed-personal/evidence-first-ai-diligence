@@ -1,0 +1,14 @@
+{
+  "status": "VERIFIED_LOCAL_SYNTHETIC",
+  "checks": [
+    "macOS .app launch through Launch Services",
+    "isolated data home",
+    "no Node on PATH",
+    "authenticated local service"
+  ],
+  "notRun": [
+    "download quarantine approval",
+    "managed device permission",
+    "automatic browser opening"
+  ]
+}

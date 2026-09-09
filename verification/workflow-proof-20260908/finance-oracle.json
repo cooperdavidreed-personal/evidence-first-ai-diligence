@@ -1,0 +1,20 @@
+{
+  "status": "VERIFIED_LOCAL_SYNTHETIC",
+  "cases": 200,
+  "seed": 20260908,
+  "oracle": "Python Decimal independent arithmetic",
+  "python": "3.11.8",
+  "platform": "macOS-26.5.2-arm64-arm-64bit",
+  "checks": [
+    "actual/forecast differences",
+    "net debt",
+    "cash headroom",
+    "positive/zero/negative revenue",
+    "negative EBITDA margin"
+  ],
+  "limitations": [
+    "not practitioner validation",
+    "no real investment performance",
+    "no annualized leverage or runway inferred"
+  ]
+}

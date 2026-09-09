@@ -1,0 +1,61 @@
+{
+  "codeRevision": "a2457c6a2ac93dac765e6fff819feac3d53bb5e0",
+  "status": "VERIFIED_LOCAL_SYNTHETIC",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 1692,
+      "sha256": "638289afd299ab1b6065753d1bb2a00f720afad0583b3cd0448db18aff9be9eb"
+    },
+    {
+      "path": "browser-verification.json",
+      "bytes": 439,
+      "sha256": "4a6dc1957ce76578ba83e56594185b4884dae272569a1c553f06565eed4e8c60"
+    },
+    {
+      "path": "desktop-verification.json",
+      "bytes": 612,
+      "sha256": "05d4067bbe62d8d3aca8c6705f4e2651dbe8544425980a90b95a35a3bc815091"
+    },
+    {
+      "path": "evaluation.json",
+      "bytes": 3295,
+      "sha256": "1813995143d0c5b80953737c6b81e1132a826c9b54e61cc8e9bb5144b93f6f7b"
+    },
+    {
+      "path": "extracted-package.json",
+      "bytes": 543,
+      "sha256": "457a9ff6e2da3411e70f28e937900c24076bef593cc590caa8ec577ef56a1fba"
+    },
+    {
+      "path": "finance-oracle.json",
+      "bytes": 503,
+      "sha256": "6874dd4b71f1b785fae114941aadcf95a023df21be29a066af4f75dbd1543da3"
+    },
+    {
+      "path": "launchservices-verification.json",
+      "bytes": 313,
+      "sha256": "0354f0450da30cf59db50a9e2e49f07e59877469c4537a9399e4cbbf8b148767"
+    },
+    {
+      "path": "operating-committee.png",
+      "bytes": 99861,
+      "sha256": "e815db1bffcb25a54635fe6b981f23e511f7e7fcf45b49a336037559b902a83a"
+    },
+    {
+      "path": "operating-review.png",
+      "bytes": 130947,
+      "sha256": "8fa8de2ec986f8819529da547827703524bce2703767f961a563fb4efaaa6164"
+    },
+    {
+      "path": "operating-update.txt",
+      "bytes": 3487,
+      "sha256": "d17fa66a1d6259eef9bca3f898871d995b35efd91ffea4ffc57d3c0b5fa1d266"
+    },
+    {
+      "path": "synthetic-task-measurement.json",
+      "bytes": 1906,
+      "sha256": "032c64286785b1ea59a498db3fd065257dbf2596169ff443c0036e6ef62b4e72"
+    }
+  ]
+}

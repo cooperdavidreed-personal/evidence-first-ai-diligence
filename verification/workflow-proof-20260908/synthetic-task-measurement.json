@@ -1,0 +1,75 @@
+{
+  "schema": "desk.local-measurements/v1",
+  "privacy": "Opt-in local records. No company names, content, prompts, identity or provider usage collected.",
+  "sessions": [
+    {
+      "id": "670d4cfe-5ef5-44c0-93c0-4e21bb64401d",
+      "mode": "Desk",
+      "started": "2026-09-09T01:03:58.426Z",
+      "finished": "2026-09-09T01:03:59.075Z",
+      "duration_ms": 648.143666,
+      "outcome": "completed",
+      "corrections": 0,
+      "totalTimeStatus": "measured monotonic elapsed time",
+      "cost": {
+        "providerUSD": null,
+        "providerStatus": "not collected; existing external subscription",
+        "allocatedSubscriptionUSD": null,
+        "hardwareEnergyUSD": null
+      },
+      "components": [
+        {
+          "component": "save",
+          "elapsed_ms": 1.860042,
+          "success": 1
+        },
+        {
+          "component": "read",
+          "elapsed_ms": 0.544333,
+          "success": 1
+        },
+        {
+          "component": "save",
+          "elapsed_ms": 2.072791,
+          "success": 1
+        },
+        {
+          "component": "read",
+          "elapsed_ms": 0.553584,
+          "success": 1
+        },
+        {
+          "component": "save",
+          "elapsed_ms": 1.847125,
+          "success": 1
+        },
+        {
+          "component": "read",
+          "elapsed_ms": 0.512292,
+          "success": 1
+        },
+        {
+          "component": "save",
+          "elapsed_ms": 1.70225,
+          "success": 1
+        },
+        {
+          "component": "read",
+          "elapsed_ms": 0.5015,
+          "success": 1
+        },
+        {
+          "component": "save",
+          "elapsed_ms": 1.811291,
+          "success": 1
+        },
+        {
+          "component": "read",
+          "elapsed_ms": 0.53875,
+          "success": 1
+        }
+      ]
+    }
+  ],
+  "interpretation": "Automated synthetic browser run; not analyst speed or savings"
+}

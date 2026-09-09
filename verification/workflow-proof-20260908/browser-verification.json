@@ -1,0 +1,19 @@
+{
+  "status": "VERIFIED_LOCAL_SYNTHETIC",
+  "checks": [
+    "source replacement and stale output",
+    "financial implications",
+    "diligence creation",
+    "contradicted conclusion",
+    "source inspector",
+    "reconciled committee update",
+    "opt-in measurement",
+    "persistent reopen",
+    "no external requests"
+  ],
+  "notRun": [
+    "human pilot",
+    "native provider roundtrip for this example",
+    "cloud deployment"
+  ]
+}
