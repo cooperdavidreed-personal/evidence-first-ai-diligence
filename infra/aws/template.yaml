@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Undeployed synthetic numeric-citation check. No private-company storage or inference.
+Resources:
+  Users:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+  Client:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref Users
+      GenerateSecret: false
+      ExplicitAuthFlows: [ALLOW_USER_SRP_AUTH, ALLOW_REFRESH_TOKEN_AUTH]
+  Api:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 5
+        ThrottlingRateLimit: 2
+      Auth:
+        DefaultAuthorizer: UserJwt
+        Authorizers:
+          UserJwt:
+            IdentitySource: '$request.header.Authorization'
+            JwtConfiguration:
+              issuer: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${Users}'
+              audience: [!Ref Client]
+  Check:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../dist/aws/check.zip
+      Handler: handler.handler
+      Runtime: nodejs24.x
+      MemorySize: 256
+      Timeout: 5
+      ReservedConcurrentExecutions: 1
+      Events:
+        CheckClaim:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Path: /check
+            Method: POST
+Outputs:
+  ApiId:
+    Value: !Ref Api

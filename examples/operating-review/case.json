@@ -1,0 +1,481 @@
+{
+  "schema": "desk.deal-progress/v1",
+  "id": "synthetic-monthly-review",
+  "company": "Juniper Software \u2014 synthetic",
+  "strategy": "PE",
+  "stage": "Active diligence",
+  "question": "Does the July cash shortfall require an updated funding plan?",
+  "sourceVersion": 1,
+  "updatedAt": "2026-08-10T12:00:00Z",
+  "sources": [
+    {
+      "id": "monthly-original",
+      "name": "July original.xlsx",
+      "kind": "xlsx",
+      "bytes": "UEsDBBQAAAAIANadKF0cdPw42AAAAPYBAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbK2RvU4DMQzHX+WUtWpcGDqgXhfKCgy8gJvz9aLLl2K3XN++uVAYUIGFyUr+Hz9L3rydE3EzeRe4VYNIegBgM5BH1jFRKEofs0cpz3yAhGbEA8H9arUGE4NQkKXMHWq72VGPRyfN01S+2cbQqkyOVfP4YZxZrcKUnDUoRYdT6L5RlleCLsnq4cEmXhSDgpuEWfkZcM29nChn21Hzilme0RcXTA7eYx73MY7695IbW8a+t4a6aI6+RDSnTNjxQCTe6Tq1RxsWf/OrmaGOu39e5Kv/cw+o595eAFBLAwQUAAAACADWnShdfxEoFogAAADuAAAACwAAAF9yZWxzLy5yZWxzjc89DgIhEAXgq2w4wM5qYWGAysbWeAHE4Sf8DAGM6+2lXI2F5eS9fC/DLxhV95Sb86VNa4q5CeZ6L0eAph0m1WYqmEdiqCbVx1ktFKWDsgj7ZTlA3RpM8q05ne+C1R2brq+C/8hkjNd4Iv1ImPuPga/GkFW12AVbIzyphhtRmAfKQHL4eE++AVBLAwQUAAAACADWnShdqE9DnpIAAADjAAAADwAAAHhsL3dvcmtib29rLnhtbI2PMQ6DMAxFrxL5ADV06ICAqUuHHiIF00QkcWQHtb19EZS9k/3/l9+X2xfL/GCezTuGpB24UnKDqIOjaPXEmdKaTCzRllXKEzUL2VEdUYkBz1V1wWh9gp3QyD8MniY/0JWHJVIqO0Qo2OI5qfNZoW+3Bv1Nk2ykDu6cigsfMJt5GzuowUjj10VqwL7F4wqPx/ovUEsDBBQAAAAIANadKF1KSXFVjAAAAO8AAAAaAAAAeGwvX3JlbHMvd29ya2Jvb2sueG1sLnJlbHONzzsOwjAMBuCrRDlA3TIwoDQTCyviAlFwHmrzUGwE3J6IARWJgcnyb+n7ZXXG1XAsmUKsJB5pzTTLwFwPAGQDJkNDqZj7xZWWDPe1eajGLsYj7MZxD21rSK22pjhdZ9kmKS7Piv/Ixblo8VjsLWHmHwVwL22hgMgdNc0jz/ITEbzHNHRVglbw9Z9+AVBLAwQUAAAACADWnShdT2hhQKsAAADUAQAAGAAAAHhsL3dvcmtzaGVldHMvc2hlZXQxLnhtbH3RWwrDIBAF0K2ELKCTmGeL8aN0I5LapjRqUEm6/JoJDP2pgjCOR7ko36x7+0mpkH30bPyQTyEsFwA/TkpLf7KLMnHnYZ2WIS7dE/zilLzjIT0DK4oWtHyZXHDs3WSQgju7ZW7Iy9gd9+K6V6soCxwcVsFhjDM6wowwQ8wStiJboe0TtiZbo61SIRrCzZG4TOCWcHskbv7bjmyH9py4tyfbJxLDz3sDfaT4AlBLAQIUAxQAAAAIANadKF0cdPw42AAAAPYBAAATAAAAAAAAAAAAAACAAQAAAABbQ29udGVudF9UeXBlc10ueG1sUEsBAhQDFAAAAAgA1p0oXX8RKBaIAAAA7gAAAAsAAAAAAAAAAAAAAIABCQEAAF9yZWxzLy5yZWxzUEsBAhQDFAAAAAgA1p0oXahPQ56SAAAA4wAAAA8AAAAAAAAAAAAAAIABugEAAHhsL3dvcmtib29rLnhtbFBLAQIUAxQAAAAIANadKF1KSXFVjAAAAO8AAAAaAAAAAAAAAAAAAACAAXkCAAB4bC9fcmVscy93b3JrYm9vay54bWwucmVsc1BLAQIUAxQAAAAIANadKF1PaGFAqwAAANQBAAAYAAAAAAAAAAAAAACAAT0DAAB4bC93b3Jrc2hlZXRzL3NoZWV0MS54bWxQSwUGAAAAAAUABQBFAQAAHgQAAAAA",
+      "digest": "dfd219a378d296223341cc73e03f9aec5c6bf831a8c36cf8645f5c1b9b76e342",
+      "status": "accepted",
+      "replaces": null,
+      "note": "Synthetic monthly board package; amounts in USD ones. No company data.",
+      "availableOn": "2026-08-05",
+      "excerpts": [
+        {
+          "id": "monthly-original:1",
+          "locator": "Monthly!B1",
+          "text": "number: 1000000"
+        },
+        {
+          "id": "monthly-original:2",
+          "locator": "Monthly!B2",
+          "text": "number: 200000"
+        },
+        {
+          "id": "monthly-original:3",
+          "locator": "Monthly!B3",
+          "text": "number: 800000"
+        },
+        {
+          "id": "monthly-original:4",
+          "locator": "Monthly!B4",
+          "text": "number: 3000000"
+        },
+        {
+          "id": "monthly-original:5",
+          "locator": "Monthly!B5",
+          "text": "number: 1100000"
+        },
+        {
+          "id": "monthly-original:6",
+          "locator": "Monthly!B6",
+          "text": "number: 250000"
+        },
+        {
+          "id": "monthly-original:7",
+          "locator": "Monthly!B7",
+          "text": "number: 900000"
+        },
+        {
+          "id": "monthly-original:8",
+          "locator": "Monthly!B8",
+          "text": "number: 3000000"
+        }
+      ],
+      "mapping": {
+        "sheet": "Monthly",
+        "currency": "USD",
+        "scale": 1,
+        "rows": [
+          {
+            "metric": "revenue",
+            "basis": "actual",
+            "value": 1000000,
+            "address": "B1",
+            "ref": "monthly-original:1",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "month",
+            "definition": "Recognized monthly revenue"
+          },
+          {
+            "metric": "ebitda",
+            "basis": "actual",
+            "value": 200000,
+            "address": "B2",
+            "ref": "monthly-original:2",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "month",
+            "definition": "Reported monthly EBITDA"
+          },
+          {
+            "metric": "cash",
+            "basis": "actual",
+            "value": 800000,
+            "address": "B3",
+            "ref": "monthly-original:3",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "as-of",
+            "definition": "Unrestricted period-end cash"
+          },
+          {
+            "metric": "debt",
+            "basis": "actual",
+            "value": 3000000,
+            "address": "B4",
+            "ref": "monthly-original:4",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "as-of",
+            "definition": "Period-end funded debt"
+          },
+          {
+            "metric": "revenue",
+            "basis": "forecast",
+            "value": 1100000,
+            "address": "B5",
+            "ref": "monthly-original:5",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "month",
+            "definition": "Recognized monthly revenue"
+          },
+          {
+            "metric": "ebitda",
+            "basis": "forecast",
+            "value": 250000,
+            "address": "B6",
+            "ref": "monthly-original:6",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "month",
+            "definition": "Reported monthly EBITDA"
+          },
+          {
+            "metric": "cash",
+            "basis": "forecast",
+            "value": 900000,
+            "address": "B7",
+            "ref": "monthly-original:7",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "as-of",
+            "definition": "Unrestricted period-end cash"
+          },
+          {
+            "metric": "debt",
+            "basis": "forecast",
+            "value": 3000000,
+            "address": "B8",
+            "ref": "monthly-original:8",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "as-of",
+            "definition": "Period-end funded debt"
+          }
+        ]
+      }
+    },
+    {
+      "id": "monthly-revised",
+      "name": "July revised.xlsx",
+      "kind": "xlsx",
+      "bytes": "UEsDBBQAAAAIANadKF0cdPw42AAAAPYBAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbK2RvU4DMQzHX+WUtWpcGDqgXhfKCgy8gJvz9aLLl2K3XN++uVAYUIGFyUr+Hz9L3rydE3EzeRe4VYNIegBgM5BH1jFRKEofs0cpz3yAhGbEA8H9arUGE4NQkKXMHWq72VGPRyfN01S+2cbQqkyOVfP4YZxZrcKUnDUoRYdT6L5RlleCLsnq4cEmXhSDgpuEWfkZcM29nChn21Hzilme0RcXTA7eYx73MY7695IbW8a+t4a6aI6+RDSnTNjxQCTe6Tq1RxsWf/OrmaGOu39e5Kv/cw+o595eAFBLAwQUAAAACADWnShdfxEoFogAAADuAAAACwAAAF9yZWxzLy5yZWxzjc89DgIhEAXgq2w4wM5qYWGAysbWeAHE4Sf8DAGM6+2lXI2F5eS9fC/DLxhV95Sb86VNa4q5CeZ6L0eAph0m1WYqmEdiqCbVx1ktFKWDsgj7ZTlA3RpM8q05ne+C1R2brq+C/8hkjNd4Iv1ImPuPga/GkFW12AVbIzyphhtRmAfKQHL4eE++AVBLAwQUAAAACADWnShdqE9DnpIAAADjAAAADwAAAHhsL3dvcmtib29rLnhtbI2PMQ6DMAxFrxL5ADV06ICAqUuHHiIF00QkcWQHtb19EZS9k/3/l9+X2xfL/GCezTuGpB24UnKDqIOjaPXEmdKaTCzRllXKEzUL2VEdUYkBz1V1wWh9gp3QyD8MniY/0JWHJVIqO0Qo2OI5qfNZoW+3Bv1Nk2ykDu6cigsfMJt5GzuowUjj10VqwL7F4wqPx/ovUEsDBBQAAAAIANadKF1KSXFVjAAAAO8AAAAaAAAAeGwvX3JlbHMvd29ya2Jvb2sueG1sLnJlbHONzzsOwjAMBuCrRDlA3TIwoDQTCyviAlFwHmrzUGwE3J6IARWJgcnyb+n7ZXXG1XAsmUKsJB5pzTTLwFwPAGQDJkNDqZj7xZWWDPe1eajGLsYj7MZxD21rSK22pjhdZ9kmKS7Piv/Ixblo8VjsLWHmHwVwL22hgMgdNc0jz/ITEbzHNHRVglbw9Z9+AVBLAwQUAAAACADWnShdCF55uK0AAADSAQAAGAAAAHhsL3dvcmtzaGVldHMvc2hlZXQxLnhtbIXR7Q6CIBQG4FtxXkAHwa8a8qN1I8woWyIOmHb5IW6nfpixsR0OD9u7A5+NfbpOKZ+8dD+4Ju28H08Aru2Ulu5gRjWEm5uxWvpwtHdwo1XyGh/pHighJWj5GFLBY+8ivRTcmjmxTZqFbrsU56WaxJEsi8MkOLRhB4aWoqUfu00ZUhYpK37bHG2+WraToUBcRJxlO7hEXEZMd1JUaKu/g6jR1mtisoXha9qA3yjeUEsBAhQDFAAAAAgA1p0oXRx0/DjYAAAA9gEAABMAAAAAAAAAAAAAAIABAAAAAFtDb250ZW50X1R5cGVzXS54bWxQSwECFAMUAAAACADWnShdfxEoFogAAADuAAAACwAAAAAAAAAAAAAAgAEJAQAAX3JlbHMvLnJlbHNQSwECFAMUAAAACADWnShdqE9DnpIAAADjAAAADwAAAAAAAAAAAAAAgAG6AQAAeGwvd29ya2Jvb2sueG1sUEsBAhQDFAAAAAgA1p0oXUpJcVWMAAAA7wAAABoAAAAAAAAAAAAAAIABeQIAAHhsL19yZWxzL3dvcmtib29rLnhtbC5yZWxzUEsBAhQDFAAAAAgA1p0oXQheebitAAAA0gEAABgAAAAAAAAAAAAAAIABPQMAAHhsL3dvcmtzaGVldHMvc2hlZXQxLnhtbFBLBQYAAAAABQAFAEUBAAAgBAAAAAA=",
+      "digest": "c314092320062322f0b72226f5e5ee2955c0ea38d49cd3b31afa2a7471d06e50",
+      "status": "pending",
+      "replaces": "monthly-original",
+      "note": "Synthetic monthly board package; amounts in USD ones. No company data.",
+      "availableOn": "2026-08-10",
+      "excerpts": [
+        {
+          "id": "monthly-revised:1",
+          "locator": "Monthly!B1",
+          "text": "number: 900000"
+        },
+        {
+          "id": "monthly-revised:2",
+          "locator": "Monthly!B2",
+          "text": "number: 90000"
+        },
+        {
+          "id": "monthly-revised:3",
+          "locator": "Monthly!B3",
+          "text": "number: 350000"
+        },
+        {
+          "id": "monthly-revised:4",
+          "locator": "Monthly!B4",
+          "text": "number: 3300000"
+        },
+        {
+          "id": "monthly-revised:5",
+          "locator": "Monthly!B5",
+          "text": "number: 1100000"
+        },
+        {
+          "id": "monthly-revised:6",
+          "locator": "Monthly!B6",
+          "text": "number: 250000"
+        },
+        {
+          "id": "monthly-revised:7",
+          "locator": "Monthly!B7",
+          "text": "number: 900000"
+        },
+        {
+          "id": "monthly-revised:8",
+          "locator": "Monthly!B8",
+          "text": "number: 3000000"
+        }
+      ],
+      "mapping": {
+        "sheet": "Monthly",
+        "currency": "USD",
+        "scale": 1,
+        "rows": [
+          {
+            "metric": "revenue",
+            "basis": "actual",
+            "value": 900000,
+            "address": "B1",
+            "ref": "monthly-revised:1",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "month",
+            "definition": "Recognized monthly revenue"
+          },
+          {
+            "metric": "ebitda",
+            "basis": "actual",
+            "value": 90000,
+            "address": "B2",
+            "ref": "monthly-revised:2",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "month",
+            "definition": "Reported monthly EBITDA"
+          },
+          {
+            "metric": "cash",
+            "basis": "actual",
+            "value": 350000,
+            "address": "B3",
+            "ref": "monthly-revised:3",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "as-of",
+            "definition": "Unrestricted period-end cash"
+          },
+          {
+            "metric": "debt",
+            "basis": "actual",
+            "value": 3300000,
+            "address": "B4",
+            "ref": "monthly-revised:4",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "as-of",
+            "definition": "Period-end funded debt"
+          },
+          {
+            "metric": "revenue",
+            "basis": "forecast",
+            "value": 1100000,
+            "address": "B5",
+            "ref": "monthly-revised:5",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "month",
+            "definition": "Recognized monthly revenue"
+          },
+          {
+            "metric": "ebitda",
+            "basis": "forecast",
+            "value": 250000,
+            "address": "B6",
+            "ref": "monthly-revised:6",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "month",
+            "definition": "Reported monthly EBITDA"
+          },
+          {
+            "metric": "cash",
+            "basis": "forecast",
+            "value": 900000,
+            "address": "B7",
+            "ref": "monthly-revised:7",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "as-of",
+            "definition": "Unrestricted period-end cash"
+          },
+          {
+            "metric": "debt",
+            "basis": "forecast",
+            "value": 3000000,
+            "address": "B8",
+            "ref": "monthly-revised:8",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "as-of",
+            "definition": "Period-end funded debt"
+          }
+        ]
+      }
+    },
+    {
+      "id": "monthly-late",
+      "name": "Subsequent update.xlsx",
+      "kind": "xlsx",
+      "bytes": "UEsDBBQAAAAIANadKF0cdPw42AAAAPYBAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbK2RvU4DMQzHX+WUtWpcGDqgXhfKCgy8gJvz9aLLl2K3XN++uVAYUIGFyUr+Hz9L3rydE3EzeRe4VYNIegBgM5BH1jFRKEofs0cpz3yAhGbEA8H9arUGE4NQkKXMHWq72VGPRyfN01S+2cbQqkyOVfP4YZxZrcKUnDUoRYdT6L5RlleCLsnq4cEmXhSDgpuEWfkZcM29nChn21Hzilme0RcXTA7eYx73MY7695IbW8a+t4a6aI6+RDSnTNjxQCTe6Tq1RxsWf/OrmaGOu39e5Kv/cw+o595eAFBLAwQUAAAACADWnShdfxEoFogAAADuAAAACwAAAF9yZWxzLy5yZWxzjc89DgIhEAXgq2w4wM5qYWGAysbWeAHE4Sf8DAGM6+2lXI2F5eS9fC/DLxhV95Sb86VNa4q5CeZ6L0eAph0m1WYqmEdiqCbVx1ktFKWDsgj7ZTlA3RpM8q05ne+C1R2brq+C/8hkjNd4Iv1ImPuPga/GkFW12AVbIzyphhtRmAfKQHL4eE++AVBLAwQUAAAACADWnShdqE9DnpIAAADjAAAADwAAAHhsL3dvcmtib29rLnhtbI2PMQ6DMAxFrxL5ADV06ICAqUuHHiIF00QkcWQHtb19EZS9k/3/l9+X2xfL/GCezTuGpB24UnKDqIOjaPXEmdKaTCzRllXKEzUL2VEdUYkBz1V1wWh9gp3QyD8MniY/0JWHJVIqO0Qo2OI5qfNZoW+3Bv1Nk2ykDu6cigsfMJt5GzuowUjj10VqwL7F4wqPx/ovUEsDBBQAAAAIANadKF1KSXFVjAAAAO8AAAAaAAAAeGwvX3JlbHMvd29ya2Jvb2sueG1sLnJlbHONzzsOwjAMBuCrRDlA3TIwoDQTCyviAlFwHmrzUGwE3J6IARWJgcnyb+n7ZXXG1XAsmUKsJB5pzTTLwFwPAGQDJkNDqZj7xZWWDPe1eajGLsYj7MZxD21rSK22pjhdZ9kmKS7Piv/Ixblo8VjsLWHmHwVwL22hgMgdNc0jz/ITEbzHNHRVglbw9Z9+AVBLAwQUAAAACADWnShdK0rDaK0AAADVAQAAGAAAAHhsL3dvcmtzaGVldHMvc2hlZXQxLnhtbH3RXQrDIAwA4KuUHmCx9nfD+jB2EencOla1qLQ7/qyFUAZTEGL8DCGy1di3G6X02UdN2vX56P18AXDDKJVwJzNLHW4exirhw9E+wc1Wint8pCaghDSgxEvnnMXcTXjBmTVrZvu8CNlhC65btPCiJNtisHAGQ9jBIaaIacQpW6Ito6UkgSvE1V44VblGXO8tFwncIG72Nur/tkXbRntO1O3QdodR/GI4DBzwJ/kXUEsBAhQDFAAAAAgA1p0oXRx0/DjYAAAA9gEAABMAAAAAAAAAAAAAAIABAAAAAFtDb250ZW50X1R5cGVzXS54bWxQSwECFAMUAAAACADWnShdfxEoFogAAADuAAAACwAAAAAAAAAAAAAAgAEJAQAAX3JlbHMvLnJlbHNQSwECFAMUAAAACADWnShdqE9DnpIAAADjAAAADwAAAAAAAAAAAAAAgAG6AQAAeGwvd29ya2Jvb2sueG1sUEsBAhQDFAAAAAgA1p0oXUpJcVWMAAAA7wAAABoAAAAAAAAAAAAAAIABeQIAAHhsL19yZWxzL3dvcmtib29rLnhtbC5yZWxzUEsBAhQDFAAAAAgA1p0oXStKw2itAAAA1QEAABgAAAAAAAAAAAAAAIABPQMAAHhsL3dvcmtzaGVldHMvc2hlZXQxLnhtbFBLBQYAAAAABQAFAEUBAAAgBAAAAAA=",
+      "digest": "44ba5a4f1436f883ac4ec1bac5933eec3843ca05bb672016de2d2c7ce6ea5359",
+      "status": "pending",
+      "replaces": "monthly-revised",
+      "note": "Synthetic monthly board package; amounts in USD ones. No company data.",
+      "availableOn": "2026-08-20",
+      "excerpts": [
+        {
+          "id": "monthly-late:1",
+          "locator": "Monthly!B1",
+          "text": "number: 1300000"
+        },
+        {
+          "id": "monthly-late:2",
+          "locator": "Monthly!B2",
+          "text": "number: 300000"
+        },
+        {
+          "id": "monthly-late:3",
+          "locator": "Monthly!B3",
+          "text": "number: 2000000"
+        },
+        {
+          "id": "monthly-late:4",
+          "locator": "Monthly!B4",
+          "text": "number: 3300000"
+        },
+        {
+          "id": "monthly-late:5",
+          "locator": "Monthly!B5",
+          "text": "number: 1100000"
+        },
+        {
+          "id": "monthly-late:6",
+          "locator": "Monthly!B6",
+          "text": "number: 250000"
+        },
+        {
+          "id": "monthly-late:7",
+          "locator": "Monthly!B7",
+          "text": "number: 900000"
+        },
+        {
+          "id": "monthly-late:8",
+          "locator": "Monthly!B8",
+          "text": "number: 3000000"
+        }
+      ],
+      "mapping": {
+        "sheet": "Monthly",
+        "currency": "USD",
+        "scale": 1,
+        "rows": [
+          {
+            "metric": "revenue",
+            "basis": "actual",
+            "value": 1300000,
+            "address": "B1",
+            "ref": "monthly-late:1",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "month",
+            "definition": "Recognized monthly revenue"
+          },
+          {
+            "metric": "ebitda",
+            "basis": "actual",
+            "value": 300000,
+            "address": "B2",
+            "ref": "monthly-late:2",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "month",
+            "definition": "Reported monthly EBITDA"
+          },
+          {
+            "metric": "cash",
+            "basis": "actual",
+            "value": 2000000,
+            "address": "B3",
+            "ref": "monthly-late:3",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "as-of",
+            "definition": "Unrestricted period-end cash"
+          },
+          {
+            "metric": "debt",
+            "basis": "actual",
+            "value": 3300000,
+            "address": "B4",
+            "ref": "monthly-late:4",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "as-of",
+            "definition": "Period-end funded debt"
+          },
+          {
+            "metric": "revenue",
+            "basis": "forecast",
+            "value": 1100000,
+            "address": "B5",
+            "ref": "monthly-late:5",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "month",
+            "definition": "Recognized monthly revenue"
+          },
+          {
+            "metric": "ebitda",
+            "basis": "forecast",
+            "value": 250000,
+            "address": "B6",
+            "ref": "monthly-late:6",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "month",
+            "definition": "Reported monthly EBITDA"
+          },
+          {
+            "metric": "cash",
+            "basis": "forecast",
+            "value": 900000,
+            "address": "B7",
+            "ref": "monthly-late:7",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "as-of",
+            "definition": "Unrestricted period-end cash"
+          },
+          {
+            "metric": "debt",
+            "basis": "forecast",
+            "value": 3000000,
+            "address": "B8",
+            "ref": "monthly-late:8",
+            "period": "2026-07",
+            "scenario": "Base",
+            "periodType": "as-of",
+            "definition": "Period-end funded debt"
+          }
+        ]
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "liquidity-view",
+      "section": "Current view",
+      "text": "July cash exceeds the analyst minimum; confirm continued cash conversion.",
+      "refs": [
+        "monthly-original:3"
+      ],
+      "author": "Sample analyst",
+      "state": "current",
+      "sourceVersion": 1
+    }
+  ],
+  "issues": [],
+  "assumptions": [],
+  "events": [],
+  "outputs": {},
+  "operatingReview": {
+    "period": "2026-07",
+    "currency": "USD",
+    "scenario": "Base",
+    "cutoff": "2026-08-15",
+    "minimumCash": 500000,
+    "owner": "Sample analyst"
+  }
+}

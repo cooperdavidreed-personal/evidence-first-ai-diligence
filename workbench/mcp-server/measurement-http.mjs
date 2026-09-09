@@ -1,0 +1,6 @@
+import {isLoopbackHost} from './review-http.mjs';
+export function measurementHandler(store,token){return async(req,res)=>{
+ res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');const host=req.headers.host;
+ if(!isLoopbackHost(host)||req.headers['x-desk-session']!==token||(req.headers.origin&&req.headers.origin!=='http://'+host)){res.writeHead(403);res.end('{}');return;}
+ try{if(req.method==='GET'){res.end(JSON.stringify(store.measurementStatus()));return;}if(req.method!=='POST'){res.writeHead(405);res.end('{}');return;}let bytes=0;const chunks=[];for await(const c of req){bytes+=c.length;if(bytes>1024)throw Error('Request too large');chunks.push(c);}const b=JSON.parse(Buffer.concat(chunks).toString());let value;switch(b.action){case 'start':value=store.measurementStart(b.mode);break;case 'finish':value=store.measurementFinish(b.outcome);break;case 'correction':value=store.measurementCorrection();break;case 'export':value=store.measurementExport();break;case 'delete':value=store.measurementDelete();break;default:throw Error('Unknown operation');}res.end(JSON.stringify(value));}catch(e){res.statusCode=400;res.end(JSON.stringify({error:e.message}));}
+};}

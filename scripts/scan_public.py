@@ -387,7 +387,7 @@ def reviewed_trial_artifacts(root: Path) -> set[str]:
     digest = body.pop("manifest_sha256", None)
     if digest != hashlib.sha256(canonical_json(body)).hexdigest():
         raise ValueError("trial_manifest_digest_mismatch")
-    allowed_roots = ("verification/design-rebuild-20260903/", "verification/goal-one-20260908/", "verification/goal-two-20260908/", "verification/desk-twelve-20260908/", "verification/deal-progress-20260908/")
+    allowed_roots = ("verification/design-rebuild-20260903/", "verification/goal-one-20260908/", "verification/goal-two-20260908/", "verification/desk-twelve-20260908/", "verification/deal-progress-20260908/", "verification/workflow-proof-20260908/")
     reviewed: set[str] = set()
     for entry in body.get("files", []):
         relative = entry["path"]

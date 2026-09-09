@@ -1,0 +1,3 @@
+import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';import {zipSync} from 'fflate';
+const root=new URL('../../',import.meta.url),out=new URL('dist/aws/',root);mkdirSync(out,{recursive:true});
+const files={'handler.mjs':readFileSync(new URL('infra/aws/handler.mjs',root)),'operating-review.mjs':readFileSync(new URL('workbench/mcp-server/operating-review.mjs',root)),'case.json':readFileSync(new URL('examples/operating-review/case.json',root))};writeFileSync(new URL('check.zip',out),zipSync(files));for(const [name,bytes]of Object.entries(files))writeFileSync(new URL(name,out),bytes);console.log('AWS function artifact built locally; no resources provisioned.');

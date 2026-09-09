@@ -1,0 +1,3 @@
+import {handler} from '../../dist/aws/handler.mjs';import assert from 'node:assert/strict';
+const body=JSON.stringify({claim:{metric:'cash',basis:'actual',period:'2026-07',scenario:'Base',currency:'USD',ref:'monthly-revised:3',value:350000}}),auth={authorizer:{jwt:{claims:{sub:'synthetic-test'}}}};
+assert.equal((await handler({body})).statusCode,403);const good=await handler({body,requestContext:auth});assert.equal(good.statusCode,200);assert.equal(JSON.parse(good.body).result.grade,'supported');assert.equal((await handler({body:'x'.repeat(5000),requestContext:auth})).statusCode,400);assert.equal((await handler({body:'{bad',requestContext:auth})).statusCode,400);console.log('4 local handler checks passed; JWT verification and cloud deployment NOT RUN.');

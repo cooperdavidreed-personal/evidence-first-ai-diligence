@@ -1,0 +1,9 @@
+{
+  "schema": "desk.numeric-evaluation/v1",
+  "labels": "Author-declared synthetic numeric expectations. Not independent human semantic labels.",
+  "split": "Separate frozen development and holdout files. Holdout is inspectable and must not be described as blinded or untouched.",
+  "files": {
+    "development.json": "21d04fb1d862788075f80d4b56780b7788763ad558ef60643faafef223554cc4",
+    "holdout.json": "9cce86dc783a15d3f90bcce9a098ba1e57b49b1a4cb53ff144aa90e682da1b1e"
+  }
+}

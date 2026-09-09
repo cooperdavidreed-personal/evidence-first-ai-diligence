@@ -17,3 +17,5 @@ __pycache__/
 .vercel
 .env*
 /workbench/desktop/cmd/launcher/payload.zip
+
+/workbench/node_modules

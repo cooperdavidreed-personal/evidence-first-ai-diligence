@@ -1,3 +1,4 @@
+import {measurementHandler} from './measurement-http.mjs';
 import {desktopHandler} from './desktop-http.mjs';
 import {randomBytes} from "node:crypto";
 import {progressHandler} from "./progress-http.mjs";
@@ -18,12 +19,14 @@ export async function startLocalDesk({workbenchPath, storePath, port = 4198, des
   const packages = createReviewHandler({store, packages: true});
   const workspace = createReviewHandler({store, workspace: true});
   const sessionToken=randomBytes(32).toString("hex"), progress=progressHandler(store,sessionToken);
+  const measurements=measurementHandler(store,sessionToken);
   const onboarding = desktop ? desktopHandler(store,sessionToken,desktop) : null;
   const server = createServer(async (req, res) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
     if (!isLoopbackHost(req.headers.host)) {res.writeHead(403); res.end(); return;}
     const rawPath = (req.url ?? "/").split("?")[0];
     if (rawPath === "/__desk/desktop" && onboarding) {await onboarding(req,res);return;}
+    if (rawPath === "/__desk/measurements") {await measurements(req,res);return;}
     if (rawPath === "/__desk/progress") {await progress(req,res);return;}
     if (rawPath === "/__desk/packages") {await packages(req, res); return;}
     if (rawPath === "/__desk/workspace") {await workspace(req, res); return;}

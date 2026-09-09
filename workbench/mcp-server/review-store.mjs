@@ -1,3 +1,4 @@
+import {measurementMethods} from './measurement-store.mjs';
 import {onboardingMethods,connectionTool} from './onboarding-store.mjs';
 import {progressMethods,progressTools} from "./progress-store.mjs";
 import {attachPackageStore} from "./package-store.mjs";
@@ -22,6 +23,7 @@ export function openReviewStore(path) {
   }
   return {
     ...onboardingMethods(db),
+    ...measurementMethods(db),
     ...workspaceMethods(db),
     ...progressMethods(db),
     ...attachPackageStore(db),

@@ -1,0 +1,80 @@
+[
+  {
+    "id": "matched",
+    "claim": {
+      "metric": "revenue",
+      "basis": "actual",
+      "period": "2026-07",
+      "currency": "USD",
+      "scenario": "Base",
+      "ref": "monthly-revised:1",
+      "value": 900000
+    },
+    "expected": "supported"
+  },
+  {
+    "id": "false-value",
+    "claim": {
+      "metric": "revenue",
+      "basis": "actual",
+      "period": "2026-07",
+      "currency": "USD",
+      "scenario": "Base",
+      "ref": "monthly-revised:1",
+      "value": 1000000
+    },
+    "expected": "contradicted"
+  },
+  {
+    "id": "wrong-real-citation",
+    "claim": {
+      "metric": "revenue",
+      "basis": "actual",
+      "period": "2026-07",
+      "currency": "USD",
+      "scenario": "Base",
+      "ref": "monthly-revised:2",
+      "value": 900000
+    },
+    "expected": "unsupported"
+  },
+  {
+    "id": "wrong-month",
+    "claim": {
+      "metric": "revenue",
+      "basis": "actual",
+      "period": "2026-06",
+      "currency": "USD",
+      "scenario": "Base",
+      "ref": "monthly-revised:1",
+      "value": 900000
+    },
+    "expected": "unsupported"
+  },
+  {
+    "id": "wrong-currency",
+    "claim": {
+      "metric": "revenue",
+      "basis": "actual",
+      "period": "2026-07",
+      "currency": "EUR",
+      "scenario": "Base",
+      "ref": "monthly-revised:1",
+      "value": 900000
+    },
+    "expected": "unsupported"
+  },
+  {
+    "id": "wrong-scenario",
+    "claim": {
+      "metric": "revenue",
+      "basis": "actual",
+      "period": "2026-07",
+      "currency": "USD",
+      "scenario": "Downside",
+      "ref": "monthly-revised:1",
+      "value": 900000
+    },
+    "expected": "unsupported"
+  }
+]

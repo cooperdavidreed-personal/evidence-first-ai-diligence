@@ -1,0 +1,80 @@
+[
+  {
+    "id": "cash-matched",
+    "claim": {
+      "metric": "cash",
+      "basis": "actual",
+      "period": "2026-07",
+      "currency": "USD",
+      "scenario": "Base",
+      "ref": "monthly-revised:3",
+      "value": 350000
+    },
+    "expected": "supported"
+  },
+  {
+    "id": "cash-false",
+    "claim": {
+      "metric": "cash",
+      "basis": "actual",
+      "period": "2026-07",
+      "currency": "USD",
+      "scenario": "Base",
+      "ref": "monthly-revised:3",
+      "value": 2000000
+    },
+    "expected": "contradicted"
+  },
+  {
+    "id": "cash-wrong-debt-ref",
+    "claim": {
+      "metric": "cash",
+      "basis": "actual",
+      "period": "2026-07",
+      "currency": "USD",
+      "scenario": "Base",
+      "ref": "monthly-revised:4",
+      "value": 350000
+    },
+    "expected": "unsupported"
+  },
+  {
+    "id": "ebitda-matched",
+    "claim": {
+      "metric": "ebitda",
+      "basis": "actual",
+      "period": "2026-07",
+      "currency": "USD",
+      "scenario": "Base",
+      "ref": "monthly-revised:2",
+      "value": 90000
+    },
+    "expected": "supported"
+  },
+  {
+    "id": "future-citation",
+    "claim": {
+      "metric": "cash",
+      "basis": "actual",
+      "period": "2026-07",
+      "currency": "USD",
+      "scenario": "Base",
+      "ref": "monthly-late:3",
+      "value": 2000000
+    },
+    "expected": "unsupported"
+  },
+  {
+    "id": "missing-ref",
+    "claim": {
+      "metric": "revenue",
+      "basis": "actual",
+      "period": "2026-07",
+      "currency": "USD",
+      "scenario": "Base",
+      "ref": "does-not-exist",
+      "value": 900000
+    },
+    "expected": "unsupported"
+  }
+]

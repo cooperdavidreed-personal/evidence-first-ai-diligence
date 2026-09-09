@@ -6,6 +6,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -62,5 +64,34 @@ func TestSymlinkRejected(t *testing.T) {
 	w.Close()
 	if Extract(b.Bytes(), t.TempDir()) == nil {
 		t.Fatal("accepted symlink")
+	}
+}
+
+func TestUpgradeRefusesLiveDifferentVersionAndPreservesDescriptor(t *testing.T) {
+	home := t.TempDir()
+	old, e := Install(archive("runtime/node", []byte("old runtime")), home)
+	if e != nil {
+		t.Fatal(e)
+	}
+	token := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("x-desk-session") != token {
+			w.WriteHeader(403)
+		}
+	}))
+	defer server.Close()
+	b, _ := json.Marshal(map[string]string{"url": server.URL, "token": token})
+	os.WriteFile(filepath.Join(home, "desktop-instance.json"), b, 0600)
+	if _, e = Install(archive("runtime/node", []byte("new runtime")), home); e == nil {
+		t.Fatal("updated running installation")
+	}
+	current, e := Load(home)
+	if e != nil || current.Digest != old.Digest {
+		t.Fatal("changed active descriptor")
+	}
+	server.Close()
+	next, e := Install(archive("runtime/node", []byte("new runtime")), home)
+	if e != nil || next.Digest == old.Digest {
+		t.Fatal("update after quit failed", e)
 	}
 }

@@ -155,6 +155,9 @@ func Install(payload []byte, home string) (Installation, error) {
 	base := filepath.Join(home, "application", "versions")
 	root := filepath.Join(base, digest)
 	v := Installation{Root: root, Digest: digest}
+	if current, e := Load(home); e == nil && current.Digest != digest && Running(home) {
+		return v, errors.New("Quit the running Desk using Quit Desk, then open this update again. Your saved companies have not changed.")
+	}
 	if e := os.MkdirAll(base, 0700); e != nil {
 		return v, e
 	}

@@ -3,3 +3,5 @@
 /* Keep the working navigation anchored independently of document height. */
 .progress-shell{align-items:start}.progress-rail{align-self:start;overflow-y:auto;box-sizing:border-box}.progress-heading{align-items:flex-start}.progress-heading>button{flex-shrink:0}.progress-rail nav button{border-color:transparent;background:transparent}.progress-rail nav button[aria-current=page]{background:#dce5ed;border-color:#c8d2dc}.progress-rail>button{display:block;margin-bottom:8px}.progress-paper,.diligence-queue{border-radius:3px}.progress-reviewer{padding:8px 0;align-items:center}.progress-reviewer label{margin:8px 0}.progress-shell .output-editor{margin-top:14px}
 .progress-rail{position:fixed;left:0;top:0;bottom:0;width:208px;height:100vh}.progress-main{grid-column:2}
+
+.operating-review td button+button{margin-left:12px}.operating-review>p{margin:10px 0}.operating-review article{padding:12px 0;border-top:1px solid #dde3e8}
